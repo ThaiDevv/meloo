@@ -1,0 +1,18 @@
+# label	glob — bảng file nóng (AGENTS.md). check-scope.sh đọc file này.
+hot-contract	contracts/openapi.yaml
+hot-contract	contracts/asyncapi.yaml
+hot-migration	backend/src/main/resources/db/migration/*
+hot-pom	backend/pom.xml
+hot-fe-deps	frontend/package.json
+hot-fe-deps	pnpm-lock.yaml
+hot-fe-deps	frontend/pnpm-lock.yaml
+hot-fe-app	frontend/src/app/*
+hot-shared	backend/src/main/java/com/meloo/shared/*
+hot-shared	backend/src/main/resources/application.yml
+hot-ci	.github/*
+harness	AGENTS.md
+harness	CLAUDE.md
+harness	.claude/*
+harness	.agents/*
+harness	.codex/*
+harness	.mcp.json

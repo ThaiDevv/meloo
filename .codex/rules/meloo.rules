@@ -1,0 +1,34 @@
+# Chặn lệnh nguy hiểm cho Codex trong repo Meloo.
+# Chỉ nạp khi project .codex/ được tin cậy (trust). Khởi động lại Codex sau khi sửa file này.
+# Thử luật: codex execpolicy check --pretty --rules .codex/rules/meloo.rules -- gh pr merge 12
+
+prefix_rule(
+    pattern = ["gh", "pr", "merge"],
+    decision = "forbidden",
+    justification = "Chỉ Thái được merge PR (AGENTS.md, luật 10).",
+    match = ["gh pr merge 12 --squash"],
+    not_match = ["gh pr view 12"],
+)
+
+prefix_rule(
+    pattern = ["git", "push", ["--force", "-f"]],
+    decision = "forbidden",
+    justification = "Không force push trần. Dùng git push --force-with-lease trên branch của ticket.",
+    match = ["git push --force origin feat/MEL-1-demo", "git push -f"],
+    not_match = ["git push --force-with-lease origin feat/MEL-1-demo"],
+)
+
+prefix_rule(
+    pattern = ["git", "push", "origin", ["main", "HEAD:main"]],
+    decision = "forbidden",
+    justification = "main chỉ nhận thay đổi qua PR.",
+    match = ["git push origin main", "git push origin HEAD:main"],
+    not_match = ["git push origin feat/MEL-1-demo"],
+)
+
+prefix_rule(
+    pattern = ["gh", "pr", "review"],
+    decision = "prompt",
+    justification = "Reviewer đăng nhận xét bằng gh pr comment; approve là việc của Thái.",
+    match = ["gh pr review 12 --approve"],
+)

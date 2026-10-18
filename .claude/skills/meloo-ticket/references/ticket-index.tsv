@@ -1,0 +1,100 @@
+# Bản chụp backlog Jira MEL ngày 2026-10-18 (sinh khi dựng harness). Khác Jira thì tin Jira.
+# key	mã	tên	labels	phụ thuộc (mã)	phụ thuộc (key)	skill	mức review	người làm
+MEL-15	PM-01	Thiết lập board Jira theo quy trình	must,owner-me,pm,s0			—	—	Thái
+MEL-16	SET-01	Tạo GitHub repo & kết nối công cụ	infra,must,owner-me,s0			—	—	Thái
+MEL-17	BIZ-01	Nộp đăng ký đề tài (hạn 24/10 9:00)	biz,must,owner-me,s0			—	—	Thái
+MEL-18	BIZ-02	Phát biểu bài toán, personas, giá trị cốt lõi	biz,must,owner-me,s0			—	—	Thái
+MEL-19	BIZ-03	Khảo sát nhu cầu người dùng (Google Form)	biz,must,owner-me,s0			—	—	Thái
+MEL-20	BIZ-04	Phân tích đối thủ & điểm khác biệt	agent-claude,biz,s0,should			meloo-docs	chuẩn	Claude
+MEL-21	SET-02	Khởi tạo monorepo & quy ước cho agent	agent-claude,infra,must,s0	SET-01	MEL-16	meloo-infra	chuẩn	Claude
+MEL-22	SET-03	Backend skeleton Spring Boot + PostgreSQL local	agent-codex,be,hot-migration,hot-pom,hot-shared,must,s0	SET-02	MEL-21	meloo-backend	chuẩn	Codex
+MEL-23	SET-04	Frontend skeleton React	agent-claude,fe,hot-fe-app,hot-fe-deps,must,s0	SET-02	MEL-21	meloo-frontend	chuẩn	Claude
+MEL-24	SET-05	CI GitHub Actions	agent-codex,hot-ci,infra,must,s0	SET-03,SET-04	MEL-22 MEL-23	meloo-infra	chuẩn	Codex
+MEL-25	SPK-01	Spike nguồn nhạc: Deezer vs iTunes + ADR-003	agent-codex,be,must,s0	SET-02	MEL-21	meloo-backend	chuẩn	Codex
+MEL-26	ARC-01	ADR nền tảng kiến trúc	agent-claude,doc,must,s0	SET-02	MEL-21	meloo-docs	chuẩn	Claude
+MEL-27	PM-02	Sprint review & retro S0	must,owner-me,pm,s0			—	—	Thái
+MEL-28	DOC-01	SRS v1: chức năng, phi chức năng, quy tắc nghiệp vụ	agent-claude,doc,must,s1	BIZ-02	MEL-18	meloo-docs	chuẩn	Claude
+MEL-29	DOC-02	Mô hình use case + đặc tả 10 use case	agent-claude,doc,must,s1	DOC-01	MEL-28	meloo-docs	chuẩn	Claude
+MEL-30	DES-01	Mô hình miền, ERD & kế hoạch migration	agent-codex,db,doc,must,s1	DOC-01	MEL-28	meloo-docs	chuẩn	Codex
+MEL-31	CT-01	Hợp đồng API v1 (auth, kho nhạc, chơi đơn)	agent-claude,contract,hot-contract,must,s1	SET-03,SET-04,DES-01	MEL-22 MEL-23 MEL-30	meloo-contract	chuẩn	Claude
+MEL-32	DB-01	Migration & entity: identity, catalog, game, chat	agent-codex,db,hot-migration,must,s1	DES-01	MEL-30	meloo-backend	chuẩn	Codex
+MEL-33	BE-ID-01	Khách & JWT (refresh xoay vòng)	agent-codex,be,must,s1	CT-01,DB-01	MEL-31 MEL-32	meloo-backend	sâu	Codex
+MEL-34	BE-CAT-01	Adapter nhà cung cấp nhạc	agent-claude,be,must,s1	SPK-01,DB-01	MEL-25 MEL-32	meloo-backend	chuẩn	Claude
+MEL-35	BE-CAT-02	Nhập kho nhạc & seed ≥ 1.000 bài	agent-codex,be,must,s1	BE-CAT-01	MEL-34	meloo-backend	chuẩn	Codex
+MEL-36	BE-CAT-03	Tìm kiếm gợi ý không dấu & bộ lọc	agent-codex,be,must,s1	BE-CAT-02,CT-01	MEL-35 MEL-31	meloo-backend	chuẩn	Codex
+MEL-37	BE-GAME-01	Engine luật chơi (domain thuần)	agent-claude,be,must,s1	SET-03,DOC-01	MEL-22 MEL-28	meloo-backend	chuẩn	Claude
+MEL-38	FE-01	Design system & khung giao diện	agent-claude,fe,hot-fe-app,must,s1	SET-04	MEL-23	meloo-frontend	chuẩn	Claude
+MEL-39	FE-AUTH-01	Vào chơi bằng khách & API client	agent-claude,fe,must,s1	CT-01,FE-01	MEL-31 MEL-38	meloo-frontend	sâu	Claude
+MEL-40	INF-01	Hạ tầng AWS & tên miền	agent-codex,infra,must,owner-me,s1	SET-03	MEL-22	meloo-infra	chuẩn	Thái+Codex
+MEL-41	INF-02	CD: backend lên EC2, frontend lên Vercel	agent-codex,hot-ci,infra,must,s1	SET-05,INF-01	MEL-24 MEL-40	meloo-infra	sâu	Codex
+MEL-42	PM-03	Sprint review & retro S1	must,owner-me,pm,s1			—	—	Thái
+MEL-43	CT-02	Hợp đồng v2: phòng (REST) + sự kiện realtime (AsyncAPI)	agent-claude,contract,hot-contract,must,s2	BE-GAME-01	MEL-37	meloo-contract	chuẩn	Claude
+MEL-44	BE-AUD-01	Phát đoạn nhạc an toàn bằng token	agent-codex,be,must,s2	BE-CAT-01,ARC-01	MEL-34 MEL-26	meloo-backend	sâu	Codex
+MEL-45	BE-SOLO-01	API chơi đơn	agent-codex,be,must,s2	BE-GAME-01,BE-CAT-03,BE-AUD-01,CT-01	MEL-37 MEL-36 MEL-44 MEL-31	meloo-backend	sâu	Codex
+MEL-46	BE-RT-01	Hạ tầng realtime STOMP	agent-codex,be,must,s2	CT-02,BE-ID-01	MEL-43 MEL-33	meloo-backend	sâu	Codex
+MEL-47	FE-SOLO-01	Trang chủ & chọn bộ nhạc	agent-claude,fe,must,s2	CT-01,FE-01	MEL-31 MEL-38	meloo-frontend	chuẩn	Claude
+MEL-48	FE-GAME-01	Màn chơi dùng chung (game-core, fan-out)	agent-claude,agent-codex,fe,must,s2	CT-01,FE-01	MEL-31 MEL-38	meloo-frontend	chuẩn	Claude+Codex
+MEL-49	FE-SOLO-02	Luồng chơi đơn hoàn chỉnh	agent-claude,fe,must,s2	FE-GAME-01,FE-SOLO-01	MEL-48 MEL-47	meloo-frontend	chuẩn	Claude
+MEL-50	QA-01	Test plan & E2E chơi đơn	agent-codex,hot-ci,must,qa,s2	FE-SOLO-02,BE-SOLO-01	MEL-49 MEL-45	meloo-testing	chuẩn	Codex
+MEL-51	DOC-03	Sơ đồ lớp, tuần tự, hoạt động, trạng thái	agent-claude,doc,must,s2	DES-01,CT-02	MEL-30 MEL-43	meloo-docs	chuẩn	Claude
+MEL-52	DOC-04	Tài liệu kiến trúc (C4 + triển khai)	agent-claude,doc,must,s2	ARC-01,INF-01	MEL-26 MEL-40	meloo-docs	chuẩn	Claude
+MEL-53	BIZ-05	Phân tích kết quả khảo sát	biz,must,owner-me,s2			—	—	Thái
+MEL-54	PM-04	Sprint review & retro S2	must,owner-me,pm,s2			—	—	Thái
+MEL-55	BE-ROOM-01	Vòng đời phòng & sảnh chờ	agent-codex,be,must,s3	BE-RT-01	MEL-46	meloo-backend	sâu	Codex
+MEL-56	BE-ROOM-02	Điều phối trận nhiều người	agent-codex,be,must,s3	BE-ROOM-01,BE-GAME-01,BE-AUD-01	MEL-55 MEL-37 MEL-44	meloo-backend	sâu	Codex
+MEL-57	BE-CHAT-01	Chat: chặn lộ đáp án, từ cấm, báo cáo	agent-claude,be,must,s3	BE-RT-01,DB-01	MEL-46 MEL-32	meloo-backend	sâu	Claude
+MEL-58	FE-ROOM-01	Tạo/vào phòng & sảnh chờ	agent-claude,fe,must,s3	CT-02,FE-01	MEL-43 MEL-38	meloo-frontend	chuẩn	Claude
+MEL-59	FE-ROOM-02	Màn chơi nhiều người & bục vinh danh	agent-claude,fe,must,s3	FE-ROOM-01,FE-GAME-01	MEL-58 MEL-48	meloo-frontend	chuẩn	Claude
+MEL-60	FE-CHAT-01	Khung chat trong phòng	agent-codex,fe,must,s3	CT-02,FE-01,FE-ROOM-01	MEL-43 MEL-38 MEL-58	meloo-frontend	chuẩn	Codex
+MEL-61	QA-02	E2E nhiều người chơi	agent-codex,must,qa,s3	FE-ROOM-02,BE-ROOM-02,BE-CHAT-01,FE-CHAT-01	MEL-59 MEL-56 MEL-57 MEL-60	meloo-testing	chuẩn	Codex
+MEL-62	DOC-05	Nộp thuyết minh chi tiết thiết kế (hạn 16/11 9:07)	agent-claude,doc,must,owner-me,s3	DOC-02,DOC-03,DOC-04	MEL-29 MEL-51 MEL-52	meloo-docs	chuẩn	Thái+Claude
+MEL-63	BIZ-06	Beta kín với bạn bè	biz,owner-me,s3,should	FE-ROOM-02	MEL-59	—	—	Thái
+MEL-64	PM-05	Sprint review & retro S3	must,owner-me,pm,s3			—	—	Thái
+MEL-112	BE-CAT-04	API quản trị kho nhạc cho module admin	agent-claude,be,must,s3	BE-CAT-03	MEL-36	meloo-backend	chuẩn	Claude
+MEL-65	CT-03	Hợp đồng v3: OAuth, hồ sơ, xếp hạng, thử thách ngày, admin	agent-claude,contract,hot-contract,must,s4	CT-02	MEL-43	meloo-contract	chuẩn	Claude
+MEL-66	DB-02	Migration & entity: progression, daily, admin, analytics	agent-codex,db,hot-migration,must,s4	CT-03,DES-01	MEL-65 MEL-30	meloo-backend	chuẩn	Codex
+MEL-67	BE-ID-02	Đăng nhập Google & gộp tài khoản khách	agent-codex,be,must,s4	CT-03	MEL-65	meloo-backend	sâu	Codex
+MEL-68	BE-PROG-01	Lịch sử, thống kê, XP & bảng xếp hạng	agent-codex,be,must,s4	DB-02,BE-ROOM-02,BE-SOLO-01,BE-ID-02	MEL-66 MEL-56 MEL-45 MEL-67	meloo-backend	chuẩn	Codex
+MEL-69	BE-DAILY-01	Thử thách hằng ngày	agent-claude,be,s4,should	DB-02,BE-AUD-01,BE-GAME-01,BE-CAT-03	MEL-66 MEL-44 MEL-37 MEL-36	meloo-backend	chuẩn	Claude
+MEL-70	BE-ROOM-03	Phòng công khai & ghép trận nhanh	agent-claude,be,must,s4	BE-ROOM-01,BE-ROOM-02	MEL-55 MEL-56	meloo-backend	sâu	Claude
+MEL-71	BE-ADM-01	Admin API: dashboard, kho nhạc, bộ đề	agent-codex,be,must,s4	DB-02,CT-03,BE-CAT-04,BE-ID-02	MEL-66 MEL-65 MEL-112 MEL-67	meloo-backend	sâu	Codex
+MEL-72	FE-AUTH-02	Đăng nhập Google/Facebook & nâng cấp từ khách	agent-claude,fe,must,s4	CT-03,FE-AUTH-01,FE-SOLO-02,FE-ROOM-02	MEL-65 MEL-39 MEL-49 MEL-59	meloo-frontend	chuẩn	Claude
+MEL-73	FE-PROF-01	Hồ sơ, thống kê & lịch sử trận	agent-claude,fe,must,s4	CT-03	MEL-65	meloo-frontend	chuẩn	Claude
+MEL-74	FE-LB-01	Bảng xếp hạng	agent-codex,fe,must,s4	CT-03	MEL-65	meloo-frontend	chuẩn	Codex
+MEL-75	FE-DAILY-01	Thử thách hằng ngày & chia sẻ	agent-claude,fe,s4,should	CT-03,FE-GAME-01	MEL-65 MEL-48	meloo-frontend	chuẩn	Claude
+MEL-76	FE-ROOM-03	Danh sách phòng công khai & ghép trận nhanh	agent-codex,fe,must,s4	CT-02,FE-ROOM-01	MEL-43 MEL-58	meloo-frontend	chuẩn	Codex
+MEL-77	LEG-01	Chính sách quyền riêng tư, điều khoản, xóa dữ liệu	agent-claude,doc,fe,must,s4	FE-01	MEL-38	meloo-frontend, meloo-docs	chuẩn	Claude
+MEL-78	BIZ-07	Beta công khai & theo dõi KPI	biz,must,owner-me,s4	BE-ADM-01	MEL-71	—	—	Thái
+MEL-79	PM-06	Sprint review & retro S4	must,owner-me,pm,s4			—	—	Thái
+MEL-80	SPK-02	Spike voice WebRTC + ADR-009	agent-claude,be,fe,s5,should	BE-RT-01	MEL-46	meloo-backend, meloo-frontend	chuẩn	Claude
+MEL-81	INF-03	TURN server	agent-codex,infra,owner-me,s5,should	SPK-02	MEL-80	meloo-infra	chuẩn	Thái+Codex
+MEL-82	BE-RTC-01	Signaling voice qua STOMP	agent-codex,be,s5,should	SPK-02,BE-RT-01	MEL-80 MEL-46	meloo-backend	sâu	Codex
+MEL-83	FE-RTC-01	Voice chat trong phòng riêng	agent-claude,fe,s5,should	BE-RTC-01,FE-ROOM-02	MEL-82 MEL-59	meloo-frontend	chuẩn	Claude
+MEL-84	BE-ID-03	Đăng nhập Facebook & xóa tài khoản	agent-codex,be,s5,should	BE-ID-02,LEG-01,BE-PROG-01,BE-CHAT-01,BE-ADM-01	MEL-67 MEL-77 MEL-68 MEL-57 MEL-71	meloo-backend	sâu	Codex
+MEL-85	BE-PROG-02	Huy hiệu thành tích	agent-claude,be,s5,should	BE-PROG-01,BE-DAILY-01	MEL-68 MEL-69	meloo-backend	chuẩn	Claude
+MEL-86	FE-PROF-02	Hiển thị huy hiệu & thông báo mở khóa	agent-claude,fe,s5,should	BE-PROG-02,FE-PROF-01,FE-SOLO-02,FE-ROOM-02	MEL-85 MEL-73 MEL-49 MEL-59	meloo-frontend	chuẩn	Claude
+MEL-87	BE-ADM-02	Admin API: người dùng, kiểm duyệt, từ cấm, lịch thử thách	agent-codex,be,must,s5	BE-ADM-01,BE-ID-02,BE-CHAT-01,BE-DAILY-01	MEL-71 MEL-67 MEL-57 MEL-69	meloo-backend	sâu	Codex
+MEL-88	FE-ADM-01	Trang admin: dashboard, kho nhạc, bộ đề	agent-codex,fe,must,s5	BE-ADM-01	MEL-71	meloo-frontend	chuẩn	Codex
+MEL-89	FE-ADM-02	Trang admin: người dùng, kiểm duyệt, nhật ký	agent-codex,fe,must,s5	BE-ADM-02,FE-ADM-01	MEL-87 MEL-88	meloo-frontend	chuẩn	Codex
+MEL-90	FE-PWA-01	PWA cài như ứng dụng	agent-claude,fe,hot-fe-app,hot-fe-deps,s5,should	FE-01	MEL-38	meloo-frontend	chuẩn	Claude
+MEL-91	INF-04	Giám sát & vận hành	agent-codex,hot-shared,infra,s5,should	INF-02	MEL-41	meloo-infra	chuẩn	Codex
+MEL-92	SEC-01	Rà soát bảo mật OWASP	agent-claude,must,qa,s5	BE-ROOM-02,BE-ADM-01	MEL-56 MEL-71	meloo-review (audit)	audit	Claude
+MEL-93	QA-03	Kiểm thử tải k6	agent-codex,qa,s5,should	BE-ROOM-02,INF-02	MEL-56 MEL-41	meloo-testing	chuẩn	Codex
+MEL-94	QA-04	UAT với người dùng beta	must,owner-me,qa,s5	BIZ-07	MEL-78	meloo-testing	—	Thái
+MEL-95	BIZ-08	Kế hoạch khởi nghiệp	agent-claude,biz,must,owner-me,s5	BIZ-05	MEL-53	meloo-docs	chuẩn	Thái+Claude
+MEL-96	PM-07	Sprint review & retro S5, đóng băng tính năng	must,owner-me,pm,s5			—	—	Thái
+MEL-97	BUG-00	Sửa lỗi sau UAT & rà soát bảo mật	agent-claude,agent-codex,must,qa,s6	QA-04,SEC-01	MEL-94 MEL-92	theo lane của từng Bug + meloo-testing	chuẩn	Claude+Codex
+MEL-98	FE-I18N-01	Hoàn thiện tiếng Anh, rà chuỗi cứng	agent-claude,fe,hot-ci,hot-fe-deps,s6,should	PM-07	MEL-96	meloo-frontend	chuẩn	Claude
+MEL-99	DOC-06	Báo cáo kiểm thử	agent-codex,doc,must,qa,s6	QA-03,QA-04,SEC-01	MEL-93 MEL-94 MEL-92	meloo-testing, meloo-docs	chuẩn	Codex
+MEL-100	DOC-07	Hướng dẫn sử dụng & triển khai	agent-claude,doc,must,s6	PM-07	MEL-96	meloo-docs	chuẩn	Claude
+MEL-101	DOC-08	Báo cáo cuối kỳ	agent-claude,doc,must,owner-me,s6	DOC-06,BIZ-08	MEL-99 MEL-95	meloo-docs	chuẩn	Thái+Claude
+MEL-102	DEF-01	Slide, video demo, bộ câu hỏi bảo vệ	agent-claude,doc,must,owner-me,s6	DOC-08	MEL-101	meloo-docs	chuẩn	Thái+Claude
+MEL-103	REL-01	Phát hành v1.0.0 & nộp bài (hạn 3/12 9:07)	agent-codex,infra,must,owner-me,s6	BUG-00	MEL-97	meloo-infra	chuẩn	Thái+Codex
+MEL-104	PM-08	Tổng kết dự án	must,owner-me,pm,s6			—	—	Thái
+MEL-105	P2-01	Gói Premium	could,phase2			—	—	—
+MEL-106	P2-02	Quảng cáo nhẹ giữa các trận	could,phase2			—	—	—
+MEL-107	P2-03	Chế độ Host/Event cho lớp học, team building, streamer	could,phase2			—	—	—
+MEL-108	P2-04	Bài hát tài trợ cho nghệ sĩ, nhãn đĩa	could,phase2			—	—	—
+MEL-109	P2-05	Đưa lên Google Play (TWA), sau đó app di động	could,phase2			—	—	—
+MEL-110	P2-06	Mở rộng ngang: Redis + STOMP broker relay	could,phase2			—	—	—
+MEL-111	P2-07	Chế độ chơi mới: đội, sinh tồn, giải đấu	could,phase2			—	—	—

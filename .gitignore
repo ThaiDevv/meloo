@@ -1,0 +1,23 @@
+# Harness: file làm việc tạm của agent, cấu hình cá nhân
+_workspace/
+.claude/settings.local.json
+CLAUDE.local.md
+
+# Secret
+.env
+.env.*
+!.env.example
+
+# Build, test
+node_modules/
+dist/
+target/
+coverage/
+playwright-report/
+test-results/
+
+# IDE, hệ điều hành
+.idea/
+*.iml
+.vscode/
+.DS_Store

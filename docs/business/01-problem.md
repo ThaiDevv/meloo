@@ -1,6 +1,6 @@
 # BIZ-02 · Phát biểu bài toán, personas và giá trị cốt lõi
 
-> Ticket: MEL-18 · Trạng thái: **đã duyệt** (Thái, 19/10/2026)
+> Ticket: MEL-18 · Trạng thái: **đã duyệt** (Thái, 19/10/2026) · Sửa theo review PR #2 ngày 19/10/2026
 > Nguồn: tài liệu kế hoạch Meloo (mục "Bài toán & giá trị") và số liệu công khai ở mục Nguồn.
 > `[CẦN SỐ LIỆU]` đánh dấu chỗ chờ kết quả khảo sát (BIZ-03, BIZ-05) hoặc beta (BIZ-07).
 
@@ -19,7 +19,7 @@
 
 > **Nhóm bạn trẻ người Việt (sinh viên, đồng nghiệp)** muốn có một hoạt động online ngắn để chơi cùng nhau vào buổi tối hoặc giờ nghỉ.
 > **Nhưng hiện tại** các game đoán nhạc có sẵn hoặc không có nhạc Việt và tiếng Việt, hoặc phải cài app và đăng ký, hoặc chỉ chơi một mình. Muốn chơi cùng nhau, họ phải ghép một game nước ngoài với Discord hoặc Messenger để nói chuyện.
-> **Hệ quả:** mất 5–10 phút chuẩn bị cho một trò chơi chỉ 10 phút. Người không rành công nghệ bỏ cuộc giữa chừng. Nội dung lại không phải nhạc họ thuộc.
+> **Hệ quả (giả thuyết, kiểm chứng bằng K3):** thời gian rủ nhau, cài đặt và hướng dẫn có thể dài gần bằng chính ván chơi 10 phút. Người không rành công nghệ dễ bỏ cuộc giữa chừng. Nội dung lại không phải nhạc họ thuộc.
 > **Meloo giải quyết** bằng phòng chơi realtime mở bằng link, chơi không cần tài khoản, có sẵn chat và voice, kho nhạc Việt và quốc tế phân loại rõ, cơ chế nghe mở dần 5 mức để người thuộc bài nhiều được thưởng điểm cao hơn.
 
 Phần in đậm "Nhóm bạn…" và "Nhưng hiện tại…" là **giả thuyết**. Mục 4 nêu cách kiểm chứng từng ý.
@@ -32,14 +32,14 @@ Mỗi giả thuyết có hai lớp bằng chứng: **khảo sát** (BIZ-03, trư
 |---|---|---|---|---|
 | **H1** | Nhóm bạn thiếu một hoạt động online **ngắn, vào ngay**; rào cản lớn nhất là phải cài app hoặc đăng ký. | K1. Trong 3 tháng qua bạn chơi game online cùng bạn bè bao lâu một lần? · K2. Khi chơi cùng nhau, bạn dùng gì để nói chuyện? · K3. Điều gì khiến bạn ngại thử một game mới cùng bạn bè? (nhiều lựa chọn) | ≥ 50% chơi cùng bạn bè từ 1 lần/tháng **và** ≥ 40% chọn "phải cài app/đăng ký" hoặc "mất thời gian rủ/hướng dẫn" ở K3 | Tỷ lệ người vào phòng bằng link mời mà chơi hết trận; số người trung bình mỗi phòng riêng |
 | **H2** | Người chơi muốn đoán **nhạc Việt** với **giao diện tiếng Việt**; game hiện có không đáp ứng. | K4. Bạn đã từng chơi game đoán nhạc nào? · K5. Bạn muốn đoán loại nhạc nào? (V-pop, US-UK, K-pop, nhạc phim…, chọn tối đa 2) · K6. Game đoán nhạc bạn từng chơi thiếu điều gì? | ≥ 60% chọn V-pop trong 2 lựa chọn ở K5 **và** trong nhóm từng chơi game đoán nhạc, ≥ 40% chọn "ít nhạc Việt" hoặc "không có tiếng Việt" ở K6 | Tỷ lệ trận chọn bộ đề nhạc Việt |
-| **H3** | Người nghe nhạc thích **thử thách ngắn hằng ngày** và **so tài, khoe kết quả** (hiệu ứng Wordle/Heardle). | K7. Bạn có chơi mini-game hằng ngày (Wordle, Heardle, đố vui…) không? · K8. Bạn có từng chia sẻ kết quả game lên mạng xã hội hoặc nhóm chat không? | ≥ 30% trả lời "có" ở K7 **hoặc** ≥ 40% trả lời "có" ở K8 | Người chơi quay lại ≥ 2 ngày khác nhau ≥ 30% (KPI); số lượt bấm "Chia sẻ" ở thử thách ngày |
+| **H3** | Người nghe nhạc thích **thử thách ngắn hằng ngày** và **so tài, khoe kết quả** (hiệu ứng Wordle/Heardle). | K7. Bạn có chơi mini-game hằng ngày (Wordle, Heardle, đố vui…) không? · K8. Bạn có từng chia sẻ kết quả game lên mạng xã hội hoặc nhóm chat không? | ≥ 30% trả lời "có" ở K7 **và** ≥ 40% trả lời "có" ở K8. Cần cả hai vế: K7 đo thói quen chơi hằng ngày, K8 đo thói quen khoe kết quả; một vế riêng không đủ chứng minh H3 | Người chơi quay lại ≥ 2 ngày khác nhau ≥ 30% (KPI); số lượt bấm "Chia sẻ" ở thử thách ngày |
 | **H4** | Người tổ chức (lớp trưởng, giáo viên, HR, streamer) cần **hoạt động khởi động 10 phút** có bộ đề theo chủ đề. *Cơ hội Phase 2, không phải lõi MVP.* | K9. Bạn có từng tổ chức hoạt động cho lớp/nhóm/công ty không? · K10. Nếu có, bạn có muốn dùng một game đoán nhạc cho phần khởi động không? | ≥ 20% từng tổ chức **và** trong số đó ≥ 50% quan tâm | Số phòng riêng có ≥ 5 người dùng bộ đề tuyển chọn |
 
 Ngoài 4 giả thuyết, BIZ-03 hỏi thêm K11 (sẵn sàng trả tiền cho gói Premium, mức giá) và K12 (thông tin nhân khẩu: tuổi, nghề nghiệp). Hai câu này phục vụ BIZ-08, không dùng để xác nhận bài toán.
 
 **Nếu giả thuyết bị bác bỏ:** ghi kết quả thật vào BIZ-05, đổi trọng tâm và báo cáo trung thực. Ví dụ H2 sai (người chơi thích US-UK hơn) thì giữ nguyên sản phẩm nhưng đổi bộ đề mặc định và thông điệp; H1 sai thì nhấn mạnh chơi đơn và thử thách ngày thay vì phòng nhóm. Thầy đánh giá cao việc kiểm chứng giả thuyết hơn việc giả thuyết đúng ngay từ đầu.
 
-**Ngưỡng đã chốt ngày 19/10/2026, trước khi phát khảo sát, và không đổi sau khi có phản hồi.** Đặt ngưỡng trước để kết luận không bị chỉnh theo số liệu.
+**Ngưỡng chốt ngày 19/10/2026, trước khi phát khảo sát, và không đổi sau khi có phản hồi.** Riêng H3 đổi "hoặc" thành "và" theo review PR #2, cũng trước ngày phát khảo sát. Đặt ngưỡng trước để kết luận không bị chỉnh theo số liệu.
 
 ## 5. Personas
 
@@ -111,6 +111,14 @@ Lấy từ bảng KPI trong tài liệu kế hoạch. Số liệu chụp từ da
 | Trận đã chơi | ≥ 100 | 29/11 | Dashboard admin | H1, H3 |
 | Người chơi quay lại ≥ 2 ngày khác nhau | ≥ 30% | 29/11 | Dashboard admin | H3 |
 | Điểm hài lòng (CSAT, thang 1–5) | ≥ 4,0 | 29/11 | Form sau beta | Giá trị cốt lõi |
+
+**Cách tính "người chơi quay lại ≥ 2 ngày"** (định nghĩa cho dashboard ở BE-ADM-01, MEL-71):
+
+- **Người chơi:** mỗi tài khoản đăng ký hoặc tài khoản khách (theo id khách) đã chơi xong ít nhất 1 trận (chơi đơn hoặc phòng) hay 1 lượt thử thách ngày. Khách đã gộp vào tài khoản (`GuestMerged`) tính là một người. Không tính tài khoản ADMIN và tài khoản dùng để thử nghiệm.
+- **Kỳ đo:** từ ngày mở beta công khai (BIZ-07) đến hết 29/11/2026. Ngày tính theo giờ Việt Nam.
+- **Mẫu số:** người chơi có lần chơi đầu tiên trong kỳ, chậm nhất ngày 27/11, để ai cũng còn ít nhất 2 ngày để quay lại.
+- **Tử số:** những người trong mẫu số có lần chơi vào ít nhất 2 ngày khác nhau trong kỳ.
+- **Giới hạn:** khách đổi trình duyệt hoặc xóa dữ liệu trình duyệt sẽ bị đếm thành người mới, nên tỷ lệ thật có thể cao hơn số đo. Báo cáo ghi rõ giới hạn này.
 
 Kết quả thực tế: `[CẦN SỐ LIỆU: điền ở BIZ-05 và BIZ-07]`.
 

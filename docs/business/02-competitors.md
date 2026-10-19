@@ -63,13 +63,13 @@ Meloo nhắm làm cả hai: giao diện vi/en, kho nhạc lọc theo quốc gia 
 
 ### 4.2. Phòng của nhóm bạn: vào bằng link, chơi realtime, nói chuyện ngay trong trang
 - Kahoot! chạy theo phiên do một người làm host; bản miễn phí giới hạn 10 người [9].
-- SongPop bản hiện tại được phát hành dưới dạng app, chế độ realtime được mô tả là đấu 1-1 [5]; nguồn không thấy bản web.
+- SongPop bản hiện tại được phát hành dưới dạng app, chế độ realtime được mô tả là đấu 1-1 và phòng riêng với bạn bè [5]; nguồn không thấy bản web.
 - SongTrivia có phòng realtime và chat chữ; nguồn không thấy voice [3].
 
 Nếu các ô "không thấy voice" được xác nhận khi chơi thử, Meloo khác ở chỗ gom đủ trong một trang web: mã phòng 6 ký tự hoặc link (BR-11), chơi không cần tài khoản (BR-20), chat chữ chặn lộ đáp án (BR-16), và voice trong phòng riêng (BR-18, BR-19). Nhóm bạn không phải ghép một game nước ngoài với Discord như giả thuyết 1 của BIZ-02.
 
 ### 4.3. Luật "nghe càng ít, điểm càng cao" cho cả chơi đơn lẫn nhiều người
-- Heardle có đoạn nhạc mở dần nhưng chỉ chơi một mình, mỗi ngày một bài, và đã đóng cửa [6][7][13].
+- Heardle có đoạn nhạc mở dần [7] và một bài mỗi ngày ("song of the day") [13], nhưng nguồn không thấy chế độ nhiều người, và game đã đóng cửa [6].
 - SongPop và musci.io phát đoạn nhạc rồi cho chọn 1 trong 4, tính điểm theo tốc độ [4][8].
 - SongTrivia có chế độ trả lời nhanh, và có Autocomplete mode: gõ chữ, có gợi ý để tìm đúng tên bài và nghệ sĩ [3]. Vì vậy cách nhập đáp án bằng tìm kiếm không phải khác biệt riêng của Meloo so với SongTrivia.
 - Trong nguồn của SongTrivia, SongPop, musci.io và Kahoot!, không thấy cơ chế mở dần đoạn nhạc theo mức điểm [3][5][8][9].
@@ -122,6 +122,6 @@ Nguồn của cột Meloo: tài liệu "Meloo — Kế hoạch dự án" của T
 3. **Spotify đã có Music Quiz, Meloo cạnh tranh thế nào?**
    Music Quiz cần Premium, tuổi từ 18, và Việt Nam chưa có trong danh sách quốc gia [10]. Nguồn chỉ mô tả chia sẻ điểm và thách bạn bè, không thấy chơi realtime [10]. Nếu Spotify mở rộng, Meloo vẫn khác ở phòng chơi nhóm và luật mở dần. Đây cũng là rủi ro được ghi ở mục 5.
 4. **Heardle nổi tiếng mà vẫn đóng cửa, Meloo có lặp lại không?**
-   Heardle chỉ có một bài mỗi ngày và chơi một mình [13]. Spotify nêu lý do đóng là để tập trung vào các tính năng khám phá nhạc khác [6]. Meloo lấy phòng chơi nhóm làm lõi; thử thách ngày chỉ là tính năng phụ.
+   Heardle có một bài mỗi ngày ("song of the day") [13], và nguồn không thấy chế độ nhiều người [7]. Spotify nêu lý do đóng là để tập trung vào các tính năng khám phá nhạc khác [6]. Meloo lấy phòng chơi nhóm làm lõi; thử thách ngày chỉ là tính năng phụ.
 5. **Số liệu nào chứng minh người dùng cần ba điểm khác biệt này?**
    Bảng so sánh chỉ cho thấy khoảng trống trong các nguồn công khai đã đọc, chưa chứng minh thị trường còn trống. Nhu cầu phải chứng minh bằng khảo sát BIZ-03 (≥ 50 phản hồi) và số liệu beta (≥ 30 tài khoản, ≥ 100 trận).

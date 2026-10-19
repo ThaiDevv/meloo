@@ -1,5 +1,8 @@
 # Cấu hình Codex riêng cho repo Meloo. Chỉ có hiệu lực khi bạn chọn tin cậy (trust) thư mục dự án.
 
+# Không ghi dòng ghi công agent (Co-authored-by) vào commit (AGENTS.md, mục Git và PR).
+commit_attribution = ""
+
 # Jira chỉ cho phép công cụ ĐỌC, vì agent không được đổi Jira (AGENTS.md, luật 10).
 # Đăng nhập một lần: codex mcp login atlassian
 [mcp_servers.atlassian]

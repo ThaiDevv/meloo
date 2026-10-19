@@ -67,6 +67,7 @@ Người viết khác người review, luôn luôn.
 - Tiêu đề PR (cũng là commit sau squash): `MEL-<số> <type>(<module>): <mô tả tiếng Việt>`, ví dụ `MEL-55 feat(room): sảnh chờ và nút sẵn sàng`. Khi squash merge giữ nguyên tiền tố `MEL-<số>` ở tiêu đề commit: `deps-merged.sh` dựa vào nó để biết phụ thuộc đã merge.
 - PR khoảng ≤ 400 dòng thay đổi, không tính code sinh tự động. Điền đủ template, nhất là khối `meloo:scope` và bảng bằng chứng AC.
 - Không bao giờ `--force` trần. Chỉ dùng `--force-with-lease` trên branch của ticket.
+- Không ghi dòng ghi công agent vào commit, PR hay comment: không `Co-Authored-By`, không "Generated with …" hay tương tự. Tác giả là Thái; agent làm ticket đã ghi ở mục Ticket của PR.
 
 ## Definition of Done (bản ngắn)
 - Đạt toàn bộ Acceptance Criteria, PR có bằng chứng cho từng AC.

@@ -1,6 +1,6 @@
 # BIZ-02 · Phát biểu bài toán, personas và giá trị cốt lõi
 
-> Ticket: MEL-18 · Trạng thái: **đã duyệt** (Thái, 19/10/2026) · Sửa theo review PR #2 ngày 19/10/2026
+> Ticket: MEL-18 · Trạng thái: **đã duyệt** (Thái, 19/10/2026) · Sửa theo review PR #2 và đồng bộ với BIZ-04 ngày 19/10/2026
 > Nguồn: tài liệu kế hoạch Meloo (mục "Bài toán & giá trị") và số liệu công khai ở mục Nguồn.
 > `[CẦN SỐ LIỆU]` đánh dấu chỗ chờ kết quả khảo sát (BIZ-03, BIZ-05) hoặc beta (BIZ-07).
 
@@ -13,7 +13,7 @@
 - Nghe nhạc là thói quen hằng ngày. Theo khảo sát của Q&Me, 75% người Việt nghe nhạc mỗi ngày, 93% nghe trên điện thoại [S1].
 - Nhạc được nghe chủ yếu trên nền tảng streaming và mạng xã hội. Tỷ lệ người dùng: YouTube 74%, Zing MP3 45%, TikTok 32%, Spotify 27% (Decision Lab, quý 4/2025) [S1]. Ở đây, nghe nhạc là việc **một người làm một mình và thụ động**: không có thử thách, không có ai để so tài.
 - Game đoán nhạc đã chứng minh sức hút. Heardle, phiên bản âm nhạc của Wordle, đạt khoảng **69 triệu lượt truy cập trong tháng 3/2022** [S3]. Spotify mua Heardle năm 2022, sau đó đóng cửa ngày 05/05/2023 để tập trung vào tính năng khám phá nhạc trong app [S2][S3].
-- Các game đoán nhạc phổ biến hiện nay gần như không phục vụ người Việt. SongPop hỗ trợ 17 ngôn ngữ nhưng không có tiếng Việt, và cần cài app [S4]. Một số web có giao diện tiếng Việt nhưng chỉ chơi một mình, chọn 1 trong 4 đáp án, dùng nhạc quốc tế [S5]. Phân tích đối thủ đầy đủ: BIZ-04 (`02-competitors.md`).
+- Các game đoán nhạc phổ biến hiện nay gần như không phục vụ người Việt. SongTrivia, đối thủ gần nhất, chơi trên web và có phòng realtime với bạn bè, nhưng không có tiếng Việt và không thấy nhạc Việt. SongPop hỗ trợ 17 ngôn ngữ nhưng không có tiếng Việt, và chơi bằng app [S4]. Một số web có giao diện tiếng Việt nhưng chỉ chơi một mình, chọn 1 trong 4 đáp án, dùng nhạc quốc tế [S5]. Phân tích đầy đủ 6 đối thủ, kèm nguồn từng ý: BIZ-04 (`02-competitors.md`).
 
 ## 3. Phát biểu bài toán
 
@@ -64,7 +64,7 @@ Bốn nhân vật dưới đây là **hư cấu, đại diện cho từng nhóm 
 ### P3 · Cô Hạnh, 32 tuổi: người tổ chức
 - **Bối cảnh:** giáo viên tiếng Anh, phụ trách hoạt động ngoại khóa. Cũng đại diện cho lớp trưởng, HR công ty, streamer.
 - **Muốn:** một hoạt động khởi động 10 phút cho lớp 30 học sinh, có bộ đề theo chủ đề (nhạc tiếng Anh, nhạc thiếu nhi, nhạc Tết…).
-- **Khó khăn:** Kahoot phải tự soạn câu hỏi và không phát nhạc kiểu mở dần; tự bật nhạc trên YouTube cho cả lớp đoán thì không chấm điểm được.
+- **Khó khăn:** Kahoot có sẵn quiz nhạc nhưng không thấy quiz nhạc Việt, cũng không thấy cơ chế nghe mở dần (BIZ-04); tự bật nhạc trên YouTube cho cả lớp đoán thì không chấm điểm được.
 - **Kịch bản dùng Meloo (MVP):** cô Hạnh dùng phòng riêng với bộ đề tuyển chọn; học sinh chia nhóm, mỗi nhóm một máy. **Phase 2:** chế độ Host chiếu lên màn hình lớn, hơn 5 người chơi, bộ đề tự tạo.
 - **Tính năng chính:** bộ đề tuyển chọn (MVP); chế độ Host, bộ đề tự tạo (Phase 2).
 - **Vì sao vẫn giữ persona này:** đây là nhóm có thể trả tiền (B2B) trong kế hoạch khởi nghiệp (BIZ-08).
@@ -85,18 +85,18 @@ Bốn giá trị cốt lõi, theo thứ tự ưu tiên:
 3. **Thưởng cho người thuộc bài.** Nghe mở dần 2 → 5 → 10 → 20 → 30 giây, đoán sớm được nhiều điểm (1.000 → 200). Đoán bằng ô gợi ý thay vì trắc nghiệm nên khó đoán mò. *(H3, P2)*
 4. **Công bằng.** Server quyết định đáp án, điểm và đồng hồ. Không thể xem đáp án qua mạng, chat tự chặn tin nhắn lộ đáp án. *(điều kiện để so tài và xếp hạng có ý nghĩa)*
 
-So sánh sơ bộ. Đây là ghi nhận ban đầu, **BIZ-04 sẽ kiểm chứng và bổ sung đối thủ**:
+Bảng rút gọn từ BIZ-04 (`02-competitors.md`, mục 3). Nguồn từng ô và danh sách ô cần chơi thử để chốt nằm ở BIZ-04. "Không thấy" nghĩa là nguồn công khai không nhắc tới, chưa chắc là không có.
 
-| Tiêu chí | Meloo | SongPop [S4] | Web đoán nhạc tiếng Việt (VD Musci.io) [S5] | Heardle (đã đóng) [S2] |
-|---|---|---|---|---|
-| Chơi trên web, không cài app | Có | Không (app) | Có | Có |
-| Chơi nhiều người realtime | Phòng 2–5 người | Có | Không ghi nhận | Không |
-| Voice trong phòng | Có (phòng riêng) | Không ghi nhận | Không ghi nhận | Không |
-| Giao diện tiếng Việt | Có | Không | Có | Không |
-| Kho nhạc Việt | Có | `[BIZ-04]` | Không ghi nhận | Không |
-| Nghe mở dần nhiều mức | 5 mức | Không | Không | Có |
-| Cách đoán | Ô gợi ý | Trắc nghiệm | Trắc nghiệm 4 đáp án | Ô gợi ý |
-| Thử thách hằng ngày | Có | `[BIZ-04]` | Không ghi nhận | Có |
+| Tiêu chí | Meloo | SongTrivia | SongPop [S4] | Musci.io [S5] | Heardle (đã đóng) [S2] |
+|---|---|---|---|---|---|
+| Chơi trên web, không cài app | Có | Có | Không thấy bản web (app) | Có | Có |
+| Chơi nhiều người realtime | Phòng 2–5 người | Có: phòng mời bằng link hoặc mã | Có: đấu 1-1, phòng riêng | Không thấy | Không thấy |
+| Voice trong phòng | Có (phòng riêng) | Không thấy; có chat chữ | Không thấy; có chat | Không thấy | Không thấy |
+| Giao diện tiếng Việt | Có | Không | Không | Có | Không thấy |
+| Kho nhạc Việt | Có | Không thấy | Chưa kiểm chứng | Không thấy | Không thấy |
+| Nghe mở dần nhiều mức | 5 mức (2 → 30 giây) | Không thấy | Không thấy | Không: phát đoạn 30 giây | Có: 1 → 16 giây |
+| Cách đoán | Gõ tìm trên toàn kho, có gợi ý | Trả lời nhanh; có chế độ gõ có gợi ý | Chọn 1 trong 4 | Chọn 1 trong 4 | Gõ tên bài |
+| Thử thách hằng ngày | Có | Có | Không thấy | Không thấy | Có |
 
 **Điểm khác biệt một câu:** Meloo ghép **cơ chế nghe mở dần của Heardle** với **phòng chơi realtime có voice**, trên **nhạc Việt và tiếng Việt**, mở bằng một link.
 
@@ -132,7 +132,7 @@ Nói rõ trước để tránh bị hỏi "sao không làm X":
 
 ## 9. Câu hỏi bảo vệ
 
-1. **"Đã có SongPop, Kahoot, sao còn làm Meloo?"** SongPop phải cài app, không có tiếng Việt, chơi trắc nghiệm. Kahoot phải tự soạn câu hỏi, không có cơ chế nghe mở dần. Meloo nhắm vào khoảng trống: nhóm bạn Việt, mở bằng link, nhạc Việt, có voice. Số liệu ở mục 2 và 6.
+1. **"Đã có SongTrivia, SongPop, Kahoot, sao còn làm Meloo?"** SongTrivia gần nhất: chơi trên web, có phòng realtime, nhưng không có tiếng Việt, không thấy nhạc Việt và voice. SongPop là app, không có tiếng Việt, chơi trắc nghiệm. Kahoot có tiếng Việt và quiz nhạc có sẵn, nhưng không thấy quiz nhạc Việt và cơ chế nghe mở dần. Meloo nhắm vào khoảng trống: nhóm bạn Việt, mở bằng link, nhạc Việt, có voice, nghe mở dần. Chi tiết và nguồn ở mục 6 và BIZ-04; các ô "không thấy" sẽ được chơi thử để chốt trước buổi bảo vệ.
 2. **"Làm sao biết người dùng cần cái này?"** Ban đầu là giả thuyết (mục 4). Em kiểm chứng bằng khảo sát với ngưỡng đặt trước, sau đó bằng số liệu beta thật (mục 7).
 3. **"Nếu khảo sát cho kết quả ngược lại thì sao?"** Em báo cáo đúng kết quả và điều chỉnh trọng tâm, ví dụ đổi bộ đề mặc định hoặc nhấn mạnh chế độ chơi đơn. Kiểm chứng giả thuyết chính là mục đích của bước này.
 4. **"Bản quyền nhạc?"** Chỉ dùng đoạn preview 30 giây mà nền tảng âm nhạc cung cấp công khai qua API. Đường dẫn audio là token mờ, hết hạn sau thời gian ngắn, không chứa tên bài.

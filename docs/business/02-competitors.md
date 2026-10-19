@@ -41,9 +41,9 @@ Ghi chú từng sản phẩm:
 | Ngôn ngữ giao diện | 9 ngôn ngữ, không có tiếng Việt [2] | 17 ngôn ngữ, không có tiếng Việt [5] | Không còn kiểm chứng được vì đã đóng; các nguồn đều viết bằng tiếng Anh [6][13] | Có tiếng Việt [8] | 18 ngôn ngữ, có tiếng Việt [9] | Quiz tiếng Anh, thêm tiếng Tây Ban Nha [10] | Tiếng Việt và tiếng Anh |
 | Có nhạc Việt | Không thấy: thể loại và nghệ sĩ nêu ra đều là nhạc quốc tế, K-pop, nhạc Pháp [1][2] | Chưa kiểm chứng [5] | Không thấy: bài do nhà phát triển chọn từ SoundCloud [7] | Không thấy: chỉ nêu nghệ sĩ quốc tế [8] | Không có kho nhạc; người dùng tự soạn [9] | Không thấy: chỉ 11 quốc gia, không có Việt Nam [10] | Có: kho nhạc lọc theo quốc gia, ca sĩ, thập niên |
 | Nhiều người realtime | Có: phòng mời bằng link hoặc mã [3] | Có: đấu trực tiếp 1-1, phòng riêng [5] | Không, chơi một mình [7][13] | Không, chơi một mình [8] | Có: tối đa 10 người (miễn phí) [9] | Không thấy; chỉ thách bạn bè qua điểm [10] | Có: phòng 2–5 người, mã 6 ký tự hoặc link (BR-11) |
-| Voice | Không thấy; có chat chữ [3] | Không thấy; có nhắn tin và chat [5] | Không | Không thấy [8] | Không thấy [9] | Không thấy [10] | Có trong phòng riêng, mic mặc định tắt (BR-18) · ưu tiên Should |
+| Voice | Không thấy; có chat chữ [3] | Không thấy; có nhắn tin và chat [5] | Không thấy [7] | Không thấy [8] | Không thấy [9] | Không thấy [10] | Có trong phòng riêng, mic mặc định tắt (BR-18) · ưu tiên Should |
 | Thử thách ngày | Có quiz hằng ngày [2] | Không thấy [5] | Có: "song of the day" [13] | Không, "không giới hạn theo ngày" [8] | Không thấy [9] | Không thấy [10] | Có: một bài chung mỗi ngày, đổi lúc 00:00 giờ Việt Nam (BR-25) · ưu tiên Should |
-| Giá | Miễn phí; có Premium tháng/năm, trang không ghi giá [1][12] | Miễn phí kèm mua trong app; SongPop Plus 9,99 USD (App Store Mỹ) [5] | Miễn phí; đã đóng cửa từ 5/5/2023 [6] | Miễn phí, không cần tài khoản [8] | Go miễn phí (≤ 10 người); Kahoot!+ Gold 12,99 USD/tháng khi trả theo năm (156 USD/năm, giá khuyến mãi) hoặc 24,99 USD/tháng [9] | Chỉ cho Spotify Premium [10] | Miễn phí trong thời gian môn học; freemium ở Phase 2 (BIZ-08) |
+| Giá | Miễn phí; có Premium tháng/năm, trang không ghi giá [1][12] | Miễn phí kèm mua trong app; SongPop Plus 9,99 USD (App Store Mỹ) [5] | Miễn phí; đã đóng cửa từ 5/5/2023 [6] | Miễn phí, không cần tài khoản [8] | Go miễn phí (≤ 10 người); Kahoot!+ Gold 12,99 USD/tháng khi trả theo năm (156 USD/năm, giá khuyến mãi) hoặc 24,99 USD/tháng [9] | Chỉ cho Spotify Premium [10] | Miễn phí trong thời gian môn học; freemium ở Phase 2 theo tài liệu kế hoạch (BIZ-08) `[HỎI THÁI: giữ cách ghi này hay chờ BIZ-08 chốt giá]` |
 | Cách đoán | Nhanh hơn được nhiều điểm [1] | Chọn 1 trong 4, nhanh hơn được nhiều điểm [4] | Gõ tên bài, đoạn mở dần 1→16 giây [7] | Chọn 1 trong 4 trong 15 giây [8] | Chọn đáp án do người soạn [9] | Câu đố nhiều dạng, có nhận diện bài [10] | Tìm tên bài trên toàn kho (không dấu); đoạn mở dần 2→5→10→20→30 giây; điểm theo mức (BR-01, BR-02, BR-05) |
 
 Dòng "Cách đoán" không có trong yêu cầu ticket; thêm vào vì đây là nơi Meloo khác rõ nhất về luật chơi.
@@ -55,7 +55,7 @@ Cột Meloo lấy từ tài liệu kế hoạch dự án (phạm vi sản phẩm
 ### 4.1. Đoán nhạc Việt, bằng tiếng Việt
 Trong 6 sản phẩm, không sản phẩm nào vừa có giao diện tiếng Việt vừa có kho nhạc Việt:
 - Kahoot! và musci.io có giao diện tiếng Việt nhưng không có nhạc Việt sẵn [8][9].
-- SongTrivia, SongPop và Spotify Music Quiz không có tiếng Việt trong danh sách ngôn ngữ [2][5][10]; Heardle đã đóng [6].
+- SongTrivia, SongPop và Spotify Music Quiz không có tiếng Việt trong danh sách ngôn ngữ [2][5][10]. SongPop bị loại ở tiêu chí này dù chưa kiểm chứng được có nhạc Việt hay không. Heardle đã đóng nên không còn kiểm chứng được [6].
 
 Meloo làm cả hai: giao diện vi/en, kho nhạc lọc theo quốc gia và ca sĩ, tìm tên bài không dấu (BR-05). Điểm này kiểm chứng giả thuyết 2 của BIZ-02 ("Game đoán nhạc phổ biến chủ yếu tiếng Anh, ít nhạc Việt, không có giao diện tiếng Việt").
 

@@ -27,6 +27,14 @@ prefix_rule(
 )
 
 prefix_rule(
+    pattern = ["git", "push", ["-u", "--set-upstream", "--force-with-lease"], "origin", ["main", "HEAD:main"]],
+    decision = "forbidden",
+    justification = "main chỉ nhận thay đổi qua PR.",
+    match = ["git push -u origin main", "git push --force-with-lease origin HEAD:main"],
+    not_match = ["git push -u origin chore/MEL-21-monorepo-setup"],
+)
+
+prefix_rule(
     pattern = ["gh", "pr", "review"],
     decision = "prompt",
     justification = "Reviewer đăng nhận xét bằng gh pr comment; approve là việc của Thái.",

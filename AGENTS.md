@@ -64,7 +64,7 @@ Người viết khác người review, luôn luôn.
 ## Git và PR
 - Branch: `<type>/MEL-<số>-<mô-tả-ngắn>`, với type thuộc `feat`, `fix`, `chore`, `docs`, `test`, `refactor`, `ci`, `spike`.
 - Commit theo Conventional Commits, nhỏ, commit nào cũng build được.
-- Tiêu đề PR (cũng là commit sau squash): `MEL-<số> <type>(<module>): <mô tả tiếng Việt>`, ví dụ `MEL-55 feat(room): sảnh chờ và nút sẵn sàng`.
+- Tiêu đề PR (cũng là commit sau squash): `MEL-<số> <type>(<module>): <mô tả tiếng Việt>`, ví dụ `MEL-55 feat(room): sảnh chờ và nút sẵn sàng`. Khi squash merge giữ nguyên tiền tố `MEL-<số>` ở tiêu đề commit: `deps-merged.sh` dựa vào nó để biết phụ thuộc đã merge.
 - PR khoảng ≤ 400 dòng thay đổi, không tính code sinh tự động. Điền đủ template, nhất là khối `meloo:scope` và bảng bằng chứng AC.
 - Không bao giờ `--force` trần. Chỉ dùng `--force-with-lease` trên branch của ticket.
 

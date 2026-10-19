@@ -1,0 +1,29 @@
+# Chuẩn hóa xuống dòng LF cho mọi file văn bản, kể cả khi commit từ Windows.
+* text=auto eol=lf
+
+# Script chạy trên Windows
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Nhị phân
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.mp3 binary
+*.ogg binary
+*.wav binary
+*.woff binary
+*.woff2 binary
+*.jar binary
+*.pdf binary
+*.docx binary
+*.pptx binary
+*.xlsx binary
+
+# Code sinh tự động: thu gọn trong diff của GitHub
+frontend/src/shared/api/schema.gen.ts linguist-generated=true
+pnpm-lock.yaml linguist-generated=true -diff
+frontend/pnpm-lock.yaml linguist-generated=true -diff

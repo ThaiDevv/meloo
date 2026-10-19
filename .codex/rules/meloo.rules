@@ -26,12 +26,49 @@ prefix_rule(
     not_match = ["git push origin feat/MEL-1-demo"],
 )
 
+# Luật khớp token theo vị trí nên phải liệt kê: chặn 1–3 option đứng trước "origin main", và
+# --force/-f đứng sau 1–2 option. Repo private gói Free không có branch protection, nên dạng lệnh
+# ngoài danh sách (VD --force-with-lease=<ref>, remote khác "origin") chỉ còn luật trong AGENTS.md chặn.
+PUSH_OPTS = ["-u", "--set-upstream", "--force-with-lease", "--no-verify", "-v", "--verbose"]
+MAIN = ["main", "HEAD:main"]
+
 prefix_rule(
-    pattern = ["git", "push", ["-u", "--set-upstream", "--force-with-lease"], "origin", ["main", "HEAD:main"]],
+    pattern = ["git", "push", PUSH_OPTS, "origin", MAIN],
     decision = "forbidden",
     justification = "main chỉ nhận thay đổi qua PR.",
     match = ["git push -u origin main", "git push --force-with-lease origin HEAD:main"],
-    not_match = ["git push -u origin chore/MEL-21-monorepo-setup"],
+    not_match = ["git push -u origin chore/MEL-21-monorepo-setup", "git push --force-with-lease origin chore/MEL-21-monorepo-setup"],
+)
+
+prefix_rule(
+    pattern = ["git", "push", PUSH_OPTS, PUSH_OPTS, "origin", MAIN],
+    decision = "forbidden",
+    justification = "main chỉ nhận thay đổi qua PR.",
+    match = ["git push -u --force-with-lease origin main", "git push --force-with-lease -u origin HEAD:main"],
+    not_match = ["git push -u --force-with-lease origin chore/MEL-21-monorepo-setup"],
+)
+
+prefix_rule(
+    pattern = ["git", "push", PUSH_OPTS, PUSH_OPTS, PUSH_OPTS, "origin", MAIN],
+    decision = "forbidden",
+    justification = "main chỉ nhận thay đổi qua PR.",
+    match = ["git push -u --force-with-lease --no-verify origin main"],
+    not_match = ["git push -u --force-with-lease --no-verify origin chore/MEL-21-monorepo-setup"],
+)
+
+prefix_rule(
+    pattern = ["git", "push", PUSH_OPTS, ["--force", "-f"]],
+    decision = "forbidden",
+    justification = "Không force push trần. Dùng git push --force-with-lease trên branch của ticket.",
+    match = ["git push -u --force origin chore/MEL-21-monorepo-setup", "git push -u -f"],
+    not_match = ["git push -u --force-with-lease origin chore/MEL-21-monorepo-setup"],
+)
+
+prefix_rule(
+    pattern = ["git", "push", PUSH_OPTS, PUSH_OPTS, ["--force", "-f"]],
+    decision = "forbidden",
+    justification = "Không force push trần. Dùng git push --force-with-lease trên branch của ticket.",
+    match = ["git push -u --no-verify --force origin chore/MEL-21-monorepo-setup"],
 )
 
 prefix_rule(

@@ -37,7 +37,7 @@ Lấy theo thứ tự:
 
 Đổi mã nội bộ (VD `CT-01`) sang key bằng `references/ticket-index.tsv`. Đây là bản chụp backlog, gồm các cột key, mã, tên, labels, phụ thuộc, skill, mức review, người làm. Bảng có thể cũ: khác Jira thì tin Jira.
 
-Ghi vào `_workspace/MEL-<số>/`:
+Khi bước 2 (DoR) đạt thì ghi vào `_workspace/MEL-<số>/` (bước 2 chỉ cần nội dung ticket, chưa cần các file này):
 - `00_ticket.md`: nguyên văn ticket kèm labels.
 - `scope.txt`: Phạm vi file đã chuẩn hóa, mỗi dòng một glob (quy tắc ngay dưới).
 - `labels.txt`: labels, mỗi dòng một label.
@@ -51,7 +51,7 @@ Chuẩn hóa Phạm vi file:
 - Không tự thêm thư mục khác. Thiếu thì hỏi Thái.
 
 ## Bước 2 — Definition of Ready (cổng chặn)
-Chỉ bắt đầu code khi đạt đủ 5 điểm. Thiếu điểm nào thì DỪNG, báo Thái thiếu gì, không code "tạm".
+Chỉ bắt đầu code khi đạt đủ 5 điểm. Thiếu điểm nào thì DỪNG, báo Thái thiếu gì, không code "tạm", không tạo branch hay file nào (kể cả `_workspace/`).
 1. Có mục tiêu và Acceptance Criteria kiểm chứng được.
 2. Có Phạm vi file.
 3. Phụ thuộc đã merge: `bash .claude/skills/meloo-ticket/scripts/deps-merged.sh MEL-31 MEL-38`. Script tìm commit squash trên `origin/main`. Phụ thuộc không có PR (việc của Thái như SET-01, BIZ-…, PM-…, QA-04; ticket theo dõi như BUG-00) thì hỏi Thái hoặc xem trạng thái Done trên Jira.
@@ -158,4 +158,4 @@ Worktree bị xóa thì `_workspace/` mất theo. Dấu vết lâu dài nằm tr
 ## Kịch bản kiểm thử
 **Bình thường:** "/meloo-ticket MEL-45" → đọc ticket qua Jira → `deps-merged.sh` báo MEL-37, MEL-36, MEL-44, MEL-31 đã merge → kế hoạch cho 5 AC → code + test → `check-scope.sh` xanh → QA PASS 5/5 → ticket review sâu nên chạy tự review, sửa 1 Major được xác nhận → mở PR "MEL-45 feat(game): API chơi đơn" → báo Thái chuyển In Review và nhờ Claude chạy `/meloo-review`.
 
-**Lỗi:** "/meloo-ticket MEL-56" khi MEL-55 chưa merge → dừng ở bước 2: "Chưa làm được: phụ thuộc BE-ROOM-01 (MEL-55) chưa merge vào main. Gợi ý: làm MEL-57 trước." Không tạo branch, không code.
+**Lỗi:** "/meloo-ticket MEL-56" khi MEL-55 chưa merge → dừng ở bước 2: "Chưa làm được: phụ thuộc BE-ROOM-01 (MEL-55) chưa merge vào main. Gợi ý: làm MEL-57 trước." Không tạo branch, không tạo file, không code.

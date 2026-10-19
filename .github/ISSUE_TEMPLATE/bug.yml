@@ -1,0 +1,52 @@
+name: Báo lỗi
+description: Lỗi tìm thấy khi chơi thử, test hoặc UAT. Thái chuyển lỗi đã xác nhận sang Jira.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: steps
+    attributes:
+      label: Bước tái hiện
+      description: Các bước làm theo thứ tự để lỗi xuất hiện lại. Ghi cả dữ liệu đã dùng (mã phòng, chế độ chơi, bài đã đoán…).
+      placeholder: |
+        1. Vào trang …
+        2. Bấm …
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Kết quả kỳ vọng
+      description: Đáng lẽ phải xảy ra điều gì. Nếu có, ghi mã quy tắc nghiệp vụ (BR-xx) hoặc AC liên quan.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Kết quả thực tế
+      description: Điều đã xảy ra. Đính kèm ảnh, video, log console hoặc response lỗi nếu có. Không dán token hay secret.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Môi trường
+      description: Nơi gặp lỗi.
+      value: |
+        - Nơi chạy: production / preview Vercel / local
+        - Commit hoặc phiên bản:
+        - Trình duyệt và hệ điều hành:
+        - Thiết bị: máy tính / điện thoại
+    validations:
+      required: true
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: Tần suất
+      options:
+        - Lần nào cũng bị
+        - Thỉnh thoảng
+        - Mới gặp một lần
+    validations:
+      required: false

@@ -10,10 +10,10 @@ Tài liệu trả lời câu hỏi: "Đã có game đoán nhạc rồi, Meloo kh
 Cách làm:
 - Chọn 6 sản phẩm thuộc 3 nhóm: game đoán nhạc (web và app), quiz chung, ứng dụng nghe nhạc có mini-game.
 - So sánh theo 6 tiêu chí ticket yêu cầu: ngôn ngữ giao diện, có nhạc Việt, chơi nhiều người realtime, voice, thử thách ngày, giá.
-- Chỉ dùng thông tin đọc được trên trang chính thức, kho ứng dụng hoặc báo công nghệ. Mỗi ô có số nguồn `[n]` trỏ tới mục 7.
+- Chỉ dùng thông tin đọc được trên trang chính thức, kho ứng dụng hoặc báo công nghệ, cộng kết quả chơi thử của Thái [16]. Mỗi ô có số nguồn `[n]` trỏ tới mục 7.
 - Thông tin không tìm thấy trong nguồn được ghi là "không thấy", không suy ra là "không có". Kết luận ở mục 4 và mục 8 giữ đúng mức chắc chắn này: khoảng trống chưa được nguồn xác nhận trực tiếp là giả thuyết. Một số ô đã được Thái chơi thử để chốt [16] (mục 6).
 
-Giới hạn: đây là khảo sát trên trang công khai trong một ngày, chưa cài và chơi thử từng sản phẩm. Giá có thể đổi theo khu vực và khuyến mãi.
+Giới hạn: đây là khảo sát trên trang công khai trong một ngày, chưa chơi thử cả 6 sản phẩm; Thái chơi thử SongTrivia, SongPop và Kahoot! [16]. Giá có thể đổi theo khu vực và khuyến mãi.
 
 ## 2. Sản phẩm được chọn
 
@@ -55,10 +55,10 @@ Cột Meloo lấy từ tài liệu kế hoạch dự án (phạm vi sản phẩm
 Ba điểm dưới đây là khoảng trống quan sát được trong các nguồn công khai đã đọc, cộng kết quả chơi thử của Thái [16]. Ô nào chưa chơi thử vẫn là "không thấy", chưa phải "không có", nên ba điểm này vẫn là giả thuyết khác biệt, chưa phải kết luận chắc chắn.
 
 ### 4.1. Game đoán nhạc Việt, bằng tiếng Việt
-Trong 6 sản phẩm, chỉ Kahoot! vừa có giao diện tiếng Việt vừa có nội dung nhạc Việt. Nhưng Kahoot! là nền tảng quiz chung, không phải game đoán nhạc (xem 4.3):
+Trong các nguồn đã đọc và lần chơi thử, chỉ Kahoot! được xác nhận vừa có giao diện tiếng Việt vừa có nội dung nhạc Việt. Nhưng Kahoot! là nền tảng quiz chung, không phải game đoán nhạc (xem 4.3):
 - Kahoot! có giao diện tiếng Việt [9] và có quiz nhạc Việt khi tìm trực tiếp [16].
 - musci.io có giao diện tiếng Việt [8], nhưng nguồn không thấy nhạc Việt: trang chỉ nêu thể loại và nghệ sĩ quốc tế [8].
-- SongTrivia và SongPop không có tiếng Việt trong danh sách ngôn ngữ [2][5], và chơi thử cũng không thấy nhạc Việt [16]. Spotify Music Quiz không có tiếng Việt [10]. Heardle đã đóng nên không còn kiểm chứng được [6].
+- SongTrivia và SongPop không có tiếng Việt trong danh sách ngôn ngữ [2][5], và chơi thử xác nhận không có nhạc Việt [16]. Spotify Music Quiz không có tiếng Việt [10]. Heardle đã đóng nên không còn kiểm chứng được [6].
 
 Vì vậy điểm khác biệt chỉ đúng khi so với các game đoán nhạc, không đúng khi so với Kahoot!. Meloo nhắm làm cả hai việc: giao diện vi/en, và kho nhạc lọc theo quốc gia, ca sĩ, thập niên, tìm tên bài không dấu (BR-05). Điểm này là bằng chứng sơ bộ cho giả thuyết 2 của BIZ-02 ("Game đoán nhạc phổ biến chủ yếu tiếng Anh, ít nhạc Việt, không có giao diện tiếng Việt").
 

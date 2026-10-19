@@ -58,7 +58,7 @@ Ba điểm dưới đây là khoảng trống quan sát được trong các ngu�
 Trong các nguồn đã đọc và lần chơi thử, chỉ Kahoot! được xác nhận vừa có giao diện tiếng Việt vừa có nội dung nhạc Việt. Nhưng Kahoot! là nền tảng quiz chung, không phải game đoán nhạc (xem 4.3):
 - Kahoot! có giao diện tiếng Việt [9] và có quiz nhạc Việt khi tìm trực tiếp [16].
 - musci.io có giao diện tiếng Việt [8], nhưng nguồn không thấy nhạc Việt: trang chỉ nêu thể loại và nghệ sĩ quốc tế [8].
-- SongTrivia và SongPop không có tiếng Việt trong danh sách ngôn ngữ [2][5], và chơi thử xác nhận không có nhạc Việt [16]. Spotify Music Quiz không có tiếng Việt [10]. Heardle đã đóng nên không còn kiểm chứng được [6].
+- SongTrivia và SongPop không có tiếng Việt trong danh sách ngôn ngữ [2][5]. Chơi thử xác nhận SongTrivia không có nhạc Việt, còn SongPop không có playlist nhạc Việt [16]; chưa kiểm bài Việt lẻ trong các playlist khác của SongPop. Spotify Music Quiz không có tiếng Việt [10]. Heardle đã đóng nên không còn kiểm chứng được [6].
 
 Vì vậy điểm khác biệt chỉ đúng khi so với các game đoán nhạc, không đúng khi so với Kahoot!. Meloo nhắm làm cả hai việc: giao diện vi/en, và kho nhạc lọc theo quốc gia, ca sĩ, thập niên, tìm tên bài không dấu (BR-05). Điểm này là bằng chứng sơ bộ cho giả thuyết 2 của BIZ-02 ("Game đoán nhạc phổ biến chủ yếu tiếng Anh, ít nhạc Việt, không có giao diện tiếng Việt").
 
@@ -66,7 +66,7 @@ Vì vậy điểm khác biệt chỉ đúng khi so với các game đoán nhạc
 - Kahoot! chạy theo phiên do một người làm host; bản miễn phí giới hạn 10 người [9].
 - SongPop bản hiện tại được phát hành dưới dạng app, chế độ realtime được mô tả là đấu 1-1 và phòng riêng với bạn bè [5]; nguồn không thấy bản web.
 - SongTrivia có phòng realtime và chat chữ [3], chơi thử không có voice [16].
-- Với Kahoot! và SongPop, nguồn không thấy voice [5][9]; hai sản phẩm này chưa được chơi thử để xác nhận.
+- Với Kahoot! và SongPop, nguồn không thấy voice [5][9]; lần chơi thử hai sản phẩm này chỉ kiểm nội dung nhạc Việt, chưa kiểm voice [16].
 
 Meloo khác ở chỗ gom đủ trong một trang web: mã phòng 6 ký tự hoặc link (BR-11), chơi không cần tài khoản (BR-20), chat chữ chặn lộ đáp án (BR-16), và voice trong phòng riêng (BR-18, BR-19). Nhóm bạn không phải ghép một game nước ngoài với Discord như giả thuyết 1 của BIZ-02.
 
@@ -91,7 +91,7 @@ Cần nói thật khi bảo vệ:
 - **Thử thách ngày giữ chân nhưng không đủ làm sản phẩm.** Heardle được Spotify mua nhưng vẫn bị đóng sau khoảng 10 tháng [6][7]. Với Meloo, thử thách ngày là tính năng phụ (Should), lõi là phòng chơi nhóm.
 - **Bản miễn phí phải đủ cho một nhóm bạn.** Kahoot! giới hạn 10 người ở gói miễn phí [9]. Phòng 2–5 người của Meloo nằm gọn trong mức miễn phí. Ý tưởng "phòng tới 10 người" của gói Premium (BIZ-08) cần câu hỏi sẵn lòng trả phí trong khảo sát BIZ-03 để kiểm chứng.
 - **Khác biệt dễ bị chép.** Từng điểm ở mục 4 đều có đối thủ làm được một phần. Lợi thế của Meloo là gộp cả ba cho người dùng Việt; cần số liệu khảo sát và beta để chứng minh nhóm này có thật. `[CẦN SỐ LIỆU: tỷ lệ người trả lời khảo sát BIZ-03 từng dùng Discord hoặc gọi video kèm game khi chơi với bạn]`
-- **Chơi thử làm khác biệt 4.1 hẹp lại.** Thái chơi thử ngày 19/10/2026 [16]: SongTrivia không có voice, không có nhạc Việt; SongPop không có playlist nhạc Việt; Kahoot! có quiz nhạc Việt. Khi bảo vệ cần nói rõ Kahoot! có nhạc Việt, và khác biệt của Meloo so với Kahoot! nằm ở 4.3. Chưa chơi thử: musci.io có chơi nhiều người không; Kahoot! và SongPop có voice không.
+- **Chơi thử làm khác biệt 4.1 hẹp lại.** Thái chơi thử ngày 19/10/2026 [16]: SongTrivia không có voice, không có nhạc Việt; SongPop không có playlist nhạc Việt; Kahoot! có quiz nhạc Việt. Khi bảo vệ cần nói rõ Kahoot! có nhạc Việt, và khác biệt của Meloo so với Kahoot! nằm ở 4.3. Chưa kiểm: musci.io có chơi nhiều người không; Kahoot! và SongPop có voice không; SongPop có bài Việt lẻ trong playlist khác không.
 
 ## 7. Nguồn
 

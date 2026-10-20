@@ -12,5 +12,9 @@
   },
   "placeholder": {
     "body": "This screen will be built in ticket {{ticket}}."
+  },
+  "gallery": {
+    "primary": "Primary",
+    "ghost": "Ghost"
   }
 }

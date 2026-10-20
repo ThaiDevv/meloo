@@ -13,12 +13,14 @@ describe('LanguageSwitcher', () => {
         <LanguageSwitcher />
       </Providers>,
     )
+    expect(document.documentElement.lang).toBe('vi')
     expect(screen.getByRole('button', { name: 'VI' })).toHaveAttribute('aria-pressed', 'true')
 
     await userEvent.click(screen.getByRole('button', { name: 'EN' }))
 
     expect(i18n.resolvedLanguage).toBe('en')
     expect(screen.getByRole('button', { name: 'EN' })).toHaveAttribute('aria-pressed', 'true')
+    expect(document.documentElement.lang).toBe('en')
     expect(screen.getByRole('group')).toHaveAccessibleName('Language')
   })
 })

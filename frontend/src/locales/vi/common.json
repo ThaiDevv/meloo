@@ -12,5 +12,9 @@
   },
   "placeholder": {
     "body": "Màn hình này sẽ được làm trong ticket {{ticket}}."
+  },
+  "gallery": {
+    "primary": "Nút chính",
+    "ghost": "Nút phụ"
   }
 }

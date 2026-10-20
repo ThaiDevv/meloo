@@ -1,10 +1,8 @@
-import { useState } from 'react'
-import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { RouterProvider } from 'react-router-dom'
 import { Providers } from './providers'
-import { appRoutes } from './routes'
+import { router } from './router'
 
 export function App() {
-  const [router] = useState(() => createBrowserRouter(appRoutes))
   return (
     <Providers>
       <RouterProvider router={router} />

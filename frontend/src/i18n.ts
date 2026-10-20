@@ -29,4 +29,12 @@ void i18n
     detection: { order: ['localStorage', 'navigator'], caches: ['localStorage'] },
   })
 
+function syncDocumentLang(lng: string | undefined): void {
+  if (lng) document.documentElement.lang = lng.split('-')[0] ?? lng
+}
+i18n.on('initialized', () => {
+  syncDocumentLang(i18n.resolvedLanguage)
+})
+i18n.on('languageChanged', syncDocumentLang)
+
 export default i18n

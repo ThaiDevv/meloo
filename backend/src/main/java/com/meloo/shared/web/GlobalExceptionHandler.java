@@ -61,10 +61,10 @@ public final class GlobalExceptionHandler {
   @ExceptionHandler(Exception.class)
   ProblemDetail handleUnexpected(Exception exception, HttpServletRequest request) {
     String correlationId = correlationId(request);
-        LOGGER.error(
-                "Unhandled request failure, correlationId={}, exceptionType={}",
-                correlationId,
-                exception.getClass().getName());
+    LOGGER.error(
+        "Unhandled request failure, correlationId={}, exceptionType={}",
+        correlationId,
+        exception.getClass().getName());
     return problem(
         HttpStatus.INTERNAL_SERVER_ERROR.value(),
         "Internal server error",

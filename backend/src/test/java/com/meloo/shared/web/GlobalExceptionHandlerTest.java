@@ -36,7 +36,7 @@ class GlobalExceptionHandlerTest {
   }
 
   @Test
-    void unexpectedErrorReturnsGenericDetailWithoutLoggingSensitiveMessage(CapturedOutput output) {
+  void unexpectedErrorReturnsGenericDetailWithoutLoggingSensitiveMessage(CapturedOutput output) {
     MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/test");
 
     ProblemDetail detail = handler.handleUnexpected(new RuntimeException("secret"), request);
@@ -44,6 +44,6 @@ class GlobalExceptionHandlerTest {
     assertThat(detail.getStatus()).isEqualTo(500);
     assertThat(detail.getDetail()).doesNotContain("secret");
     assertThat(detail.getProperties()).containsEntry("errorCode", "INTERNAL_ERROR");
-        assertThat(output).doesNotContain("secret");
+    assertThat(output).doesNotContain("secret");
   }
 }

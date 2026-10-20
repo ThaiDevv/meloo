@@ -40,7 +40,13 @@ public interface ModuleSecurityRules {
   default void configureOAuth2ResourceServer(
       OAuth2ResourceServerConfigurer<HttpSecurity> resourceServer) {}
 
-  /** Add module authentication interceptors before shared STOMP authorization interceptors. */
+  /**
+   * Add module authentication interceptors before shared STOMP authorization interceptors.
+   *
+   * <p>This hook is the only supported place to register STOMP authentication interceptors: an
+   * interceptor added from a separate {@code WebSocketMessageBrokerConfigurer} may be ordered after
+   * the shared authorization interceptor and would never see an authenticated context in time.
+   */
   default void configureStompInboundChannel(ChannelRegistration registration) {}
 
   enum Access {

@@ -83,7 +83,6 @@ public class SecurityConfig implements WebSocketMessageBrokerConfigurer {
     return source;
   }
 
-  @Bean
   AuthorizationManager<Message<?>> messageAuthorizationManager(
       List<ModuleSecurityRules> moduleRules) {
     MessageMatcherDelegatingAuthorizationManager.Builder messages =

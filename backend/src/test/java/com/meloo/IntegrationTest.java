@@ -5,4 +5,4 @@ import org.springframework.context.annotation.Import;
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
-abstract class IntegrationTest {}
+public abstract class IntegrationTest {}

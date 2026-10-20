@@ -3,20 +3,23 @@ package com.meloo.shared.web;
 import com.meloo.shared.api.ApiException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
-import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
-import org.springframework.validation.FieldError;
-import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 @RestControllerAdvice
-public final class GlobalExceptionHandler {
+public final class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
@@ -30,37 +33,17 @@ public final class GlobalExceptionHandler {
         request);
   }
 
-  @ExceptionHandler(MethodArgumentNotValidException.class)
-  ProblemDetail handleValidation(
-      MethodArgumentNotValidException exception, HttpServletRequest request) {
-    ProblemDetail detail =
-        problem(
-            HttpStatus.BAD_REQUEST.value(),
-            "Invalid request",
-            "Request validation failed",
-            "VALIDATION_FAILED",
-            request);
-    List<String> violations =
-        exception.getBindingResult().getFieldErrors().stream()
-            .map(GlobalExceptionHandler::formatViolation)
-            .toList();
-    detail.setProperty("violations", violations);
-    return detail;
-  }
-
-  @ExceptionHandler(NoResourceFoundException.class)
-  ProblemDetail handleNotFound(NoResourceFoundException exception, HttpServletRequest request) {
-    return problem(
-        HttpStatus.NOT_FOUND.value(),
-        "Resource not found",
-        "The requested resource does not exist",
-        "RESOURCE_NOT_FOUND",
-        request);
-  }
-
   @ExceptionHandler(Exception.class)
-  ProblemDetail handleUnexpected(Exception exception, HttpServletRequest request) {
+  ProblemDetail handleUnexpected(Exception exception, HttpServletRequest request)
+      throws AccessDeniedException, AuthenticationException {
+    if (exception instanceof AccessDeniedException denied) {
+      throw denied;
+    }
+    if (exception instanceof AuthenticationException unauthenticated) {
+      throw unauthenticated;
+    }
     String correlationId = correlationId(request);
+    // Do not log exception messages: domain and upstream failures can contain protected answers.
     LOGGER.error(
         "Unhandled request failure, correlationId={}, exceptionType={}",
         correlationId,
@@ -71,6 +54,23 @@ public final class GlobalExceptionHandler {
         "An unexpected error occurred",
         "INTERNAL_ERROR",
         request);
+  }
+
+  @Override
+  protected ResponseEntity<Object> createResponseEntity(
+      Object body, HttpHeaders headers, HttpStatusCode statusCode, WebRequest request) {
+    ProblemDetail detail =
+        body instanceof ProblemDetail problem
+            ? problem
+            : ProblemDetail.forStatusAndDetail(statusCode, safeDetail(statusCode));
+    detail.setTitle(safeTitle(statusCode));
+    detail.setDetail(safeDetail(statusCode));
+    if (request instanceof ServletWebRequest servletRequest) {
+      detail.setInstance(URI.create(servletRequest.getRequest().getRequestURI()));
+      detail.setProperty("errorCode", "HTTP_" + statusCode.value());
+      detail.setProperty("correlationId", correlationId(servletRequest.getRequest()));
+    }
+    return super.createResponseEntity(detail, headers, statusCode, request);
   }
 
   private static ProblemDetail problem(
@@ -84,8 +84,29 @@ public final class GlobalExceptionHandler {
     return problem;
   }
 
-  private static String formatViolation(FieldError error) {
-    return error.getField() + ": " + error.getDefaultMessage();
+  private static String safeTitle(HttpStatusCode status) {
+    if (status instanceof HttpStatus httpStatus) {
+      return switch (httpStatus) {
+        case BAD_REQUEST -> "Invalid request";
+        case NOT_FOUND -> "Resource not found";
+        case METHOD_NOT_ALLOWED -> "Method not allowed";
+        case UNSUPPORTED_MEDIA_TYPE -> "Unsupported media type";
+        default -> "Request failed";
+      };
+    }
+    return "Request failed";
+  }
+
+  private static String safeDetail(HttpStatusCode status) {
+    if (status.value() == HttpStatus.BAD_REQUEST.value()) return "The request is invalid";
+    if (status.value() == HttpStatus.NOT_FOUND.value())
+      return "The requested resource was not found";
+    if (status.value() == HttpStatus.METHOD_NOT_ALLOWED.value())
+      return "The HTTP method is not supported";
+    if (status.value() == HttpStatus.UNSUPPORTED_MEDIA_TYPE.value()) {
+      return "The request media type is not supported";
+    }
+    return "The request could not be completed";
   }
 
   private static String correlationId(HttpServletRequest request) {

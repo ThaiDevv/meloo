@@ -279,6 +279,11 @@
     <profiles>
         <profile>
             <id>generate-api</id>
+            <activation>
+                <file>
+                    <exists>${basedir}/../contracts/openapi.yaml</exists>
+                </file>
+            </activation>
             <build>
                 <plugins>
                     <plugin>
@@ -301,6 +306,7 @@
                                         <interfaceOnly>true</interfaceOnly>
                                         <useSpringBoot4>true</useSpringBoot4>
                                         <useJakartaEe>true</useJakartaEe>
+                                        <openApiNullable>false</openApiNullable>
                                     </configOptions>
                                 </configuration>
                             </execution>

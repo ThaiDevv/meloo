@@ -23,10 +23,11 @@
 ./mvnw -Dtest=TenTest test
 
 # Sinh Spring API interfaces/models sau khi contracts/openapi.yaml tồn tại
-./mvnw -Pgenerate-api generate-sources
+./mvnw generate-sources
 ```
 
-Chạy các lệnh từ thư mục `backend/`. File sinh từ OpenAPI không được sửa tay.
+Chạy các lệnh từ thư mục `backend/`. Profile `generate-api` tự kích hoạt khi
+`../contracts/openapi.yaml` tồn tại. File sinh từ OpenAPI không được sửa tay.
 
 ## Local database
 

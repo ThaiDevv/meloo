@@ -3,10 +3,16 @@ package com.meloo.shared.api;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpMethod;
+import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.oauth2.client.OAuth2LoginConfigurer;
+import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
 
-/** Security declarations contributed by one application module. */
+/**
+ * Security declarations contributed by one application module. Overlapping HTTP or STOMP patterns
+ * are unsupported; the first matching declaration wins. Annotate contributing beans with
+ * {@code @Order} when declarations from multiple modules need a stable order.
+ */
 public interface ModuleSecurityRules {
 
   default List<HttpRule> httpRules() {
@@ -17,11 +23,25 @@ public interface ModuleSecurityRules {
     return List.of();
   }
 
+  default List<StompFrameRule> stompFrameRules() {
+    return List.of();
+  }
+
   default boolean oauth2LoginEnabled() {
     return false;
   }
 
   default void configureOAuth2Login(OAuth2LoginConfigurer<HttpSecurity> oauth2Login) {}
+
+  default boolean oauth2ResourceServerEnabled() {
+    return false;
+  }
+
+  default void configureOAuth2ResourceServer(
+      OAuth2ResourceServerConfigurer<HttpSecurity> resourceServer) {}
+
+  /** Add module authentication interceptors before shared STOMP authorization interceptors. */
+  default void configureStompInboundChannel(ChannelRegistration registration) {}
 
   enum Access {
     PERMIT_ALL,
@@ -32,6 +52,32 @@ public interface ModuleSecurityRules {
   enum StompDestinationType {
     SEND,
     SUBSCRIBE
+  }
+
+  enum StompFrameType {
+    CONNECT,
+    DISCONNECT,
+    UNSUBSCRIBE,
+    HEARTBEAT
+  }
+
+  record StompFrameRule(StompFrameType frameType, Access access, @Nullable String authority) {
+
+    public StompFrameRule {
+      requireAuthorityWhenNeeded(access, authority);
+    }
+
+    public static StompFrameRule permitAll(StompFrameType frameType) {
+      return new StompFrameRule(frameType, Access.PERMIT_ALL, null);
+    }
+
+    public static StompFrameRule authenticated(StompFrameType frameType) {
+      return new StompFrameRule(frameType, Access.AUTHENTICATED, null);
+    }
+
+    public static StompFrameRule hasAuthority(StompFrameType frameType, String authority) {
+      return new StompFrameRule(frameType, Access.AUTHORITY, authority);
+    }
   }
 
   record HttpRule(

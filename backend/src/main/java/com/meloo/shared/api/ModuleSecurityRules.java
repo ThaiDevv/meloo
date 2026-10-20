@@ -1,0 +1,98 @@
+package com.meloo.shared.api;
+
+import java.util.List;
+import org.jspecify.annotations.Nullable;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.oauth2.client.OAuth2LoginConfigurer;
+
+/** Security declarations contributed by one application module. */
+public interface ModuleSecurityRules {
+
+  default List<HttpRule> httpRules() {
+    return List.of();
+  }
+
+  default List<StompRule> stompRules() {
+    return List.of();
+  }
+
+  default boolean oauth2LoginEnabled() {
+    return false;
+  }
+
+  default void configureOAuth2Login(OAuth2LoginConfigurer<HttpSecurity> oauth2Login) {}
+
+  enum Access {
+    PERMIT_ALL,
+    AUTHENTICATED,
+    AUTHORITY
+  }
+
+  enum StompDestinationType {
+    SEND,
+    SUBSCRIBE
+  }
+
+  record HttpRule(
+      @Nullable HttpMethod method,
+      List<String> patterns,
+      Access access,
+      @Nullable String authority) {
+
+    public HttpRule {
+      patterns = List.copyOf(patterns);
+      if (patterns.isEmpty()) {
+        throw new IllegalArgumentException("At least one HTTP pattern is required");
+      }
+      requireAuthorityWhenNeeded(access, authority);
+    }
+
+    public static HttpRule permitAll(@Nullable HttpMethod method, String... patterns) {
+      return new HttpRule(method, List.of(patterns), Access.PERMIT_ALL, null);
+    }
+
+    public static HttpRule authenticated(@Nullable HttpMethod method, String... patterns) {
+      return new HttpRule(method, List.of(patterns), Access.AUTHENTICATED, null);
+    }
+
+    public static HttpRule hasAuthority(
+        @Nullable HttpMethod method, String authority, String... patterns) {
+      return new HttpRule(method, List.of(patterns), Access.AUTHORITY, authority);
+    }
+  }
+
+  record StompRule(
+      StompDestinationType destinationType,
+      List<String> patterns,
+      Access access,
+      @Nullable String authority) {
+
+    public StompRule {
+      patterns = List.copyOf(patterns);
+      if (patterns.isEmpty()) {
+        throw new IllegalArgumentException("At least one STOMP pattern is required");
+      }
+      requireAuthorityWhenNeeded(access, authority);
+    }
+
+    public static StompRule permitAll(StompDestinationType type, String... patterns) {
+      return new StompRule(type, List.of(patterns), Access.PERMIT_ALL, null);
+    }
+
+    public static StompRule authenticated(StompDestinationType type, String... patterns) {
+      return new StompRule(type, List.of(patterns), Access.AUTHENTICATED, null);
+    }
+
+    public static StompRule hasAuthority(
+        StompDestinationType type, String authority, String... patterns) {
+      return new StompRule(type, List.of(patterns), Access.AUTHORITY, authority);
+    }
+  }
+
+  private static void requireAuthorityWhenNeeded(Access access, @Nullable String authority) {
+    if (access == Access.AUTHORITY && (authority == null || authority.isBlank())) {
+      throw new IllegalArgumentException("Authority is required for AUTHORITY access");
+    }
+  }
+}

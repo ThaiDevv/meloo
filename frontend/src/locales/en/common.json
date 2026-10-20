@@ -1,0 +1,16 @@
+{
+  "title": "UI gallery",
+  "appName": "Meloo",
+  "language": {
+    "label": "Language",
+    "vi": "Tiếng Việt",
+    "en": "English"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "back": "Back to home"
+  },
+  "placeholder": {
+    "body": "This screen will be built in ticket {{ticket}}."
+  }
+}

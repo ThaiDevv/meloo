@@ -6,15 +6,12 @@
   },
   "permissions": {
     "allow": [
-      "Bash(gh pr view *)",
-      "Bash(gh pr diff *)",
-      "Bash(gh pr checks *)",
-      "Bash(gh pr list *)",
-      "Bash(bash .claude/skills/meloo-ticket/scripts/check-scope.sh *)",
-      "Bash(bash .claude/skills/meloo-ticket/scripts/deps-merged.sh *)",
-      "Bash(bash .claude/skills/meloo-ticket/scripts/harness-lint.sh)",
-      "Bash(python3 .claude/skills/meloo-qa-check/scripts/check-i18n-parity.py *)",
-      "Bash(python3 .claude/skills/meloo-qa-check/scripts/stomp-destinations.py *)"
+      "Bash(orca-ide status *)",
+      "Bash(orca-ide skills get *)",
+      "Bash(orca-ide goto *)",
+      "Bash(orca-ide snapshot *)",
+      "Bash(orca-ide click *)",
+      "Bash(orca-ide fill *)"
     ],
     "deny": [
       "Bash(gh pr merge *)",

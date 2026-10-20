@@ -1,0 +1,20 @@
+{
+  "title": "Thư viện giao diện",
+  "appName": "Meloo",
+  "language": {
+    "label": "Ngôn ngữ",
+    "vi": "Tiếng Việt",
+    "en": "English"
+  },
+  "notFound": {
+    "title": "Không tìm thấy trang",
+    "back": "Về trang chủ"
+  },
+  "placeholder": {
+    "body": "Màn hình này sẽ được làm trong ticket {{ticket}}."
+  },
+  "gallery": {
+    "primary": "Nút chính",
+    "ghost": "Nút phụ"
+  }
+}

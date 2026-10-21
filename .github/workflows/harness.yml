@@ -1,0 +1,37 @@
+name: Harness lint
+
+on:
+  pull_request:
+    paths:
+      - AGENTS.md
+      - CLAUDE.md
+      - '.claude/**'
+      - '.agents/**'
+      - '.codex/**'
+  push:
+    branches: [main]
+    paths:
+      - AGENTS.md
+      - CLAUDE.md
+      - '.claude/**'
+      - '.agents/**'
+      - '.codex/**'
+
+concurrency:
+  group: harness-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  harness:
+    name: Harness lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Validate agent harness
+        run: bash .claude/skills/meloo-ticket/scripts/harness-lint.sh

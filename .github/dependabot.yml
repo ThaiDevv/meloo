@@ -1,0 +1,33 @@
+# GitHub Settings → Code security: enable Dependabot alerts and security updates.
+# GitHub Settings → Branch protection: make the stable CI job checks required. Private
+# repositories need GitHub Pro; GitHub Education can provide it for this project.
+# Settings → Pull Requests: set squash merge's default commit message to "Pull request title"
+# so squash commits retain the MEL-<number> prefix used by deps-merged.sh.
+# Dependabot PRs can update hot files (pom.xml, package.json); merge only when no ticket
+# holds hot-pom or hot-fe-deps, then rebase active worktrees.
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /backend
+    schedule:
+      interval: monthly
+    groups:
+      maven-updates:
+        update-types:
+          - major
+          - minor
+          - patch
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: monthly
+    groups:
+      npm-updates:
+        update-types:
+          - major
+          - minor
+          - patch
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

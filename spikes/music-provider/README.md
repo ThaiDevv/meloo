@@ -18,7 +18,7 @@ Bốn bài không tìm được bản đúng nghệ sĩ trên Deezer là `How Yo
 | Container / codec | MP3 / MP3 | M4A / AAC |
 | Bitrate | 128 kbps ở 66/66 preview | 253–290 kbps, trung bình 268,1 kbps |
 | Độ dài | 29,989–30,015 giây | 29,977–30,022 giây |
-| Container start time | 0 hoặc 0,048 giây | 0 giây trong mẫu đo |
+| Container start time | 0 giây trong mẫu đo | 0 hoặc 0,048 giây |
 | Vị trí đoạn trích trong bài gốc | API không công bố | API không công bố |
 | Dấu hiệu URL hết hạn | Chữ ký `hdnea` hết hạn sau khoảng 900 giây | Không có tham số hết hạn; không suy ra URL tồn tại vĩnh viễn |
 

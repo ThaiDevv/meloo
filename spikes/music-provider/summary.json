@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-21T11:24:06.530Z",
+  "generatedAt": "2026-10-21T12:10:05.823Z",
   "methodology": {
     "matchThreshold": 0.7,
     "itunesStorefront": "VN",
@@ -13,6 +13,8 @@
       "tracks": 30,
       "matched": 30,
       "previews": 30,
+      "originalRecordings": 30,
+      "variants": 0,
       "probeSuccess": 30,
       "previewRatePercent": 100
     },
@@ -22,6 +24,8 @@
       "tracks": 30,
       "matched": 30,
       "previews": 30,
+      "originalRecordings": 29,
+      "variants": 1,
       "probeSuccess": 30,
       "previewRatePercent": 100
     },
@@ -31,6 +35,8 @@
       "tracks": 20,
       "matched": 16,
       "previews": 16,
+      "originalRecordings": 16,
+      "variants": 0,
       "probeSuccess": 16,
       "previewRatePercent": 80
     },
@@ -40,6 +46,8 @@
       "tracks": 20,
       "matched": 20,
       "previews": 20,
+      "originalRecordings": 19,
+      "variants": 1,
       "probeSuccess": 20,
       "previewRatePercent": 100
     },
@@ -49,6 +57,8 @@
       "tracks": 20,
       "matched": 20,
       "previews": 20,
+      "originalRecordings": 20,
+      "variants": 0,
       "probeSuccess": 20,
       "previewRatePercent": 100
     },
@@ -58,6 +68,8 @@
       "tracks": 20,
       "matched": 20,
       "previews": 20,
+      "originalRecordings": 20,
+      "variants": 0,
       "probeSuccess": 20,
       "previewRatePercent": 100
     }

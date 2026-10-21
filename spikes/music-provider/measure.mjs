@@ -79,20 +79,32 @@ function tokenScore(expected, actual) {
   return union === 0 ? 0 : intersection / union;
 }
 
+function artistScore(expected, actual) {
+  const expectedTokens = new Set(normalize(expected).split(" ").filter(Boolean));
+  const actualTokens = new Set(normalize(actual).split(" ").filter(Boolean));
+  if ([...expectedTokens].every((token) => actualTokens.has(token))) return 1;
+  return tokenScore(expected, actual);
+}
+
 function matchScore(track, candidate) {
   const titleScore = tokenScore(track.title, candidate.title);
-  const artistScore = tokenScore(track.artist, candidate.artist);
+  const creditedArtistScore = artistScore(track.artist, candidate.artist);
   return {
     titleScore: Number(titleScore.toFixed(3)),
-    artistScore: Number(artistScore.toFixed(3)),
-    matchScore: Number((titleScore * 0.7 + artistScore * 0.3).toFixed(3)),
+    artistScore: Number(creditedArtistScore.toFixed(3)),
+    matchScore: Number((titleScore * 0.7 + creditedArtistScore * 0.3).toFixed(3)),
   };
 }
 
 async function fetchJson(url) {
   const response = await fetch(url, { headers: { "User-Agent": "Meloo-MEL-25-Spike/1.0" }, signal: AbortSignal.timeout(20_000) });
   if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
-  return response.json();
+  const payload = await response.json();
+  if (payload.error) {
+    const { code, message, type } = payload.error;
+    throw new Error(`API error${code ? ` ${code}` : ""}${type ? ` (${type})` : ""}: ${message ?? "unknown error"}`);
+  }
+  return payload;
 }
 
 function selectBest(track, candidates) {
@@ -138,11 +150,20 @@ async function searchItunes(track) {
 
 function expiryEvidence(previewUrl) {
   if (!previewUrl) return { urlExpiry: "no-preview", urlExpiryAt: "" };
-  const url = new URL(previewUrl);
-  const signedPolicy = url.searchParams.get("hdnea") ?? "";
-  const epoch = signedPolicy.match(/(?:^|~)exp=(\d+)/)?.[1];
-  if (epoch) return { urlExpiry: "signed-expiry", urlExpiryAt: new Date(Number(epoch) * 1000).toISOString() };
-  return { urlExpiry: "no-expiry-marker", urlExpiryAt: "" };
+  try {
+    const url = new URL(previewUrl);
+    const signedPolicy = url.searchParams.get("hdnea") ?? "";
+    const epoch = signedPolicy.match(/(?:^|~)exp=(\d+)/)?.[1];
+    if (epoch) return { urlExpiry: "signed-expiry", urlExpiryAt: new Date(Number(epoch) * 1000).toISOString() };
+    return { urlExpiry: "no-expiry-marker", urlExpiryAt: "" };
+  } catch {
+    return { urlExpiry: "invalid-url", urlExpiryAt: "" };
+  }
+}
+
+function variantSuffix(title) {
+  const marker = title.match(/\b(?:japanese|korean|chinese)\s+version\b|\b(?:tropical|acoustic|live|remix|instrumental|karaoke|cover|demo|sped\s*up|slowed\s*down)\b/i);
+  return marker?.[0] ?? "";
 }
 
 async function probe(previewUrl) {
@@ -186,10 +207,12 @@ function aggregate(rows) {
   const summary = {};
   for (const row of rows) {
     const key = `${row.group}/${row.provider}`;
-    summary[key] ??= { group: row.group, provider: row.provider, tracks: 0, matched: 0, previews: 0, probeSuccess: 0 };
+    summary[key] ??= { group: row.group, provider: row.provider, tracks: 0, matched: 0, previews: 0, originalRecordings: 0, variants: 0, probeSuccess: 0 };
     summary[key].tracks += 1;
     summary[key].matched += row.matched === "yes" ? 1 : 0;
     summary[key].previews += row.previewAvailable === "yes" ? 1 : 0;
+    summary[key].originalRecordings += row.previewAvailable === "yes" && row.originalRecording === "yes" ? 1 : 0;
+    summary[key].variants += row.previewAvailable === "yes" && row.variantSuffix ? 1 : 0;
     summary[key].probeSuccess += row.previewAvailable === "yes" && !row.probeError ? 1 : 0;
   }
   return Object.values(summary).map((item) => ({
@@ -239,6 +262,8 @@ const measured = await mapConcurrent(searches, probeConcurrency, async (entry, i
     providerTrackId: entry.result?.id ?? "",
     returnedTitle: entry.result?.title ?? "",
     returnedArtist: entry.result?.artist ?? "",
+    variantSuffix: accepted ? variantSuffix(entry.result.title) : "",
+    originalRecording: accepted && !variantSuffix(entry.result.title) ? "yes" : "no",
     previewAvailable: previewUrl ? "yes" : "no",
     ...technical,
     musicalExcerptStart: "not-exposed-by-provider",

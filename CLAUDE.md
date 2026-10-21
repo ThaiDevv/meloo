@@ -14,6 +14,7 @@
 **Lịch sử thay đổi:**
 | Ngày | Thay đổi | Đối tượng | Lý do |
 |---|---|---|---|
+| 2026-10-21 | Chuẩn hóa `.claude/skills` làm nguồn và `.agents/skills` chỉ chứa symlink; giữ an toàn thư mục thật khi liên kết lại | `orca-cli`, `link-agent-skills.sh` | Orca cài skill vào `.agents/skills`, tạo liên kết ngược khiến `harness-lint.sh` báo lỗi |
 | 2026-10-18 | Dựng harness v2 lần đầu | Toàn bộ | Thay 2 prompt chép-dán ở Phụ lục B bằng agent + skill dùng chung cho Claude Code và Codex |
 | 2026-10-18 | Chỉ bác bỏ nhận xét khi có dòng code chặn lỗi; thiếu code thì thành câu hỏi; ghi lại nhận xét đã bỏ; thêm mặc định fetch của JPA vào checklist | `meloo-verifier`, `meloo-review`, `checklist-backend.md`, workflow `meloo-deep-review` | Thử review PR mẫu: bản có skill bác nhầm một lỗi N+1 thật vì mapping entity không có trong repo |
 | 2026-10-18 | `check-scope.sh` bỏ qua hàng rào code trước khi xóa backtick; hỗ trợ dòng loại trừ `!` | `meloo-ticket` | Thử review phát hiện dòng "```text" bị đọc thành glob; ticket có phạm vi "(trừ X)" cần kiểm được |

@@ -21,8 +21,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - name: Fetch PR base
-        run: git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
       - name: Check declared scope and hot files
         env:
           PR_BODY: ${{ github.event.pull_request.body }}

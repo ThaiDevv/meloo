@@ -1,0 +1,84 @@
+@startuml uc-00-tong-quat
+title Sơ đồ use case tổng quát — Meloo (DOC-02, MEL-29)
+left to right direction
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam usecase {
+  BackgroundColor #FFFFFF
+  BorderColor #444444
+}
+
+actor "Khách" as Khach
+actor "Người chơi\n(đã đăng nhập)" as NguoiChoi
+actor "Chủ phòng" as ChuPhong
+actor "Quản trị viên" as Admin
+actor "Nhà cung cấp OAuth" as OAuth
+actor "Hệ thống API nhạc" as MusicAPI
+
+NguoiChoi --|> Khach
+ChuPhong --|> Khach
+
+rectangle "Meloo" {
+  rectangle "Tài khoản" {
+    usecase "UC-01\nVào chơi bằng biệt danh" as UC01
+    usecase "UC-02\nĐăng nhập bằng tài khoản\nmạng xã hội" as UC02
+    usecase "UC-04\nXem hồ sơ và thống kê cá nhân" as UC04
+  }
+  rectangle "Chơi đơn" {
+    usecase "UC-07\nChơi luyện tập" as UC07
+    usecase "UC-10\nLàm thử thách hằng ngày" as UC10
+  }
+  rectangle "Chơi nhiều người" {
+    usecase "UC-12\nTạo phòng" as UC12
+    usecase "UC-13\nVào phòng bằng mã hoặc link" as UC13
+    usecase "UC-15\nGhép trận nhanh" as UC15
+    usecase "UC-18\nChơi trận nhiều người" as UC18
+    usecase "UC-21\nNhắn tin trong phòng" as UC21
+  }
+  rectangle "Xếp hạng" {
+    usecase "UC-24\nXem bảng xếp hạng" as UC24
+  }
+  rectangle "Quản trị" {
+    usecase "UC-26\nXem dashboard số liệu" as UC26
+    usecase "UC-28\nQuản lý kho nhạc và bộ đề" as UC28
+    usecase "UC-30\nXử lý báo cáo vi phạm" as UC30
+  }
+  rectangle "Nền tảng" {
+    usecase "UC-33\nĐổi ngôn ngữ giao diện" as UC33
+    usecase "UC-34\nCài đặt ứng dụng (PWA)" as UC34
+  }
+}
+
+Khach --> UC01
+Khach --> UC02
+Khach --> UC07
+Khach --> UC10
+Khach --> UC13
+Khach --> UC15
+Khach --> UC18
+Khach --> UC21
+Khach --> UC24
+Khach --> UC33
+Khach --> UC34
+NguoiChoi --> UC04
+ChuPhong --> UC12
+
+UC02 -- OAuth
+UC18 -- MusicAPI
+UC28 -- MusicAPI
+
+Admin --> UC26
+Admin --> UC28
+Admin --> UC30
+
+note bottom of Khach
+  Khách là tác nhân gốc: ai cũng chơi được mọi chế độ.
+  Người chơi đã đăng nhập thừa hưởng mọi use case của Khách.
+  Chủ phòng là vai trò trong phòng tự tạo; Khách cũng có thể làm chủ phòng.
+end note
+
+legend right
+  Chỉ vẽ các use case tiêu biểu của từng phân hệ.
+  Danh mục đầy đủ 34 use case: docs/srs/usecases/00-tong-quan.md
+endlegend
+@enduml

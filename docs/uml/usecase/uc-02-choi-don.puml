@@ -1,0 +1,36 @@
+@startuml uc-02-choi-don
+title Use case phân hệ Chơi đơn (FR-06 → FR-08)
+left to right direction
+skinparam shadowing false
+skinparam packageStyle rectangle
+
+actor "Khách" as Khach
+actor "Người chơi\n(đã đăng nhập)" as NguoiChoi
+actor "Hệ thống API nhạc" as MusicAPI
+
+NguoiChoi --|> Khach
+
+rectangle "Chơi đơn" {
+  usecase "UC-06\nTìm bài hát" as UC06
+  usecase "UC-07\nChơi luyện tập" as UC07
+  usecase "UC-08\nĐoán bài hát trong vòng" as UC08
+  usecase "UC-09\nMở thêm mức nghe" as UC09
+  usecase "UC-10\nLàm thử thách hằng ngày" as UC10
+  usecase "UC-11\nChia sẻ kết quả thử thách ngày" as UC11
+}
+
+Khach --> UC07
+Khach --> UC10
+
+UC07 ..> UC08 : <<include>>
+UC10 ..> UC08 : <<include>>
+UC08 ..> UC06 : <<include>>
+UC09 ..> UC08 : <<extend>>
+UC11 ..> UC10 : <<extend>>
+UC08 -- MusicAPI
+
+note bottom of UC08
+  UC-08 dùng chung cho chơi đơn, thử thách ngày
+  và trận nhiều người (UC-18).
+end note
+@enduml

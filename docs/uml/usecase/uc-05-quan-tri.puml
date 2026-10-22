@@ -1,0 +1,35 @@
+@startuml uc-05-quan-tri
+title Use case phân hệ Quản trị (FR-05, FR-16, FR-17)
+left to right direction
+skinparam shadowing false
+skinparam packageStyle rectangle
+
+actor "Quản trị viên" as Admin
+actor "Hệ thống API nhạc" as MusicAPI
+
+rectangle "Quản trị" {
+  usecase "UC-26\nXem dashboard số liệu" as UC26
+  usecase "UC-27\nNhập bài từ API nhạc" as UC27
+  usecase "UC-28\nQuản lý kho nhạc và bộ đề" as UC28
+  usecase "UC-29\nQuản lý người dùng" as UC29
+  usecase "UC-30\nXử lý báo cáo vi phạm" as UC30
+  usecase "UC-31\nQuản lý từ cấm" as UC31
+  usecase "UC-32\nXem nhật ký thao tác" as UC32
+}
+
+Admin --> UC26
+Admin --> UC28
+Admin --> UC29
+Admin --> UC30
+Admin --> UC31
+Admin --> UC32
+
+UC27 ..> UC28 : <<extend>>
+UC27 -- MusicAPI
+UC29 ..> UC30 : <<extend>>
+UC31 ..> UC30 : <<extend>>
+
+note bottom of UC32
+  Mọi thao tác của quản trị viên đều ghi nhật ký (BR-28).
+end note
+@enduml

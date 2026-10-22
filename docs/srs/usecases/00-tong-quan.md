@@ -22,14 +22,14 @@
 
 | Sơ đồ | File | Nội dung |
 |---|---|---|
-| Tổng quát | `docs/uml/usecase/uc-00-tong-quat.png` | 6 tác nhân và các use case tiêu biểu của mọi phân hệ |
+| Tổng quát | `docs/uml/usecase/uc-00-tong-quat.png` | 6 tác nhân và đủ 34 use case, gom theo phân hệ |
 | Tài khoản | `docs/uml/usecase/uc-01-tai-khoan.png` | UC-01 → UC-05 |
 | Chơi đơn | `docs/uml/usecase/uc-02-choi-don.png` | UC-06 → UC-11 |
 | Chơi nhiều người và giao tiếp | `docs/uml/usecase/uc-03-nhieu-nguoi.png` | UC-12 → UC-23 |
 | Xếp hạng và tiến trình | `docs/uml/usecase/uc-04-xep-hang.png` | UC-24, UC-25, UC-04 |
 | Quản trị | `docs/uml/usecase/uc-05-quan-tri.png` | UC-26 → UC-32 |
 
-Mã nguồn `.puml` nằm cạnh mỗi PNG. Vẽ lại: `docker run --rm -v "$PWD":/w:Z -w /w plantuml/plantuml -tpng -charset UTF-8 <file>.puml` trong thư mục `docs/uml/usecase/`.
+Mã nguồn `.puml` nằm cạnh mỗi PNG. Vẽ lại trong thư mục `docs/uml/usecase/`: `docker run --rm -e PLANTUML_LIMIT_SIZE=16384 -v "$PWD":/w:Z -w /w plantuml/plantuml -tpng -charset UTF-8 <file>.puml`. Kiểu vẽ: khung hệ thống, tác nhân ngoài khung, đường nối thẳng (`skinparam linetype polyline`), hệ thống ngoài vẽ dạng hộp `<<actor>>`.
 
 ## 3. Danh mục use case
 

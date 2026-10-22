@@ -2,53 +2,56 @@
 title Use case phân hệ Chơi nhiều người và giao tiếp (FR-09 → FR-12)
 left to right direction
 skinparam shadowing false
-skinparam packageStyle rectangle
+skinparam linetype polyline
+skinparam nodesep 30
+skinparam ranksep 80
+skinparam defaultFontName DejaVu Sans
+skinparam usecase {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam actor {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam rectangle {
+  BackgroundColor white
+  BorderColor black
+}
 
 actor "Khách" as Khach
 actor "Người chơi\n(đã đăng nhập)" as NguoiChoi
+NguoiChoi -|> Khach
 actor "Chủ phòng" as ChuPhong
-actor "Hệ thống API nhạc" as MusicAPI
-
-NguoiChoi --|> Khach
-ChuPhong --|> Khach
-
-rectangle "Chơi nhiều người" {
+ChuPhong -|> Khach
+rectangle "<<actor>>\n**Hệ thống API nhạc**" as Music
+rectangle "**Meloo — Chơi nhiều người**" {
   usecase "UC-12\nTạo phòng" as UC12
   usecase "UC-13\nVào phòng bằng mã hoặc link" as UC13
   usecase "UC-14\nVào phòng công khai từ danh sách" as UC14
   usecase "UC-15\nGhép trận nhanh" as UC15
   usecase "UC-16\nBáo sẵn sàng" as UC16
   usecase "UC-17\nBắt đầu trận" as UC17
+  usecase "UC-19\nMời người ra khỏi phòng" as UC19
   usecase "UC-18\nChơi trận nhiều người" as UC18
   usecase "UC-08\nĐoán bài hát trong vòng" as UC08
-  usecase "UC-19\nMời người ra khỏi phòng" as UC19
-  usecase "UC-20\nChơi lại trong phòng" as UC20
-}
-
-rectangle "Giao tiếp" {
   usecase "UC-21\nNhắn tin trong phòng" as UC21
   usecase "UC-22\nBáo cáo tin nhắn vi phạm" as UC22
+  usecase "UC-20\nChơi lại trong phòng" as UC20
   usecase "UC-23\nTrò chuyện bằng voice\n(phòng riêng)" as UC23
 }
-
-Khach --> UC13
-Khach --> UC14
-Khach --> UC15
-Khach --> UC16
-Khach --> UC18
-Khach --> UC20
-Khach --> UC21
-Khach --> UC23
-ChuPhong --> UC12
-ChuPhong --> UC17
-ChuPhong --> UC19
-
+ChuPhong -- UC12
+ChuPhong -- UC17
+ChuPhong -- UC19
+Khach -- UC13
+Khach -- UC14
+Khach -- UC15
+Khach -- UC16
+Khach -- UC18
+Khach -- UC20
+Khach -- UC21
+Khach -- UC23
 UC18 ..> UC08 : <<include>>
 UC22 ..> UC21 : <<extend>>
-UC18 -- MusicAPI
-
-note bottom of UC15
-  Phòng ghép trận do hệ thống tạo,
-  không có chủ phòng, không có UC-16, UC-17, UC-19.
-end note
+UC08 -- Music
 @enduml

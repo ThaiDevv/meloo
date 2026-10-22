@@ -7,7 +7,7 @@
 
 | Thuật ngữ | Tiếng Anh | Định nghĩa | BR |
 |---|---|---|---|
-| Preview | Preview | Đoạn nhạc 30 giây do nền tảng nhạc cung cấp qua API; thường không phải phần mở đầu bài. | BR-01 |
+| Preview | Preview | Đoạn nhạc 30 giây do nền tảng nhạc cung cấp qua API (nguồn chính: Deezer, theo ADR-003); thường không phải phần mở đầu bài. | BR-01 |
 | Mức nghe | Listening level | Một trong 5 độ dài đoạn nghe: 2, 5, 10, 20, 30 giây, tính từ đầu đoạn preview. Khi chơi nhiều người, mỗi người tự mở mức của mình. | BR-01, BR-07 |
 | Vòng | Round | Một bài hát cần đoán, qua tối đa 5 mức nghe. Khi chơi nhiều người, một vòng dài tối đa 45 giây. | BR-01, BR-07 |
 | Trận | Match | Chuỗi 5, 10 hoặc 15 vòng (mặc định 10), không lặp bài. | BR-09 |

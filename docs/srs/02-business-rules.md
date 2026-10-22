@@ -91,7 +91,7 @@ Lưu ý từ kế hoạch: bản preview 30 giây do nền tảng nhạc tự c�
 | BR-04 ✎ | Vòng chơi | Bấm "Nghe thêm" hoặc đoán sai đều mở mức kế tiếp. Ở mức 30 giây, nút "Nghe thêm" đổi thành "Bỏ qua"; đoán sai hoặc bỏ qua ở mức này thì vòng đó 0 điểm. | Chặn đoán bừa liên tục; "Bỏ qua" giúp người không biết bài khỏi phải ngồi chờ. |
 | BR-05 ✎ | Vòng chơi | Đáp án chọn từ ô gợi ý tìm trên toàn bộ kho nhạc, không cần gõ dấu. Đoán đúng khi tên bài đã chọn trùng tên bài đáp án sau chuẩn hóa: bỏ dấu, viết thường, bỏ phần trong ngoặc và phần ghi phiên bản (Remix, Live, Acoustic, feat. …). Vì vậy mọi phiên bản và bản cover cùng tên đều tính là đúng. | Game đoán tên bài, nhận ra bài là đủ, không bắt chọn đúng bản thu. Ô gợi ý tìm trên cả kho nên không lộ đáp án. Hai bài khác nhau mà trùng tên rất hiếm, chấp nhận để luật đơn giản. |
 | BR-06 | Vòng chơi | Chọn đúng ca sĩ chính nhưng sai bài: báo "Đúng ca sĩ!" làm gợi ý, vẫn tính là đoán sai. | Thêm hứng thú mà không cho điểm dễ. |
-| BR-07 ✎ | Vòng chơi | Nhiều người: mỗi vòng tối đa 45 giây theo đồng hồ server; mỗi người tự mở mức nghe của mình. Vòng kết thúc khi hết giờ, hoặc sớm hơn khi mọi người đã đoán đúng hoặc hết lượt. Khi có người đoán đúng, cả phòng thấy "<tên> đã đoán đúng" nhưng không thấy đáp án. Đoán đúng được thưởng tốc độ = ⌊200 × số giây còn lại ÷ 45⌋. | Không ai phải chờ người khác nghe xong; thông báo tạo áp lực vui; thưởng tốc độ phân thắng thua giữa người cùng mức. |
+| BR-07 ✎ | Vòng chơi | Nhiều người: mỗi vòng tối đa 45 giây theo đồng hồ server; mỗi người tự mở mức nghe của mình. Vòng kết thúc khi hết giờ, hoặc sớm hơn khi mọi người đã đoán đúng hoặc hết lượt. Khi có người đoán đúng, cả phòng thấy "<tên> đúng ở mức 5s" nhưng không thấy đáp án. Đoán đúng được thưởng tốc độ = ⌊200 × số giây còn lại ÷ 45⌋. | Không ai phải chờ người khác nghe xong; thông báo tạo áp lực vui; thưởng tốc độ phân thắng thua giữa người cùng mức. |
 | BR-08 ✎ | Vòng chơi | Combo (chơi đơn và nhiều người, trừ thử thách ngày): mỗi vòng đoán đúng ở mức 2 hoặc 5 giây thì nối chuỗi, vòng có kết quả khác thì đứt chuỗi. Vòng thứ 2 liên tiếp được +10%, từ vòng thứ 3 được +20%, tính trên điểm cơ bản. | Thưởng người giỏi thật, giữ người chơi ở lại. Một công thức điểm cho mọi chế độ nên dễ hiểu, dễ test. |
 | BR-09 ✎ | Vòng chơi | Trận 5/10/15 vòng (mặc định 10), không lặp bài. Bộ nhạc không đủ bài hợp lệ cho số vòng đã chọn thì không cho bắt đầu và báo rõ còn thiếu bao nhiêu bài. | Trận ngắn 10–15 phút; báo rõ để chủ phòng biết đổi bộ nhạc hay giảm số vòng. |
 | BR-10 | Vòng chơi | Thắng = tổng điểm cao nhất; hòa thì ai có tổng thời gian trả lời đúng ít hơn thắng. | Luôn có một người thắng. |
@@ -115,16 +115,26 @@ Lưu ý từ kế hoạch: bản preview 30 giây do nền tảng nhạc tự c�
 | BR-28 | Quản trị | Tài khoản bị khóa không đăng nhập, không tạo hay vào phòng được; mọi thao tác admin ghi nhật ký. | Truy vết, chống lạm quyền. |
 | BR-29 | Quản trị | Sau mỗi vòng hiện nguồn nhạc và link nghe đầy đủ trên nền tảng gốc. | Tôn trọng bản quyền và điều khoản API. |
 
-## 5. Còn mở (không thuộc luật chơi)
+## 5. Nguồn nhạc
 
-- **Nhà cung cấp nhạc** (Deezer hay iTunes): chốt sau spike SPK-01, vì cần đo độ phủ nhạc Việt và độ ổn định của preview. Ảnh hưởng tới dữ liệu phiên bản bài (BR-05) và link nghe đầy đủ (BR-29), không đổi nội dung các quy tắc này.
+- **Deezer là nguồn chính; iTunes là dự phòng kỹ thuật, tắt mặc định** (ADR-003, số liệu SPK-01 đo ngày 21/10/2026). Lý do quyết định: điều khoản iTunes Search API cấm dùng preview làm giá trị giải trí độc lập, mà game đoán nhạc dùng preview đúng theo cách đó. Deezer có preview cho 100% bài V-pop và US-UK trong mẫu đo, dùng khoảng nửa băng thông (MP3 128 kbps so với AAC khoảng 268 kbps) và có API chart, playlist, ca sĩ để nhập kho nhạc hàng loạt.
+- **Cổng phát hành:** beta công khai chỉ dùng preview Deezer khi LEG-02 (MEL-120) có kết luận "Được phép" hoặc "Được phép có điều kiện".
+- **Hệ quả cho luật chơi:** BR-29 hiện nguồn Deezer và link nghe đầy đủ trên Deezer. Bài không có trên Deezer (4/20 bài K-pop trong mẫu đo) bị loại khỏi bộ đề, không thay bằng bản cover. BR-05 chỉ chấp nhận bản cover khi chấm câu trả lời của người chơi; bài dùng làm đáp án luôn là bản gốc.
 
-## 6. Ticket cần cập nhật Acceptance Criteria theo bản này
+## 6. Ticket đã cập nhật Acceptance Criteria theo bản này
 
-Các BR có dấu ✎ làm thay đổi AC của ticket ở những module sau. Cần rà lại trước khi giao ticket cho agent:
+Ngày 22/10/2026 đã sửa AC trên Jira cho 28 ticket; cuối mô tả mỗi ticket có dòng "Cập nhật 22/10".
 
-- **game:** công thức điểm (mục 3), combo cả chơi đơn, nút "Bỏ qua", so khớp tên bài sau chuẩn hóa (BE-GAME-01).
-- **room:** mời ra khỏi phòng, về sảnh sau trận, chờ ở sảnh khi trận đang chạy, đếm ngược ghép trận, gợi ý sau 60 giây, xử lý mất kết nối, kết thúc sớm khi còn 1 người.
-- **progression, daily:** chỉ số xếp hạng (tổng điểm), gộp điểm khi khách đăng nhập, phòng tự tạo vẫn tính huy hiệu, xếp hạng thử thách ngày, kết quả chia sẻ.
-- **chat, voice:** chặn đáp án so khớp không dấu, mic tự bật lại.
-- **catalog, audio:** thay bài khi server xác nhận preview lỗi.
+- **Game và chơi đơn:** MEL-37 BE-GAME-01, MEL-45 BE-SOLO-01, MEL-31 CT-01, MEL-48 FE-GAME-01, MEL-49 FE-SOLO-02, MEL-50 QA-01.
+- **Phòng:** MEL-43 CT-02, MEL-55 BE-ROOM-01, MEL-56 BE-ROOM-02, MEL-70 BE-ROOM-03, MEL-58 FE-ROOM-01, MEL-59 FE-ROOM-02, MEL-76 FE-ROOM-03, MEL-61 QA-02.
+- **Tài khoản, xếp hạng, thử thách ngày, huy hiệu:** MEL-30 DES-01, MEL-65 CT-03, MEL-67 BE-ID-02, MEL-68 BE-PROG-01, MEL-69 BE-DAILY-01 (thêm phụ thuộc BE-ID-02 để gộp lượt và chuỗi ngày của khách), MEL-74 FE-LB-01, MEL-84 BE-ID-03, MEL-85 BE-PROG-02.
+- **Chat, voice, audio, nguồn nhạc:** MEL-57 BE-CHAT-01, MEL-83 FE-RTC-01, MEL-44 BE-AUD-01, MEL-34 BE-CAT-01.
+- **Vận hành và đo NFR:** MEL-91 INF-04, MEL-94 QA-04.
+
+## 7. Câu hỏi bảo vệ
+
+1. **Vì sao đoán sai cũng bị xuống mức?** Nếu đoán sai không mất gì, người chơi sẽ chọn bừa trong ô gợi ý đến khi trúng. Mỗi lần sai làm mất 200 điểm tiềm năng nên người chơi phải cân nhắc. Heardle dùng cùng cơ chế này.
+2. **Vì sao phòng riêng không tính xếp hạng nhưng vẫn tính huy hiệu?** Ở phòng tự tạo, người chơi chọn được bộ nhạc và người cùng chơi, nên dễ cày điểm bằng tài khoản phụ; bảng xếp hạng cần công bằng. Huy hiệu là thành tích cá nhân, không so với ai, nên vẫn tính để nhóm bạn thấy mình tiến bộ.
+3. **Vì sao combo chỉ tính khi đúng ở mức 5 giây trở xuống và chỉ nhân điểm cơ bản?** Combo thưởng người nhận ra bài rất nhanh. Chỉ nhân điểm cơ bản để thưởng tốc độ không bị nhân thêm, tránh chênh lệch điểm quá lớn. Ví dụ ở mục 3.2 ra 1.013 điểm.
+4. **Mất kết nối thì sao trận không chờ?** Một người rớt mạng không được bắt bốn người còn lại chờ. Giữ chỗ 30 giây đủ cho mạng di động chập chờn; vòng bị lỡ được 0 điểm, điểm đã có vẫn giữ.
+5. **Khách không lên bảng xếp hạng thì có thiệt không?** Không. Khách chơi được mọi chế độ; khi đăng nhập, điểm các trận xếp hạng được gộp vào tài khoản. Đây cũng là lý do tự nhiên để người chơi tạo tài khoản, phục vụ KPI ≥ 30 tài khoản trong beta.

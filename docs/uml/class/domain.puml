@@ -1,0 +1,224 @@
+@startuml domain
+title Sơ đồ lớp miền Meloo (DES-01, MEL-30): thực thể theo module và trạng thái trong bộ nhớ
+left to right direction
+skinparam shadowing false
+skinparam linetype ortho
+skinparam nodesep 30
+skinparam ranksep 60
+skinparam defaultFontName DejaVu Sans
+skinparam class {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam package {
+  BackgroundColor #F5F5F5
+  BorderColor black
+}
+hide empty members
+
+legend left
+  Lớp trắng: thực thể lưu trong DB (khớp ERD).
+  Lớp <<memory>>: chỉ nằm trong bộ nhớ (ADR-007), không có bảng.
+  Mũi tên đứt: tham chiếu theo id giữa các module, không phải quan hệ đối tượng.
+  Chưa có code ở thời điểm vẽ (S1); đối chiếu lại khi DB-01 merge.
+endlegend
+
+enum UserKind {
+  GUEST
+  REGISTERED
+}
+enum MatchType {
+  SOLO
+  PRIVATE_ROOM
+  PUBLIC_ROOM
+  QUICK_MATCH
+}
+enum RoundOutcome {
+  CORRECT
+  WRONG_OUT
+  GAVE_UP
+  TIMEOUT
+  MISSED
+}
+
+package "identity" {
+  class User {
+    id
+    kind : UserKind
+    role
+    status
+    nickname
+    email
+    mergedIntoId
+    lastActiveAt
+  }
+  class AuthIdentity {
+    provider
+    providerSubject
+  }
+  class RefreshToken {
+    familyId
+    tokenHash
+    expiresAt
+    revokedAt
+  }
+  User "1" *-- "0..*" AuthIdentity
+  User "1" *-- "0..*" RefreshToken
+}
+
+package "catalog" {
+  class Artist {
+  name
+  nameNormalized
+}
+  class Genre {
+  code
+  nameVi
+  nameEn
+}
+  class Track {
+    provider
+    providerTrackId
+    title
+    titleNormalized
+    countryCode
+    releaseYear
+    enabled
+  }
+  class Playlist {
+  code
+  kind : STANDARD | CURATED
+}
+  Artist "1" o-- "0..*" Track : ca sĩ chính
+  Genre "0..1" o-- "0..*" Track
+  Playlist "0..*" o-- "0..*" Track : PlaylistTrack
+}
+
+package "progression" {
+  class Match {
+    type : MatchType
+    ranked
+    status : FINISHED | ABANDONED
+    roundCount
+    startedAt
+    endedAt
+  }
+  class MatchPlayer {
+    nickname
+    isGuest
+    totalScore
+    rank
+    correctTimeMs
+    countsForLeaderboard
+  }
+  class Round {
+  roundNo
+  trackTitle
+  artistName
+}
+  class RoundResult {
+    outcome : RoundOutcome
+    correctLevel
+    baseScore
+    comboPercent
+    speedBonus
+    roundScore
+    wrongCount
+  }
+  class PlayerStats {
+  xp
+  rankedScore
+  rankedReachedAt
+  bestCombo
+}
+  class Achievement {
+    code
+  }
+  class UserAchievement {
+    unlockedAt
+  }
+  Match "1" *-- "1..*" MatchPlayer
+  Match "1" *-- "1..15" Round
+  Round "1" *-- "1..*" RoundResult
+  MatchPlayer "1" *-- "0..*" RoundResult
+  Achievement "1" o-- "0..*" UserAchievement
+}
+
+package "daily" {
+  class DailyChallenge {
+  challengeDate
+  source
+}
+  class DailyAttempt {
+    status
+    startedAt
+    correctLevel
+    elapsedMs
+    isGuest
+  }
+  DailyChallenge "1" *-- "0..*" DailyAttempt
+}
+
+package "chat" {
+  class ChatReport {
+  messageText
+  context
+  status
+}
+  class BannedWord {
+    word
+  }
+}
+
+package "admin" {
+  class AuditLog {
+  actorId
+  action
+  targetType
+  reason
+}
+  class AnalyticsEvent {
+  eventType
+  props
+  occurredAt
+}
+}
+
+package "game (engine) và room: bộ nhớ" {
+  class RoomActor <<memory>> {
+    hàng đợi lệnh tuần tự
+    thành viên, chủ phòng
+    sẵn sàng, đếm ngược
+  }
+  class RoundState <<memory>> {
+    mức đã mở của từng người
+    đồng hồ server
+    điểm tạm, combo
+  }
+  class SoloSession <<memory>> {
+    giữ 30 phút (BR-23)
+  }
+  RoomActor "1" *-- "0..1" RoundState
+}
+
+Match ..> MatchType
+RoundResult ..> RoundOutcome
+User ..> UserKind
+
+MatchPlayer ..> User : userId
+Round ..> Track : trackId
+Match ..> Playlist : playlistId
+PlayerStats ..> User : userId
+UserAchievement ..> User : userId
+DailyAttempt ..> User : userId
+DailyChallenge ..> Track : trackId
+ChatReport ..> User : senderId, reporterId
+AuditLog ..> User : actorId
+
+RoomActor ..> Match : MatchFinished
+SoloSession ..> Match : MatchFinished
+note on link
+  Kết thúc trận, game và room phát MatchFinished;
+  progression ghi Match, MatchPlayer, Round, RoundResult.
+end note
+@enduml

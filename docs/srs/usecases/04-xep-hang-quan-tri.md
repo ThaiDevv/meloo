@@ -52,5 +52,5 @@
   - 3b. Thêm từ vào danh sách từ cấm (UC-31, extend).
   - 3c. Người gửi tin bị báo là khách: quản trị viên khóa theo id khách. Id đó không tạo hay vào phòng, không chat được. Giới hạn: khách xóa dữ liệu trình duyệt thì có id mới. (Quyết định PO 22/10 (mục 5, #8))
   - 1a. Người dùng không phải Quản trị viên: hệ thống từ chối.
-- Quy tắc nghiệp vụ: BR-17, BR-20, BR-28. BR-28 cần bổ sung câu về lý do khóa và khóa khách (xem mục "Tài liệu cần cập nhật" của PR).
+- Quy tắc nghiệp vụ: BR-17, BR-20, BR-28.
 - Yêu cầu liên quan: FR-17.

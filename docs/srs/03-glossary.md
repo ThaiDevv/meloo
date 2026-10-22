@@ -29,7 +29,7 @@
 
 | Thuật ngữ | Tiếng Anh | Định nghĩa | BR |
 |---|---|---|---|
-| Chơi đơn | Single player | Luyện tập một mình theo bộ lọc, có combo, không giới hạn thời gian mỗi vòng. | BR-07, BR-08 |
+| Chơi đơn | Single player | Chơi một mình, có hai lựa chọn: Xếp hạng (bộ chuẩn, tính xếp hạng) và Luyện tập (tự chọn bộ lọc, không tính xếp hạng); có combo, không giới hạn thời gian mỗi vòng. | BR-07, BR-08, BR-23 |
 | Bộ chuẩn | Standard set | Bộ nhạc do hệ thống chọn cho chơi đơn xếp hạng. | BR-23 |
 | Thử thách hằng ngày | Daily challenge | Một bài chung cho mọi người mỗi ngày, mỗi người một lượt, đổi bài lúc 00:00 giờ Việt Nam. | BR-25 |
 | Phòng | Room | Nơi 2–5 người chơi trận thời gian thực; số người tối đa là cấu hình. | BR-11 |

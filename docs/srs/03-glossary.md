@@ -20,7 +20,7 @@
 | Ô gợi ý | Autocomplete | Ô tìm tên bài trên toàn kho nhạc, không cần gõ dấu; dùng thay cho câu hỏi trắc nghiệm. | BR-05 |
 | Điểm cơ bản | Base score | Điểm theo mức đoán đúng: 1.000 / 800 / 600 / 400 / 200. | BR-02 |
 | Combo | Combo | Chuỗi vòng đoán đúng liên tiếp ở mức 2 hoặc 5 giây; vòng thứ 2 của chuỗi được +10%, từ vòng thứ 3 được +20% điểm cơ bản. Áp dụng cho chơi đơn và nhiều người, trừ thử thách ngày. | BR-08 |
-| Thưởng tốc độ | Speed bonus | ⌊200 × số mili giây còn lại ÷ 45.000⌋ theo đồng hồ server, chỉ khi chơi nhiều người. | BR-07 |
+| Thưởng tốc độ | Speed bonus | max(0, ⌊200 × số mili giây còn lại ÷ 45.000⌋) theo đồng hồ server, chỉ khi chơi nhiều người; lượt đoán sau khi hết giờ bị từ chối. | BR-07 |
 | Điểm vòng | Round score | Điểm cơ bản × (1 + hệ số combo) + thưởng tốc độ. | BR-02, BR-07, BR-08 |
 | Người thắng | Winner | Người có tổng điểm cao nhất; hòa thì người có tổng thời gian trả lời đúng ít hơn (tính bằng mili giây). | BR-10 |
 
@@ -41,7 +41,7 @@
 | Mời ra | Kick | Chủ phòng đưa một người ra khỏi phòng; người đó không vào lại phòng đó được. | BR-12 |
 | Chơi lại | Rematch | Hết trận, cả phòng về sảnh để chơi tiếp, giữ nguyên mã phòng. | BR-12 |
 | Ghép trận nhanh | Quick match | Tự vào phòng ghép trận đang chờ và hợp bộ lọc, không có thì tạo mới; không vào phòng công khai tự tạo; tính xếp hạng. | BR-13, BR-23 |
-| Phòng ghép trận | Quick match room | Phòng do hệ thống tạo cho ghép trận nhanh; không hiện trong danh sách phòng công khai, không có chủ phòng. | BR-13 |
+| Phòng ghép trận | Quick match room | Phòng do hệ thống tạo cho ghép trận nhanh; không hiện trong danh sách phòng công khai, không vào được bằng mã hay link, không có chủ phòng. | BR-13 |
 | Đếm ngược ghép trận | Quick match countdown | 30 giây, bắt đầu khi có người thứ 2, không đặt lại khi thêm người. | BR-13 |
 | Giữ chỗ | Reconnect grace | 30 giây giữ chỗ khi mất kết nối; trận không dừng để chờ. | BR-14 |
 | Trận xếp hạng | Ranked match | Chơi đơn bộ chuẩn, thử thách ngày, ghép trận nhanh. | BR-23 |

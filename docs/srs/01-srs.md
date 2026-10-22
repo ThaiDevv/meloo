@@ -74,15 +74,15 @@ Mỗi dòng kiểm chứng được bằng Acceptance Criteria ở ticket Jira t
 
 | Mã | Yêu cầu | Ưu tiên | Sprint | BR |
 |---|---|---|---|---|
-| FR-07 | Người chơi luyện tập theo bộ lọc: nghe đoạn nhạc mở dần 5 mức, nghe lại, nghe thêm hoặc bỏ qua, đoán bằng ô gợi ý, được tính điểm theo mức đoán đúng kèm combo; sau mỗi vòng thấy nguồn nhạc và link nghe đầy đủ. | Must | S2 | BR-01 → BR-06, BR-08, BR-09, BR-27, BR-29 |
-| FR-08 | Người chơi làm thử thách hằng ngày (một bài chung mỗi ngày) và chia sẻ kết quả không lộ tên bài. | Should | S4 | BR-25 |
+| FR-07 | Người chơi luyện tập theo bộ lọc: nghe đoạn nhạc mở dần 5 mức, nghe lại, nghe thêm hoặc bỏ qua, đoán bằng ô gợi ý, được tính điểm theo mức đoán đúng kèm combo; sau mỗi vòng thấy nguồn nhạc và link nghe đầy đủ. | Must | S2 | BR-01 → BR-09, BR-27, BR-29 |
+| FR-08 | Người chơi làm thử thách hằng ngày (một bài chung mỗi ngày) và chia sẻ kết quả không lộ tên bài. | Should | S4 | BR-07, BR-25 |
 
 ### 3.4 Chơi nhiều người
 
 | Mã | Yêu cầu | Ưu tiên | Sprint | BR |
 |---|---|---|---|---|
-| FR-09 | Người chơi tạo phòng riêng (mã hoặc link mời), chờ ở sảnh, chơi trận thời gian thực, xem bảng điểm trực tiếp, xem công bố người thắng rồi chơi lại trong cùng phòng. Chủ phòng mời được người khác ra khỏi phòng. Người vào lúc trận đang chạy chờ ở sảnh. | Must | S3 | BR-07 → BR-12, BR-14, BR-15 |
-| FR-10 | Người chơi, kể cả khách, vào phòng công khai hoặc ghép trận nhanh, có đếm ngược và gợi ý khi chờ lâu. | Must | S4 | BR-11, BR-13, BR-20 |
+| FR-09 | Người chơi tạo phòng riêng (vào bằng mã hoặc link mời) hoặc phòng công khai (hiện trong danh sách phòng), chờ ở sảnh, chơi trận thời gian thực, xem bảng điểm trực tiếp, xem công bố người thắng rồi chơi lại trong cùng phòng. Chủ phòng mời được người khác ra khỏi phòng. Người vào lúc trận đang chạy chờ ở sảnh. | Must | S3 | BR-07 → BR-12, BR-14, BR-15 |
+| FR-10 | Người chơi, kể cả khách, vào phòng công khai từ danh sách hoặc ghép trận nhanh, có đếm ngược và gợi ý khi chờ lâu. | Must | S4 | BR-11, BR-13, BR-20 |
 
 ### 3.5 Giao tiếp
 
@@ -152,12 +152,12 @@ Use case chưa có khi viết SRS v1, nên bảng truy vết use case ↔ FR (UC
 
 ## 6. Còn mở
 
-- **Quyền dùng preview cho beta công khai:** chờ LEG-02 (MEL-120). Nguồn nhạc kỹ thuật được đề xuất ở ADR-003 (Deezer chính, iTunes dự phòng); ADR-003 chuyển sang Chấp nhận khi LEG-02 có kết luận.
+- **Quyền dùng preview cho beta công khai:** chờ LEG-02 (MEL-120). Nguồn nhạc kỹ thuật được đề xuất ở ADR-003 (Deezer chính, iTunes dự phòng); ADR-003 chỉ chuyển sang Chấp nhận khi LEG-02 kết luận "Được phép" hoặc "Được phép có điều kiện"; nếu không được phép thì phải chọn nguồn audio khác.
 - **Module sở hữu lịch sử trận** (Match, Round, Guess) và phục vụ `/me/matches`: chốt ở DES-01 vì là quyết định kiến trúc. Đề xuất: progression ghi lịch sử khi nhận sự kiện `MatchFinished`, game chỉ giữ engine. Ảnh hưởng FR-13.
 
 ## 7. Câu hỏi bảo vệ
 
-1. **FR khác BR thế nào?** FR nói hệ thống làm được gì; BR là luật của bài toán mà chức năng phải tuân theo. Một FR có thể dựa trên nhiều BR, ví dụ FR-07 (chơi đơn) dựa trên BR-01 → BR-06, BR-08, BR-09, BR-27, BR-29.
+1. **FR khác BR thế nào?** FR nói hệ thống làm được gì; BR là luật của bài toán mà chức năng phải tuân theo. Một FR có thể dựa trên nhiều BR, ví dụ FR-07 (chơi đơn) dựa trên BR-01 → BR-09, BR-27, BR-29.
 2. **NFR-10 (người mới vào chơi ≤ 30 giây) đo thế nào?** Trong beta, cho ít nhất 5 người chưa từng dùng Meloo mở web và bấm giờ đến khi nghe đoạn nhạc đầu tiên. Khách chơi được ngay mà không cần đăng ký nên mục tiêu này khả thi.
 3. **Vì sao chỉ cam kết 20 phòng × 5 người?** Hệ thống chạy trên một EC2 free tier 1 GB RAM và giữ trạng thái phòng trong bộ nhớ (ADR-007). QA-03 đo ngưỡng này bằng k6; muốn vượt ngưỡng cần Redis và nhiều instance (P2-06).
 4. **Vì sao chọn Deezer mà không chọn iTunes, dù iTunes có preview 70/70 bài?** Điều khoản iTunes cấm dùng preview làm giá trị giải trí độc lập, mà đó chính là cách game đoán nhạc dùng preview. Deezer đủ bài V-pop, tốn khoảng nửa băng thông và có API nhập hàng loạt (đề xuất ở ADR-003). Quyền dùng cho beta công khai vẫn phải được xác nhận ở LEG-02.

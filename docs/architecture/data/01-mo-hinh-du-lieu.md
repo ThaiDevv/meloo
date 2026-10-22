@@ -70,7 +70,7 @@ Ngoài danh sách của ticket, DB-02 (MEL-66) cần biết V6 không còn chứ
 | Vòng đang chơi: mức đã mở, đồng hồ, điểm tạm, token âm thanh đã cấp | Bộ nhớ | Server là trọng tài, giá trị đổi từng giây | Trận đang chạy bị hủy |
 | Phiên chơi đơn đang dở (giữ 30 phút, BR-23) | Bộ nhớ | Giống phòng; chỉ ghi DB khi kết thúc hoặc bỏ dở | Phiên mất, không ghi DB; người chơi bắt đầu lại |
 | Tin chat bình thường | Bộ nhớ, không lưu | Quyền riêng tư, MVP không cần lịch sử chat | Mất |
-| URL preview của nhà cung cấp, cache từ cấm, bộ đếm giới hạn tần suất | Bộ nhớ | ADR-003 cấm lưu URL; cache có TTL | Nạp lại |
+| URL preview của nhà cung cấp, cache từ cấm (khóa theo chữ thường NFC giữ dấu), bộ đếm giới hạn tần suất | Bộ nhớ | ADR-003 cấm lưu URL; cache có TTL | Nạp lại |
 
 Ghi chú: phiên chơi đơn bị mất khi restart không được ghi `ABANDONED`; chấp nhận ở MVP vì cùng lý do với phòng (ADR-007).
 

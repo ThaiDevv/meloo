@@ -46,7 +46,7 @@ Unique `(provider, provider_subject)`; index `(user_id)`. Khách không có dòn
 Index: `(user_id)`, `(family_id)`.
 
 ## catalog (V3)
-Extension `pg_trgm`, `unaccent`. Cột `*_normalized` là chuỗi đã chuẩn hóa theo BR-05 (bỏ dấu, chữ thường, bỏ phần trong ngoặc và phần ghi phiên bản); cùng một hàm chuẩn hóa dùng để chấm điểm, tìm kiếm và chặn chat.
+Extension `pg_trgm`, `unaccent`. Cột `*_normalized` là chuỗi đã chuẩn hóa theo BR-05 (bỏ dấu, chữ thường, bỏ phần trong ngoặc và phần ghi phiên bản); cùng một hàm chuẩn hóa dùng để chấm điểm, tìm kiếm và chặn tin lộ đáp án (BR-16). Từ cấm (`banned_word`) không dùng hàm này: giữ dấu, xem tài liệu 01 mục 2.
 
 ### `artist`
 | Cột | Kiểu | Ràng buộc | Ghi chú |

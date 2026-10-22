@@ -67,7 +67,7 @@
 | Bài bị vô hiệu hóa | Disabled track | Bài lỗi preview hoặc không phù hợp; không xuất hiện ở trận mới. Lỗi giữa trận thì vòng được thay bằng bài khác. | BR-27 |
 | Bảng xếp hạng | Leaderboard | Bảng tuần và toàn thời gian theo tổng điểm trận xếp hạng; bảng tuần reset lúc 00:00 thứ Hai giờ Việt Nam. | BR-24 |
 | Bảng theo ngày | Daily leaderboard | Bảng của thử thách ngày, xếp theo mức đoán đúng rồi theo thời gian. | BR-25 |
-| Kết quả chia sẻ | Share card | Kết quả thử thách ngày dạng ô màu theo từng mức, không lộ tên bài. | BR-25 |
+| Kết quả chia sẻ | Share card | Kết quả thử thách ngày gồm chuỗi ô màu theo từng mức, nhãn mức đoán đúng (vd. "Đúng ở 10s"; không đoán ra thì "Chưa đoán ra") và link; không lộ tên bài. | BR-25 |
 | Huy hiệu | Badge | Thành tích mở khóa tự động khi đạt điều kiện, không bị thu hồi; tính cả ở phòng tự tạo. | BR-23, BR-26 |
 | Lịch sử trận | Match history | Danh sách trận đã chơi của một người, phục vụ `/me/matches`. | — |
 

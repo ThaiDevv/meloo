@@ -1,7 +1,7 @@
 # Quy tắc nghiệp vụ Meloo (BR-01 → BR-29)
 
 > Ticket: MEL-28 (DOC-01) · Trạng thái: **đã chốt ngày 22/10/2026**
-> Nguồn: tài liệu "Meloo — Kế hoạch dự án & Quy trình làm việc" (bản 17/10, mục "Luật chơi & quy tắc nghiệp vụ"). Ngày 22/10, Product Owner (Thái) giao Claude chốt các điểm còn mở theo tiêu chí: game hay, làm kịp trong MVP, trải nghiệm người chơi đặt lên đầu. BR có dấu ✎ là đã sửa hoặc bổ sung so với bản 17/10; lý do ghi ở mục 2. Cập nhật thêm cùng ngày theo review PR: BR-07, BR-10, BR-12, BR-13, BR-21.
+> Nguồn: tài liệu "Meloo — Kế hoạch dự án & Quy trình làm việc" (bản 17/10, mục "Luật chơi & quy tắc nghiệp vụ"). Ngày 22/10, Product Owner (Thái) giao Claude chốt các điểm còn mở theo tiêu chí: game hay, làm kịp trong MVP, trải nghiệm người chơi đặt lên đầu. BR có dấu ✎ là đã sửa hoặc bổ sung so với bản 17/10; lý do ghi ở mục 2. Cập nhật thêm cùng ngày theo review PR: BR-07, BR-10, BR-12, BR-13, BR-21; khi nghiệm thu: BR-25. Biên bản duyệt ở mục 8.
 > Tài liệu liên quan: `01-srs.md` (yêu cầu), `03-glossary.md` (thuật ngữ).
 
 ## 1. Ba nguyên tắc dùng để chốt
@@ -39,6 +39,7 @@
 | Lượt đoán và lúc hết giờ đến sát nhau thì tính thế nào? (review PR lần 3) | **Phân xử theo lúc server nhận lượt đoán:** trước mốc 45.000 ms thì được chấm, từ mốc 45.000 ms trở đi thì bị từ chối, bất kể lệnh hết giờ đã được xử lý hay chưa. Lý do: bộ hẹn giờ của server có thể chạy trễ vài mili giây; nếu dựa vào thứ tự xử lý thì cùng một lượt đoán lúc được chấm lúc không. So với một mốc cố định thì kết quả luôn như nhau và test được. | BR-07 |
 | Phòng ghép trận có chủ phòng, nút sẵn sàng, "chơi lại giữ mã" không? (review PR lần 3) | **Không.** BR-12 chỉ áp dụng cho phòng tự tạo. Phòng ghép trận bắt đầu và chơi tiếp theo đếm ngược ở BR-13, không ai phải bấm sẵn sàng. Lý do: một người lạ treo máy không chặn được cả phòng; phòng không có mã nên không có gì để giữ. | BR-12, BR-13 |
 | Viết "5s" hay "5 giây"? (review PR lần 3) | **Tùy chỗ dùng:** nhãn ngắn trên giao diện ghi 2s, 5s, 10s, 20s, 30s, giống nhau ở tiếng Việt và tiếng Anh; câu văn trong tài liệu và giao diện ghi "5 giây" / "5 seconds". Quy ước nằm ở `03-glossary.md` (Nhãn mức nghe). | BR-01 |
+| Kết quả chia sẻ có ghi mức đoán đúng không? (nghiệm thu) | **Có.** Chuỗi ô màu kèm nhãn "Đúng ở 10s" (không đoán ra thì "Chưa đoán ra") và link. Lý do: người thấy bài chia sẻ trên mạng xã hội chưa chơi nên không biết ô thứ ba là mức 10 giây; nhãn chữ cho họ hiểu ngay và muốn thử vượt. Người khó phân biệt đỏ và xanh cũng đọc được kết quả, vì màu không phải cách duy nhất truyền thông tin (WCAG 2.1 AA, NFR-13). Nhãn không lộ tên bài. | BR-25 |
 
 ### 2.3 Những chỗ bản 17/10 chưa có
 
@@ -121,7 +122,7 @@ Lưu ý: bản preview khoảng 30 giây do nền tảng nhạc tự cắt. "2 g
 | BR-22 | Tài khoản | Biệt danh 3–20 ký tự, không chứa từ cấm. | Hiển thị gọn, văn minh. |
 | BR-23 ✎ | Xếp hạng | Chỉ trận xếp hạng (chơi đơn bộ chuẩn, thử thách ngày, ghép trận nhanh) được tính vào bảng xếp hạng. Phòng tự tạo, dù riêng hay công khai, không tính xếp hạng nhưng vẫn lưu lịch sử, thống kê và tính huy hiệu. | Chống cày điểm bằng tài khoản phụ ở nơi tự chọn được bộ nhạc và người chơi, mà nhóm bạn vẫn thấy mình tiến bộ. |
 | BR-24 ✎ | Xếp hạng | Bảng tuần và bảng toàn thời gian xếp theo tổng điểm các trận xếp hạng; bằng điểm thì ai đạt mức điểm đó trước xếp trên. Bảng tuần reset 00:00 thứ Hai giờ Việt Nam. Bảng theo ngày là bảng thử thách ngày (BR-25). | Tổng điểm thưởng người chơi đều đặn; reset hằng tuần cho người mới cơ hội lên top. |
-| BR-25 ✎ | Xếp hạng | Thử thách ngày: một bài chung, mỗi người một lượt, đổi bài lúc 00:00 giờ Việt Nam. Xếp theo mức đoán đúng (2 giây cao nhất), rồi theo thời gian từ lúc bắt đầu tới khi đoán đúng; không đoán ra thì xếp cuối. Kết quả chia sẻ dạng ô màu theo từng mức, không lộ tên bài. | Tạo thói quen quay lại mỗi ngày; chia sẻ kéo người mới mà không làm hỏng bài cho người chưa chơi. |
+| BR-25 ✎ | Xếp hạng | Thử thách ngày: một bài chung, mỗi người một lượt, đổi bài lúc 00:00 giờ Việt Nam. Xếp theo mức đoán đúng (2 giây cao nhất), rồi theo thời gian từ lúc bắt đầu tới khi đoán đúng; không đoán ra thì xếp cuối. Kết quả chia sẻ gồm chuỗi ô màu theo từng mức (mức đoán đúng, mức đã nghe mà chưa đúng, mức chưa mở), nhãn mức đoán đúng (vd. "Đúng ở 10s"; không đoán ra thì "Chưa đoán ra") và link; không lộ tên bài. | Tạo thói quen quay lại mỗi ngày; chia sẻ kéo người mới mà không làm hỏng bài cho người chưa chơi; nhãn chữ giúp người chưa chơi hiểu ngay kết quả và không phụ thuộc vào màu (NFR-13). |
 | BR-26 | Xếp hạng | Huy hiệu mở khóa tự động khi đạt điều kiện, không bị thu hồi. | Khuyến khích chơi lâu dài. |
 | BR-27 ✎ | Quản trị | Bài lỗi preview hoặc không phù hợp bị vô hiệu hóa, không xuất hiện ở trận mới. Nếu server xác nhận đoạn nhạc lỗi giữa trận, vòng đó được thay bằng bài khác, không ai bị trừ điểm. | Trận không hỏng vì lỗi kỹ thuật; chỉ server xác nhận để không ai lấy cớ "lỗi" bỏ qua bài khó. |
 | BR-28 | Quản trị | Tài khoản bị khóa không đăng nhập, không tạo hay vào phòng được; mọi thao tác admin ghi nhật ký. | Truy vết, chống lạm quyền. |
@@ -135,11 +136,11 @@ Lưu ý: bản preview khoảng 30 giây do nền tảng nhạc tự cắt. "2 g
 
 ## 6. Ticket đã cập nhật Acceptance Criteria theo bản này
 
-Ngày 22/10/2026 đã sửa AC trên Jira cho 28 ticket; cuối mô tả mỗi ticket có dòng "Cập nhật 22/10".
+Ngày 22/10/2026 đã sửa AC trên Jira cho 29 ticket; cuối mô tả mỗi ticket có dòng "Cập nhật 22/10".
 
 - **Game và chơi đơn:** MEL-37 BE-GAME-01, MEL-45 BE-SOLO-01, MEL-31 CT-01, MEL-48 FE-GAME-01, MEL-49 FE-SOLO-02, MEL-50 QA-01.
 - **Phòng:** MEL-43 CT-02, MEL-55 BE-ROOM-01, MEL-56 BE-ROOM-02, MEL-70 BE-ROOM-03, MEL-58 FE-ROOM-01, MEL-59 FE-ROOM-02, MEL-76 FE-ROOM-03, MEL-61 QA-02.
-- **Tài khoản, xếp hạng, thử thách ngày, huy hiệu:** MEL-30 DES-01, MEL-65 CT-03, MEL-67 BE-ID-02, MEL-68 BE-PROG-01, MEL-69 BE-DAILY-01 (thêm phụ thuộc BE-ID-02 để gộp lượt và chuỗi ngày của khách), MEL-74 FE-LB-01, MEL-84 BE-ID-03, MEL-85 BE-PROG-02.
+- **Tài khoản, xếp hạng, thử thách ngày, huy hiệu:** MEL-30 DES-01, MEL-65 CT-03, MEL-67 BE-ID-02, MEL-68 BE-PROG-01, MEL-69 BE-DAILY-01 (thêm phụ thuộc BE-ID-02 để gộp lượt và chuỗi ngày của khách), MEL-74 FE-LB-01, MEL-75 FE-DAILY-01 (thêm khi nghiệm thu: nhãn mức trong kết quả chia sẻ), MEL-84 BE-ID-03, MEL-85 BE-PROG-02.
 - **Chat, voice, audio, nguồn nhạc:** MEL-57 BE-CHAT-01, MEL-83 FE-RTC-01, MEL-44 BE-AUD-01, MEL-34 BE-CAT-01.
 - **Vận hành và đo NFR:** MEL-91 INF-04, MEL-94 QA-04.
 
@@ -150,3 +151,24 @@ Ngày 22/10/2026 đã sửa AC trên Jira cho 28 ticket; cuối mô tả mỗi t
 3. **Vì sao combo chỉ tính khi đúng ở mức 5 giây trở xuống và chỉ nhân điểm cơ bản?** Combo thưởng người nhận ra bài rất nhanh. Chỉ nhân điểm cơ bản để thưởng tốc độ không bị nhân thêm, tránh chênh lệch điểm quá lớn. Ví dụ ở mục 3.2 ra 1.013 điểm.
 4. **Mất kết nối thì sao trận không chờ?** Một người rớt mạng không được bắt bốn người còn lại chờ. Giữ chỗ 30 giây đủ cho mạng di động chập chờn; vòng bị lỡ được 0 điểm, điểm đã có vẫn giữ.
 5. **Khách không lên bảng xếp hạng thì có thiệt không?** Không, nếu đăng nhập trước khi dữ liệu khách bị xóa (sau 30 ngày không hoạt động, BR-20). Khách chơi được mọi chế độ; khi đăng nhập, điểm các trận xếp hạng được gộp vào tài khoản. Đây cũng là lý do tự nhiên để người chơi tạo tài khoản, phục vụ KPI ≥ 30 tài khoản trong beta.
+
+## 8. Biên bản duyệt
+
+Product Owner: Trần Văn Thái. Ngày 22/10/2026, Thái giao Claude chốt các điểm còn mở theo ba nguyên tắc ở mục 1; agent MEL-28 đưa bản chốt vào repo và hỏi lại qua review PR. Bảng dưới ghi lại từng vòng để truy vết quyết định.
+
+| Vòng | Ngày | Nội dung | Người quyết | Ghi ở đâu |
+|---|---|---|---|---|
+| Chốt BR | 22/10/2026 | Các điểm còn mở của bản 17/10; 19 BR có dấu ✎ (BR-04, 05, 07, 08, 09, 10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 23, 24, 25, 27) | Claude, theo ủy quyền của Thái | Mục 2.1, 2.3, 4 |
+| Review PR lần 1 | 22/10/2026 | 6 câu hỏi của agent: trạng thái ADR-003, câu cũ về SPK-01, câu bảo vệ 5, ghép trận nhanh (BR-13, BR-23), các điểm nhỏ (BR-07, BR-09, BR-16, BR-21), mã use case ở AC1 | Claude, theo ủy quyền của Thái | Dòng "(review PR)" ở mục 2.2 |
+| Review PR lần 2 | 22/10/2026 | 5 điểm Minor: link mời ở BR-13, thưởng tốc độ âm, FR-07 và FR-08 trỏ BR-07, điều kiện chuyển ADR-003 sang Chấp nhận, FR-09 thiếu phòng công khai | Claude, theo ủy quyền của Thái | Dòng "(review PR lần 2)" ở mục 2.2 |
+| Review PR lần 3 | 22/10/2026 | 4 điểm tùy chọn của QA: phạm vi BR-12, lượt đoán sát giờ, công thức "chỉ khi đoán đúng", cách viết "5s" và "5 giây" | Claude, theo ủy quyền của Thái | Dòng "(review PR lần 3)" ở mục 2.2 |
+| Nghiệm thu | 22/10/2026 | Nhãn mức đoán đúng trong kết quả chia sẻ (BR-25); thêm biên bản này | Claude, theo ủy quyền của Thái | Dòng "(nghiệm thu)" ở mục 2.2 |
+
+**BR cần theo dõi sau khi duyệt** (đánh dấu để hỏi lại, theo AC của MEL-28):
+
+- **BR-01:** preview không công bố vị trí đoạn trích trong bài (SPK-01), nên độ khó mức 2 giây có thể chênh giữa các bài. Xem lại sau playtest.
+- **BR-27 và mục 5:** chỉ dùng preview Deezer cho beta công khai khi LEG-02 (MEL-120) kết luận "Được phép" hoặc "Được phép có điều kiện".
+
+**Duyệt cuối của Product Owner**
+
+- [ ] Thái đã đọc mục 4 (BR-01 → BR-29) và duyệt bản này. Ngày: ____ · Bằng chứng: comment duyệt của Thái trên PR: ____

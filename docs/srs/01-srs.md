@@ -82,7 +82,7 @@ Mỗi dòng kiểm chứng được bằng Acceptance Criteria ở ticket Jira t
 | Mã | Yêu cầu | Ưu tiên | Sprint | BR |
 |---|---|---|---|---|
 | FR-09 | Người chơi tạo phòng riêng (vào bằng mã hoặc link mời) hoặc phòng công khai (hiện trong danh sách phòng), chờ ở sảnh, chơi trận thời gian thực, xem bảng điểm trực tiếp, xem công bố người thắng rồi chơi lại trong cùng phòng. Chủ phòng mời được người khác ra khỏi phòng. Người vào lúc trận đang chạy chờ ở sảnh. | Must | S3 | BR-07 → BR-12, BR-14, BR-15 |
-| FR-10 | Người chơi, kể cả khách, vào phòng công khai từ danh sách hoặc ghép trận nhanh, có đếm ngược và gợi ý khi chờ lâu. | Must | S4 | BR-11, BR-13, BR-20 |
+| FR-10 | Người chơi, kể cả khách, vào phòng công khai từ danh sách, hoặc ghép trận nhanh vào phòng ghép trận, có đếm ngược và gợi ý khi chờ lâu. | Must | S4 | BR-11, BR-13, BR-20 |
 
 ### 3.5 Giao tiếp
 

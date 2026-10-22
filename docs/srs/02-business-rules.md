@@ -1,7 +1,7 @@
 # Quy tắc nghiệp vụ Meloo (BR-01 → BR-29)
 
 > Ticket: MEL-28 (DOC-01) · Trạng thái: **đã chốt ngày 22/10/2026**
-> Nguồn: tài liệu "Meloo — Kế hoạch dự án & Quy trình làm việc" (bản 17/10, mục "Luật chơi & quy tắc nghiệp vụ"). Ngày 22/10, Product Owner (Thái) giao Claude chốt các điểm còn mở theo tiêu chí: game hay, làm kịp trong MVP, trải nghiệm người chơi đặt lên đầu. BR có dấu ✎ là đã sửa hoặc bổ sung so với bản 17/10; lý do ghi ở mục 2. Cập nhật thêm cùng ngày theo review PR: BR-07, BR-10, BR-13, BR-21.
+> Nguồn: tài liệu "Meloo — Kế hoạch dự án & Quy trình làm việc" (bản 17/10, mục "Luật chơi & quy tắc nghiệp vụ"). Ngày 22/10, Product Owner (Thái) giao Claude chốt các điểm còn mở theo tiêu chí: game hay, làm kịp trong MVP, trải nghiệm người chơi đặt lên đầu. BR có dấu ✎ là đã sửa hoặc bổ sung so với bản 17/10; lý do ghi ở mục 2. Cập nhật thêm cùng ngày theo review PR: BR-07, BR-10, BR-12, BR-13, BR-21.
 > Tài liệu liên quan: `01-srs.md` (yêu cầu), `03-glossary.md` (thuật ngữ).
 
 ## 1. Ba nguyên tắc dùng để chốt

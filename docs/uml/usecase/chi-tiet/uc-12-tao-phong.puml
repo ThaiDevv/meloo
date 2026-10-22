@@ -1,0 +1,27 @@
+@startuml uc-12-tao-phong
+title UC-12: Tạo phòng (phân hệ Chơi nhiều người)
+left to right direction
+skinparam shadowing false
+skinparam linetype polyline
+skinparam nodesep 40
+skinparam ranksep 90
+skinparam defaultFontName DejaVu Sans
+skinparam usecase {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam actor {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam rectangle {
+  BackgroundColor white
+  BorderColor black
+}
+
+actor "Chủ phòng" as A1
+rectangle "**Meloo — UC-12**" {
+  usecase "UC-12\nTạo phòng" as UC12
+}
+A1 -- UC12
+@enduml

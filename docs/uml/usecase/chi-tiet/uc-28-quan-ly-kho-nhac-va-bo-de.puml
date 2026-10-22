@@ -1,0 +1,31 @@
+@startuml uc-28-quan-ly-kho-nhac-va-bo-de
+title UC-28: Quản lý kho nhạc và bộ đề (phân hệ Quản trị)
+left to right direction
+skinparam shadowing false
+skinparam linetype polyline
+skinparam nodesep 40
+skinparam ranksep 90
+skinparam defaultFontName DejaVu Sans
+skinparam usecase {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam actor {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam rectangle {
+  BackgroundColor white
+  BorderColor black
+}
+
+actor "Quản trị viên" as A1
+rectangle "<<actor>>\n**Hệ thống API nhạc**" as X1
+rectangle "**Meloo — UC-28**" {
+  usecase "UC-28\nQuản lý kho nhạc và bộ đề" as UC28
+  usecase "UC-27\nNhập bài từ API nhạc" as UC27
+}
+A1 -- UC28
+UC27 ..> UC28 : <<extend>>
+UC28 -- X1
+@enduml

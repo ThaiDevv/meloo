@@ -1,0 +1,27 @@
+@startuml uc-13-vao-phong-bang-ma-hoac-link
+title UC-13: Vào phòng bằng mã hoặc link (phân hệ Chơi nhiều người)
+left to right direction
+skinparam shadowing false
+skinparam linetype polyline
+skinparam nodesep 40
+skinparam ranksep 90
+skinparam defaultFontName DejaVu Sans
+skinparam usecase {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam actor {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam rectangle {
+  BackgroundColor white
+  BorderColor black
+}
+
+actor "Khách" as A1
+rectangle "**Meloo — UC-13**" {
+  usecase "UC-13\nVào phòng bằng mã hoặc link" as UC13
+}
+A1 -- UC13
+@enduml

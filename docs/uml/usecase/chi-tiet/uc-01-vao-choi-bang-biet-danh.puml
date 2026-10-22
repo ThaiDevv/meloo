@@ -1,0 +1,27 @@
+@startuml uc-01-vao-choi-bang-biet-danh
+title UC-01: Vào chơi bằng biệt danh (phân hệ Tài khoản)
+left to right direction
+skinparam shadowing false
+skinparam linetype polyline
+skinparam nodesep 40
+skinparam ranksep 90
+skinparam defaultFontName DejaVu Sans
+skinparam usecase {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam actor {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam rectangle {
+  BackgroundColor white
+  BorderColor black
+}
+
+actor "Khách" as A1
+rectangle "**Meloo — UC-01**" {
+  usecase "UC-01\nVào chơi bằng biệt danh" as UC01
+}
+A1 -- UC01
+@enduml

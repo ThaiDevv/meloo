@@ -171,4 +171,4 @@ Product Owner: Trần Văn Thái. Ngày 22/10/2026, Thái giao Claude chốt cá
 
 **Duyệt cuối của Product Owner**
 
-- [ ] Thái đã đọc mục 4 (BR-01 → BR-29) và duyệt bản này. Ngày: ____ · Bằng chứng: comment duyệt của Thái trên PR: ____
+- [x] Thái đã đọc mục 4 (BR-01 → BR-29) và duyệt bản này. Ngày: 22/10/2026 · Bằng chứng: comment duyệt của Thái trên PR: https://github.com/ThaiDevv/meloo/pull/17#issuecomment-6334499587

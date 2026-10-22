@@ -123,7 +123,7 @@ package "chat (V5)" {
   entity "banned_word" as banned_word {
     * id : uuid <<PK>>
     --
-    * word : varchar <<UQ, đã chuẩn hóa>>
+    * word : varchar <<UQ, chữ thường NFC, giữ dấu>>
     created_by : uuid
   }
 }

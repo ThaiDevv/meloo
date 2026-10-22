@@ -8,11 +8,11 @@
 | V2 | `V2__identity_init.sql` | identity | `app_user`, `auth_identity`, `refresh_token` | DB-01 (MEL-32) |
 | V3 | `V3__catalog_init.sql` | catalog | `artist`, `genre`, `track`, `playlist`, `playlist_track`; extension `pg_trgm`, `unaccent`; index trigram | DB-01 |
 | V4 | `V4__progression_match_history.sql` | progression | `match`, `match_player`, `round`, `round_result` | DB-01 |
-| V5 | `V5__chat_init.sql` | chat | `chat_report`, `banned_word` + từ cấm khởi tạo | DB-01 |
+| V5 | `V5__chat_init.sql` | chat | `chat_report`, `banned_word` + khoảng 30 từ cấm khởi tạo, có dấu (DB-01 soạn, Thái duyệt trong PR) | DB-01 |
 | V6 | `V6__progression_stats.sql` | progression | `player_stats`, `achievement` (+ dòng khởi tạo), `user_achievement` | DB-02 (MEL-66) |
 | V7 | `V7__daily_init.sql` | daily | `daily_challenge`, `daily_attempt` | DB-02 |
 | V8 | `V8__admin_audit_log.sql` | admin | `audit_log` | DB-02 |
-| V9 | `V9__admin_analytics_event.sql` | admin | `analytics_event` | DB-02 |
+| V9 | `V9__admin_analytics_event.sql` | admin | `analytics_event` (giữ 90 ngày, job xóa hằng ngày) | DB-02 |
 
 Mỗi version thuộc đúng một ticket DB: V2–V5 là DB-01, V6–V9 là DB-02. V5 (chat) nằm ở DB-01 vì BE-CHAT-01 chạy ở S3, trước DB-02 (S4).
 

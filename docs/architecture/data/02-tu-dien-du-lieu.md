@@ -123,8 +123,10 @@ Index `(status, created_at)`, `(sender_id)`.
 | Cột | Kiểu | Ràng buộc | Ghi chú |
 |---|---|---|---|
 | id | uuid | PK | |
-| word | varchar(80) | not null, unique | đã chuẩn hóa như BR-05 |
+| word | varchar(80) | not null, unique, check `word = lower(word)` | chữ thường, Unicode NFC, **giữ dấu**; không chuẩn hóa bỏ dấu như BR-05 |
 | created_by | uuid | null, ref `app_user` | null với dòng khởi tạo trong migration |
+
+So khớp theo **từ nguyên vẹn** (sau khi chuẩn hóa chữ thường và NFC), không so khớp chuỗi con sau khi bỏ dấu. Biến thể không dấu hoặc viết tắt (VD `vcl`, `dm`) là **dòng riêng**. V5 chỉ khởi tạo khoảng 30 từ phổ biến nhất, có dấu; phần còn lại admin thêm qua UC-31. Lý do ở tài liệu 01 mục 2.
 
 ## progression: lịch sử trận (V4)
 
@@ -260,8 +262,8 @@ Chỉ thêm, không sửa, không xóa (thu quyền `update`/`delete` của role
 |---|---|---|---|
 | id | bigint | PK identity | |
 | event_type | varchar(40) | not null | `GUEST_CREATED`, `USER_REGISTERED`, `MATCH_STARTED`, `MATCH_FINISHED`, `DAILY_ATTEMPT_FINISHED` |
-| user_id | uuid | null, ref `app_user` | |
+| user_id | uuid | null, ref `app_user` | đặt null khi nhận `AccountDeleted` |
 | props | jsonb | null | VD loại trận |
 | occurred_at | timestamptz | not null | |
 
-Index `(event_type, occurred_at)`. Thời hạn giữ dữ liệu: xem tài liệu 01 mục 7.
+Index `(event_type, occurred_at)`. **Giữ 90 ngày**: job của module admin chạy hằng ngày xóa dòng có `occurred_at` quá 90 ngày (`delete … where occurred_at < now() - interval '90 days'`).

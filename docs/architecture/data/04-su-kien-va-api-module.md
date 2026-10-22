@@ -15,7 +15,7 @@ Record nằm ở `com.meloo.<module>.events` của module phát; listener `@Appl
 | `MatchFinished` | game | như trên | progression (ghi lịch sử, thống kê, bảng), admin | Payload mở rộng, thêm `QUICK_MATCH` và `status` (mục 2) |
 | `DailyAttemptFinished` | daily | BE-DAILY-01 | progression (huy hiệu, BE-PROG-02), admin | Không |
 | `AchievementUnlocked` | progression | BE-PROG-02 | frontend đọc qua `/me/achievements` | Không |
-| `AccountDeleted(userId)` | identity | BE-ID-03 (gồm job xóa khách 30 ngày, BR-20) | progression, **daily**, chat, admin; listener ở package `account/` của từng module | Harness thiếu **daily** (`daily_attempt` có `user_id`) |
+| `AccountDeleted(userId)` | identity | BE-ID-03 (gồm job xóa khách 30 ngày, BR-20) | progression, **daily**, chat, admin (đặt `analytics_event.user_id` = null); listener ở package `account/` của từng module | Harness thiếu **daily** (`daily_attempt` có `user_id`) |
 
 ## 2. Payload của `MatchFinished` (hợp đồng cho BE-SOLO-01, BE-ROOM-02, BE-PROG-01)
 
@@ -29,6 +29,8 @@ Record nằm ở `com.meloo.<module>.events` của module phát; listener `@Appl
 | `rounds[]` | `roundNo`, `trackId`, `trackTitle`, `artistName` |
 | `players[]` | `userId`, `nickname`, `isGuest`, `totalScore`, `rank`, `correctCount`, `correctTimeMs`, và `results[]` theo vòng |
 | `results[]` | `roundNo`, `outcome`, `correctLevel`, `baseScore`, `comboPercent`, `speedBonus`, `roundScore`, `wrongCount`, `answerTimeMs` |
+
+**Phát trong transaction.** Game và room không có transaction sẵn, nên BE-SOLO-01 và BE-ROOM-02 bọc việc phát `MatchFinished` bằng `TransactionTemplate` (hoặc tương đương). `@ApplicationModuleListener` chỉ chạy sau commit; phát ngoài transaction thì listener không bao giờ chạy và lịch sử trận mất. Bật Event Publication Registry (SET-03) để sự kiện chưa xử lý được chạy lại khi listener lỗi; vì thế listener của progression phải idempotent theo `matchId`.
 
 Payload không chứa token âm thanh, URL preview hay bất kỳ dữ liệu nào lộ đáp án trước khi trận kết thúc: sự kiện chỉ phát sau khi trận xong.
 

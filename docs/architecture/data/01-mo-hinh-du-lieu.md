@@ -32,6 +32,7 @@
 | `User` → `app_user` | Tránh từ khóa dành riêng. Khách và người đã đăng nhập chung một bảng, phân biệt bằng `kind` (ADR-005: khách cũng nhận phiên theo cơ chế này). |
 | `Guess` → `round_result` | Không use case nào cần từng lần đoán sai; cần điểm cơ bản, hệ số combo, thưởng tốc độ và mức đoán đúng của mỗi người ở mỗi vòng (AC của MEL-30, BR-07, BR-08). Lưu `wrong_count` là đủ. Thuật ngữ "lượt đoán" của glossary vẫn dùng cho thao tác của người chơi; DB chỉ lưu kết quả cuối vòng. |
 | Ca sĩ phụ không có bảng nối `track_artist` | BR-06 chỉ xét ca sĩ chính; `track.primary_artist_id` là đủ. |
+| `banned_word` giữ dấu, không có cột chuẩn hóa | Chuẩn hóa bỏ dấu kiểu BR-05 làm các từ hợp lệ trùng từ tục và bị chặn nhầm (VD "các", "lon"). Nên lưu từ chữ thường, Unicode NFC, giữ dấu và so khớp theo từ nguyên vẹn. Biến thể không dấu hoặc viết tắt (`vcl`, `dm`) là dòng riêng. BR-05 vẫn dùng cho tên bài, không cho từ cấm. |
 | Không có bảng tin nhắn chat | Tin chat chỉ sống trong phòng (bộ nhớ). Chỉ tin bị báo cáo mới lưu, kèm 5 tin ngữ cảnh, trong `chat_report`. |
 | Không có bảng chuỗi ngày | Chuỗi ngày tính từ `daily_attempt` (các ngày liên tiếp có lượt). Một nguồn dữ liệu nên gộp khách (BR-21) không phải sửa thêm bảng. |
 
@@ -51,8 +52,8 @@ Chọn B. Hệ quả: `MatchFinished` thành hợp đồng dữ liệu lớn hơ
 | Ticket | Sửa gì |
 |---|---|
 | DB-01 (MEL-32) | V4 là lịch sử trận, thuộc module progression: entity và repository đặt ở `progression/persistence`, không phải `game/persistence`. Thêm `progression/persistence` vào Phạm vi file; bỏ `game` khỏi danh sách package `persistence`. Tên file `V4__progression_match_history.sql`. Ghi chú "chạy song song BE-GAME-01" không còn cần. |
-| BE-SOLO-01 (MEL-45) | Không ghi bảng nào. Phát `MatchStarted` và `MatchFinished` đủ payload ở tài liệu 04 (loại trận, cờ xếp hạng, trạng thái `FINISHED`/`ABANDONED`, kết quả từng vòng). Hạn giữ phiên: AC ghi 2 giờ, BR-23 ghi 30 phút; cần thống nhất (xem mục 7). |
-| BE-ROOM-02 (MEL-56) | Phát `MatchFinished` đủ payload như trên cho `PRIVATE_ROOM`, `PUBLIC_ROOM`, `QUICK_MATCH`. |
+| BE-SOLO-01 (MEL-45) | Không ghi bảng nào. Phát `MatchStarted` và `MatchFinished` đủ payload ở tài liệu 04 (loại trận, cờ xếp hạng, trạng thái `FINISHED`/`ABANDONED`, kết quả từng vòng). **Sửa AC: hạn giữ phiên 30 phút theo BR-23** (AC đang ghi 2 giờ). **`MatchFinished` phải được phát trong transaction** (VD `TransactionTemplate`), vì game không có transaction sẵn: `@ApplicationModuleListener` chỉ chạy sau commit, phát ngoài transaction thì sự kiện không bao giờ tới progression và mất lịch sử. Bật Event Publication Registry để chạy lại khi listener lỗi. |
+| BE-ROOM-02 (MEL-56) | Phát `MatchFinished` đủ payload như trên cho `PRIVATE_ROOM`, `PUBLIC_ROOM`, `QUICK_MATCH`. **Phát trong transaction** (VD `TransactionTemplate`) vì room không có transaction sẵn; lý do và Event Publication Registry như BE-SOLO-01. |
 | BE-PROG-01 (MEL-68) | Sở hữu bảng V4 (DB-01 tạo bảng và entity, BE-PROG-01 viết logic). Phục vụ `/me/matches`. Dùng `matchId` làm khóa chính để ghi lặp vẫn idempotent. Phạm vi file không đổi (`progression/**` đã gồm `persistence`). |
 
 Ngoài danh sách của ticket, DB-02 (MEL-66) cần biết V6 không còn chứa bảng lịch sử; AC hiện tại của DB-02 ("V6 progression: thống kê, XP, huy hiệu") vẫn đúng.
@@ -93,13 +94,16 @@ Khóa ngoại thật chỉ có trong cùng module (đường liền ở ERD).
 | BR-24 | Bảng tuần: tổng `total_score` của `match_player` có `counts_for_leaderboard` trong tuần, bằng điểm thì `max(ended_at)` nhỏ hơn xếp trên. Toàn thời gian: `player_stats.ranked_score`, `ranked_reached_at` |
 | BR-25 | `daily_attempt`: `started_at` do server cấp, `correct_level`, `elapsed_ms`; trần 5 phút; ngày thuộc ngày server cấp bài |
 | BR-28 | `app_user.status`, `lock_reason`; khách bị khóa theo id; mọi thao tác ghi `audit_log` |
-| BR-21 (xóa tài khoản) | Identity xóa dòng `app_user`. Progression: xóa `player_stats`, `user_achievement`; ẩn danh `match_player` (`user_id` = null, biệt danh "ẩn danh"). Daily: ẩn danh `daily_attempt` tương tự. BE-ID-03 viết listener |
+| BR-21 (xóa tài khoản) | Identity xóa dòng `app_user`. Progression: xóa `player_stats`, `user_achievement`; ẩn danh `match_player` (`user_id` = null, biệt danh "ẩn danh"). Daily: ẩn danh `daily_attempt` tương tự. Admin: đặt `analytics_event.user_id` = null. BE-ID-03 viết listener |
 
-## 7. Điểm còn mở
+## 7. Đã chốt và điểm còn mở
 
-- **Hạn giữ phiên chơi đơn:** BE-SOLO-01 ghi "hết hạn sau 2 giờ", BR-23 ghi 30 phút rồi chuyển `ABANDONED`. Đề xuất theo BR-23 (BR là nguồn sự thật): sửa AC của BE-SOLO-01. `[HỎI THÁI]`
-- **Danh sách từ cấm khởi tạo** (V5): nội dung do Thái cung cấp hoặc duyệt; tài liệu này chỉ quy định cấu trúc. `[HỎI THÁI]`
-- **Thời hạn giữ `analytics_event`:** chưa có chính sách; để DB-02 chốt cùng Thái. `[HỎI THÁI]`
+Thái đã quyết:
+- **Hạn giữ phiên chơi đơn:** 30 phút theo BR-23, rồi chuyển `ABANDONED`; MEL-45 sửa AC (đã ghi ở mục 3).
+- **Từ cấm khởi tạo (V5):** khoảng 30 từ phổ biến nhất, có dấu. DB-01 soạn danh sách, Thái duyệt ngay trong PR của DB-01. Còn lại admin thêm qua UC-31.
+- **`analytics_event`:** giữ 90 ngày, job xóa hằng ngày; `AccountDeleted` thì đặt `user_id` = null.
+
+Còn mở:
 - **`cover_url`:** không có trong thiết kế. Nếu giao diện cần ảnh bìa, thêm khi LEG-02 (MEL-120) làm rõ quyền dùng.
 
 ## 8. Câu hỏi bảo vệ

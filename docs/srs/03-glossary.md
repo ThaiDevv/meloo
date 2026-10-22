@@ -52,7 +52,7 @@
 
 | Thuật ngữ | Tiếng Anh | Định nghĩa | BR |
 |---|---|---|---|
-| Khách | Guest | Người chơi chưa đăng nhập, dùng biệt danh, chơi mọi chế độ; không lên bảng xếp hạng; dữ liệu bị xóa sau 30 ngày không hoạt động. | BR-20 |
+| Khách | Guest | Người chơi chưa đăng nhập, dùng biệt danh, chơi mọi chế độ; xem được bảng xếp hạng và hồ sơ (chỉ xem) nhưng không có tên trên bảng; dữ liệu bị xóa sau 30 ngày không hoạt động. | BR-20 |
 | Biệt danh | Nickname | Tên hiển thị 3–20 ký tự, không chứa từ cấm. | BR-22 |
 | Gộp khách | Guest merge | Khi khách đăng nhập, lịch sử, thống kê, huy hiệu và điểm trận xếp hạng được gộp vào tài khoản (sự kiện `GuestMerged`). | BR-21 |
 | Xóa tài khoản | Account deletion | Người dùng tự xóa tài khoản; dữ liệu cá nhân bị xóa, lịch sử trận được ẩn danh (sự kiện `AccountDeleted`). | BR-21 |

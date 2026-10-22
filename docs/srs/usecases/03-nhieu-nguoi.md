@@ -52,7 +52,8 @@
   5. Hết đếm ngược, hoặc khi đủ số người tối đa của phòng, trận tự bắt đầu (UC-18).
 - Luồng phụ và ngoại lệ:
   - 4a. Chờ 60 giây vẫn chỉ có một mình: hệ thống gợi ý chơi đơn (UC-07) hoặc "Tạo phòng riêng và mời bạn" (người chơi rời hàng chờ, UC-12 cùng bộ lọc, trận không tính xếp hạng). Người chơi vẫn chờ tiếp được.
-  - 4b. Người thứ 2 rời đi khi đang đếm ngược: `[HỎI THÁI]` đếm ngược dừng hay chạy tiếp (mục 5 của `00-tong-quan.md`, điểm 5).
+  - 4b. Đang đếm ngược mà số người còn kết nối giảm xuống dưới 2: đếm ngược dừng. Khi lại có người thứ 2, đếm lại đủ 30 giây. (Quyết định PO 22/10 (mục 5, #5))
+  - 5b. Lúc hết đếm ngược, hệ thống kiểm tra lại số người đang kết nối; nếu dưới 2 thì không bắt đầu trận và quay về trạng thái chờ. (Quyết định PO 22/10 (mục 5, #5))
   - 5a. Hết trận, ai ở lại sảnh thì đếm ngược lại như bước 4 (UC-20).
   - Ghi chú: phòng ghép trận không có chủ phòng, không có nút sẵn sàng, không mời người ra, không hiện trong danh sách phòng công khai và không vào được bằng mã hay link.
   - Ghi chú: khách chơi được nhưng điểm không vào bảng xếp hạng; người đã đăng nhập trong cùng trận vẫn được tính.
@@ -107,13 +108,13 @@
 - Luồng chính:
   1. Người chơi gõ tin nhắn và gửi.
   2. Hệ thống kiểm tra tin dài tối đa 200 ký tự và người gửi không vượt 1 tin mỗi giây.
-  3. Hệ thống lọc từ cấm theo danh sách do quản trị viên quản lý.
+  3. Hệ thống kiểm tra từ cấm theo danh sách do quản trị viên quản lý.
   4. Nếu đang trong vòng, hệ thống kiểm tra tin có chứa tên bài đáp án không (chuẩn hóa như BR-05).
   5. Hệ thống phát tin cho mọi người trong phòng.
 - Luồng phụ và ngoại lệ:
   - 2a. Tin quá dài hoặc gửi quá nhanh: hệ thống từ chối và báo cho người gửi.
-  - 3a. Tin chứa từ cấm: hệ thống lọc. `[HỎI THÁI]` chặn tin hay che từ (mục 5 của `00-tong-quan.md`, điểm 6).
-  - 4a. Tin chứa tên bài đáp án: hệ thống chặn, chỉ người gửi thấy cảnh báo. Hết vòng thì nói tự do.
+  - 3a. Tin chứa từ cấm: hệ thống chặn cả tin, không che bằng ***; chỉ người gửi thấy cảnh báo. Dùng chung cơ chế "tin bị chặn" với tin lộ đáp án (4a). (Quyết định PO 22/10 (mục 5, #6))
+  - 4a. Tin chứa tên bài đáp án: hệ thống chặn (tin bị chặn), chỉ người gửi thấy cảnh báo. Hết vòng thì nói tự do.
   - 5a. Người nhận thấy tin vi phạm: báo cáo tin (UC-22, extend).
 - Quy tắc nghiệp vụ: BR-05, BR-16, BR-17.
 - Yêu cầu liên quan: FR-11, NFR-07.

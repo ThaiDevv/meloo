@@ -20,15 +20,13 @@ skinparam rectangle {
 }
 
 actor "Khách" as Khach
-actor "Người chơi\n(đã đăng nhập)" as NguoiChoi
-NguoiChoi -|> Khach
 rectangle "**Meloo — Xếp hạng và tiến trình**" {
   usecase "UC-24\nXem bảng xếp hạng" as UC24
   usecase "UC-04\nXem hồ sơ và thống kê cá nhân" as UC04
   usecase "UC-25\nXem huy hiệu" as UC25
 }
 Khach -- UC24
-NguoiChoi -- UC04
-NguoiChoi -- UC25
+Khach -- UC04
+Khach -- UC25
 UC04 ..> UC25 : <<include>>
 @enduml

@@ -32,7 +32,7 @@ rectangle "**Meloo — Tài khoản**" {
 }
 Khach -- UC01
 Khach -- UC02
-NguoiChoi -- UC04
+Khach -- UC04
 NguoiChoi -- UC05
 UC02 ..> UC03 : <<include>>
 UC02 -- OAuth

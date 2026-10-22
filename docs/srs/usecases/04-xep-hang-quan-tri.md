@@ -4,7 +4,7 @@
 
 ### UC-24: Xem bảng xếp hạng
 - Tác nhân chính / phụ: Khách (gồm Người chơi đã đăng nhập) / không có.
-- Tiền điều kiện: Không có. `[HỎI THÁI]` đang suy ra khách xem được bảng xếp hạng (mục 5 của `00-tong-quan.md`, điểm 2).
+- Tiền điều kiện: Không có; khách cũng xem được bảng xếp hạng. (Quyết định PO 22/10 (mục 5, #2))
 - Hậu điều kiện (thành công / thất bại): Thành công: người chơi thấy bảng đã chọn. Thất bại: người chơi thấy thông báo lỗi tải bảng và thử lại được.
 - Luồng chính:
   1. Người chơi mở "Xếp hạng".
@@ -14,7 +14,7 @@
   - 3a. Bảng tuần và toàn thời gian xếp theo tổng điểm các trận xếp hạng; bằng điểm thì ai đạt mức điểm đó trước xếp trên.
   - 3b. Bảng tuần reset lúc 00:00 thứ Hai giờ Việt Nam.
   - 3c. Bảng theo ngày là bảng thử thách ngày: xếp theo mức đoán đúng (2 giây cao nhất), rồi theo thời gian; không đoán ra thì xếp cuối.
-  - 3d. Người chơi là khách: không có vị trí trên bảng; hệ thống gợi ý đăng nhập để điểm được tính. Điểm của khách không vào bảng.
+  - 3d. Người chơi là khách: xem được bảng nhưng không có tên trên bảng; hệ thống nhắc "Đăng nhập để đưa điểm lên bảng xếp hạng". Điểm của khách không vào bảng. (Quyết định PO 22/10 (mục 5, #2))
   - 3e. Bảng chưa có ai: hệ thống hiển thị bảng trống.
   - Ghi chú: chỉ trận xếp hạng (chơi đơn bộ chuẩn, thử thách ngày, ghép trận nhanh) được tính; phòng tự tạo thì không.
 - Quy tắc nghiệp vụ: BR-20, BR-21, BR-23, BR-24, BR-25.
@@ -45,12 +45,12 @@
 - Luồng chính:
   1. Quản trị viên mở danh sách báo cáo chưa xử lý.
   2. Hệ thống hiển thị tin bị báo (nội dung, người gửi, người báo cáo, thời điểm).
-  3. Quản trị viên quyết định: bỏ qua báo cáo, hoặc xử lý.
+  3. Quản trị viên chọn một trong ba: bỏ qua báo cáo, khóa (UC-29) hoặc thêm từ cấm (UC-31). MVP không có mức cảnh cáo; ghi cảnh cáo là hướng mở rộng ở Phase 2. (Quyết định PO 22/10 (mục 5, #7))
   4. Hệ thống đánh dấu báo cáo đã xử lý và ghi nhật ký.
 - Luồng phụ và ngoại lệ:
-  - 3a. Xử lý bằng khóa tài khoản người gửi (UC-29, extend): tài khoản đó không đăng nhập, không tạo hay vào phòng được. `[HỎI THÁI]` có mức cảnh cáo trước khi khóa không (mục 5 của `00-tong-quan.md`, điểm 7).
-  - 3b. Xử lý bằng thêm từ vào danh sách từ cấm (UC-31, extend).
-  - 3c. Người gửi tin bị báo là khách (không có tài khoản để khóa): `[HỎI THÁI]` xử lý thế nào (mục 5 của `00-tong-quan.md`, điểm 8).
+  - 3a. Khóa (UC-29, extend): quản trị viên phải nhập lý do; lý do được ghi vào nhật ký. Quản trị viên mở khóa lại được. (Quyết định PO 22/10 (mục 5, #7))
+  - 3b. Thêm từ vào danh sách từ cấm (UC-31, extend).
+  - 3c. Người gửi tin bị báo là khách: quản trị viên khóa theo id khách. Id đó không tạo hay vào phòng, không chat được. Giới hạn: khách xóa dữ liệu trình duyệt thì có id mới. (Quyết định PO 22/10 (mục 5, #8))
   - 1a. Người dùng không phải Quản trị viên: hệ thống từ chối.
-- Quy tắc nghiệp vụ: BR-17, BR-20, BR-28.
+- Quy tắc nghiệp vụ: BR-17, BR-20, BR-28. BR-28 cần bổ sung câu về lý do khóa và khóa khách (xem mục "Tài liệu cần cập nhật" của PR).
 - Yêu cầu liên quan: FR-17.

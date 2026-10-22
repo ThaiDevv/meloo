@@ -15,7 +15,8 @@
   6. Khách chọn một chế độ chơi (UC-07, UC-10, UC-13, UC-15…).
 - Luồng phụ và ngoại lệ:
   - 2a. Khách đã có phiên khách từ lần trước và dữ liệu chưa bị xóa (khách không hoạt động 30 ngày thì bị xóa): hệ thống dùng lại phiên và biệt danh cũ, bỏ qua bước 3–5.
-  - 4a. Biệt danh ngắn hơn 3 hoặc dài hơn 20 ký tự, hoặc chứa từ cấm: hệ thống báo lỗi, quay lại bước 3.
+  - 4a. Biệt danh ngắn hơn 3 hoặc dài hơn 20 ký tự: hệ thống báo lỗi, quay lại bước 3.
+  - 4b. Biệt danh chứa từ cấm: hệ thống từ chối ngay khi nhập (BR-22; Quyết định PO 22/10 (mục 5, #6)), quay lại bước 3.
   - 6a. Khách chọn đăng nhập thay vì chơi bằng biệt danh: chuyển sang UC-02.
 - Quy tắc nghiệp vụ: BR-20, BR-22.
 - Yêu cầu liên quan: FR-01, NFR-10 (từ lúc mở web đến khi nghe đoạn nhạc đầu tiên ≤ 30 giây, không cần đăng ký).

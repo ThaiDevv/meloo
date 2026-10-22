@@ -3,14 +3,14 @@
 > Ticket: MEL-29 (DOC-02) · Phụ thuộc: MEL-28 (DOC-01, SRS v1 đã chốt ngày 22/10/2026)
 > Đầu vào: `docs/srs/01-srs.md` (FR-01 → FR-19), `docs/srs/02-business-rules.md` (BR-01 → BR-29), `docs/srs/03-glossary.md`.
 > Đầu ra: sơ đồ ở `docs/uml/usecase/` (PlantUML + PNG) và đặc tả chi tiết ở các file cùng thư mục này. QA-04 soạn kịch bản UAT từ các use case này.
-> Trạng thái: **bản nháp chờ Thái duyệt.** Nội dung nghiệp vụ là của Thái; chỗ SRS và BR chưa nói rõ được đánh dấu `[HỎI THÁI]` và gom ở mục 5.
+> Trạng thái: **bản nháp chờ Thái duyệt.** Nội dung nghiệp vụ là của Thái. Ngày 22/10/2026, Thái đã chốt 8 điểm còn mở ở mục 5; đặc tả đã cập nhật theo đó. Các file SRS/BR/thuật ngữ nằm ngoài phạm vi ticket nên chưa sửa; câu cần bổ sung vào BR ghi ở mục "Tài liệu cần cập nhật" của PR.
 
 ## 1. Tác nhân
 
 | Tác nhân | Loại | Vai trò trong mô hình | Nguồn |
 |---|---|---|---|
 | Khách | Chính | Người chơi chưa đăng nhập, dùng biệt danh. Là tác nhân gốc: mọi use case chơi đều mở cho Khách. | SRS 2.1, BR-20 |
-| Người chơi (đã đăng nhập) | Chính | Thừa hưởng mọi use case của Khách; thêm hồ sơ, huy hiệu, xóa tài khoản. | SRS 2.1 |
+| Người chơi (đã đăng nhập) | Chính | Thừa hưởng mọi use case của Khách; thêm xóa tài khoản (hồ sơ và huy hiệu mở cho cả Khách, chỉ xem). | SRS 2.1, BR-21 |
 | Chủ phòng | Chính | Vai trò trong phòng tự tạo (riêng hoặc công khai): chọn bộ nhạc và số vòng, bắt đầu trận, mời người ra. Khách cũng làm được chủ phòng, nên Chủ phòng thừa hưởng từ Khách. Phòng ghép trận không có chủ phòng. | BR-12, BR-13 |
 | Quản trị viên | Chính | Đội vận hành: dashboard, kho nhạc, người dùng, báo cáo vi phạm, từ cấm, nhật ký. | SRS 2.1, BR-28 |
 | Hệ thống API nhạc | Phụ | Nguồn bài hát và đoạn preview (nguồn chính đề xuất ở ADR-003: Deezer). | SRS 2.2, BR-27 |
@@ -40,10 +40,10 @@ Tên dạng động từ + danh từ. Cột "Đặc tả" cho biết use case đ
 | UC-01 | Vào chơi bằng biệt danh | Khách | FR-01 | `01-tai-khoan.md` |
 | UC-02 | Đăng nhập bằng tài khoản mạng xã hội | Khách | FR-02, FR-03, FR-04 | `01-tai-khoan.md` |
 | UC-03 | Gộp dữ liệu khách (include của UC-02) | Khách | FR-02 | Trong UC-02 |
-| UC-04 | Xem hồ sơ và thống kê cá nhân (include UC-25) | Người chơi | FR-04, FR-13 | — |
+| UC-04 | Xem hồ sơ và thống kê cá nhân (include UC-25) | Khách | FR-04, FR-13 | — |
 | UC-05 | Xóa tài khoản | Người chơi | FR-03 | — |
 | UC-06 | Tìm bài hát (ô gợi ý, không cần gõ dấu) | Khách | FR-06 | Trong UC-08 |
-| UC-07 | Chơi luyện tập | Khách | FR-07, FR-13 | `02-choi-don.md` |
+| UC-07 | Chơi luyện tập ("Xếp hạng" bộ chuẩn hoặc "Luyện tập" tự chọn bộ lọc) | Khách | FR-07, FR-13, FR-14 | `02-choi-don.md` |
 | UC-08 | Đoán bài hát trong vòng | Khách | FR-06, FR-07 | `02-choi-don.md` |
 | UC-09 | Mở thêm mức nghe (Nghe thêm, Bỏ qua; extend của UC-08) | Khách | FR-07 | Trong UC-08 |
 | UC-10 | Làm thử thách hằng ngày | Khách | FR-08, FR-13, FR-14 | `02-choi-don.md` |
@@ -61,11 +61,11 @@ Tên dạng động từ + danh từ. Cột "Đặc tả" cho biết use case đ
 | UC-22 | Báo cáo tin nhắn vi phạm (extend của UC-21) | Khách | FR-11 | — |
 | UC-23 | Trò chuyện bằng voice (phòng riêng) | Khách | FR-12 | — |
 | UC-24 | Xem bảng xếp hạng | Khách | FR-14 | `04-xep-hang-quan-tri.md` |
-| UC-25 | Xem huy hiệu | Người chơi | FR-15 | — |
+| UC-25 | Xem huy hiệu | Khách | FR-15 | — |
 | UC-26 | Xem dashboard số liệu | Quản trị viên | FR-16 | — |
 | UC-27 | Nhập bài từ API nhạc (extend của UC-28) | Quản trị viên | FR-05 | Trong UC-28 |
 | UC-28 | Quản lý kho nhạc và bộ đề | Quản trị viên | FR-05, FR-16 | `04-xep-hang-quan-tri.md` |
-| UC-29 | Quản lý người dùng (khóa, mở khóa tài khoản; extend của UC-30) | Quản trị viên | FR-17 | — |
+| UC-29 | Khóa tài khoản hoặc khách (nhập lý do, mở khóa lại được; extend của UC-30) | Quản trị viên | FR-17 | — |
 | UC-30 | Xử lý báo cáo vi phạm | Quản trị viên | FR-17 | `04-xep-hang-quan-tri.md` |
 | UC-31 | Quản lý từ cấm (extend của UC-30) | Quản trị viên | FR-17 | — |
 | UC-32 | Xem nhật ký thao tác | Quản trị viên | FR-17 | — |
@@ -73,6 +73,8 @@ Tên dạng động từ + danh từ. Cột "Đặc tả" cho biết use case đ
 | UC-34 | Cài đặt ứng dụng (PWA) | Khách | FR-19 | — |
 
 Có 34 use case; 14 use case được đặc tả chi tiết: UC-01, 02, 07, 08, 10, 12, 13, 15, 17, 18, 21, 24, 28, 30.
+
+Hồ sơ của khách (quyết định PO 22/10, mục 5 #2): UC-04 mở cho Khách ở chế độ chỉ xem, gồm lịch sử, thống kê và huy hiệu của phiên khách (BR-21 gộp các dữ liệu này vào tài khoản khi đăng nhập), kèm lời nhắc "Đăng nhập để đưa điểm lên bảng xếp hạng". UC-25 là phần include của UC-04 nên cũng mở cho Khách. Xóa tài khoản (UC-05) vẫn chỉ dành cho người đã đăng nhập.
 
 ## 4. Truy vết UC ↔ FR
 
@@ -93,27 +95,29 @@ Bảng này bổ sung cho mục 5 của `01-srs.md` (SRS v1 để lại cho DOC-
 | FR-11 | Must | UC-21, UC-22 |
 | FR-12 | Should | UC-23 |
 | FR-13 | Must | UC-04 (xem), UC-07, UC-10, UC-18 (hệ thống lưu lịch sử khi trận kết thúc) |
-| FR-14 | Must | UC-10, UC-24 |
+| FR-14 | Must | UC-07, UC-10, UC-24 |
 | FR-15 | Should | UC-25 |
 | FR-16 | Must | UC-26, UC-28 |
 | FR-17 | Must | UC-29, UC-30, UC-31, UC-32 |
 | FR-18 | Must | UC-33 |
 | FR-19 | Should | UC-34 |
 
-## 5. Điểm cần Thái xác nhận
+## 5. Điểm đã chốt (22/10)
 
-SRS và BR chưa nói rõ các chỗ sau. Đặc tả đang ghi theo cách suy ra ở cột giữa; Thái xác nhận hoặc sửa, agent không tự đặt quy tắc mới.
+Thái (Product Owner) đã quyết 8 điểm mà SRS và BR chưa nói rõ. Cột cuối là câu bổ sung viết sẵn trong mục "Tài liệu cần cập nhật" của PR #18; các file BR nằm ngoài phạm vi ticket này nên chưa sửa.
 
-| # | Chỗ chưa rõ | Cách suy ra trong đặc tả | Use case |
+| # | Quyết định | Use case đã sửa | BR cần cập nhật |
 |---|---|---|---|
-| 1 | Chơi đơn bằng bộ lọc tự chọn có tính xếp hạng không? BR-23 chỉ nói "chơi đơn bộ chuẩn". | Chỉ bộ chuẩn tính xếp hạng; bộ lọc tự chọn thì không. | UC-07 |
-| 2 | Khách có xem được bảng xếp hạng không? Hồ sơ cá nhân có dành cho khách không? | Khách xem được bảng xếp hạng; hồ sơ, huy hiệu chỉ dành cho người đã đăng nhập. | UC-24, UC-04 |
-| 3 | Chơi đơn bỏ dở giữa chừng (đóng tab) thì có lưu và tính điểm không? | Chưa quy định. | UC-07 |
-| 4 | Thử thách ngày: qua 00:00 giờ Việt Nam lúc đang chơi thì tính vào ngày nào? | Chưa quy định. | UC-10 |
-| 5 | Ghép trận nhanh: người thứ 2 rời đi khi đang đếm ngược 30 giây thì đếm ngược dừng hay chạy tiếp? | Chưa quy định. | UC-15 |
-| 6 | Chat: "lọc từ cấm" là chặn tin hay che từ (\*\*\*)? | Chưa quy định; đặc tả ghi "lọc". | UC-21 |
-| 7 | Xử lý báo cáo vi phạm có mức cảnh cáo trước khi khóa tài khoản không? | Quản trị viên chọn: bỏ qua, khóa tài khoản (UC-29) hoặc thêm từ cấm (UC-31). | UC-30 |
-| 8 | Tin bị báo do khách gửi (không có tài khoản để khóa) thì xử lý thế nào? | Chưa quy định. | UC-30 |
+| 1 | Chỉ chơi đơn bộ chuẩn ("Xếp hạng") được tính xếp hạng. Chơi bằng bộ lọc tự chọn ("Luyện tập") vẫn có điểm, combo, lưu lịch sử, thống kê, tính huy hiệu, nhưng không lên bảng. Màn chọn chế độ tách hai lựa chọn. | UC-07 | BR-23 |
+| 2 | Khách xem được bảng xếp hạng nhưng không có tên trên bảng. Khách có hồ sơ chỉ xem (lịch sử, thống kê, huy hiệu của phiên khách) kèm lời nhắc đăng nhập. Xóa tài khoản chỉ dành cho người đã đăng nhập. | UC-24, UC-04 (tác nhân chính đổi sang Khách), UC-25, mục 1 | BR-20 |
+| 3 | Chơi đơn bỏ dở: server giữ trận 30 phút, mở lại thì chơi tiếp đúng vòng và mức nghe, không đổi bài. Quá 30 phút: ABANDONED, lưu các vòng đã xong, vòng dở 0 điểm, không tính xếp hạng kể cả bộ chuẩn. | UC-07 (luồng 4b) | BR-23 |
+| 4 | Lượt thử thách ngày thuộc về ngày server cấp bài (lúc bắt đầu lượt), kể cả đoán xong sau 00:00. Trần 5 phút mỗi lượt; hết trần mà chưa đúng là "Chưa đoán ra". | UC-10 | BR-25 |
+| 5 | Ghép trận nhanh: số người kết nối dưới 2 khi đang đếm ngược thì dừng; có người thứ 2 thì đếm lại đủ 30 giây. Lúc hết đếm ngược kiểm tra lại, dưới 2 thì không bắt đầu và quay về chờ. | UC-15 (luồng 4b, 5b) | BR-13 |
+| 6 | Tin chứa từ cấm bị chặn cả tin, không che bằng ***; chỉ người gửi thấy cảnh báo; dùng chung cơ chế "tin bị chặn" với tin lộ đáp án. Biệt danh chứa từ cấm bị từ chối ngay khi nhập. | UC-21, UC-01 | BR-16, BR-17 (BR-22 đã có) |
+| 7 | MVP không có mức cảnh cáo. Admin chọn bỏ qua, khóa (UC-29) hoặc thêm từ cấm (UC-31). Khóa phải nhập lý do, ghi vào nhật ký; mở khóa lại được. Cảnh cáo là hướng mở rộng Phase 2. | UC-30, UC-29 (danh mục) | BR-28 |
+| 8 | Tin bị báo do khách gửi: admin khóa theo id khách; id đó không tạo hay vào phòng, không chat được. Giới hạn: khách xóa dữ liệu trình duyệt thì có id mới. | UC-30, UC-29 (tên và mô tả trong danh mục) | BR-28 |
+
+Trong đặc tả, các chỗ BR chưa có câu tương ứng dẫn chiếu "Quyết định PO 22/10 (mục 5, #n)".
 
 ## 6. Câu hỏi bảo vệ
 

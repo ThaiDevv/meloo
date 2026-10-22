@@ -25,7 +25,7 @@ rectangle "**Meloo — Quản trị**" {
   usecase "UC-26\nXem dashboard số liệu" as UC26
   usecase "UC-32\nXem nhật ký thao tác" as UC32
   usecase "UC-31\nQuản lý từ cấm" as UC31
-  usecase "UC-29\nQuản lý người dùng" as UC29
+  usecase "UC-29\nKhóa tài khoản hoặc khách" as UC29
   usecase "UC-30\nXử lý báo cáo vi phạm" as UC30
   usecase "UC-28\nQuản lý kho nhạc và bộ đề" as UC28
   usecase "UC-27\nNhập bài từ API nhạc" as UC27

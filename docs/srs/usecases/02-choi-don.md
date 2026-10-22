@@ -5,22 +5,23 @@
 ### UC-07: Chơi luyện tập
 - Tác nhân chính / phụ: Khách (gồm Người chơi đã đăng nhập) / không có.
 - Tiền điều kiện: Người chơi có phiên (khách hoặc đã đăng nhập). Kho nhạc có đủ bài hợp lệ cho bộ chọn.
-- Hậu điều kiện (thành công / thất bại): Thành công: trận đơn kết thúc, người chơi thấy tổng điểm; trận được lưu vào lịch sử và thống kê. Nếu là trận xếp hạng và người chơi đã đăng nhập thì điểm vào bảng xếp hạng. Thất bại: trận không bắt đầu, người chơi ở màn hình chọn bộ.
+- Hậu điều kiện (thành công / thất bại): Thành công: trận đơn kết thúc, người chơi thấy tổng điểm; trận được lưu vào lịch sử, thống kê và tính huy hiệu. Chỉ trận "Xếp hạng" (bộ chuẩn) của người đã đăng nhập mới vào bảng xếp hạng. Thất bại: trận không bắt đầu (người chơi ở màn hình chọn bộ), hoặc trận bị bỏ dở quá 30 phút và chuyển sang ABANDONED (luồng 4b).
 - Luồng chính:
-  1. Người chơi chọn "Chơi đơn".
-  2. Người chơi chọn bộ chuẩn hoặc đặt bộ lọc (thể loại, quốc gia, ca sĩ, thập niên) và số vòng 5, 10 hoặc 15 (mặc định 10).
+  1. Người chơi chọn "Chơi đơn". Màn chọn chế độ có hai lựa chọn tách biệt: "Xếp hạng" (bộ chuẩn) và "Luyện tập" (tự chọn bộ lọc).
+  2. "Xếp hạng": hệ thống dùng bộ chuẩn. "Luyện tập": người chơi đặt bộ lọc (thể loại, quốc gia, ca sĩ, thập niên). Cả hai chọn số vòng 5, 10 hoặc 15 (mặc định 10).
   3. Hệ thống kiểm tra kho nhạc đủ bài hợp lệ và chọn các bài, không lặp.
-  4. Với mỗi vòng, người chơi đoán bài hát (UC-08, include). Chơi đơn không giới hạn thời gian mỗi vòng nên không có thưởng tốc độ.
+  4. Với mỗi vòng, người chơi đoán bài hát (UC-08, include). Chơi đơn không giới hạn thời gian mỗi vòng nên không có thưởng tốc độ; có điểm và combo ở cả hai lựa chọn.
   5. Sau mỗi vòng, hệ thống hiển thị đáp án, điểm vòng, combo hiện tại, nguồn nhạc và link nghe đầy đủ trên nền tảng gốc.
   6. Hết số vòng, hệ thống hiển thị tổng điểm.
-  7. Hệ thống lưu trận vào lịch sử và thống kê cá nhân.
+  7. Hệ thống lưu trận vào lịch sử và thống kê cá nhân, tính huy hiệu.
 - Luồng phụ và ngoại lệ:
   - 3a. Bộ chọn không đủ bài cho số vòng đã chọn: hệ thống không cho bắt đầu và báo còn thiếu bao nhiêu bài; người chơi đổi bộ lọc hoặc giảm số vòng.
   - 4a. Đoạn nhạc lỗi giữa trận (do server xác nhận): vòng được thay bằng bài khác, không ai bị trừ điểm.
-  - 4b. Người chơi thoát giữa trận: `[HỎI THÁI]` trận có được lưu và tính điểm không (mục 5 của `00-tong-quan.md`, điểm 3).
-  - 7a. Người chơi là khách: điểm không vào bảng xếp hạng. `[HỎI THÁI]` bộ lọc tự chọn có tính xếp hạng không; đang suy ra là chỉ bộ chuẩn tính (điểm 1).
-- Quy tắc nghiệp vụ: BR-01 → BR-09, BR-20, BR-23, BR-27, BR-29.
-- Yêu cầu liên quan: FR-07, FR-13, NFR-04.
+  - 4b. Người chơi bỏ dở (đóng tab, mất mạng): server giữ trận 30 phút. Mở lại trong thời gian đó thì chơi tiếp đúng vòng và đúng mức nghe đã mở, không được đổi sang bài khác. Quá 30 phút thì trận chuyển sang ABANDONED: lưu lịch sử các vòng đã xong, vòng đang dở được 0 điểm, trận không tính vào bảng xếp hạng kể cả khi chơi bộ chuẩn. (Quyết định PO 22/10 (mục 5, #3))
+  - 7a. Lựa chọn "Luyện tập": trận không lên bảng xếp hạng nhưng vẫn có điểm, combo, lịch sử, thống kê và huy hiệu. (Quyết định PO 22/10 (mục 5, #1))
+  - 7b. Người chơi là khách: điểm không vào bảng xếp hạng.
+- Quy tắc nghiệp vụ: BR-01 → BR-09, BR-20, BR-23, BR-27, BR-29. BR-23 cần bổ sung câu cho luyện tập và trận bỏ dở (xem mục "Tài liệu cần cập nhật" của PR).
+- Yêu cầu liên quan: FR-07, FR-13, FR-14, NFR-04.
 
 ### UC-08: Đoán bài hát trong vòng
 - Tác nhân chính / phụ: Khách (người chơi đang ở trong vòng) / Hệ thống API nhạc.
@@ -53,13 +54,14 @@
 - Luồng chính:
   1. Người chơi chọn "Thử thách hằng ngày".
   2. Hệ thống kiểm tra người chơi còn lượt hôm nay.
-  3. Hệ thống mở một vòng với bài chung của ngày hôm nay.
-  4. Người chơi đoán bài hát (UC-08, include) không giới hạn thời gian, không có combo.
+  3. Hệ thống cấp bài chung của ngày hôm nay và bắt đầu lượt (đồng hồ lượt chạy từ lúc này, trần 5 phút).
+  4. Người chơi đoán bài hát (UC-08, include), không có combo.
   5. Hệ thống hiển thị kết quả: mức đoán đúng (hoặc "Chưa đoán ra"), thời gian từ lúc bắt đầu, vị trí trên bảng theo ngày.
   6. Người chơi chọn chia sẻ kết quả (UC-11, extend): hệ thống tạo chuỗi ô màu theo từng mức, nhãn "Đúng ở 10s" (không đoán ra thì "Chưa đoán ra") và link; không lộ tên bài.
 - Luồng phụ và ngoại lệ:
   - 2a. Hết lượt hôm nay: hệ thống hiển thị kết quả đã có và bảng theo ngày, không cho chơi lại. Bài đổi lúc 00:00 giờ Việt Nam.
-  - 4a. Qua 00:00 khi đang chơi: `[HỎI THÁI]` tính vào ngày nào (mục 5 của `00-tong-quan.md`, điểm 4).
+  - 4a. Người chơi đoán xong sau 00:00: lượt vẫn thuộc ngày mà server cấp bài (lúc bắt đầu lượt). (Quyết định PO 22/10 (mục 5, #4))
+  - 4b. Hết trần 5 phút mà chưa đoán đúng: kết quả là "Chưa đoán ra". (Quyết định PO 22/10 (mục 5, #4))
   - 5a. Người chơi là khách: kết quả không vào bảng theo ngày; hệ thống gợi ý đăng nhập để đưa kết quả lên bảng.
-- Quy tắc nghiệp vụ: BR-07, BR-08, BR-20, BR-21, BR-25.
+- Quy tắc nghiệp vụ: BR-07, BR-08, BR-20, BR-21, BR-25. BR-25 cần bổ sung câu về ngày của lượt và trần 5 phút (xem mục "Tài liệu cần cập nhật" của PR).
 - Yêu cầu liên quan: FR-08, FR-13, FR-14.

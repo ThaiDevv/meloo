@@ -7,7 +7,7 @@
 
 | Thuật ngữ | Tiếng Anh | Định nghĩa | BR |
 |---|---|---|---|
-| Preview | Preview | Đoạn nhạc 30 giây do nền tảng nhạc cung cấp qua API (nguồn chính: Deezer, theo ADR-003); thường không phải phần mở đầu bài. | BR-01 |
+| Preview | Preview | Đoạn nhạc khoảng 30 giây do nền tảng nhạc cung cấp qua API (nguồn chính đề xuất ở ADR-003: Deezer). API không công bố đoạn này nằm ở đâu trong bài (SPK-01). | BR-01 |
 | Mức nghe | Listening level | Một trong 5 độ dài đoạn nghe: 2, 5, 10, 20, 30 giây, tính từ đầu đoạn preview. Khi chơi nhiều người, mỗi người tự mở mức của mình. | BR-01, BR-07 |
 | Vòng | Round | Một bài hát cần đoán, qua tối đa 5 mức nghe. Khi chơi nhiều người, một vòng dài tối đa 45 giây. | BR-01, BR-07 |
 | Trận | Match | Chuỗi 5, 10 hoặc 15 vòng (mặc định 10), không lặp bài. | BR-09 |
@@ -20,27 +20,28 @@
 | Ô gợi ý | Autocomplete | Ô tìm tên bài trên toàn kho nhạc, không cần gõ dấu; dùng thay cho câu hỏi trắc nghiệm. | BR-05 |
 | Điểm cơ bản | Base score | Điểm theo mức đoán đúng: 1.000 / 800 / 600 / 400 / 200. | BR-02 |
 | Combo | Combo | Chuỗi vòng đoán đúng liên tiếp ở mức 2 hoặc 5 giây; vòng thứ 2 của chuỗi được +10%, từ vòng thứ 3 được +20% điểm cơ bản. Áp dụng cho chơi đơn và nhiều người, trừ thử thách ngày. | BR-08 |
-| Thưởng tốc độ | Speed bonus | ⌊200 × số giây còn lại ÷ 45⌋, chỉ khi chơi nhiều người. | BR-07 |
+| Thưởng tốc độ | Speed bonus | ⌊200 × số mili giây còn lại ÷ 45.000⌋ theo đồng hồ server, chỉ khi chơi nhiều người. | BR-07 |
 | Điểm vòng | Round score | Điểm cơ bản × (1 + hệ số combo) + thưởng tốc độ. | BR-02, BR-07, BR-08 |
-| Người thắng | Winner | Người có tổng điểm cao nhất; hòa thì người có tổng thời gian trả lời đúng ít hơn. | BR-10 |
+| Người thắng | Winner | Người có tổng điểm cao nhất; hòa thì người có tổng thời gian trả lời đúng ít hơn (tính bằng mili giây). | BR-10 |
 
 ## Chế độ chơi và phòng
 
 | Thuật ngữ | Tiếng Anh | Định nghĩa | BR |
 |---|---|---|---|
-| Chơi đơn | Single player | Luyện tập một mình theo bộ lọc, có combo, không giới hạn thời gian mỗi vòng. | BR-08 |
+| Chơi đơn | Single player | Luyện tập một mình theo bộ lọc, có combo, không giới hạn thời gian mỗi vòng. | BR-07, BR-08 |
 | Bộ chuẩn | Standard set | Bộ nhạc do hệ thống chọn cho chơi đơn xếp hạng. | BR-23 |
 | Thử thách hằng ngày | Daily challenge | Một bài chung cho mọi người mỗi ngày, mỗi người một lượt, đổi bài lúc 00:00 giờ Việt Nam. | BR-25 |
 | Phòng | Room | Nơi 2–5 người chơi trận thời gian thực; số người tối đa là cấu hình. | BR-11 |
 | Phòng tự tạo | Custom room | Phòng do người chơi tạo, riêng hoặc công khai; không tính xếp hạng. | BR-23 |
 | Phòng riêng | Private room | Chỉ vào bằng mã hoặc link; có voice. | BR-11, BR-18 |
-| Phòng công khai | Public room | Hiện trong danh sách phòng; không có voice. | BR-11, BR-18 |
+| Phòng công khai | Public room | Phòng tự tạo hiện trong danh sách phòng; không có voice. | BR-11, BR-18 |
 | Mã phòng | Room code | 6 ký tự chữ in hoa và số, không dùng 0, O, 1, I, L. | BR-11 |
 | Sảnh chờ | Lobby | Màn hình trong phòng trước và sau mỗi trận, có nút sẵn sàng. Người vào lúc trận đang chạy chờ ở đây. | BR-12, BR-15 |
 | Chủ phòng | Room owner | Người chọn bộ nhạc, số vòng, bấm bắt đầu, mời người khác ra khỏi phòng. Rời phòng thì quyền chuyển cho người vào sớm nhất. Không nhầm với chế độ Host ở Phase 2. | BR-12 |
 | Mời ra | Kick | Chủ phòng đưa một người ra khỏi phòng; người đó không vào lại phòng đó được. | BR-12 |
 | Chơi lại | Rematch | Hết trận, cả phòng về sảnh để chơi tiếp, giữ nguyên mã phòng. | BR-12 |
-| Ghép trận nhanh | Quick match | Tự vào phòng công khai đang chờ hợp bộ lọc, không có thì tạo mới; tính xếp hạng. | BR-13, BR-23 |
+| Ghép trận nhanh | Quick match | Tự vào phòng ghép trận đang chờ và hợp bộ lọc, không có thì tạo mới; không vào phòng công khai tự tạo; tính xếp hạng. | BR-13, BR-23 |
+| Phòng ghép trận | Quick match room | Phòng do hệ thống tạo cho ghép trận nhanh; không hiện trong danh sách phòng công khai, không có chủ phòng. | BR-13 |
 | Đếm ngược ghép trận | Quick match countdown | 30 giây, bắt đầu khi có người thứ 2, không đặt lại khi thêm người. | BR-13 |
 | Giữ chỗ | Reconnect grace | 30 giây giữ chỗ khi mất kết nối; trận không dừng để chờ. | BR-14 |
 | Trận xếp hạng | Ranked match | Chơi đơn bộ chuẩn, thử thách ngày, ghép trận nhanh. | BR-23 |
@@ -53,6 +54,7 @@
 | Khách | Guest | Người chơi chưa đăng nhập, dùng biệt danh, chơi mọi chế độ; không lên bảng xếp hạng; dữ liệu bị xóa sau 30 ngày không hoạt động. | BR-20 |
 | Biệt danh | Nickname | Tên hiển thị 3–20 ký tự, không chứa từ cấm. | BR-22 |
 | Gộp khách | Guest merge | Khi khách đăng nhập, lịch sử, thống kê, huy hiệu và điểm trận xếp hạng được gộp vào tài khoản (sự kiện `GuestMerged`). | BR-21 |
+| Xóa tài khoản | Account deletion | Người dùng tự xóa tài khoản; dữ liệu cá nhân bị xóa, lịch sử trận được ẩn danh (sự kiện `AccountDeleted`). | BR-21 |
 | Quản trị viên | Admin | Người vận hành hệ thống; email tài khoản ADMIN đầu tiên nằm trong `meloo.admin.emails`. | BR-28 |
 
 ## Nội dung và tiến trình

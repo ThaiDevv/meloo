@@ -38,7 +38,7 @@ Người tổ chức (lớp trưởng, giáo viên, HR, streamer) dùng phòng r
 
 ### 2.2 Ràng buộc
 - Chỉ dùng đoạn preview 30 giây từ API âm nhạc hợp lệ; không phát cả bài. Sau mỗi vòng hiện link nghe đầy đủ trên nền tảng gốc (BR-29).
-- Nguồn nhạc chính là Deezer; iTunes là dự phòng kỹ thuật, tắt mặc định (ADR-003, SPK-01 đo ngày 21/10/2026). Spotify bị loại vì đã cắt preview với app mới từ 27/11/2024.
+- Nguồn nhạc chính dự kiến là Deezer; iTunes là dự phòng kỹ thuật, tắt mặc định (đề xuất ở ADR-003, đang ở trạng thái Đề xuất; SPK-01 đo ngày 21/10/2026). Spotify bị loại vì đã cắt preview với app mới từ 27/11/2024.
 - Beta công khai chỉ dùng preview của nhà cung cấp khi LEG-02 (MEL-120) xác nhận quyền sử dụng.
 - Backend không lưu lâu dài URL preview của Deezer (URL có chữ ký, hết hạn sau khoảng 15 phút) và không lưu file audio.
 - Server là trọng tài: đáp án, điểm và đồng hồ do server quyết, client chỉ hiển thị.
@@ -133,7 +133,7 @@ NFR-01 → NFR-09 lấy từ kế hoạch. NFR-10 → NFR-15 bổ sung ngày 22/
 | NFR-12 | Tải trang | LCP trang chủ ≤ 2,5 s trên di động | Lighthouse |
 | NFR-13 | Dễ tiếp cận | Thao tác chính (đoán, nghe thêm, bỏ qua, sẵn sàng) dùng được bằng bàn phím; tương phản chữ đạt WCAG 2.1 AA | axe trong Playwright |
 | NFR-14 | Độ sẵn sàng | ≥ 99% trong đợt beta 16/11–29/11 | UptimeRobot |
-| NFR-15 | Khôi phục | Khôi phục dịch vụ ≤ 1 giờ sau sự cố (RTO); mất tối đa 24 giờ dữ liệu (RPO, bản sao lưu tự động hằng ngày của RDS). Các trận đang chạy lúc sự cố bị hủy (mục 2.2). | Diễn tập khôi phục một lần trước beta |
+| NFR-15 | Khôi phục | Khôi phục dịch vụ ≤ 1 giờ sau sự cố (RTO). Khi cơ sở dữ liệu hỏng và phải khôi phục từ bản sao lưu tự động hằng ngày của RDS, mất tối đa 24 giờ dữ liệu (RPO). Server khởi động lại mà cơ sở dữ liệu còn nguyên thì không mất dữ liệu đã lưu, chỉ hủy các trận đang chạy (mục 2.2). | Diễn tập khôi phục một lần trước beta |
 
 ## 5. Truy vết yêu cầu
 
@@ -148,9 +148,11 @@ NFR-01 → NFR-09 lấy từ kế hoạch. NFR-10 → NFR-15 bổ sung ngày 22/
 | FR-16, FR-17 | Mục 8 (Quản trị) | P4 |
 | FR-18, FR-19 | Mục 9 (Giao diện, PWA) | P1, P2 |
 
+Use case chưa có khi viết SRS v1, nên bảng truy vết use case ↔ FR (UC-xx ↔ FR-01 → FR-19) do DOC-02 (MEL-29) bổ sung trong `docs/srs/usecases/`.
+
 ## 6. Còn mở
 
-- **Quyền dùng preview cho beta công khai:** chờ LEG-02 (MEL-120). Nguồn nhạc kỹ thuật đã chốt ở ADR-003.
+- **Quyền dùng preview cho beta công khai:** chờ LEG-02 (MEL-120). Nguồn nhạc kỹ thuật được đề xuất ở ADR-003 (Deezer chính, iTunes dự phòng); ADR-003 chuyển sang Chấp nhận khi LEG-02 có kết luận.
 - **Module sở hữu lịch sử trận** (Match, Round, Guess) và phục vụ `/me/matches`: chốt ở DES-01 vì là quyết định kiến trúc. Đề xuất: progression ghi lịch sử khi nhận sự kiện `MatchFinished`, game chỉ giữ engine. Ảnh hưởng FR-13.
 
 ## 7. Câu hỏi bảo vệ
@@ -158,5 +160,5 @@ NFR-01 → NFR-09 lấy từ kế hoạch. NFR-10 → NFR-15 bổ sung ngày 22/
 1. **FR khác BR thế nào?** FR nói hệ thống làm được gì; BR là luật của bài toán mà chức năng phải tuân theo. Một FR có thể dựa trên nhiều BR, ví dụ FR-07 (chơi đơn) dựa trên BR-01 → BR-06, BR-08, BR-09, BR-27, BR-29.
 2. **NFR-10 (người mới vào chơi ≤ 30 giây) đo thế nào?** Trong beta, cho ít nhất 5 người chưa từng dùng Meloo mở web và bấm giờ đến khi nghe đoạn nhạc đầu tiên. Khách chơi được ngay mà không cần đăng ký nên mục tiêu này khả thi.
 3. **Vì sao chỉ cam kết 20 phòng × 5 người?** Hệ thống chạy trên một EC2 free tier 1 GB RAM và giữ trạng thái phòng trong bộ nhớ (ADR-007). QA-03 đo ngưỡng này bằng k6; muốn vượt ngưỡng cần Redis và nhiều instance (P2-06).
-4. **Vì sao chọn Deezer mà không chọn iTunes, dù iTunes có preview 70/70 bài?** Điều khoản iTunes cấm dùng preview làm giá trị giải trí độc lập, mà đó chính là cách game đoán nhạc dùng preview. Deezer đủ bài V-pop, tốn khoảng nửa băng thông và có API nhập hàng loạt (ADR-003). Quyền dùng cho beta công khai vẫn phải được xác nhận ở LEG-02.
-5. **Server khởi động lại giữa trận thì sao?** Trận đang chạy bị hủy vì trạng thái phòng nằm trong bộ nhớ; lịch sử các trận đã xong vẫn còn trong cơ sở dữ liệu. Mục tiêu khôi phục là ≤ 1 giờ và mất tối đa 24 giờ dữ liệu (NFR-15).
+4. **Vì sao chọn Deezer mà không chọn iTunes, dù iTunes có preview 70/70 bài?** Điều khoản iTunes cấm dùng preview làm giá trị giải trí độc lập, mà đó chính là cách game đoán nhạc dùng preview. Deezer đủ bài V-pop, tốn khoảng nửa băng thông và có API nhập hàng loạt (đề xuất ở ADR-003). Quyền dùng cho beta công khai vẫn phải được xác nhận ở LEG-02.
+5. **Server khởi động lại giữa trận thì sao?** Trận đang chạy bị hủy vì trạng thái phòng nằm trong bộ nhớ (ADR-007); lịch sử các trận đã xong nằm trong cơ sở dữ liệu nên không mất. Mốc mất tối đa 24 giờ dữ liệu (RPO, NFR-15) chỉ áp dụng khi chính cơ sở dữ liệu hỏng và phải khôi phục từ bản sao lưu hằng ngày.

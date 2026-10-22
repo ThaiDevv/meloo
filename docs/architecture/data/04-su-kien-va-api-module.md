@@ -9,7 +9,7 @@ Record nằm ở `com.meloo.<module>.events` của module phát; listener `@Appl
 | Sự kiện | Module sở hữu | Ticket | Ai nghe | Khác bảng harness |
 |---|---|---|---|---|
 | `GuestCreated` | identity | BE-ID-01 | admin (`analytics_event`) | Không |
-| `UserRegistered` | identity | BE-ID-02 | admin | Không |
+| `UserRegistered` | identity | BE-ID-02 | admin | Harness ghi thêm progression; chưa thấy nhu cầu (`player_stats` tạo khi có trận đầu), giữ lại nếu BE-PROG-01 cần |
 | `GuestMerged(guestId, userId)` | identity | BE-ID-02 | progression (lịch sử, thống kê, điểm xếp hạng, huy hiệu), **daily** (lượt và chuỗi ngày) | Harness ghi "admin, progression"; thêm **daily** theo BE-ID-02 và BE-DAILY-01; admin không cần nghe |
 | `MatchStarted` | game | BE-GAME-01 định nghĩa; BE-SOLO-01, BE-ROOM-02 phát | admin | Harness ghi "progression, admin"; progression chỉ cần `MatchFinished` |
 | `MatchFinished` | game | như trên | progression (ghi lịch sử, thống kê, bảng), admin | Payload mở rộng, thêm `QUICK_MATCH` và `status` (mục 2) |
@@ -40,7 +40,8 @@ Payload không chứa token âm thanh, URL preview hay bất kỳ dữ liệu n�
 | Quản trị kho nhạc | catalog | BE-CAT-04 | admin | Không |
 | Cấp audio token | audio | BE-AUD-01 | game, room, daily | Không |
 | Engine luật chơi | game `domain/` (NamedInterface "engine") | BE-GAME-01 | room, daily | Không |
-| `ActiveRoundQuery`, `RoomDirectory` | room | BE-RT-01 | chat, voice | Không |
+| `ActiveRoundQuery` | room | BE-RT-01 | chat | Không |
+| `RoomDirectory` | room | BE-RT-01 | chat, voice | Không |
 | Quản trị người dùng | identity | BE-ID-02 | admin | Thêm: đếm người dùng theo loại và ngày tạo cho dashboard (đã có trong AC BE-ID-02) |
 | Từ cấm, báo cáo chat | chat | BE-CHAT-01 | admin | Không |
 | Lịch bài thử thách ngày | daily | BE-DAILY-01 | admin | Không |

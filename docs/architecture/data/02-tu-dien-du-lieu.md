@@ -133,7 +133,7 @@ Index `(status, created_at)`, `(sender_id)`.
 |---|---|---|---|
 | id | uuid | PK | chính là `matchId` của sự kiện, nên ghi lặp thì trùng khóa (idempotent) |
 | type | varchar(16) | not null, check `SOLO`/`PRIVATE_ROOM`/`PUBLIC_ROOM`/`QUICK_MATCH` | BR-23 |
-| ranked | boolean | not null | BR-23 |
+| ranked | boolean | not null; check `status <> 'ABANDONED' or not ranked` | BR-23: trận bỏ dở không tính xếp hạng |
 | status | varchar(10) | not null, check `FINISHED`/`ABANDONED` | `ABANDONED`: chơi đơn quá 30 phút |
 | round_count | smallint | not null, check 5/10/15 | BR-09 |
 | playlist_id | uuid | null, ref `playlist` | |
@@ -200,7 +200,7 @@ Unique `(round_id, match_player_id)`; index `(match_player_id)`.
 | ranked_score | bigint | not null default 0 | bảng toàn thời gian (BR-24) |
 | ranked_reached_at | timestamptz | null | thời điểm đạt `ranked_score` hiện tại; bằng điểm thì ai đạt trước xếp trên |
 
-Index: `(ranked_score desc, ranked_reached_at) where not is_guest`.
+Index: `(ranked_score desc, ranked_reached_at) where not is_guest`. Khi gộp khách, nếu tài khoản đã có dòng thì cộng dồn số liệu và bỏ dòng của khách (`ranked_reached_at` lấy mốc muộn hơn); cách cài đặt do BE-PROG-01 quyết.
 
 ### `achievement`
 | Cột | Kiểu | Ràng buộc | Ghi chú |

@@ -17,8 +17,8 @@ hide circle
 
 legend left
   Đường liền: khóa ngoại thật trong DB (cùng module).
-  Đường đứt: tham chiếu logic giữa các module (cột uuid, không có FK; xem 01-mo-hinh-du-lieu.md mục 3).
-  PK: khóa chính · FK: khóa ngoại · UQ: duy nhất · (V<n>): migration tạo bảng.
+  Đường đứt: tham chiếu logic giữa các module (cột uuid, không có FK; xem 01-mo-hinh-du-lieu.md mục 5).
+  Bảng nào cũng có created_at (không vẽ hết). PK: khóa chính · FK: khóa ngoại · UQ: duy nhất · (V<n>): migration tạo bảng.
 endlegend
 
 package "identity (V2)" {
@@ -31,6 +31,7 @@ package "identity (V2)" {
     * nickname : varchar(20)
     email : varchar(254) <<UQ, null với khách>>
     lock_reason : text
+    locked_at : timestamptz
     merged_into_id : uuid <<FK app_user>>
     * last_active_at : timestamptz
     * created_at : timestamptz

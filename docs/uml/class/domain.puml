@@ -138,7 +138,7 @@ package "progression" {
     unlockedAt
   }
   Match "1" *-- "1..*" MatchPlayer
-  Match "1" *-- "5..15" Round
+  Match "1" *-- "0..15" Round
   Round "1" *-- "1..*" RoundResult
   MatchPlayer "1" *-- "0..*" RoundResult
   Achievement "1" o-- "0..*" UserAchievement
@@ -207,6 +207,7 @@ User ..> UserKind
 
 MatchPlayer ..> User : userId
 Round ..> Track : trackId
+Match ..> Playlist : playlistId
 PlayerStats ..> User : userId
 UserAchievement ..> User : userId
 DailyAttempt ..> User : userId

@@ -76,7 +76,7 @@ Ghi chú: phiên chơi đơn bị mất khi restart không được ghi `ABANDON
 
 ## 5. Tham chiếu giữa các module
 
-Cột tham chiếu sang bảng của module khác (VD `match_player.user_id`, `round.track_id`, `daily_attempt.user_id`) là **uuid thường, không có khóa ngoại trong DB**, nhưng có index. Lý do:
+Cột tham chiếu sang bảng của module khác (VD `match_player.user_id`, `round.track_id`, `daily_attempt.user_id`) là **uuid thường, không có khóa ngoại trong DB**. Index chỉ khai báo cho cột có truy vấn cần đến (tra theo người dùng, gộp khách, ẩn danh khi xóa tài khoản, bảng xếp hạng); ref chỉ dùng để hiển thị hoặc đọc theo bản ghi cha thì không index (`match.playlist_id`, `round.track_id`, `daily_challenge.track_id`), từ điển ghi rõ ở từng bảng. Lý do không có khóa ngoại:
 1. Modulith cấm module này đọc bảng module kia; khóa ngoại kéo theo phụ thuộc thứ tự migration và buộc xóa dây chuyền.
 2. Xóa tài khoản và xóa khách sau 30 ngày (BR-20, BR-21) do identity thực hiện rồi phát `AccountDeleted`; các module khác ẩn danh hoặc xóa phần của mình qua listener. Khóa ngoại sẽ chặn bước này.
 3. Tính toàn vẹn do ứng dụng giữ: id lấy từ sự kiện hoặc từ `api/` của module sở hữu.

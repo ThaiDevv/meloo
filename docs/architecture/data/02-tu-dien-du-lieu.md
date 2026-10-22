@@ -117,7 +117,7 @@ Index `(track_id)`.
 | handled_by | uuid | null, ref `app_user` | |
 | handled_at | timestamptz | null | |
 
-Index `(status, created_at)`, `(sender_id)`.
+Index `(status, created_at)`, `(sender_id)`, `(reporter_id)` (listener `AccountDeleted` tìm báo cáo theo người báo).
 
 ### `banned_word`: từ cấm (BR-17, BR-22)
 | Cột | Kiểu | Ràng buộc | Ghi chú |
@@ -142,7 +142,7 @@ So khớp theo **từ nguyên vẹn** (sau khi chuẩn hóa chữ thường và 
 | filter | jsonb | null | bộ lọc đã dùng (thể loại, quốc gia, thập niên, ca sĩ) |
 | started_at, ended_at | timestamptz | not null | |
 
-Index `(ended_at)`, `(type, ended_at)`.
+Index `(ended_at)`, `(type, ended_at)`. `playlist_id` không index: chỉ để hiển thị, không truy vấn theo bộ nhạc.
 
 ### `match_player`
 | Cột | Kiểu | Ràng buộc | Ghi chú |
@@ -170,7 +170,7 @@ Unique `(match_id, user_id)`. Index: `(user_id, ended_at desc)` cho `/me/matches
 | track_id | uuid | not null, ref `track` | |
 | track_title, artist_name | varchar | not null | chụp lại để lịch sử không đổi khi bài bị sửa hoặc tắt |
 
-Unique `(match_id, round_no)`.
+Unique `(match_id, round_no)`. `track_id` không index: đọc theo `match_id`, không truy vấn ngược theo bài.
 
 ### `round_result`: kết quả một người ở một vòng
 | Cột | Kiểu | Ràng buộc | Ghi chú |
@@ -227,6 +227,8 @@ Index: `(ranked_score desc, ranked_reached_at) where not is_guest`. Khi gộp kh
 | source | varchar(10) | not null, check `SCHEDULED`/`AUTO` | admin đặt hoặc tự chọn |
 | set_by | uuid | null, ref `app_user` | |
 
+`track_id` không index: bảng chỉ có một dòng mỗi ngày, đọc theo `challenge_date`.
+
 ### `daily_attempt`
 | Cột | Kiểu | Ràng buộc | Ghi chú |
 |---|---|---|---|
@@ -266,4 +268,4 @@ Chỉ thêm, không sửa, không xóa (thu quyền `update`/`delete` của role
 | props | jsonb | null | VD loại trận |
 | occurred_at | timestamptz | not null | |
 
-Index `(event_type, occurred_at)`. **Giữ 90 ngày**: job của module admin chạy hằng ngày xóa dòng có `occurred_at` quá 90 ngày (`delete … where occurred_at < now() - interval '90 days'`).
+Index `(event_type, occurred_at)` cho dashboard; `(occurred_at)` cho job xóa; partial `(user_id) where user_id is not null` cho việc đặt null khi `AccountDeleted`. **Giữ 90 ngày**: job của module admin chạy hằng ngày xóa dòng có `occurred_at` quá 90 ngày (`delete … where occurred_at < now() - interval '90 days'`).

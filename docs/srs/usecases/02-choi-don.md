@@ -20,7 +20,7 @@
   - 4b. Người chơi bỏ dở (đóng tab, mất mạng): server giữ trận 30 phút. Mở lại trong thời gian đó thì chơi tiếp đúng vòng và đúng mức nghe đã mở, không được đổi sang bài khác. Quá 30 phút thì trận chuyển sang ABANDONED: lưu lịch sử các vòng đã xong, vòng đang dở được 0 điểm, trận không tính vào bảng xếp hạng kể cả khi chơi bộ chuẩn. (Quyết định PO 22/10 (mục 5, #3))
   - 7a. Lựa chọn "Luyện tập": trận không lên bảng xếp hạng nhưng vẫn có điểm, combo, lịch sử, thống kê và huy hiệu. (Quyết định PO 22/10 (mục 5, #1))
   - 7b. Người chơi là khách: điểm không vào bảng xếp hạng.
-- Quy tắc nghiệp vụ: BR-01 → BR-09, BR-20, BR-23, BR-27, BR-29. BR-23 cần bổ sung câu cho luyện tập và trận bỏ dở (xem mục "Tài liệu cần cập nhật" của PR).
+- Quy tắc nghiệp vụ: BR-01 → BR-09, BR-20, BR-23, BR-27, BR-29.
 - Yêu cầu liên quan: FR-07, FR-13, FR-14, NFR-04.
 
 ### UC-08: Đoán bài hát trong vòng
@@ -63,5 +63,5 @@
   - 4a. Người chơi đoán xong sau 00:00: lượt vẫn thuộc ngày mà server cấp bài (lúc bắt đầu lượt). (Quyết định PO 22/10 (mục 5, #4))
   - 4b. Hết trần 5 phút mà chưa đoán đúng: kết quả là "Chưa đoán ra". (Quyết định PO 22/10 (mục 5, #4))
   - 5a. Người chơi là khách: kết quả không vào bảng theo ngày; hệ thống gợi ý đăng nhập để đưa kết quả lên bảng.
-- Quy tắc nghiệp vụ: BR-07, BR-08, BR-20, BR-21, BR-25. BR-25 cần bổ sung câu về ngày của lượt và trần 5 phút (xem mục "Tài liệu cần cập nhật" của PR).
+- Quy tắc nghiệp vụ: BR-07, BR-08, BR-20, BR-21, BR-25.
 - Yêu cầu liên quan: FR-08, FR-13, FR-14.

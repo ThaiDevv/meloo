@@ -3,7 +3,7 @@
 > Ticket: MEL-29 (DOC-02) · Phụ thuộc: MEL-28 (DOC-01, SRS v1 đã chốt ngày 22/10/2026)
 > Đầu vào: `docs/srs/01-srs.md` (FR-01 → FR-19), `docs/srs/02-business-rules.md` (BR-01 → BR-29), `docs/srs/03-glossary.md`.
 > Đầu ra: sơ đồ ở `docs/uml/usecase/` (PlantUML + PNG) và đặc tả chi tiết ở các file cùng thư mục này. QA-04 soạn kịch bản UAT từ các use case này.
-> Trạng thái: **bản nháp chờ Thái duyệt.** Nội dung nghiệp vụ là của Thái. Ngày 22/10/2026, Thái đã chốt 8 điểm còn mở ở mục 5; đặc tả đã cập nhật theo đó. Các file SRS/BR/thuật ngữ nằm ngoài phạm vi ticket nên chưa sửa; câu cần bổ sung vào BR ghi ở mục "Tài liệu cần cập nhật" của PR.
+> Trạng thái: **bản nháp chờ Thái duyệt.** Nội dung nghiệp vụ là của Thái. Ngày 22/10/2026, Thái đã chốt 8 điểm còn mở ở mục 5; đặc tả đã cập nhật theo đó. Các quyết định đã được đưa vào `02-business-rules.md` (dòng "(use case MEL-29)" ở mục 2.2).
 
 ## 1. Tác nhân
 
@@ -105,16 +105,16 @@ Bảng này bổ sung cho mục 5 của `01-srs.md` (SRS v1 để lại cho DOC-
 
 ## 5. Điểm đã chốt (22/10)
 
-Thái (Product Owner) đã quyết 8 điểm mà SRS và BR chưa nói rõ. Cột cuối là câu bổ sung viết sẵn trong mục "Tài liệu cần cập nhật" của PR #18; các file BR nằm ngoài phạm vi ticket này nên chưa sửa.
+Thái (Product Owner) đã quyết 8 điểm mà SRS và BR chưa nói rõ. Cột cuối là BR đã được cập nhật theo quyết định đó.
 
-| # | Quyết định | Use case đã sửa | BR cần cập nhật |
+| # | Quyết định | Use case đã sửa | BR đã cập nhật |
 |---|---|---|---|
 | 1 | Chỉ chơi đơn bộ chuẩn ("Xếp hạng") được tính xếp hạng. Chơi bằng bộ lọc tự chọn ("Luyện tập") vẫn có điểm, combo, lưu lịch sử, thống kê, tính huy hiệu, nhưng không lên bảng. Màn chọn chế độ tách hai lựa chọn. | UC-07 | BR-23 |
 | 2 | Khách xem được bảng xếp hạng nhưng không có tên trên bảng. Khách có hồ sơ chỉ xem (lịch sử, thống kê, huy hiệu của phiên khách) kèm lời nhắc đăng nhập. Xóa tài khoản chỉ dành cho người đã đăng nhập. | UC-24, UC-04 (tác nhân chính đổi sang Khách), UC-25, mục 1 | BR-20 |
 | 3 | Chơi đơn bỏ dở: server giữ trận 30 phút, mở lại thì chơi tiếp đúng vòng và mức nghe, không đổi bài. Quá 30 phút: ABANDONED, lưu các vòng đã xong, vòng dở 0 điểm, không tính xếp hạng kể cả bộ chuẩn. | UC-07 (luồng 4b) | BR-23 |
-| 4 | Lượt thử thách ngày thuộc về ngày server cấp bài (lúc bắt đầu lượt), kể cả đoán xong sau 00:00. Trần 5 phút mỗi lượt; hết trần mà chưa đúng là "Chưa đoán ra". | UC-10 | BR-25 |
+| 4 | Lượt thử thách ngày thuộc về ngày server cấp bài (lúc bắt đầu lượt), kể cả đoán xong sau 00:00. Trần 5 phút mỗi lượt; hết trần mà chưa đúng là "Chưa đoán ra". | UC-10 | BR-25, BR-07 |
 | 5 | Ghép trận nhanh: số người kết nối dưới 2 khi đang đếm ngược thì dừng; có người thứ 2 thì đếm lại đủ 30 giây. Lúc hết đếm ngược kiểm tra lại, dưới 2 thì không bắt đầu và quay về chờ. | UC-15 (luồng 4b, 5b) | BR-13 |
-| 6 | Tin chứa từ cấm bị chặn cả tin, không che bằng ***; chỉ người gửi thấy cảnh báo; dùng chung cơ chế "tin bị chặn" với tin lộ đáp án. Biệt danh chứa từ cấm bị từ chối ngay khi nhập. | UC-21, UC-01 | BR-16, BR-17 (BR-22 đã có) |
+| 6 | Tin chứa từ cấm bị chặn cả tin, không che bằng ***; chỉ người gửi thấy cảnh báo; dùng chung cơ chế "tin bị chặn" với tin lộ đáp án. Biệt danh chứa từ cấm bị từ chối ngay khi nhập. | UC-21, UC-01 | BR-17 (dẫn chiếu BR-16, BR-22) |
 | 7 | MVP không có mức cảnh cáo. Admin chọn bỏ qua, khóa (UC-29) hoặc thêm từ cấm (UC-31). Khóa phải nhập lý do, ghi vào nhật ký; mở khóa lại được. Cảnh cáo là hướng mở rộng Phase 2. | UC-30, UC-29 (danh mục) | BR-28 |
 | 8 | Tin bị báo do khách gửi: admin khóa theo id khách; id đó không tạo hay vào phòng, không chat được. Giới hạn: khách xóa dữ liệu trình duyệt thì có id mới. | UC-30, UC-29 (tên và mô tả trong danh mục) | BR-28 |
 

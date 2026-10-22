@@ -74,7 +74,7 @@ Mỗi dòng kiểm chứng được bằng Acceptance Criteria ở ticket Jira t
 
 | Mã | Yêu cầu | Ưu tiên | Sprint | BR |
 |---|---|---|---|---|
-| FR-07 | Người chơi luyện tập theo bộ lọc: nghe đoạn nhạc mở dần 5 mức, nghe lại, nghe thêm hoặc bỏ qua, đoán bằng ô gợi ý, được tính điểm theo mức đoán đúng kèm combo; sau mỗi vòng thấy nguồn nhạc và link nghe đầy đủ. | Must | S2 | BR-01 → BR-09, BR-27, BR-29 |
+| FR-07 | Chơi đơn có hai lựa chọn: Xếp hạng (bộ chuẩn) và Luyện tập (bộ lọc tự chọn). Người chơi nghe đoạn nhạc theo bộ lọc: nghe đoạn nhạc mở dần 5 mức, nghe lại, nghe thêm hoặc bỏ qua, đoán bằng ô gợi ý, được tính điểm theo mức đoán đúng kèm combo; sau mỗi vòng thấy nguồn nhạc và link nghe đầy đủ. | Must | S2 | BR-01 → BR-09, BR-27, BR-29 |
 | FR-08 | Người chơi làm thử thách hằng ngày (một bài chung mỗi ngày) và chia sẻ kết quả không lộ tên bài. | Should | S4 | BR-07, BR-25 |
 
 ### 3.4 Chơi nhiều người
@@ -148,7 +148,7 @@ NFR-01 → NFR-09 lấy từ kế hoạch. NFR-10 → NFR-15 bổ sung ngày 22/
 | FR-16, FR-17 | Mục 8 (Quản trị) | P4 |
 | FR-18, FR-19 | Mục 9 (Giao diện, PWA) | P1, P2 |
 
-Use case chưa có khi viết SRS v1, nên bảng truy vết use case ↔ FR (UC-xx ↔ FR-01 → FR-19) do DOC-02 (MEL-29) bổ sung trong `docs/srs/usecases/`.
+Bảng truy vết use case ↔ FR (UC-xx ↔ FR-01 → FR-19) nằm ở [`usecases/00-tong-quan.md` mục 4](usecases/00-tong-quan.md#4-truy-vết-uc--fr).
 
 ## 6. Còn mở
 

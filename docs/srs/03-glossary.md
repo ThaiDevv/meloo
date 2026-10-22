@@ -29,7 +29,7 @@
 
 | Thuật ngữ | Tiếng Anh | Định nghĩa | BR |
 |---|---|---|---|
-| Chơi đơn | Single player | Luyện tập một mình theo bộ lọc, có combo, không giới hạn thời gian mỗi vòng. | BR-07, BR-08 |
+| Chơi đơn | Single player | Chơi một mình, có hai lựa chọn: Xếp hạng (bộ chuẩn, tính xếp hạng) và Luyện tập (tự chọn bộ lọc, không tính xếp hạng); có combo, không giới hạn thời gian mỗi vòng. | BR-07, BR-08, BR-23 |
 | Bộ chuẩn | Standard set | Bộ nhạc do hệ thống chọn cho chơi đơn xếp hạng. | BR-23 |
 | Thử thách hằng ngày | Daily challenge | Một bài chung cho mọi người mỗi ngày, mỗi người một lượt, đổi bài lúc 00:00 giờ Việt Nam. | BR-25 |
 | Phòng | Room | Nơi 2–5 người chơi trận thời gian thực; số người tối đa là cấu hình. | BR-11 |
@@ -52,7 +52,7 @@
 
 | Thuật ngữ | Tiếng Anh | Định nghĩa | BR |
 |---|---|---|---|
-| Khách | Guest | Người chơi chưa đăng nhập, dùng biệt danh, chơi mọi chế độ; không lên bảng xếp hạng; dữ liệu bị xóa sau 30 ngày không hoạt động. | BR-20 |
+| Khách | Guest | Người chơi chưa đăng nhập, dùng biệt danh, chơi mọi chế độ; xem được bảng xếp hạng và hồ sơ (chỉ xem) nhưng không có tên trên bảng; dữ liệu bị xóa sau 30 ngày không hoạt động. | BR-20 |
 | Biệt danh | Nickname | Tên hiển thị 3–20 ký tự, không chứa từ cấm. | BR-22 |
 | Gộp khách | Guest merge | Khi khách đăng nhập, lịch sử, thống kê, huy hiệu và điểm trận xếp hạng được gộp vào tài khoản (sự kiện `GuestMerged`). | BR-21 |
 | Xóa tài khoản | Account deletion | Người dùng tự xóa tài khoản; dữ liệu cá nhân bị xóa, lịch sử trận được ẩn danh (sự kiện `AccountDeleted`). | BR-21 |

@@ -1,0 +1,289 @@
+@startuml erd
+title ERD Meloo (DES-01, MEL-30): 21 bảng trong PostgreSQL, nhóm theo module sở hữu
+skinparam shadowing false
+skinparam linetype ortho
+skinparam nodesep 30
+skinparam ranksep 50
+skinparam defaultFontName DejaVu Sans
+skinparam entity {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam package {
+  BackgroundColor #F5F5F5
+  BorderColor black
+}
+hide circle
+
+legend left
+  Đường liền: khóa ngoại thật trong DB (cùng module).
+  Đường đứt: tham chiếu logic giữa các module (cột uuid, không có FK; xem 01-mo-hinh-du-lieu.md mục 3).
+  PK: khóa chính · FK: khóa ngoại · UQ: duy nhất · (V<n>): migration tạo bảng.
+endlegend
+
+package "identity (V2)" {
+  entity "app_user" as app_user {
+    * id : uuid <<PK>>
+    --
+    * kind : GUEST | REGISTERED
+    * role : USER | ADMIN
+    * status : ACTIVE | LOCKED
+    * nickname : varchar(20)
+    email : varchar(254) <<UQ, null với khách>>
+    lock_reason : text
+    merged_into_id : uuid <<FK app_user>>
+    * last_active_at : timestamptz
+    * created_at : timestamptz
+  }
+  entity "auth_identity" as auth_identity {
+    * id : uuid <<PK>>
+    --
+    * user_id : uuid <<FK>>
+    * provider : GOOGLE | FACEBOOK
+    * provider_subject : varchar
+    <<UQ (provider, provider_subject)>>
+  }
+  entity "refresh_token" as refresh_token {
+    * id : uuid <<PK>>
+    --
+    * user_id : uuid <<FK>>
+    * family_id : uuid
+    * token_hash : char(64) <<UQ>>
+    * expires_at : timestamptz
+    revoked_at : timestamptz
+    replaced_by_id : uuid <<FK refresh_token>>
+  }
+}
+
+package "catalog (V3)" {
+  entity "artist" as artist {
+    * id : uuid <<PK>>
+    --
+    * name : varchar
+    * name_normalized : varchar <<trigram>>
+    * provider : varchar
+    * provider_artist_id : varchar
+    <<UQ (provider, provider_artist_id)>>
+  }
+  entity "genre" as genre {
+    * id : uuid <<PK>>
+    --
+    * code : varchar <<UQ>>
+    * name_vi : varchar
+    * name_en : varchar
+  }
+  entity "track" as track {
+    * id : uuid <<PK>>
+    --
+    * provider : varchar
+    * provider_track_id : varchar
+    * title : varchar
+    * title_normalized : varchar <<trigram>>
+    * primary_artist_id : uuid <<FK>>
+    genre_id : uuid <<FK>>
+    country_code : char(2)
+    release_year : smallint
+    popularity_rank : int
+    * enabled : boolean
+    disabled_reason : varchar
+    <<UQ (provider, provider_track_id)>>
+  }
+  entity "playlist" as playlist {
+    * id : uuid <<PK>>
+    --
+    * code : varchar <<UQ>>
+    * name_vi : varchar
+    * name_en : varchar
+    * kind : STANDARD | CURATED
+    * enabled : boolean
+  }
+  entity "playlist_track" as playlist_track {
+    * playlist_id : uuid <<PK, FK>>
+    * track_id : uuid <<PK, FK>>
+    --
+    * position : int
+  }
+}
+
+package "chat (V5)" {
+  entity "chat_report" as chat_report {
+    * id : uuid <<PK>>
+    --
+    * message_text : varchar(200)
+    * sender_id : uuid
+    * sender_nickname : varchar(20)
+    * reporter_id : uuid
+    * context : jsonb
+    * status : OPEN | DISMISSED | ACTIONED
+    handled_by : uuid
+    handled_at : timestamptz
+    * created_at : timestamptz
+  }
+  entity "banned_word" as banned_word {
+    * id : uuid <<PK>>
+    --
+    * word : varchar <<UQ, đã chuẩn hóa>>
+    created_by : uuid
+  }
+}
+
+package "progression: lịch sử trận (V4)" {
+  entity "match" as match {
+    * id : uuid <<PK = matchId của sự kiện>>
+    --
+    * type : SOLO | PRIVATE_ROOM | PUBLIC_ROOM | QUICK_MATCH
+    * ranked : boolean
+    * status : FINISHED | ABANDONED
+    * round_count : smallint
+    playlist_id : uuid
+    filter : jsonb
+    * started_at : timestamptz
+    * ended_at : timestamptz
+  }
+  entity "match_player" as match_player {
+    * id : uuid <<PK>>
+    --
+    * match_id : uuid <<FK>>
+    user_id : uuid <<null sau khi ẩn danh>>
+    * nickname : varchar(20)
+    * is_guest : boolean
+    * total_score : int
+    * rank : smallint
+    * correct_count : smallint
+    * correct_time_ms : bigint
+    * counts_for_leaderboard : boolean
+    * ended_at : timestamptz
+    <<UQ (match_id, user_id)>>
+  }
+  entity "round" as round {
+    * id : uuid <<PK>>
+    --
+    * match_id : uuid <<FK>>
+    * round_no : smallint
+    * track_id : uuid
+    * track_title : varchar
+    * artist_name : varchar
+    <<UQ (match_id, round_no)>>
+  }
+  entity "round_result" as round_result {
+    * id : uuid <<PK>>
+    --
+    * round_id : uuid <<FK>>
+    * match_player_id : uuid <<FK>>
+    * outcome : CORRECT | WRONG_OUT | GAVE_UP | TIMEOUT | MISSED
+    correct_level : smallint
+    * base_score : int
+    * combo_percent : smallint
+    * speed_bonus : int
+    * round_score : int
+    * wrong_count : smallint
+    answer_time_ms : int
+    <<UQ (round_id, match_player_id)>>
+  }
+}
+
+package "progression: tiến trình (V6)" {
+  entity "player_stats" as player_stats {
+    * user_id : uuid <<PK>>
+    --
+    * is_guest : boolean
+    * xp : int
+    * matches_played : int
+    * matches_won : int
+    * rounds_correct : int
+    * ranked_score : bigint
+    ranked_reached_at : timestamptz
+    * best_combo : smallint
+  }
+  entity "achievement" as achievement {
+    * code : varchar <<PK>>
+    --
+    * sort_order : smallint
+  }
+  entity "user_achievement" as user_achievement {
+    * user_id : uuid <<PK>>
+    * achievement_code : varchar <<PK, FK>>
+    --
+    * unlocked_at : timestamptz
+  }
+}
+
+package "daily (V7)" {
+  entity "daily_challenge" as daily_challenge {
+    * challenge_date : date <<PK, giờ VN>>
+    --
+    * track_id : uuid
+    * source : SCHEDULED | AUTO
+    set_by : uuid
+  }
+  entity "daily_attempt" as daily_attempt {
+    * id : uuid <<PK>>
+    --
+    * challenge_date : date <<FK>>
+    user_id : uuid <<null sau khi ẩn danh>>
+    * is_guest : boolean
+    * status : IN_PROGRESS | SOLVED | UNSOLVED
+    * started_at : timestamptz
+    finished_at : timestamptz
+    correct_level : smallint
+    elapsed_ms : int
+    <<UQ (challenge_date, user_id)>>
+  }
+}
+
+package "admin (V8, V9)" {
+  entity "audit_log" as audit_log {
+    * id : bigint <<PK>>
+    --
+    * actor_id : uuid
+    * action : varchar
+    * target_type : varchar
+    target_id : varchar
+    reason : text
+    detail : jsonb
+    * created_at : timestamptz
+  }
+  entity "analytics_event" as analytics_event {
+    * id : bigint <<PK>>
+    --
+    * event_type : varchar
+    user_id : uuid
+    props : jsonb
+    * occurred_at : timestamptz
+  }
+}
+
+app_user ||--o{ auth_identity
+app_user ||--o{ refresh_token
+app_user }o..o| app_user : merged_into_id
+
+artist ||--o{ track
+genre |o--o{ track
+playlist ||--o{ playlist_track
+track ||--o{ playlist_track
+
+match ||--o{ match_player
+match ||--o{ round
+round ||--o{ round_result
+match_player ||--o{ round_result
+
+achievement ||--o{ user_achievement
+daily_challenge ||--o{ daily_attempt
+
+' tham chiếu logic giữa các module (không có FK trong DB)
+match_player }o..o| app_user : user_id
+round }o..o| track : track_id
+match }o..o| playlist : playlist_id
+player_stats |o..|| app_user : user_id
+user_achievement }o..|| app_user : user_id
+daily_attempt }o..o| app_user : user_id
+daily_challenge }o..|| track : track_id
+chat_report }o..|| app_user : sender_id, reporter_id
+audit_log }o..|| app_user : actor_id
+
+note bottom of match
+  Chỉ ghi khi nhận MatchFinished (ADR-007).
+  Phòng đang chơi và phiên chơi đơn đang dở
+  nằm trong bộ nhớ, không có bảng.
+end note
+@enduml

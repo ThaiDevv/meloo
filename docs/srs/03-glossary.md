@@ -9,7 +9,7 @@
 |---|---|---|---|
 | Preview | Preview | Đoạn nhạc khoảng 30 giây do nền tảng nhạc cung cấp qua API (nguồn chính đề xuất ở ADR-003: Deezer). API không công bố đoạn này nằm ở đâu trong bài (SPK-01). | BR-01 |
 | Mức nghe | Listening level | Một trong 5 độ dài đoạn nghe: 2, 5, 10, 20, 30 giây, tính từ đầu đoạn preview. Khi chơi nhiều người, mỗi người tự mở mức của mình. | BR-01, BR-07 |
-| Nhãn mức nghe | Level label | Trên giao diện ghi gọn 2s, 5s, 10s, 20s, 30s, giống nhau ở tiếng Việt và tiếng Anh (nút mức nghe, thông báo "đúng ở mức 5s", kết quả chia sẻ). Câu văn trong tài liệu và giao diện ghi "5 giây" / "5 seconds". | BR-01 |
+| Nhãn mức nghe | Level label | Trên giao diện ghi gọn 2s, 5s, 10s, 20s, 30s, giống nhau ở tiếng Việt và tiếng Anh (nút mức nghe, thông báo "đúng ở mức 5s"). Câu văn trong tài liệu và giao diện ghi "5 giây" / "5 seconds". | BR-01 |
 | Vòng | Round | Một bài hát cần đoán, qua tối đa 5 mức nghe. Khi chơi nhiều người, một vòng dài tối đa 45 giây. | BR-01, BR-07 |
 | Trận | Match | Chuỗi 5, 10 hoặc 15 vòng (mặc định 10), không lặp bài. | BR-09 |
 | Lượt đoán | Guess | Một lần người chơi chọn đáp án ở một mức nghe. | BR-04 |

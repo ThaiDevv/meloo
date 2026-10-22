@@ -23,8 +23,7 @@ actor "Người chơi\n(đã đăng nhập)" as NguoiChoi
 actor "Khách" as Khach
 actor "Chủ phòng" as ChuPhong
 rectangle "<<actor>>\n**Nhà cung cấp OAuth**" as OAuth
-rectangle "<<actor>>\n**Hệ thống API nhạc**" as Music1
-rectangle "<<actor>>\n**Hệ thống API nhạc**" as Music2
+rectangle "<<actor>>\n**Hệ thống API nhạc**" as Music
 
 rectangle "**Meloo**" as sys {
   rectangle "Tài khoản" as G0 {
@@ -125,6 +124,6 @@ UC29 ..> UC30 : <<extend>>
 UC31 ..> UC30 : <<extend>>
 
 UC02 -- OAuth
-UC08 -- Music1
-UC27 -- Music2
+UC08 -- Music
+UC27 -- Music
 @enduml

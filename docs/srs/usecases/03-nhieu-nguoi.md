@@ -4,7 +4,7 @@
 
 ### UC-12: Tạo phòng
 - Tác nhân chính / phụ: Chủ phòng (Khách hoặc Người chơi đã đăng nhập đang tạo phòng) / không có.
-- Tiền điều kiện: Người chơi có phiên và tài khoản không bị khóa.
+- Tiền điều kiện: Người chơi có phiên; tài khoản hoặc id khách của người chơi không bị khóa.
 - Hậu điều kiện (thành công / thất bại): Thành công: phòng tự tạo ở trạng thái sảnh chờ, có mã phòng, người tạo là chủ phòng. Thất bại: không có phòng nào được tạo.
 - Luồng chính:
   1. Người chơi chọn "Tạo phòng".
@@ -13,6 +13,7 @@
   4. Hệ thống tạo phòng, sinh mã 6 ký tự gồm chữ in hoa và số, bỏ các ký tự 0, O, 1, I, L.
   5. Hệ thống đưa người tạo vào sảnh chờ với vai trò chủ phòng và hiển thị mã phòng cùng link mời.
 - Luồng phụ và ngoại lệ:
+  - 1a. Tài khoản hoặc id khách bị khóa (UC-30, UC-29): hệ thống từ chối tạo phòng và báo tài khoản đã bị khóa. (Quyết định PO 22/10 (mục 5, #8))
   - 2a. Phòng công khai: hệ thống thêm phòng vào danh sách phòng công khai (UC-14).
   - 2b. Phòng riêng: voice chat có trong phòng (UC-23); phòng công khai không có voice.
   - 5a. Phòng trống quá 10 phút: hệ thống tự đóng phòng.
@@ -32,12 +33,13 @@
   4. Hệ thống đưa người chơi vào sảnh chờ, hiển thị danh sách người trong phòng và chủ phòng.
   5. Hệ thống báo cho những người trong phòng có người mới vào.
 - Luồng phụ và ngoại lệ:
+  - 1a. Tài khoản hoặc id khách bị khóa (UC-30, UC-29): hệ thống từ chối vào phòng và báo tài khoản đã bị khóa. (Quyết định PO 22/10 (mục 5, #8))
   - 2a. Mã sai hoặc phòng đã đóng: hệ thống báo không tìm thấy phòng.
   - 2b. Mã hoặc link của phòng ghép trận: phòng ghép trận không vào được bằng mã hay link nên xử lý như 2a.
   - 3a. Phòng đầy: hệ thống báo phòng đã đủ người.
   - 3b. Người chơi đã bị mời ra khỏi phòng này: hệ thống từ chối, không cho vào lại.
   - 3c. Trận đang chạy: người chơi vào sảnh chờ (nếu còn chỗ) và chơi từ trận sau, không bị báo lỗi.
-- Quy tắc nghiệp vụ: BR-11, BR-12, BR-13, BR-15.
+- Quy tắc nghiệp vụ: BR-11, BR-12, BR-13, BR-15, BR-28.
 - Yêu cầu liên quan: FR-09, NFR-11 (từ lúc mở link đến khi thấy sảnh ≤ 3 giây, p95).
 
 ### UC-15: Ghép trận nhanh
@@ -112,9 +114,10 @@
   4. Nếu đang trong vòng, hệ thống kiểm tra tin có chứa tên bài đáp án không (chuẩn hóa như BR-05).
   5. Hệ thống phát tin cho mọi người trong phòng.
 - Luồng phụ và ngoại lệ:
+  - 1a. Tài khoản hoặc id khách bị khóa (UC-30, UC-29): hệ thống từ chối gửi tin và báo cho người gửi. (Quyết định PO 22/10 (mục 5, #8))
   - 2a. Tin quá dài hoặc gửi quá nhanh: hệ thống từ chối và báo cho người gửi.
   - 3a. Tin chứa từ cấm: hệ thống chặn cả tin, không che bằng ***; chỉ người gửi thấy cảnh báo. Dùng chung cơ chế "tin bị chặn" với tin lộ đáp án (4a). (Quyết định PO 22/10 (mục 5, #6))
   - 4a. Tin chứa tên bài đáp án: hệ thống chặn (tin bị chặn), chỉ người gửi thấy cảnh báo. Hết vòng thì nói tự do.
   - 5a. Người nhận thấy tin vi phạm: báo cáo tin (UC-22, extend).
-- Quy tắc nghiệp vụ: BR-05, BR-16, BR-17.
+- Quy tắc nghiệp vụ: BR-05, BR-16, BR-17, BR-28.
 - Yêu cầu liên quan: FR-11, NFR-07.

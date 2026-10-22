@@ -2,7 +2,7 @@
 
 > Ticket: MEL-30 · Bản nháp chờ Thái duyệt. Sơ đồ: [`erd.puml`](erd.puml). Quy ước chung theo `.claude/skills/meloo-backend/references/migrations.md`.
 
-**Quy ước chung.** Tên bảng, cột `snake_case` tiếng Anh. Khóa chính `uuid` (sinh ở ứng dụng, UUIDv7 nếu thư viện có) trừ khi ghi khác; bảng nhật ký dùng `bigint generated always as identity`. Mọi bảng có `created_at timestamptz not null default now()` (không lặp lại ở dưới; bảng có khóa tự nhiên vẫn có). Chuỗi enum lưu `varchar` kèm `check (… in (…))`, không dùng kiểu enum của PostgreSQL để dễ thêm giá trị bằng migration. **FK** là khóa ngoại thật (cùng module); **ref** là tham chiếu logic sang module khác, chỉ có index (tài liệu 01 mục 5).
+**Quy ước chung.** Tên bảng, cột `snake_case` tiếng Anh. Khóa chính `uuid` (sinh ở ứng dụng, UUIDv7 nếu thư viện có) trừ khi ghi khác; bảng nhật ký dùng `bigint generated always as identity`. Mọi bảng có `created_at timestamptz not null default now()` (không lặp lại ở dưới; bảng có khóa tự nhiên vẫn có). Chuỗi enum lưu `varchar` kèm `check (… in (…))`, không dùng kiểu enum của PostgreSQL để dễ thêm giá trị bằng migration. **FK** là khóa ngoại thật (cùng module); **ref** là tham chiếu logic sang module khác, chỉ có index khi có truy vấn cần đến, nếu không thì ghi "không index" (tài liệu 01 mục 5).
 
 ## identity (V2)
 
@@ -114,7 +114,7 @@ Index `(track_id)`.
 | reporter_id | uuid | not null, ref `app_user` | |
 | context | jsonb | not null default `[]` | 5 tin trước đó |
 | status | varchar(10) | not null default `OPEN`, check `OPEN`/`DISMISSED`/`ACTIONED` | |
-| handled_by | uuid | null, ref `app_user` | |
+| handled_by | uuid | null, ref `app_user` | không index: chỉ để hiển thị, không truy vấn theo người xử lý |
 | handled_at | timestamptz | null | |
 
 Index `(status, created_at)`, `(sender_id)`, `(reporter_id)` (listener `AccountDeleted` tìm báo cáo theo người báo).
@@ -124,7 +124,7 @@ Index `(status, created_at)`, `(sender_id)`, `(reporter_id)` (listener `AccountD
 |---|---|---|---|
 | id | uuid | PK | |
 | word | varchar(80) | not null, unique, check `word = lower(word)` | chữ thường, Unicode NFC, **giữ dấu**; không chuẩn hóa bỏ dấu như BR-05 |
-| created_by | uuid | null, ref `app_user` | null với dòng khởi tạo trong migration |
+| created_by | uuid | null, ref `app_user` | null với dòng khởi tạo trong migration; không index: chỉ để hiển thị |
 
 So khớp theo **từ nguyên vẹn** (sau khi chuẩn hóa chữ thường và NFC), không so khớp chuỗi con sau khi bỏ dấu. Biến thể không dấu hoặc viết tắt (VD `vcl`, `dm`) là **dòng riêng**. V5 chỉ khởi tạo khoảng 30 từ phổ biến nhất, có dấu; phần còn lại admin thêm qua UC-31. Lý do ở tài liệu 01 mục 2.
 
@@ -225,7 +225,7 @@ Index: `(ranked_score desc, ranked_reached_at) where not is_guest`. Khi gộp kh
 | challenge_date | date | PK | ngày theo giờ Việt Nam (BR-25) |
 | track_id | uuid | not null, ref `track` | |
 | source | varchar(10) | not null, check `SCHEDULED`/`AUTO` | admin đặt hoặc tự chọn |
-| set_by | uuid | null, ref `app_user` | |
+| set_by | uuid | null, ref `app_user` | không index: chỉ để hiển thị |
 
 `track_id` không index: bảng chỉ có một dòng mỗi ngày, đọc theo `challenge_date`.
 

@@ -9,6 +9,7 @@
 |---|---|---|---|
 | Preview | Preview | Đoạn nhạc khoảng 30 giây do nền tảng nhạc cung cấp qua API (nguồn chính đề xuất ở ADR-003: Deezer). API không công bố đoạn này nằm ở đâu trong bài (SPK-01). | BR-01 |
 | Mức nghe | Listening level | Một trong 5 độ dài đoạn nghe: 2, 5, 10, 20, 30 giây, tính từ đầu đoạn preview. Khi chơi nhiều người, mỗi người tự mở mức của mình. | BR-01, BR-07 |
+| Nhãn mức nghe | Level label | Trên giao diện ghi gọn 2s, 5s, 10s, 20s, 30s, giống nhau ở tiếng Việt và tiếng Anh (nút mức nghe, thông báo "đúng ở mức 5s", kết quả chia sẻ). Câu văn trong tài liệu và giao diện ghi "5 giây" / "5 seconds". | BR-01 |
 | Vòng | Round | Một bài hát cần đoán, qua tối đa 5 mức nghe. Khi chơi nhiều người, một vòng dài tối đa 45 giây. | BR-01, BR-07 |
 | Trận | Match | Chuỗi 5, 10 hoặc 15 vòng (mặc định 10), không lặp bài. | BR-09 |
 | Lượt đoán | Guess | Một lần người chơi chọn đáp án ở một mức nghe. | BR-04 |
@@ -20,8 +21,8 @@
 | Ô gợi ý | Autocomplete | Ô tìm tên bài trên toàn kho nhạc, không cần gõ dấu; dùng thay cho câu hỏi trắc nghiệm. | BR-05 |
 | Điểm cơ bản | Base score | Điểm theo mức đoán đúng: 1.000 / 800 / 600 / 400 / 200. | BR-02 |
 | Combo | Combo | Chuỗi vòng đoán đúng liên tiếp ở mức 2 hoặc 5 giây; vòng thứ 2 của chuỗi được +10%, từ vòng thứ 3 được +20% điểm cơ bản. Áp dụng cho chơi đơn và nhiều người, trừ thử thách ngày. | BR-08 |
-| Thưởng tốc độ | Speed bonus | max(0, ⌊200 × số mili giây còn lại ÷ 45.000⌋) theo đồng hồ server, chỉ khi chơi nhiều người; lượt đoán sau khi hết giờ bị từ chối. | BR-07 |
-| Điểm vòng | Round score | Điểm cơ bản × (1 + hệ số combo) + thưởng tốc độ. | BR-02, BR-07, BR-08 |
+| Thưởng tốc độ | Speed bonus | max(0, ⌊200 × số mili giây còn lại ÷ 45.000⌋) theo đồng hồ server, chỉ khi chơi nhiều người; lượt đoán server nhận từ mốc 45.000 ms trở đi bị từ chối. | BR-07 |
+| Điểm vòng | Round score | Điểm cơ bản × (1 + hệ số combo) + thưởng tốc độ, chỉ khi đoán đúng; vòng không đoán đúng được 0 điểm. | BR-02, BR-07, BR-08 |
 | Người thắng | Winner | Người có tổng điểm cao nhất; hòa thì người có tổng thời gian trả lời đúng ít hơn (tính bằng mili giây). | BR-10 |
 
 ## Chế độ chơi và phòng
@@ -36,10 +37,10 @@
 | Phòng riêng | Private room | Chỉ vào bằng mã hoặc link; có voice. | BR-11, BR-18 |
 | Phòng công khai | Public room | Phòng tự tạo hiện trong danh sách phòng; không có voice. | BR-11, BR-18 |
 | Mã phòng | Room code | 6 ký tự chữ in hoa và số, không dùng 0, O, 1, I, L. | BR-11 |
-| Sảnh chờ | Lobby | Màn hình trong phòng trước và sau mỗi trận, có nút sẵn sàng. Người vào lúc trận đang chạy chờ ở đây. | BR-12, BR-15 |
-| Chủ phòng | Room owner | Người chọn bộ nhạc, số vòng, bấm bắt đầu, mời người khác ra khỏi phòng. Rời phòng thì quyền chuyển cho người vào sớm nhất. Không nhầm với chế độ Host ở Phase 2. | BR-12 |
+| Sảnh chờ | Lobby | Màn hình trong phòng trước và sau mỗi trận; phòng tự tạo có nút sẵn sàng, phòng ghép trận có đếm ngược. Người vào lúc trận đang chạy chờ ở đây. | BR-12, BR-13, BR-15 |
+| Chủ phòng | Room owner | Người chọn bộ nhạc, số vòng, bấm bắt đầu, mời người khác ra khỏi phòng. Rời phòng thì quyền chuyển cho người vào sớm nhất. Chỉ có ở phòng tự tạo. Không nhầm với chế độ Host ở Phase 2. | BR-12 |
 | Mời ra | Kick | Chủ phòng đưa một người ra khỏi phòng; người đó không vào lại phòng đó được. | BR-12 |
-| Chơi lại | Rematch | Hết trận, cả phòng về sảnh để chơi tiếp, giữ nguyên mã phòng. | BR-12 |
+| Chơi lại | Rematch | Phòng tự tạo: hết trận, cả phòng về sảnh để chơi tiếp, giữ nguyên mã phòng. Phòng ghép trận: ai ở lại sảnh thì đếm ngược lại. | BR-12, BR-13 |
 | Ghép trận nhanh | Quick match | Tự vào phòng ghép trận đang chờ và hợp bộ lọc, không có thì tạo mới; không vào phòng công khai tự tạo; tính xếp hạng. | BR-13, BR-23 |
 | Phòng ghép trận | Quick match room | Phòng do hệ thống tạo cho ghép trận nhanh; không hiện trong danh sách phòng công khai, không vào được bằng mã hay link, không có chủ phòng. | BR-13 |
 | Đếm ngược ghép trận | Quick match countdown | 30 giây, bắt đầu khi có người thứ 2, không đặt lại khi thêm người. | BR-13 |

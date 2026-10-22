@@ -10,7 +10,7 @@
 Tài liệu này mô tả Meloo phải làm gì và làm tốt đến mức nào. Đây là đầu vào cho thiết kế (DES-01), lập trình (BE-GAME-01…), kiểm thử và báo cáo.
 
 ### 1.2 Sản phẩm
-Meloo là web game đoán tên bài hát. Mỗi vòng, người chơi nghe đoạn đầu của bản preview 30 giây, mở dần 2s → 5s → 10s → 20s → 30s; đoán đúng càng sớm thì càng nhiều điểm. Người chơi có thể chơi một mình, làm thử thách hằng ngày, hoặc vào phòng 2–5 người theo thời gian thực, có chat và voice.
+Meloo là web game đoán tên bài hát. Mỗi vòng, người chơi nghe đoạn đầu của bản preview 30 giây, mở dần 2 → 5 → 10 → 20 → 30 giây; đoán đúng càng sớm thì càng nhiều điểm. Người chơi có thể chơi một mình, làm thử thách hằng ngày, hoặc vào phòng 2–5 người theo thời gian thực, có chat và voice.
 
 ### 1.3 Phạm vi
 - **Trong phạm vi (MVP, môn học):** các yêu cầu Must và Should ở mục 3.
@@ -31,7 +31,7 @@ Quy ước ưu tiên (MoSCoW): Must bắt buộc để bảo vệ; Should làm n
 |---|---|---|
 | Khách | Người chơi chưa đăng nhập | Vào chơi ngay bằng biệt danh, mọi chế độ |
 | Người chơi đã đăng nhập | Nhóm bạn sinh viên, fan âm nhạc | Chơi cùng bạn bè, thử thách ngày, xếp hạng, huy hiệu |
-| Chủ phòng | Người tạo phòng | Chọn bộ nhạc, số vòng, bắt đầu trận, mời người treo máy ra khỏi phòng |
+| Chủ phòng | Người tạo phòng riêng hoặc phòng công khai (phòng ghép trận không có chủ phòng) | Chọn bộ nhạc, số vòng, bắt đầu trận, mời người treo máy ra khỏi phòng |
 | Quản trị viên (ADMIN) | Đội vận hành Meloo | Kiểm soát nội dung, xem số liệu |
 
 Người tổ chức (lớp trưởng, giáo viên, HR, streamer) dùng phòng riêng với bộ đề tuyển chọn ở MVP; chế độ Host thuộc Phase 2.
@@ -126,7 +126,7 @@ NFR-01 → NFR-09 lấy từ kế hoạch. NFR-10 → NFR-15 bổ sung ngày 22/
 | NFR-05 | Bảo mật | OWASP Top 10; HTTPS/WSS; RDS không public; secret ngoài mã nguồn | SEC-01 |
 | NFR-06 | Tương thích | Chrome, Edge, Safari, Firefox bản mới; màn hình từ 360px | Playwright |
 | NFR-07 | Công bằng | Đáp án, điểm, đồng hồ do server quyết; không lộ đáp án qua API hoặc WebSocket | Review, test tích hợp |
-| NFR-08 | Đồng thời | Trạng thái phòng chỉ đổi trong hàng đợi của phòng; không có race condition khi hết giờ hoặc hai người đoán cùng lúc | Test tích hợp |
+| NFR-08 | Đồng thời | Trạng thái phòng chỉ đổi trong hàng đợi của phòng; không có race condition khi hết giờ hoặc hai người đoán cùng lúc; lượt đoán đến sát lúc hết giờ được phân xử theo lúc server nhận so với mốc 45.000 ms (BR-07) | Test tích hợp |
 | NFR-09 | Chất lượng mã | Coverage domain ≥ 80%; Spring Modulith không báo vi phạm ranh giới module | CI |
 | NFR-10 | Người mới vào chơi | Từ lúc mở web đến khi nghe đoạn nhạc đầu tiên ≤ 30 giây, không cần đăng ký | Thử với ≥ 5 người dùng mới trong beta |
 | NFR-11 | Vào phòng bằng link | Từ lúc mở link mời đến khi thấy sảnh ≤ 3 s (p95, mạng 4G giả lập) | Playwright |

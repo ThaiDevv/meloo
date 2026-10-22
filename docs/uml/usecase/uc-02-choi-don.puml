@@ -1,0 +1,40 @@
+@startuml uc-02-choi-don
+title Use case phân hệ Chơi đơn (FR-06 → FR-08)
+left to right direction
+skinparam shadowing false
+skinparam linetype polyline
+skinparam nodesep 30
+skinparam ranksep 80
+skinparam defaultFontName DejaVu Sans
+skinparam usecase {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam actor {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam rectangle {
+  BackgroundColor white
+  BorderColor black
+}
+
+actor "Khách" as Khach
+rectangle "<<actor>>\n**Hệ thống API nhạc**" as Music
+rectangle "**Meloo — Chơi đơn**" {
+  usecase "UC-07\nChơi luyện tập" as UC07
+  usecase "UC-10\nLàm thử thách hằng ngày" as UC10
+  usecase "UC-11\nChia sẻ kết quả thử thách ngày" as UC11
+  usecase "UC-09\nMở thêm mức nghe" as UC09
+  usecase "UC-08\nĐoán bài hát trong vòng" as UC08
+  usecase "UC-06\nTìm bài hát" as UC06
+}
+Khach -- UC07
+Khach -- UC10
+UC07 ..> UC08 : <<include>>
+UC10 ..> UC08 : <<include>>
+UC09 ..> UC08 : <<extend>>
+UC11 ..> UC10 : <<extend>>
+UC08 ..> UC06 : <<include>>
+UC08 -- Music
+@enduml

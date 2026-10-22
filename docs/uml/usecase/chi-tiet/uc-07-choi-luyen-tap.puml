@@ -1,0 +1,29 @@
+@startuml uc-07-choi-luyen-tap
+title UC-07: Chơi luyện tập (phân hệ Chơi đơn)
+left to right direction
+skinparam shadowing false
+skinparam linetype polyline
+skinparam nodesep 40
+skinparam ranksep 90
+skinparam defaultFontName DejaVu Sans
+skinparam usecase {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam actor {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam rectangle {
+  BackgroundColor white
+  BorderColor black
+}
+
+actor "Khách" as A1
+rectangle "**Meloo — UC-07**" {
+  usecase "UC-07\nChơi luyện tập" as UC07
+  usecase "UC-08\nĐoán bài hát trong vòng" as UC08
+}
+A1 -- UC07
+UC07 ..> UC08 : <<include>>
+@enduml

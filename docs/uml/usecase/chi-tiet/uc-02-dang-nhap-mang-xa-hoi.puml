@@ -1,0 +1,31 @@
+@startuml uc-02-dang-nhap-mang-xa-hoi
+title UC-02: Đăng nhập bằng tài khoản mạng xã hội (phân hệ Tài khoản)
+left to right direction
+skinparam shadowing false
+skinparam linetype polyline
+skinparam nodesep 40
+skinparam ranksep 90
+skinparam defaultFontName DejaVu Sans
+skinparam usecase {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam actor {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam rectangle {
+  BackgroundColor white
+  BorderColor black
+}
+
+actor "Khách" as A1
+rectangle "<<actor>>\n**Nhà cung cấp OAuth**\n(Google, Facebook)" as X1
+rectangle "**Meloo — UC-02**" {
+  usecase "UC-02\nĐăng nhập bằng tài khoản\nmạng xã hội" as UC02
+  usecase "UC-03\nGộp dữ liệu khách" as UC03
+}
+A1 -- UC02
+UC02 ..> UC03 : <<include>>
+UC02 -- X1
+@enduml

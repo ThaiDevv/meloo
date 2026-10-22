@@ -1,0 +1,39 @@
+@startuml uc-01-tai-khoan
+title Use case phân hệ Tài khoản (FR-01 → FR-04)
+left to right direction
+skinparam shadowing false
+skinparam linetype polyline
+skinparam nodesep 30
+skinparam ranksep 80
+skinparam defaultFontName DejaVu Sans
+skinparam usecase {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam actor {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam rectangle {
+  BackgroundColor white
+  BorderColor black
+}
+
+actor "Khách" as Khach
+actor "Người chơi\n(đã đăng nhập)" as NguoiChoi
+NguoiChoi -|> Khach
+rectangle "<<actor>>\n**Nhà cung cấp OAuth**\n(Google, Facebook)" as OAuth
+rectangle "**Meloo — Tài khoản**" {
+  usecase "UC-01\nVào chơi bằng biệt danh" as UC01
+  usecase "UC-02\nĐăng nhập bằng tài khoản\nmạng xã hội" as UC02
+  usecase "UC-03\nGộp dữ liệu khách" as UC03
+  usecase "UC-04\nXem hồ sơ và thống kê cá nhân" as UC04
+  usecase "UC-05\nXóa tài khoản" as UC05
+}
+Khach -- UC01
+Khach -- UC02
+Khach -- UC04
+NguoiChoi -- UC05
+UC02 ..> UC03 : <<include>>
+UC02 -- OAuth
+@enduml

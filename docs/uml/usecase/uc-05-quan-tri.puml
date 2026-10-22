@@ -1,0 +1,43 @@
+@startuml uc-05-quan-tri
+title Use case phân hệ Quản trị (FR-05, FR-16, FR-17)
+left to right direction
+skinparam shadowing false
+skinparam linetype polyline
+skinparam nodesep 30
+skinparam ranksep 80
+skinparam defaultFontName DejaVu Sans
+skinparam usecase {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam actor {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam rectangle {
+  BackgroundColor white
+  BorderColor black
+}
+
+actor "Quản trị viên" as Admin
+rectangle "<<actor>>\n**Hệ thống API nhạc**" as Music
+rectangle "**Meloo — Quản trị**" {
+  usecase "UC-26\nXem dashboard số liệu" as UC26
+  usecase "UC-32\nXem nhật ký thao tác" as UC32
+  usecase "UC-31\nQuản lý từ cấm" as UC31
+  usecase "UC-29\nKhóa tài khoản hoặc khách" as UC29
+  usecase "UC-30\nXử lý báo cáo vi phạm" as UC30
+  usecase "UC-28\nQuản lý kho nhạc và bộ đề" as UC28
+  usecase "UC-27\nNhập bài từ API nhạc" as UC27
+}
+Admin -- UC26
+Admin -- UC28
+Admin -- UC29
+Admin -- UC30
+Admin -- UC31
+Admin -- UC32
+UC27 .right.> UC28 : <<extend>>
+UC29 .right.> UC30 : <<extend>>
+UC31 .right.> UC30 : <<extend>>
+UC27 -- Music
+@enduml

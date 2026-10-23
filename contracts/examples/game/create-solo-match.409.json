@@ -1,0 +1,9 @@
+{
+  "type": "about:blank",
+  "title": "Match in progress",
+  "status": 409,
+  "code": "SOLO_MATCH_IN_PROGRESS",
+  "detail": "Finish or resume the match in progress before starting another.",
+  "instance": "/api/v1/solo/matches",
+  "matchId": "0f6e1b92-5a3c-4d77-8e21-9b4a7c3d5e60"
+}

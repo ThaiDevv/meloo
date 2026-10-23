@@ -1,0 +1,1135 @@
+openapi: 3.1.0
+info:
+  title: Meloo API
+  version: 1.0.0
+  summary: REST contract v1 - authentication, music catalog and single-player rounds.
+  description: |
+    Source of truth for the REST API (ADR-002). Backend generates Spring interfaces and models from
+    this file; frontend generates `schema.gen.ts`. Only `CT-xx` tickets edit it.
+
+    **Conventions**
+    - Every path starts with `/api/v1`.
+    - Fields are camelCase, ids are UUID strings, timestamps are ISO-8601 UTC (`date-time`), enums are UPPER_SNAKE.
+    - Errors are `application/problem+json` (`Problem`). `code` is the stable machine-readable reason; `detail` is for logs, not for display.
+    - Lists are paged with `page` (0-based) and `size`; the response is `Page` plus `items`.
+    - Calls need `Authorization: Bearer <accessToken>` unless the operation says `security: []`. Guests have a session too (ADR-005).
+
+    **Fairness (NFR-07).** The server decides answers, scores and clocks. Nothing in an in-progress round
+    (`RoundState`, `GuessResponse.round`) names the track, the artist or a track id, and no request carries a score.
+    The answer appears only in `RoundResult.answer`, after the round is over. Audio is delivered through an opaque,
+    short-lived URL (`AudioClip.url`) that never contains an id or a title (ADR-008).
+servers:
+  - url: /
+    description: Same origin as the web app (Vercel rewrites `/api` to the backend; Vite proxies it in development).
+tags:
+  - name: identity
+    description: Guest sessions, token refresh, the current user.
+  - name: catalog
+    description: Track search, playlists and filter values.
+  - name: game
+    description: Single-player matches (ranked and practice).
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/auth/guest:
+    post:
+      tags: [identity]
+      operationId: createGuest
+      summary: Start a guest session
+      description: |
+        Public. Creates a guest user from a nickname (BR-20, BR-22) and returns an access token. The refresh token
+        is set as an HttpOnly cookie (ADR-005).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GuestRequest'
+            examples:
+              default:
+                externalValue: ./examples/identity/create-guest.request.json
+      responses:
+        '201':
+          description: Guest session created.
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/RefreshCookie'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSession'
+              examples:
+                default:
+                  externalValue: ./examples/identity/create-guest.201.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/auth/refresh:
+    post:
+      tags: [identity]
+      operationId: refreshSession
+      summary: Rotate the refresh token and get a new access token
+      description: |
+        Public (no bearer token). Reads the refresh cookie, issues a new one and revokes the old one. Reusing an
+        old cookie revokes the whole token family (ADR-005). The `Origin` header is checked (CSRF). Called on page
+        load because the access token lives in memory only.
+      security:
+        - refreshCookie: []
+      responses:
+        '200':
+          description: New session.
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/RefreshCookie'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSession'
+              examples:
+                default:
+                  externalValue: ./examples/identity/refresh-session.200.json
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/auth/logout:
+    post:
+      tags: [identity]
+      operationId: logout
+      summary: End the session
+      description: Public. Revokes the refresh token in the cookie and clears it. Idempotent.
+      security: []
+      responses:
+        '204':
+          description: Logged out. The refresh cookie is cleared.
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/RefreshCookie'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+  /api/v1/me:
+    get:
+      tags: [identity]
+      operationId: getMe
+      summary: Get the current user
+      description: Any signed-in user, guest or registered.
+      responses:
+        '200':
+          description: The current user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+              examples:
+                default:
+                  externalValue: ./examples/identity/get-me.200.json
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/tracks/search:
+    get:
+      tags: [catalog]
+      operationId: searchTracks
+      summary: Autocomplete track titles
+      description: |
+        Any signed-in user. Searches the whole catalog by title, accent-insensitive (BR-05, FR-06), so a suggestion
+        says nothing about the current round's answer. Only enabled tracks (BR-27) are returned.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Text typed in the guess box.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Matching tracks, best match first.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackPage'
+              examples:
+                default:
+                  externalValue: ./examples/catalog/search-tracks.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/playlists:
+    get:
+      tags: [catalog]
+      operationId: listPlaylists
+      summary: List playlists
+      description: Any signed-in user. Enabled playlists only (the standard set and curated sets).
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: A page of playlists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlaylistPage'
+              examples:
+                default:
+                  externalValue: ./examples/catalog/list-playlists.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/filters:
+    get:
+      tags: [catalog]
+      operationId: getFilters
+      summary: List the values usable in a practice filter
+      description: |
+        Any signed-in user. Only values that have at least one enabled track are listed. Not paged: genres,
+        countries and decades are small sets; artists are sorted by name.
+      responses:
+        '200':
+          description: Filter values.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FilterOptions'
+              examples:
+                default:
+                  externalValue: ./examples/catalog/get-filters.200.json
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/solo/matches:
+    post:
+      tags: [game]
+      operationId: createSoloMatch
+      summary: Start a single-player match
+      description: |
+        Any signed-in user, guests included (BR-20). `RANKED` uses the standard set and takes no filter;
+        `PRACTICE` takes a filter and is never ranked (BR-23). A user has at most one match in progress:
+        a second call returns 409 with the existing `matchId`, so reloading cannot swap a hard song for another. A `PRACTICE` match can be quit with `abandonSoloMatch`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSoloMatchRequest'
+            examples:
+              ranked:
+                externalValue: ./examples/game/create-solo-match.request.ranked.json
+              practice:
+                externalValue: ./examples/game/create-solo-match.request.practice.json
+      responses:
+        '201':
+          description: Match created. The first round is already open.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SoloMatch'
+              examples:
+                default:
+                  externalValue: ./examples/game/create-solo-match.201.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: The user already has a match in progress (`SOLO_MATCH_IN_PROGRESS`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/MatchInProgressProblem'
+              examples:
+                default:
+                  externalValue: ./examples/game/create-solo-match.409.json
+        '422':
+          description: The playlist or filter has too few valid tracks (`NOT_ENOUGH_TRACKS`, BR-09).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/NotEnoughTracksProblem'
+              examples:
+                default:
+                  externalValue: ./examples/game/create-solo-match.422.json
+  /api/v1/solo/matches/active:
+    get:
+      tags: [game]
+      operationId: getActiveSoloMatch
+      summary: Resume the match in progress
+      description: |
+        The caller's own match in progress, with its current round and a fresh audio URL for the level already
+        opened (BR-23: a match is kept for 30 minutes after the last action, with the same songs).
+      responses:
+        '200':
+          description: The match in progress.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SoloMatch'
+              examples:
+                default:
+                  externalValue: ./examples/game/get-active-solo-match.200.json
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: No match in progress (`NO_ACTIVE_MATCH`), or it expired and became `ABANDONED`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/solo/matches/{matchId}/rounds/current:
+    get:
+      tags: [game]
+      operationId: getCurrentRound
+      summary: Get the current round
+      description: |
+        The caller's own match only. Returns the open round and a new audio URL for the opened level (use it
+        when `AudioClip.expiresAt` has passed). Never contains the answer.
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      responses:
+        '200':
+          description: The open round.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoundState'
+              examples:
+                default:
+                  externalValue: ./examples/game/get-current-round.200.json
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: The match is not in progress (`MATCH_NOT_IN_PROGRESS`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/solo/matches/{matchId}/rounds/{roundNo}/listen-more:
+    post:
+      tags: [game]
+      operationId: listenMore
+      summary: Open the next listening level
+      description: |
+        The match owner only. Opens 2 -> 5 -> 10 -> 20 -> 30 seconds (BR-01, BR-04). Allowed only while `RoundState.canListenMore`;
+        at 30 seconds the call returns 409 `LISTEN_LEVEL_MAX` and the player may only guess or skip.
+        Listening again to the opened level is free and needs no call (BR-03).
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+        - $ref: '#/components/parameters/RoundNo'
+      responses:
+        '200':
+          description: The round with the new level and its audio.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoundState'
+              examples:
+                default:
+                  externalValue: ./examples/game/listen-more.200.json
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: |
+            `LISTEN_LEVEL_MAX` (already at 30 seconds), `ROUND_NOT_ACTIVE` (that round is over or is not the open one).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/solo/matches/{matchId}/rounds/{roundNo}/skip:
+    post:
+      tags: [game]
+      operationId: skipRound
+      summary: Give up the round
+      description: |
+        The match owner only. Allowed only at the 30-second level, where "Listen more" becomes "Skip" (BR-04); earlier calls return 409
+        `SKIP_NOT_ALLOWED`. The round scores 0 with outcome `GAVE_UP` and the answer is revealed.
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+        - $ref: '#/components/parameters/RoundNo'
+      responses:
+        '200':
+          description: The round is over.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoundEnd'
+              examples:
+                default:
+                  externalValue: ./examples/game/skip-round.200.json
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: '`SKIP_NOT_ALLOWED` (not at 30 seconds yet), `ROUND_NOT_ACTIVE`.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/solo/matches/{matchId}/rounds/{roundNo}/guesses:
+    post:
+      tags: [game]
+      operationId: submitGuess
+      summary: Guess the song
+      description: |
+        The match owner only. The client sends only the chosen track id; the server normalizes and compares titles (BR-05) and computes
+        the score (BR-02, BR-08). A wrong guess opens the next level like "Listen more", and at 30 seconds it ends
+        the round with 0 points (BR-04). `rightArtist` is the "Right artist!" hint (BR-06); it never counts as correct.
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+        - $ref: '#/components/parameters/RoundNo'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GuessRequest'
+            examples:
+              default:
+                externalValue: ./examples/game/submit-guess.request.json
+      responses:
+        '200':
+          description: The guess was judged.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GuessResponse'
+              examples:
+                wrong:
+                  summary: Wrong guess, next level opened.
+                  externalValue: ./examples/game/submit-guess.200.wrong.json
+                correct:
+                  summary: Correct guess, round over, next round open.
+                  externalValue: ./examples/game/submit-guess.200.correct.json
+                lastRound:
+                  summary: Correct guess on the last round, match over.
+                  externalValue: ./examples/game/submit-guess.200.last-round.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: '`MATCH_NOT_FOUND` or `TRACK_NOT_FOUND` (the track id is not in the catalog).'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: '`ROUND_NOT_ACTIVE` (that round is over or is not the open one).'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/solo/matches/{matchId}/rounds/{roundNo}/result:
+    get:
+      tags: [game]
+      operationId: getRoundResult
+      summary: Get a finished round's result
+      description: |
+        The match owner only. The only place the answer, its source and the full-listen link appear (BR-29). Returns 409
+        `ROUND_NOT_FINISHED` while the round is still open, so no endpoint reveals the answer early.
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+        - $ref: '#/components/parameters/RoundNo'
+      responses:
+        '200':
+          description: The round result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoundResult'
+              examples:
+                default:
+                  externalValue: ./examples/game/get-round-result.200.json
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: '`ROUND_NOT_FINISHED`.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/solo/matches/{matchId}/result:
+    get:
+      tags: [game]
+      operationId: getMatchResult
+      summary: Get a finished match's result
+      description: The match owner only. Total score and every finished round. Returns 409 `MATCH_NOT_FINISHED` while the match is still in progress; an `ABANDONED` match returns 200 with the rounds it finished.
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      responses:
+        '200':
+          description: The match result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchResult'
+              examples:
+                default:
+                  externalValue: ./examples/game/get-match-result.200.json
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: '`MATCH_NOT_FINISHED`.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/solo/matches/{matchId}/abandon:
+    post:
+      tags: [game]
+      operationId: abandonSoloMatch
+      summary: Quit a practice match
+      description: |
+        The match owner only. Only a `PRACTICE` match can be quit; a `RANKED` match must be finished or left to
+        expire after 30 minutes, so a player cannot drop a hard song and redraw (BR-23). The match becomes
+        `ABANDONED`, is not ranked, and keeps the rounds already finished.
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      responses:
+        '200':
+          description: The match is now `ABANDONED`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchResult'
+              examples:
+                default:
+                  externalValue: ./examples/game/abandon-solo-match.200.json
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: '`RANKED_MATCH_CANNOT_ABANDON` (ranked mode) or `MATCH_NOT_IN_PROGRESS`.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                default:
+                  externalValue: ./examples/game/abandon-solo-match.409.json
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token (15 minutes), kept in memory by the client (ADR-005).
+    refreshCookie:
+      type: apiKey
+      in: cookie
+      name: meloo_refresh
+      description: Rotating refresh token. HttpOnly, Secure, SameSite=Lax, Path=/api/v1/auth, 30 days.
+  headers:
+    RefreshCookie:
+      description: '`meloo_refresh=<token>; HttpOnly; Secure; SameSite=Lax; Path=/api/v1/auth; Max-Age=2592000` (or an expired cookie on logout).'
+      schema:
+        type: string
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: Zero-based page index.
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Size:
+      name: size
+      in: query
+      description: Page size.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 50
+        default: 10
+    MatchId:
+      name: matchId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    RoundNo:
+      name: roundNo
+      in: path
+      required: true
+      description: One-based round number within the match.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 15
+  responses:
+    ValidationFailed:
+      description: Invalid input (`VALIDATION_FAILED`); `errors` lists the fields.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            default:
+              externalValue: ./examples/common/problem.validation-failed.400.json
+    Unauthorized:
+      description: Missing, expired or invalid credentials (`UNAUTHORIZED`).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            default:
+              externalValue: ./examples/common/problem.unauthorized.401.json
+    Forbidden:
+      description: The account is locked (`ACCOUNT_LOCKED`, BR-28) or the request origin is refused.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: The match or round does not exist or is not the caller's (`MATCH_NOT_FOUND`, `ROUND_NOT_FOUND`).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    TooManyRequests:
+      description: Rate limit hit (`RATE_LIMITED`); retry after the `Retry-After` seconds.
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    Problem:
+      type: object
+      description: RFC 9457 problem details with a stable `code`.
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          default: about:blank
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+        code:
+          type: string
+          pattern: '^[A-Z][A-Z0-9_]*$'
+          examples: [VALIDATION_FAILED]
+        errors:
+          type: array
+          description: Field errors, present for `VALIDATION_FAILED`.
+          items:
+            $ref: '#/components/schemas/FieldError'
+    FieldError:
+      type: object
+      required: [field, message]
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+    MatchInProgressProblem:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          required: [matchId]
+          properties:
+            matchId:
+              type: string
+              format: uuid
+              description: The match to resume with `getActiveSoloMatch`.
+    NotEnoughTracksProblem:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          required: [missingTracks]
+          properties:
+            missingTracks:
+              type: integer
+              minimum: 1
+              description: How many more valid tracks the chosen set needs for this round count (BR-09).
+    Page:
+      type: object
+      required: [page, size, totalItems, totalPages]
+      properties:
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        totalItems:
+          type: integer
+          format: int64
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+    UserKind:
+      type: string
+      enum: [GUEST, REGISTERED]
+    UserRole:
+      type: string
+      enum: [USER, ADMIN]
+    GuestRequest:
+      type: object
+      additionalProperties: false
+      required: [nickname]
+      properties:
+        nickname:
+          type: string
+          minLength: 3
+          maxLength: 20
+          description: Display name (BR-22); a banned word is rejected with 400.
+    Me:
+      type: object
+      required: [id, kind, role, nickname, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          $ref: '#/components/schemas/UserKind'
+        role:
+          $ref: '#/components/schemas/UserRole'
+        nickname:
+          type: string
+          minLength: 3
+          maxLength: 20
+        email:
+          type: string
+          format: email
+          maxLength: 254
+          description: Only for registered users.
+        createdAt:
+          type: string
+          format: date-time
+    AuthSession:
+      type: object
+      required: [accessToken, tokenType, expiresAt, user]
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+          enum: [Bearer]
+        expiresAt:
+          type: string
+          format: date-time
+        user:
+          $ref: '#/components/schemas/Me'
+    MusicProvider:
+      type: string
+      enum: [DEEZER, ITUNES]
+      description: Music source (ADR-003).
+    TrackSuggestion:
+      type: object
+      description: A catalog entry shown in the guess box. Catalog-wide; not tied to any round.
+      required: [id, title, artistName]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 300
+        artistName:
+          type: string
+          maxLength: 200
+    TrackPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/TrackSuggestion'
+    PlaylistKind:
+      type: string
+      enum: [STANDARD, CURATED]
+      description: '`STANDARD` is the set used by ranked single play (BR-23).'
+    Playlist:
+      type: object
+      required: [id, code, nameVi, nameEn, kind, trackCount]
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          maxLength: 60
+        nameVi:
+          type: string
+          maxLength: 120
+        nameEn:
+          type: string
+          maxLength: 120
+        kind:
+          $ref: '#/components/schemas/PlaylistKind'
+        trackCount:
+          type: integer
+          minimum: 0
+          description: Enabled tracks in the playlist.
+    PlaylistPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Playlist'
+    Genre:
+      type: object
+      required: [code, nameVi, nameEn]
+      properties:
+        code:
+          type: string
+          maxLength: 40
+          examples: [vpop]
+        nameVi:
+          type: string
+          maxLength: 80
+        nameEn:
+          type: string
+          maxLength: 80
+    Artist:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 200
+    FilterOptions:
+      type: object
+      required: [genres, countries, decades, artists]
+      properties:
+        genres:
+          type: array
+          items:
+            $ref: '#/components/schemas/Genre'
+        countries:
+          type: array
+          description: ISO 3166-1 alpha-2 codes; the client localizes the names.
+          items:
+            type: string
+            pattern: '^[A-Z]{2}$'
+        decades:
+          type: array
+          description: Decade start years, e.g. 1990.
+          items:
+            type: integer
+        artists:
+          type: array
+          items:
+            $ref: '#/components/schemas/Artist'
+    SoloFilter:
+      type: object
+      additionalProperties: false
+      description: Values inside one list are OR-ed; the lists are AND-ed. An empty or missing list does not filter.
+      properties:
+        genreCodes:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+        countryCodes:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            pattern: '^[A-Z]{2}$'
+        decades:
+          type: array
+          maxItems: 20
+          items:
+            type: integer
+        artistIds:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            format: uuid
+    SoloMode:
+      type: string
+      enum: [RANKED, PRACTICE]
+      description: '`RANKED` = standard set; `PRACTICE` = free filter, never ranked (BR-23).'
+    CreateSoloMatchRequest:
+      type: object
+      additionalProperties: false
+      required: [mode]
+      properties:
+        mode:
+          $ref: '#/components/schemas/SoloMode'
+        roundCount:
+          type: integer
+          enum: [5, 10, 15]
+          description: Rounds in the match (BR-09). Defaults to 10 when omitted.
+        filter:
+          $ref: '#/components/schemas/SoloFilter'
+          description: Only for `PRACTICE`; sending it with `RANKED` is a 400. Omitted or empty means the whole catalog.
+    AudioClip:
+      type: object
+      description: One listening level as an opaque URL (ADR-008). Never parse it.
+      required: [url, expiresAt]
+      properties:
+        url:
+          type: string
+          format: uri-reference
+          description: Relative to the API origin. Carries no track id or title. Serves exactly `listenSeconds` of audio.
+        expiresAt:
+          type: string
+          format: date-time
+          description: Short-lived (2 minutes at most). Ask `getCurrentRound` for a fresh URL after it.
+    RoundState:
+      type: object
+      description: A round in progress. Deliberately has no answer, track id, artist or score field (NFR-07).
+      required: [matchId, roundNo, roundCount, level, listenSeconds, canListenMore, canSkip, audio, serverTime]
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        roundNo:
+          type: integer
+          minimum: 1
+          maximum: 15
+        roundCount:
+          type: integer
+          enum: [5, 10, 15]
+        level:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: Opened listening level, 1 to 5 (BR-01).
+        listenSeconds:
+          type: integer
+          enum: [2, 5, 10, 20, 30]
+          description: Length of the opened level. The UI label is `2s`, `5s`, ... (glossary).
+        canListenMore:
+          type: boolean
+          description: '`level` < 5.'
+        canSkip:
+          type: boolean
+          description: '`level` = 5 (BR-04).'
+        audio:
+          $ref: '#/components/schemas/AudioClip'
+        serverTime:
+          type: string
+          format: date-time
+          description: Server clock when the response was built; use it to judge `audio.expiresAt` despite clock skew.
+    GuessRequest:
+      type: object
+      additionalProperties: false
+      description: The client never sends a score, a level or a time.
+      required: [trackId]
+      properties:
+        trackId:
+          type: string
+          format: uuid
+          description: A suggestion picked from `searchTracks`.
+    RoundOutcome:
+      type: string
+      enum: [CORRECT, WRONG_OUT, GAVE_UP, TIMEOUT, MISSED]
+      description: |
+        Single play returns `CORRECT`, `WRONG_OUT` (wrong at 30 seconds) and `GAVE_UP` (skip).
+        `TIMEOUT` and `MISSED` are used by timed modes (BR-07, BR-14).
+    Answer:
+      type: object
+      description: Revealed only after the round is over.
+      required: [trackId, title, artistName, provider, listenUrl]
+      properties:
+        trackId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 300
+        artistName:
+          type: string
+          maxLength: 200
+        provider:
+          $ref: '#/components/schemas/MusicProvider'
+        listenUrl:
+          type: string
+          format: uri
+          description: Full-listen link on the source platform (BR-29).
+    RoundResult:
+      type: object
+      required: [roundNo, outcome, baseScore, comboPercent, speedBonus, roundScore, wrongCount, comboStreak, totalScore, answer]
+      properties:
+        roundNo:
+          type: integer
+          minimum: 1
+          maximum: 15
+        outcome:
+          $ref: '#/components/schemas/RoundOutcome'
+        correctLevel:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: Level of the correct guess; absent unless `outcome` is `CORRECT`.
+        baseScore:
+          type: integer
+          enum: [0, 200, 400, 600, 800, 1000]
+          description: BR-02.
+        comboPercent:
+          type: integer
+          enum: [0, 10, 20]
+          description: Combo bonus applied to `baseScore` (BR-08).
+        speedBonus:
+          type: integer
+          minimum: 0
+          description: BR-07. Always 0 in single play.
+        roundScore:
+          type: integer
+          minimum: 0
+          description: '`baseScore` x (1 + `comboPercent` / 100) + `speedBonus`; 0 unless `outcome` is `CORRECT`.'
+        wrongCount:
+          type: integer
+          minimum: 0
+        comboStreak:
+          type: integer
+          minimum: 0
+          description: Current streak after this round - consecutive correct rounds at 2s or 5s (BR-08).
+        totalScore:
+          type: integer
+          minimum: 0
+          description: Match score after this round.
+        answer:
+          $ref: '#/components/schemas/Answer'
+    RoundEnd:
+      type: object
+      required: [result, matchFinished]
+      properties:
+        result:
+          $ref: '#/components/schemas/RoundResult'
+        matchFinished:
+          type: boolean
+          description: True after the last round; then call `getMatchResult`.
+        nextRound:
+          $ref: '#/components/schemas/RoundState'
+          description: The next round, already open. Absent when `matchFinished` is true.
+    GuessResponse:
+      type: object
+      required: [correct, rightArtist, roundEnded]
+      properties:
+        correct:
+          type: boolean
+        rightArtist:
+          type: boolean
+          description: True only for a wrong guess by the right main artist (BR-06); always false when `correct` is true.
+        roundEnded:
+          type: boolean
+        round:
+          $ref: '#/components/schemas/RoundState'
+          description: 'Present while the round continues (`roundEnded` false): the next level is open.'
+        end:
+          $ref: '#/components/schemas/RoundEnd'
+          description: Present when `roundEnded` is true.
+    SoloMatch:
+      type: object
+      description: A match in progress.
+      required: [matchId, mode, ranked, roundCount, totalScore, comboStreak, startedAt, expiresAt, currentRound]
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        mode:
+          $ref: '#/components/schemas/SoloMode'
+        ranked:
+          type: boolean
+          description: Whether the match counts for ranking (BR-23). Guests still do not reach the board (BR-20).
+        roundCount:
+          type: integer
+          enum: [5, 10, 15]
+        filter:
+          $ref: '#/components/schemas/SoloFilter'
+        totalScore:
+          type: integer
+          minimum: 0
+        comboStreak:
+          type: integer
+          minimum: 0
+        startedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+          description: The match becomes `ABANDONED` if nothing happens before this time (30 minutes, BR-23).
+        currentRound:
+          $ref: '#/components/schemas/RoundState'
+    MatchStatus:
+      type: string
+      enum: [FINISHED, ABANDONED]
+    MatchResult:
+      type: object
+      required: [matchId, mode, ranked, status, roundCount, totalScore, correctCount, rounds, startedAt, endedAt]
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        mode:
+          $ref: '#/components/schemas/SoloMode'
+        ranked:
+          type: boolean
+          description: False for an `ABANDONED` match even in `RANKED` mode (BR-23).
+        status:
+          $ref: '#/components/schemas/MatchStatus'
+        roundCount:
+          type: integer
+          enum: [5, 10, 15]
+        totalScore:
+          type: integer
+          minimum: 0
+        correctCount:
+          type: integer
+          minimum: 0
+        rounds:
+          type: array
+          description: Finished rounds in order; an abandoned match lists only those it finished.
+          items:
+            $ref: '#/components/schemas/RoundResult'
+        startedAt:
+          type: string
+          format: date-time
+        endedAt:
+          type: string
+          format: date-time

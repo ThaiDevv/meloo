@@ -1,0 +1,14 @@
+{
+  "type": "about:blank",
+  "title": "Validation failed",
+  "status": 400,
+  "code": "VALIDATION_FAILED",
+  "detail": "One or more fields are invalid.",
+  "instance": "/api/v1/auth/guest",
+  "errors": [
+    {
+      "field": "nickname",
+      "message": "size must be between 3 and 20"
+    }
+  ]
+}

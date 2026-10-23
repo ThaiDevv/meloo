@@ -1,0 +1,27 @@
+{
+  "correct": true,
+  "rightArtist": false,
+  "roundEnded": true,
+  "end": {
+    "result": {
+      "roundNo": 10,
+      "outcome": "CORRECT",
+      "correctLevel": 1,
+      "baseScore": 1000,
+      "comboPercent": 10,
+      "speedBonus": 0,
+      "roundScore": 1100,
+      "wrongCount": 0,
+      "comboStreak": 2,
+      "totalScore": 1900,
+      "answer": {
+        "trackId": "c47b0e95-1d2a-4f36-8b59-a0e7d3c61f84",
+        "title": "Waiting For You",
+        "artistName": "MONO",
+        "provider": "DEEZER",
+        "listenUrl": "https://www.deezer.com/track/2345678901"
+      }
+    },
+    "matchFinished": true
+  }
+}

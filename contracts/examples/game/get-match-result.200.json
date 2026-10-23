@@ -1,0 +1,107 @@
+{
+  "matchId": "0f6e1b92-5a3c-4d77-8e21-9b4a7c3d5e60",
+  "mode": "RANKED",
+  "ranked": true,
+  "status": "FINISHED",
+  "roundCount": 5,
+  "totalScore": 3500,
+  "correctCount": 4,
+  "rounds": [
+    {
+      "roundNo": 1,
+      "outcome": "CORRECT",
+      "correctLevel": 2,
+      "baseScore": 800,
+      "comboPercent": 0,
+      "speedBonus": 0,
+      "roundScore": 800,
+      "wrongCount": 1,
+      "comboStreak": 1,
+      "totalScore": 800,
+      "answer": {
+        "trackId": "3a9f6c10-2b7d-4e58-91c3-6d0a8f4b7e21",
+        "title": "Chúng Ta Của Hiện Tại",
+        "artistName": "Sơn Tùng M-TP",
+        "provider": "DEEZER",
+        "listenUrl": "https://www.deezer.com/track/1234567890"
+      }
+    },
+    {
+      "roundNo": 2,
+      "outcome": "CORRECT",
+      "correctLevel": 1,
+      "baseScore": 1000,
+      "comboPercent": 10,
+      "speedBonus": 0,
+      "roundScore": 1100,
+      "wrongCount": 0,
+      "comboStreak": 2,
+      "totalScore": 1900,
+      "answer": {
+        "trackId": "c47b0e95-1d2a-4f36-8b59-a0e7d3c61f84",
+        "title": "Waiting For You",
+        "artistName": "MONO",
+        "provider": "DEEZER",
+        "listenUrl": "https://www.deezer.com/track/2345678901"
+      }
+    },
+    {
+      "roundNo": 3,
+      "outcome": "GAVE_UP",
+      "baseScore": 0,
+      "comboPercent": 0,
+      "speedBonus": 0,
+      "roundScore": 0,
+      "wrongCount": 3,
+      "comboStreak": 0,
+      "totalScore": 1900,
+      "answer": {
+        "trackId": "8d2e5b73-6c14-4a90-b7f2-1e3c9a5d0f48",
+        "title": "Em Của Ngày Hôm Qua",
+        "artistName": "Sơn Tùng M-TP",
+        "provider": "DEEZER",
+        "listenUrl": "https://www.deezer.com/track/3456789012"
+      }
+    },
+    {
+      "roundNo": 4,
+      "outcome": "CORRECT",
+      "correctLevel": 3,
+      "baseScore": 600,
+      "comboPercent": 0,
+      "speedBonus": 0,
+      "roundScore": 600,
+      "wrongCount": 2,
+      "comboStreak": 0,
+      "totalScore": 2500,
+      "answer": {
+        "trackId": "92d5a0e7-3f68-4b1c-8e47-d1c9b6a2f503",
+        "title": "Em Là Của Anh",
+        "artistName": "MONO",
+        "provider": "DEEZER",
+        "listenUrl": "https://www.deezer.com/track/4567890123"
+      }
+    },
+    {
+      "roundNo": 5,
+      "outcome": "CORRECT",
+      "correctLevel": 1,
+      "baseScore": 1000,
+      "comboPercent": 0,
+      "speedBonus": 0,
+      "roundScore": 1000,
+      "wrongCount": 0,
+      "comboStreak": 1,
+      "totalScore": 3500,
+      "answer": {
+        "trackId": "6b0e4f93-a1d7-4c25-9f80-27e5c8d3b1a6",
+        "title": "Hãy Trao Cho Anh",
+        "artistName": "Sơn Tùng M-TP",
+        "provider": "DEEZER",
+        "listenUrl": "https://www.deezer.com/track/5678901234"
+      }
+    }
+  ],
+  "startedAt": "2026-10-23T13:10:00Z",
+  "endedAt": "2026-10-23T13:21:00Z"
+}

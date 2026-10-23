@@ -1,0 +1,51 @@
+{
+  "matchId": "0f6e1b92-5a3c-4d77-8e21-9b4a7c3d5e60",
+  "mode": "PRACTICE",
+  "ranked": false,
+  "status": "ABANDONED",
+  "roundCount": 5,
+  "totalScore": 1900,
+  "correctCount": 2,
+  "rounds": [
+    {
+      "roundNo": 1,
+      "outcome": "CORRECT",
+      "correctLevel": 2,
+      "baseScore": 800,
+      "comboPercent": 0,
+      "speedBonus": 0,
+      "roundScore": 800,
+      "wrongCount": 1,
+      "comboStreak": 1,
+      "totalScore": 800,
+      "answer": {
+        "trackId": "3a9f6c10-2b7d-4e58-91c3-6d0a8f4b7e21",
+        "title": "Chúng Ta Của Hiện Tại",
+        "artistName": "Sơn Tùng M-TP",
+        "provider": "DEEZER",
+        "listenUrl": "https://www.deezer.com/track/1234567890"
+      }
+    },
+    {
+      "roundNo": 2,
+      "outcome": "CORRECT",
+      "correctLevel": 1,
+      "baseScore": 1000,
+      "comboPercent": 10,
+      "speedBonus": 0,
+      "roundScore": 1100,
+      "wrongCount": 0,
+      "comboStreak": 2,
+      "totalScore": 1900,
+      "answer": {
+        "trackId": "c47b0e95-1d2a-4f36-8b59-a0e7d3c61f84",
+        "title": "Waiting For You",
+        "artistName": "MONO",
+        "provider": "DEEZER",
+        "listenUrl": "https://www.deezer.com/track/2345678901"
+      }
+    }
+  ],
+  "startedAt": "2026-10-23T13:00:00Z",
+  "endedAt": "2026-10-23T13:12:00Z"
+}

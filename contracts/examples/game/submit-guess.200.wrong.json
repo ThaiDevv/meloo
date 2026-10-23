@@ -1,0 +1,19 @@
+{
+  "correct": false,
+  "rightArtist": true,
+  "roundEnded": false,
+  "round": {
+    "matchId": "0f6e1b92-5a3c-4d77-8e21-9b4a7c3d5e60",
+    "roundNo": 1,
+    "roundCount": 10,
+    "level": 2,
+    "listenSeconds": 5,
+    "canListenMore": true,
+    "canSkip": false,
+    "audio": {
+      "url": "/api/v1/audio/Mk5PcW1sHy7TqZb3NdXr8LvAe2GfUo9JiRtC6xYn4Eg",
+      "expiresAt": "2026-10-23T13:12:00Z"
+    },
+    "serverTime": "2026-10-23T13:10:05Z"
+  }
+}

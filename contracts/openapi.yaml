@@ -215,7 +215,7 @@ paths:
       description: |
         Any signed-in user, guests included (BR-20). `RANKED` uses the standard set and takes no filter;
         `PRACTICE` takes a filter and is never ranked (BR-23). A user has at most one match in progress:
-        a second call returns 409 with the existing `matchId`, so reloading cannot swap a hard song for another.
+        a second call returns 409 with the existing `matchId`, so reloading cannot swap a hard song for another. A `PRACTICE` match can be quit with `abandonSoloMatch`.
       requestBody:
         required: true
         content:
@@ -494,6 +494,40 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+  /api/v1/solo/matches/{matchId}/abandon:
+    post:
+      tags: [game]
+      operationId: abandonSoloMatch
+      summary: Quit a practice match
+      description: |
+        The match owner only. Only a `PRACTICE` match can be quit; a `RANKED` match must be finished or left to
+        expire after 30 minutes, so a player cannot drop a hard song and redraw (BR-23). The match becomes
+        `ABANDONED`, is not ranked, and keeps the rounds already finished.
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      responses:
+        '200':
+          description: The match is now `ABANDONED`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchResult'
+              examples:
+                default:
+                  externalValue: ./examples/game/abandon-solo-match.200.json
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: '`RANKED_MATCH_CANNOT_ABANDON` (ranked mode) or `MATCH_NOT_IN_PROGRESS`.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                default:
+                  externalValue: ./examples/game/abandon-solo-match.409.json
 components:
   securitySchemes:
     bearerAuth:
@@ -870,7 +904,7 @@ components:
           description: Rounds in the match (BR-09). Defaults to 10 when omitted.
         filter:
           $ref: '#/components/schemas/SoloFilter'
-          description: Only for `PRACTICE`; sending it with `RANKED` is a 400.
+          description: Only for `PRACTICE`; sending it with `RANKED` is a 400. Omitted or empty means the whole catalog.
     AudioClip:
       type: object
       description: One listening level as an opaque URL (ADR-008). Never parse it.

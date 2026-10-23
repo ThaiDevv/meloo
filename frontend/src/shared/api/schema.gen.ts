@@ -162,7 +162,7 @@ export interface paths {
          * Start a single-player match
          * @description Any signed-in user, guests included (BR-20). `RANKED` uses the standard set and takes no filter;
          *     `PRACTICE` takes a filter and is never ranked (BR-23). A user has at most one match in progress:
-         *     a second call returns 409 with the existing `matchId`, so reloading cannot swap a hard song for another.
+         *     a second call returns 409 with the existing `matchId`, so reloading cannot swap a hard song for another. A `PRACTICE` match can be quit with `abandonSoloMatch`.
          */
         post: operations["createSoloMatch"];
         delete?: never;
@@ -319,6 +319,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/solo/matches/{matchId}/abandon": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Quit a practice match
+         * @description The match owner only. Only a `PRACTICE` match can be quit; a `RANKED` match must be finished or left to
+         *     expire after 30 minutes, so a player cannot drop a hard song and redraw (BR-23). The match becomes
+         *     `ABANDONED`, is not ranked, and keeps the rounds already finished.
+         */
+        post: operations["abandonSoloMatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -463,7 +485,7 @@ export interface components {
              * @enum {integer}
              */
             roundCount?: 5 | 10 | 15;
-            /** @description Only for `PRACTICE`; sending it with `RANKED` is a 400. */
+            /** @description Only for `PRACTICE`; sending it with `RANKED` is a 400. Omitted or empty means the whole catalog. */
             filter?: components["schemas"]["SoloFilter"];
         };
         /** @description One listening level as an opaque URL (ADR-008). Never parse it. */
@@ -1136,6 +1158,39 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             /** @description `MATCH_NOT_FINISHED`. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    abandonSoloMatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                matchId: components["parameters"]["MatchId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The match is now `ABANDONED`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchResult"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            /** @description `RANKED_MATCH_CANNOT_ABANDON` (ranked mode) or `MATCH_NOT_IN_PROGRESS`. */
             409: {
                 headers: {
                     [name: string]: unknown;

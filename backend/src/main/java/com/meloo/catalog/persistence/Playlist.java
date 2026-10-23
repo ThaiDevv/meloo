@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
@@ -41,9 +42,17 @@ public class Playlist {
   @Column(nullable = false, length = 10)
   private PlaylistKind kind;
 
+  @Builder.Default
   @Column(nullable = false)
-  private boolean enabled;
+  private boolean enabled = true;
 
   @Column(name = "created_at", updatable = false, nullable = false)
   private Instant createdAt;
+
+  @PrePersist
+  void prePersist() {
+    if (createdAt == null) {
+      createdAt = Instant.now();
+    }
+  }
 }

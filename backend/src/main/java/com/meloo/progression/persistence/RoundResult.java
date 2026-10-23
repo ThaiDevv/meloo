@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
@@ -45,21 +46,31 @@ public class RoundResult {
   @Column(name = "base_score", nullable = false)
   private int baseScore;
 
+  @Builder.Default
   @Column(name = "combo_percent", nullable = false)
-  private short comboPercent;
+  private short comboPercent = 0;
 
+  @Builder.Default
   @Column(name = "speed_bonus", nullable = false)
-  private int speedBonus;
+  private int speedBonus = 0;
 
   @Column(name = "round_score", nullable = false)
   private int roundScore;
 
+  @Builder.Default
   @Column(name = "wrong_count", nullable = false)
-  private short wrongCount;
+  private short wrongCount = 0;
 
   @Nullable @Column(name = "answer_time_ms")
   private Integer answerTimeMs;
 
   @Column(name = "created_at", updatable = false, nullable = false)
   private Instant createdAt;
+
+  @PrePersist
+  void prePersist() {
+    if (createdAt == null) {
+      createdAt = Instant.now();
+    }
+  }
 }

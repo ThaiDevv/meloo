@@ -3,6 +3,7 @@ package com.meloo.chat.persistence;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
@@ -35,4 +36,11 @@ public class BannedWord {
 
   @Column(name = "created_at", updatable = false, nullable = false)
   private Instant createdAt;
+
+  @PrePersist
+  void prePersist() {
+    if (createdAt == null) {
+      createdAt = Instant.now();
+    }
+  }
 }

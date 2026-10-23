@@ -2,7 +2,10 @@ package com.meloo.catalog.persistence;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
@@ -29,8 +32,9 @@ public class Track {
   @Column(updatable = false)
   private UUID id;
 
+  @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 16)
-  private String provider;
+  private MusicProvider provider;
 
   @Column(name = "provider_track_id", nullable = false, length = 64)
   private String providerTrackId;
@@ -57,12 +61,20 @@ public class Track {
   @Nullable @Column(name = "popularity_rank")
   private Integer popularityRank;
 
+  @Builder.Default
   @Column(nullable = false)
-  private boolean enabled;
+  private boolean enabled = true;
 
   @Nullable @Column(name = "disabled_reason", length = 200)
   private String disabledReason;
 
   @Column(name = "created_at", updatable = false, nullable = false)
   private Instant createdAt;
+
+  @PrePersist
+  void prePersist() {
+    if (createdAt == null) {
+      createdAt = Instant.now();
+    }
+  }
 }

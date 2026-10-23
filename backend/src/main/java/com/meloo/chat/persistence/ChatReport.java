@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
@@ -43,13 +44,15 @@ public class ChatReport {
   @Column(name = "reporter_id", nullable = false)
   private UUID reporterId;
 
+  @Builder.Default
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(nullable = false)
-  private String context;
+  private String context = "[]";
 
+  @Builder.Default
   @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 10)
-  private ReportStatus status;
+  private ReportStatus status = ReportStatus.OPEN;
 
   @Nullable @Column(name = "handled_by")
   private UUID handledBy;
@@ -59,4 +62,11 @@ public class ChatReport {
 
   @Column(name = "created_at", updatable = false, nullable = false)
   private Instant createdAt;
+
+  @PrePersist
+  void prePersist() {
+    if (createdAt == null) {
+      createdAt = Instant.now();
+    }
+  }
 }

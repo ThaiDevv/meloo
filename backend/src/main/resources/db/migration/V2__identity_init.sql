@@ -14,6 +14,9 @@ create table app_user (
     created_at      timestamptz  not null default now(),
     constraint chk_app_user_lock check (
         status <> 'LOCKED' or lock_reason is not null
+    ),
+    constraint chk_app_user_email_lower check (
+        email is null or email = lower(email)
     )
 );
 

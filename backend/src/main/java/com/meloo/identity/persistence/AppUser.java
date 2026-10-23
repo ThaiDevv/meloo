@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
@@ -33,13 +34,15 @@ public class AppUser {
   @Column(nullable = false, length = 12)
   private UserKind kind;
 
+  @Builder.Default
   @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 8)
-  private UserRole role;
+  private UserRole role = UserRole.USER;
 
+  @Builder.Default
   @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 8)
-  private UserStatus status;
+  private UserStatus status = UserStatus.ACTIVE;
 
   @Column(nullable = false, length = 20)
   private String nickname;
@@ -61,4 +64,15 @@ public class AppUser {
 
   @Column(name = "created_at", updatable = false, nullable = false)
   private Instant createdAt;
+
+  @PrePersist
+  void prePersist() {
+    Instant now = Instant.now();
+    if (createdAt == null) {
+      createdAt = now;
+    }
+    if (lastActiveAt == null) {
+      lastActiveAt = now;
+    }
+  }
 }

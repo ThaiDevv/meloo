@@ -82,6 +82,35 @@ class MigrationV2ToV5IntegrationTest extends IntegrationTest {
     }
 
     @Test
+    @DisplayName("app_user rejects uppercase email")
+    void appUserRejectsUppercaseEmail() {
+      assertThatThrownBy(
+              () ->
+                  jdbc.update(
+                      """
+                      insert into app_user (id, kind, role, status, nickname, email, last_active_at, created_at)
+                      values (?, 'REGISTERED', 'USER', 'ACTIVE', 'test', 'User@Example.com', now(), now())
+                      """,
+                      UUID.randomUUID()))
+          .hasMessageContaining("chk_app_user_email_lower");
+    }
+
+    @Test
+    @DisplayName("auth_identity rejects non-existent user_id")
+    void authIdentityRejectsNonExistentUser() {
+      assertThatThrownBy(
+              () ->
+                  jdbc.update(
+                      """
+                      insert into auth_identity (id, user_id, provider, provider_subject, created_at)
+                      values (?, ?, 'GOOGLE', 'sub-123', now())
+                      """,
+                      UUID.randomUUID(),
+                      UUID.randomUUID()))
+          .hasMessageContaining("auth_identity_user_id_fkey");
+    }
+
+    @Test
     @DisplayName("identity indexes exist")
     void identityIndexesExist() {
       assertThat(indexesOn("app_user"))
@@ -125,6 +154,12 @@ class MigrationV2ToV5IntegrationTest extends IntegrationTest {
       assertThat(indexesOn("artist")).contains("idx_artist_name_trgm");
       assertThat(indexesOn("track")).contains("idx_track_title_trgm", "idx_track_artist");
       assertThat(indexesOn("playlist_track")).contains("idx_playlist_track_track");
+
+      String indexDef =
+          jdbc.queryForObject(
+              "select indexdef from pg_indexes where tablename = 'artist' and indexname = 'idx_artist_name_trgm'",
+              String.class);
+      assertThat(indexDef).containsIgnoringCase("USING gin").contains("gin_trgm_ops");
     }
   }
 
@@ -227,6 +262,12 @@ class MigrationV2ToV5IntegrationTest extends IntegrationTest {
       assertThat(indexesOn("match_player"))
           .contains("idx_match_player_user_matches", "idx_match_player_leaderboard");
       assertThat(indexesOn("round_result")).contains("idx_round_result_player");
+
+      String indexDef =
+          jdbc.queryForObject(
+              "select indexdef from pg_indexes where tablename = 'match_player' and indexname = 'idx_match_player_leaderboard'",
+              String.class);
+      assertThat(indexDef).containsIgnoringCase("WHERE counts_for_leaderboard");
     }
   }
 
@@ -248,10 +289,10 @@ class MigrationV2ToV5IntegrationTest extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("banned_word seed has ~30 rows")
+    @DisplayName("banned_word seed has exactly 31 rows")
     void bannedWordSeedCount() {
       Integer count = jdbc.queryForObject("select count(*) from banned_word", Integer.class);
-      assertThat(count).isNotNull().isBetween(25, 35);
+      assertThat(count).isEqualTo(31);
     }
 
     @Test

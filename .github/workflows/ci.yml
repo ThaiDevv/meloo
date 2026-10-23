@@ -38,8 +38,10 @@ jobs:
               - 'contracts/**'
             frontend:
               - 'frontend/**'
+              - '.github/workflows/ci.yml'
             contracts:
               - 'contracts/**'
+              - '.github/workflows/ci.yml'
             e2e:
               - 'frontend/**'
               - 'infra/docker-compose.yml'
@@ -68,10 +70,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - uses: pnpm/setup@v1
         with:
           version: 10.34.7
-          runtime: node@22
           install: false
           cache: true
           cache-dependency-path: frontend/pnpm-lock.yaml
@@ -104,10 +108,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - uses: pnpm/setup@v1
         with:
           version: 10.34.7
-          runtime: node@22
           install: false
           cache: true
           cache-dependency-path: frontend/pnpm-lock.yaml
@@ -139,10 +145,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - uses: pnpm/setup@v1
         with:
           version: 10.34.7
-          runtime: node@22
           install: false
           cache: true
           cache-dependency-path: frontend/pnpm-lock.yaml

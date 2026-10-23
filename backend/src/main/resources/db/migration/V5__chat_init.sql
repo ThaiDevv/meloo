@@ -24,37 +24,33 @@ create table banned_word (
     created_at timestamptz not null default now()
 );
 
--- ~30 common Vietnamese profanity (lowercase, NFC, with diacritics).
--- No-diacritic abbreviations as separate rows. Thai reviews in PR.
+-- 25 common Vietnamese profanity and abbreviations (lowercase, NFC, with diacritics).
+-- BR-17 blocks the whole message, so every entry is one token that is almost never benign;
+-- mild or ambiguous words (dog, dumb, silly...) and multi-word phrases are left to admins (UC-31).
+-- Matching is by whole token, so a single-token entry already covers phrases containing it.
 insert into banned_word (id, word) values
     (gen_random_uuid(), 'địt'),
     (gen_random_uuid(), 'đụ'),
     (gen_random_uuid(), 'đéo'),
     (gen_random_uuid(), 'đĩ'),
+    (gen_random_uuid(), 'điếm'),
     (gen_random_uuid(), 'lồn'),
     (gen_random_uuid(), 'buồi'),
     (gen_random_uuid(), 'cặc'),
-    (gen_random_uuid(), 'đái'),
-    (gen_random_uuid(), 'ỉa'),
-    (gen_random_uuid(), 'chó'),
+    (gen_random_uuid(), 'chịch'),
     (gen_random_uuid(), 'ngu'),
-    (gen_random_uuid(), 'khốn nạn'),
-    (gen_random_uuid(), 'con đĩ'),
-    (gen_random_uuid(), 'thằng chó'),
-    (gen_random_uuid(), 'con chó'),
-    (gen_random_uuid(), 'đồ chó'),
-    (gen_random_uuid(), 'mẹ mày'),
-    (gen_random_uuid(), 'đụ má'),
-    (gen_random_uuid(), 'vãi lồn'),
-    (gen_random_uuid(), 'đồ khốn'),
     (gen_random_uuid(), 'nứng'),
-    (gen_random_uuid(), 'dâm'),
-    (gen_random_uuid(), 'đần'),
-    (gen_random_uuid(), 'ngốc'),
     (gen_random_uuid(), 'dm'),
     (gen_random_uuid(), 'đm'),
     (gen_random_uuid(), 'đmm'),
+    (gen_random_uuid(), 'dcm'),
+    (gen_random_uuid(), 'đcm'),
+    (gen_random_uuid(), 'dkm'),
+    (gen_random_uuid(), 'đkm'),
+    (gen_random_uuid(), 'clm'),
+    (gen_random_uuid(), 'cmm'),
     (gen_random_uuid(), 'vcl'),
+    (gen_random_uuid(), 'vkl'),
     (gen_random_uuid(), 'vl'),
-    (gen_random_uuid(), 'cc'),
+    (gen_random_uuid(), 'loz'),
     (gen_random_uuid(), 'clgt');

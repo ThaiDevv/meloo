@@ -1,0 +1,24 @@
+{
+  "page": 0,
+  "size": 10,
+  "totalItems": 2,
+  "totalPages": 1,
+  "items": [
+    {
+      "id": "b9d3e7a1-4c60-4f28-a135-7e2c0b8d9f43",
+      "code": "standard",
+      "nameVi": "Bộ chuẩn",
+      "nameEn": "Standard set",
+      "kind": "STANDARD",
+      "trackCount": 500
+    },
+    {
+      "id": "14f8a2c6-d570-4e9b-b3a8-c6e1d0f27a95",
+      "code": "vpop-2010s",
+      "nameVi": "V-pop thập niên 2010",
+      "nameEn": "V-pop of the 2010s",
+      "kind": "CURATED",
+      "trackCount": 120
+    }
+  ]
+}

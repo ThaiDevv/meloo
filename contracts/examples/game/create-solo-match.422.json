@@ -1,0 +1,9 @@
+{
+  "type": "about:blank",
+  "title": "Not enough tracks",
+  "status": 422,
+  "code": "NOT_ENOUGH_TRACKS",
+  "detail": "The filter matches too few tracks for 15 rounds.",
+  "instance": "/api/v1/solo/matches",
+  "missingTracks": 4
+}

@@ -1,0 +1,13 @@
+{
+  "mode": "PRACTICE",
+  "roundCount": 5,
+  "filter": {
+    "genreCodes": [
+      "vpop"
+    ],
+    "decades": [
+      2010,
+      2020
+    ]
+  }
+}

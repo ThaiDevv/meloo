@@ -1,0 +1,24 @@
+{
+  "matchId": "0f6e1b92-5a3c-4d77-8e21-9b4a7c3d5e60",
+  "mode": "RANKED",
+  "ranked": true,
+  "roundCount": 10,
+  "totalScore": 0,
+  "comboStreak": 0,
+  "startedAt": "2026-10-23T13:10:00Z",
+  "expiresAt": "2026-10-23T13:40:00Z",
+  "currentRound": {
+    "matchId": "0f6e1b92-5a3c-4d77-8e21-9b4a7c3d5e60",
+    "roundNo": 1,
+    "roundCount": 10,
+    "level": 1,
+    "listenSeconds": 2,
+    "canListenMore": true,
+    "canSkip": false,
+    "audio": {
+      "url": "/api/v1/audio/Zr8Qx2LkT9vN4pYw7sHc1BdUaE6mJf0gXoVtKiRn3yA",
+      "expiresAt": "2026-10-23T13:12:00Z"
+    },
+    "serverTime": "2026-10-23T13:10:05Z"
+  }
+}

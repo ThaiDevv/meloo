@@ -24,10 +24,10 @@ create table banned_word (
     created_at timestamptz not null default now()
 );
 
--- 25 common Vietnamese profanity and abbreviations (lowercase, NFC, with diacritics).
--- BR-17 blocks the whole message, so every entry is one token that is almost never benign;
--- mild or ambiguous words (dog, dumb, silly...) and multi-word phrases are left to admins (UC-31).
--- Matching is by whole token, so a single-token entry already covers phrases containing it.
+-- 33 common Vietnamese profanity, insults and abbreviations (lowercase, NFC, with diacritics).
+-- BR-17 blocks the whole message, so single words that are often benign (dog, dumb, silly...)
+-- are left to admins (UC-31). Multi-word insults are kept as phrase rows: the matcher
+-- (BE-CHAT-01) must match whole-token sequences, or these rows never match.
 insert into banned_word (id, word) values
     (gen_random_uuid(), 'địt'),
     (gen_random_uuid(), 'đụ'),
@@ -53,4 +53,12 @@ insert into banned_word (id, word) values
     (gen_random_uuid(), 'vkl'),
     (gen_random_uuid(), 'vl'),
     (gen_random_uuid(), 'loz'),
-    (gen_random_uuid(), 'clgt');
+    (gen_random_uuid(), 'clgt'),
+    (gen_random_uuid(), 'khốn nạn'),
+    (gen_random_uuid(), 'đồ khốn'),
+    (gen_random_uuid(), 'mẹ mày'),
+    (gen_random_uuid(), 'con đĩ'),
+    (gen_random_uuid(), 'thằng chó'),
+    (gen_random_uuid(), 'đồ chó'),
+    (gen_random_uuid(), 'đụ má'),
+    (gen_random_uuid(), 'vãi lồn');

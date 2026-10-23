@@ -1,6 +1,7 @@
 package com.meloo.progression.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.meloo.IntegrationTest;
 import java.time.Instant;
@@ -8,6 +9,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 
 class ProgressionPersistenceIntegrationTest extends IntegrationTest {
 
@@ -87,5 +89,45 @@ class ProgressionPersistenceIntegrationTest extends IntegrationTest {
     RoundResult loadedResult = roundResultRepository.findById(resultId).orElseThrow();
     assertThat(loadedResult.getOutcome()).isEqualTo(RoundOutcome.CORRECT);
     assertThat(loadedResult.getBaseScore()).isEqualTo(1000);
+  }
+
+  private static MatchEntity soloMatch(UUID id, int roundCount) {
+    return MatchEntity.builder()
+        .id(id)
+        .type(MatchType.SOLO)
+        .ranked(false)
+        .status(MatchStatus.FINISHED)
+        .roundCount((short) roundCount)
+        .startedAt(Instant.now().minusSeconds(60))
+        .endedAt(Instant.now())
+        .build();
+  }
+
+  @Test
+  @DisplayName("Saving a match with an existing id fails and keeps the stored row")
+  void duplicateMatchIdIsRejected() {
+    UUID matchId = UUID.randomUUID();
+    matchRepository.saveAndFlush(soloMatch(matchId, 10));
+
+    assertThatThrownBy(() -> matchRepository.saveAndFlush(soloMatch(matchId, 5)))
+        .isInstanceOf(DataIntegrityViolationException.class);
+
+    assertThat(matchRepository.findById(matchId).orElseThrow().getRoundCount())
+        .isEqualTo((short) 10);
+  }
+
+  @Test
+  @DisplayName("A loaded match is updated in place when saved again")
+  void loadedMatchIsUpdatedNotInserted() {
+    UUID matchId = UUID.randomUUID();
+    UUID playlistId = UUID.randomUUID();
+    matchRepository.saveAndFlush(soloMatch(matchId, 10));
+
+    MatchEntity loaded = matchRepository.findById(matchId).orElseThrow();
+    loaded.setPlaylistId(playlistId);
+    matchRepository.saveAndFlush(loaded);
+
+    assertThat(matchRepository.findById(matchId).orElseThrow().getPlaylistId())
+        .isEqualTo(playlistId);
   }
 }

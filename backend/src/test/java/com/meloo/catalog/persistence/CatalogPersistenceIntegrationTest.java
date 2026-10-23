@@ -48,4 +48,16 @@ class CatalogPersistenceIntegrationTest extends IntegrationTest {
     assertThat(loaded.getCountryCode().trim()).isEqualTo("VN");
     assertThat(loaded.getProvider()).isEqualTo(MusicProvider.DEEZER);
   }
+
+  @Test
+  @DisplayName("PlaylistTrack is new until persisted and exposes its composite id")
+  void playlistTrackCompositeIdAndNewFlag() {
+    UUID playlistId = UUID.randomUUID();
+    UUID trackId = UUID.randomUUID();
+    PlaylistTrack link =
+        PlaylistTrack.builder().playlistId(playlistId).trackId(trackId).position(1).build();
+
+    assertThat(link.isNew()).isTrue();
+    assertThat(link.getId()).isEqualTo(new PlaylistTrackId(playlistId, trackId));
+  }
 }

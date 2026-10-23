@@ -289,18 +289,18 @@ class MigrationV2ToV5IntegrationTest extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("banned_word seed has exactly 25 rows")
+    @DisplayName("banned_word seed has exactly 33 rows")
     void bannedWordSeedCount() {
       Integer count = jdbc.queryForObject("select count(*) from banned_word", Integer.class);
-      assertThat(count).isEqualTo(25);
+      assertThat(count).isEqualTo(33);
     }
 
     @Test
-    @DisplayName("banned_word seed contains single-token entries only")
-    void bannedWordSeedHasNoPhrases() {
+    @DisplayName("banned_word seed keeps 8 multi-word insults")
+    void bannedWordSeedKeepsMultiWordInsults() {
       Integer phrases =
           jdbc.queryForObject("select count(*) from banned_word where word ~ '\\s'", Integer.class);
-      assertThat(phrases).isZero();
+      assertThat(phrases).isEqualTo(8);
     }
 
     @Test

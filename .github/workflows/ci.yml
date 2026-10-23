@@ -36,7 +36,6 @@ jobs:
             backend:
               - 'backend/**'
               - 'contracts/**'
-              - '.github/workflows/ci.yml'
             frontend:
               - 'frontend/**'
               - '.github/workflows/ci.yml'

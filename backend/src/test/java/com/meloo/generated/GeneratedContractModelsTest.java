@@ -3,21 +3,20 @@ package com.meloo.generated;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.meloo.generated.api.CatalogApi;
 import com.meloo.generated.api.GameApi;
 import com.meloo.generated.api.IdentityApi;
-import com.meloo.generated.model.ArtistDto;
-import com.meloo.generated.model.GenreDto;
-import com.meloo.generated.model.MatchStatusDto;
-import com.meloo.generated.model.MusicProviderDto;
-import com.meloo.generated.model.PageDto;
-import com.meloo.generated.model.PlaylistDto;
-import com.meloo.generated.model.PlaylistKindDto;
-import com.meloo.generated.model.RoundOutcomeDto;
-import com.meloo.generated.model.UserKindDto;
-import com.meloo.generated.model.UserRoleDto;
+import com.meloo.generated.model.GuessRequestDto;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 
 class GeneratedContractModelsTest {
 
@@ -35,56 +34,56 @@ class GeneratedContractModelsTest {
 
   @Test
   @DisplayName(
-      "AC 3: Model DTO có hậu tố Dto, không trùng tên với persistence entities và Spring Data Page")
-  void modelNamesDoNotCollideWithPersistenceEntitiesAndSpringDataPage() {
-    // 1. Artist entity vs ArtistDto
-    Class<?> entityArtist = com.meloo.catalog.persistence.Artist.class;
-    Class<?> dtoArtist = ArtistDto.class;
-    assertThat(dtoArtist.getSimpleName()).isNotEqualTo(entityArtist.getSimpleName());
+      "AC 2 / Cập nhật 24/10: Model sinh ra sử dụng đúng Jackson annotations tương thích Spring Boot 4")
+  void generatedModelsUseCompatibleJacksonAnnotations() throws NoSuchMethodException {
+    assertThat(GuessRequestDto.class.isAnnotationPresent(JsonTypeName.class)).isTrue();
+    assertThat(
+            GuessRequestDto.class.getMethod("getTrackId").isAnnotationPresent(JsonProperty.class))
+        .isTrue();
+  }
 
-    // 2. Genre entity vs GenreDto
-    Class<?> entityGenre = com.meloo.catalog.persistence.Genre.class;
-    Class<?> dtoGenre = GenreDto.class;
-    assertThat(dtoGenre.getSimpleName()).isNotEqualTo(entityGenre.getSimpleName());
+  @Test
+  @DisplayName(
+      "AC 3: Toàn bộ model sinh ra đều có hậu tố Dto, không trùng tên với persistence entities và Spring Data Page")
+  void allGeneratedModelsHaveDtoSuffixAndDoNotCollideWithEntities() throws IOException {
+    PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+    Resource[] resources = resolver.getResources("classpath*:com/meloo/generated/model/*.class");
 
-    // 3. Playlist entity vs PlaylistDto
-    Class<?> entityPlaylist = com.meloo.catalog.persistence.Playlist.class;
-    Class<?> dtoPlaylist = PlaylistDto.class;
-    assertThat(dtoPlaylist.getSimpleName()).isNotEqualTo(entityPlaylist.getSimpleName());
+    assertThat(resources).isNotEmpty();
 
-    // 4. MusicProvider enum vs MusicProviderDto
-    Class<?> enumMusicProvider = com.meloo.catalog.persistence.MusicProvider.class;
-    Class<?> dtoMusicProvider = MusicProviderDto.class;
-    assertThat(dtoMusicProvider.getSimpleName()).isNotEqualTo(enumMusicProvider.getSimpleName());
+    Set<String> sensitiveNames =
+        Set.of(
+            "Artist",
+            "Genre",
+            "Playlist",
+            "MusicProvider",
+            "PlaylistKind",
+            "RoundOutcome",
+            "MatchStatus",
+            "UserKind",
+            "UserRole",
+            "Page");
 
-    // 5. PlaylistKind enum vs PlaylistKindDto
-    Class<?> enumPlaylistKind = com.meloo.catalog.persistence.PlaylistKind.class;
-    Class<?> dtoPlaylistKind = PlaylistKindDto.class;
-    assertThat(dtoPlaylistKind.getSimpleName()).isNotEqualTo(enumPlaylistKind.getSimpleName());
+    List<String> topLevelClassNames =
+        Arrays.stream(resources)
+            .map(Resource::getFilename)
+            .filter(name -> name != null && name.endsWith(".class"))
+            .map(name -> name.substring(0, name.length() - ".class".length()))
+            .filter(name -> !name.contains("$") && !name.equals("package-info"))
+            .toList();
 
-    // 6. RoundOutcome enum vs RoundOutcomeDto
-    Class<?> enumRoundOutcome = com.meloo.progression.persistence.RoundOutcome.class;
-    Class<?> dtoRoundOutcome = RoundOutcomeDto.class;
-    assertThat(dtoRoundOutcome.getSimpleName()).isNotEqualTo(enumRoundOutcome.getSimpleName());
+    assertThat(topLevelClassNames).hasSizeGreaterThanOrEqualTo(30);
 
-    // 7. MatchStatus enum vs MatchStatusDto
-    Class<?> enumMatchStatus = com.meloo.progression.persistence.MatchStatus.class;
-    Class<?> dtoMatchStatus = MatchStatusDto.class;
-    assertThat(dtoMatchStatus.getSimpleName()).isNotEqualTo(enumMatchStatus.getSimpleName());
+    for (String className : topLevelClassNames) {
+      assertThat(className)
+          .withFailMessage("Model class %s does not end with 'Dto'", className)
+          .endsWith("Dto");
 
-    // 8. UserKind enum vs UserKindDto
-    Class<?> enumUserKind = com.meloo.identity.persistence.UserKind.class;
-    Class<?> dtoUserKind = UserKindDto.class;
-    assertThat(dtoUserKind.getSimpleName()).isNotEqualTo(enumUserKind.getSimpleName());
-
-    // 9. UserRole enum vs UserRoleDto
-    Class<?> enumUserRole = com.meloo.identity.persistence.UserRole.class;
-    Class<?> dtoUserRole = UserRoleDto.class;
-    assertThat(dtoUserRole.getSimpleName()).isNotEqualTo(enumUserRole.getSimpleName());
-
-    // 10. Spring Data Page vs PageDto
-    Class<?> springDataPage = org.springframework.data.domain.Page.class;
-    Class<?> dtoPage = PageDto.class;
-    assertThat(dtoPage.getSimpleName()).isNotEqualTo(springDataPage.getSimpleName());
+      assertThat(sensitiveNames)
+          .withFailMessage(
+              "Model class %s collides directly with a domain entity or Spring Data Page",
+              className)
+          .doesNotContain(className);
+    }
   }
 }

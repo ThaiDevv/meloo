@@ -9,8 +9,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.meloo.identity.config.IdentityProperties;
+import com.meloo.identity.persistence.AppUser;
+import com.meloo.identity.persistence.AppUserRepository;
 import com.meloo.identity.persistence.RefreshToken;
 import com.meloo.identity.persistence.RefreshTokenRepository;
+import com.meloo.identity.persistence.UserStatus;
 import com.meloo.shared.api.ApiException;
 import java.time.Clock;
 import java.time.Duration;
@@ -31,6 +34,7 @@ import org.springframework.http.HttpStatus;
 class RefreshTokenServiceTest {
 
   @Mock private RefreshTokenRepository refreshTokenRepository;
+  @Mock private AppUserRepository appUserRepository;
 
   private RefreshTokenService refreshTokenService;
   private Instant fixedNow;
@@ -47,7 +51,8 @@ class RefreshTokenServiceTest {
             null,
             null,
             null);
-    refreshTokenService = new RefreshTokenService(refreshTokenRepository, properties, clock);
+    refreshTokenService =
+        new RefreshTokenService(refreshTokenRepository, appUserRepository, properties, clock);
   }
 
   @Test
@@ -89,7 +94,11 @@ class RefreshTokenServiceTest {
             .createdAt(fixedNow.minus(Duration.ofDays(1)))
             .build();
 
-    when(refreshTokenRepository.findByTokenHash(tokenHash)).thenReturn(Optional.of(existing));
+    AppUser user = AppUser.builder().id(userId).status(UserStatus.ACTIVE).build();
+
+    when(refreshTokenRepository.findByTokenHashForUpdate(tokenHash))
+        .thenReturn(Optional.of(existing));
+    when(appUserRepository.findById(userId)).thenReturn(Optional.of(user));
 
     RefreshTokenService.IssuedRefreshToken result =
         refreshTokenService.rotateRefreshToken(rawToken);
@@ -105,6 +114,46 @@ class RefreshTokenServiceTest {
     assertThat(newToken.getFamilyId()).isEqualTo(familyId);
     assertThat(newToken.getUserId()).isEqualTo(userId);
     assertThat(existing.getReplacedById()).isEqualTo(newToken.getId());
+  }
+
+  @Test
+  @DisplayName(
+      "Locked user cannot rotate refresh token: old token revoked, no new token issued (403)")
+  void lockedUserCannotRotate() {
+    UUID userId = UUID.randomUUID();
+    UUID familyId = UUID.randomUUID();
+    UUID oldTokenId = UUID.randomUUID();
+    String rawToken = "locked-raw-token";
+    String tokenHash = RefreshTokenService.hashToken(rawToken);
+
+    RefreshToken existing =
+        RefreshToken.builder()
+            .id(oldTokenId)
+            .userId(userId)
+            .familyId(familyId)
+            .tokenHash(tokenHash)
+            .expiresAt(fixedNow.plus(Duration.ofDays(29)))
+            .createdAt(fixedNow.minus(Duration.ofDays(1)))
+            .build();
+
+    AppUser lockedUser = AppUser.builder().id(userId).status(UserStatus.LOCKED).build();
+
+    when(refreshTokenRepository.findByTokenHashForUpdate(tokenHash))
+        .thenReturn(Optional.of(existing));
+    when(appUserRepository.findById(userId)).thenReturn(Optional.of(lockedUser));
+
+    assertThatThrownBy(() -> refreshTokenService.rotateRefreshToken(rawToken))
+        .isInstanceOf(ApiException.class)
+        .satisfies(
+            ex -> {
+              ApiException apiEx = (ApiException) ex;
+              assertThat(apiEx.status()).isEqualTo(HttpStatus.FORBIDDEN);
+              assertThat(apiEx.errorCode()).isEqualTo("ACCOUNT_LOCKED");
+            });
+
+    assertThat(existing.getRevokedAt()).isEqualTo(fixedNow);
+    assertThat(existing.getReplacedById()).isNull();
+    verify(refreshTokenRepository).save(existing);
   }
 
   @Test
@@ -125,7 +174,8 @@ class RefreshTokenServiceTest {
             .revokedAt(fixedNow.minus(Duration.ofHours(1)))
             .build();
 
-    when(refreshTokenRepository.findByTokenHash(tokenHash)).thenReturn(Optional.of(alreadyRevoked));
+    when(refreshTokenRepository.findByTokenHashForUpdate(tokenHash))
+        .thenReturn(Optional.of(alreadyRevoked));
 
     assertThatThrownBy(() -> refreshTokenService.rotateRefreshToken(rawToken))
         .isInstanceOf(ApiException.class)
@@ -156,7 +206,8 @@ class RefreshTokenServiceTest {
             .expiresAt(fixedNow.minus(Duration.ofSeconds(1)))
             .build();
 
-    when(refreshTokenRepository.findByTokenHash(tokenHash)).thenReturn(Optional.of(expired));
+    when(refreshTokenRepository.findByTokenHashForUpdate(tokenHash))
+        .thenReturn(Optional.of(expired));
 
     assertThatThrownBy(() -> refreshTokenService.rotateRefreshToken(rawToken))
         .isInstanceOf(ApiException.class)

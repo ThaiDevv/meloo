@@ -56,6 +56,9 @@ public class IdentityController implements IdentityApi {
 
   @Override
   public ResponseEntity<AuthSessionDto> createGuest(GuestRequestDto guestRequestDto) {
+    if (guestRequestDto == null || guestRequestDto.getNickname() == null) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_FAILED", "Nickname is required");
+    }
     nicknameValidator.validate(guestRequestDto.getNickname());
 
     String clientIp = resolveClientIp(request);

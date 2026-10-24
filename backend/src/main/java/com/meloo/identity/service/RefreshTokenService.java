@@ -1,8 +1,11 @@
 package com.meloo.identity.service;
 
 import com.meloo.identity.config.IdentityProperties;
+import com.meloo.identity.persistence.AppUser;
+import com.meloo.identity.persistence.AppUserRepository;
 import com.meloo.identity.persistence.RefreshToken;
 import com.meloo.identity.persistence.RefreshTokenRepository;
+import com.meloo.identity.persistence.UserStatus;
 import com.meloo.shared.api.ApiException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -24,19 +27,26 @@ import org.springframework.transaction.annotation.Transactional;
 public class RefreshTokenService {
 
   private final RefreshTokenRepository refreshTokenRepository;
+  private final AppUserRepository appUserRepository;
   private final Duration refreshTokenTtl;
   private final Clock clock;
   private final SecureRandom secureRandom = new SecureRandom();
 
   public RefreshTokenService(
-      RefreshTokenRepository refreshTokenRepository, IdentityProperties properties) {
-    this(refreshTokenRepository, properties, Clock.systemUTC());
+      RefreshTokenRepository refreshTokenRepository,
+      AppUserRepository appUserRepository,
+      IdentityProperties properties) {
+    this(refreshTokenRepository, appUserRepository, properties, Clock.systemUTC());
   }
 
   @Autowired
   public RefreshTokenService(
-      RefreshTokenRepository refreshTokenRepository, IdentityProperties properties, Clock clock) {
+      RefreshTokenRepository refreshTokenRepository,
+      AppUserRepository appUserRepository,
+      IdentityProperties properties,
+      Clock clock) {
     this.refreshTokenRepository = refreshTokenRepository;
+    this.appUserRepository = appUserRepository;
     this.refreshTokenTtl = properties.jwt().refreshTokenTtl();
     this.clock = clock;
   }
@@ -77,13 +87,14 @@ public class RefreshTokenService {
             .build();
 
     refreshTokenRepository.save(token);
-    return new IssuedRefreshToken(rawToken, token);
+    return new IssuedRefreshToken(rawToken, token, null);
   }
 
   @Transactional(noRollbackFor = ApiException.class)
   public IssuedRefreshToken rotateRefreshToken(String rawToken) {
     String tokenHash = hashToken(rawToken);
-    Optional<RefreshToken> optionalToken = refreshTokenRepository.findByTokenHash(tokenHash);
+    Optional<RefreshToken> optionalToken =
+        refreshTokenRepository.findByTokenHashForUpdate(tokenHash);
 
     if (optionalToken.isEmpty()) {
       throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Invalid refresh token");
@@ -104,6 +115,19 @@ public class RefreshTokenService {
       existingToken.setRevokedAt(now);
       refreshTokenRepository.save(existingToken);
       throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Refresh token has expired");
+    }
+
+    // Check user status before issuing new token
+    AppUser user =
+        appUserRepository
+            .findById(existingToken.getUserId())
+            .orElseThrow(
+                () -> new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "User not found"));
+
+    if (user.getStatus() == UserStatus.LOCKED) {
+      existingToken.setRevokedAt(now);
+      refreshTokenRepository.save(existingToken);
+      throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_LOCKED", "Account is locked");
     }
 
     // Issue new token in same family
@@ -129,7 +153,7 @@ public class RefreshTokenService {
     refreshTokenRepository.save(existingToken);
     refreshTokenRepository.save(newToken);
 
-    return new IssuedRefreshToken(newRawToken, newToken);
+    return new IssuedRefreshToken(newRawToken, newToken, user);
   }
 
   @Transactional
@@ -149,5 +173,6 @@ public class RefreshTokenService {
             });
   }
 
-  public record IssuedRefreshToken(String rawToken, RefreshToken tokenEntity) {}
+  public record IssuedRefreshToken(
+      String rawToken, RefreshToken tokenEntity, @org.jspecify.annotations.Nullable AppUser user) {}
 }

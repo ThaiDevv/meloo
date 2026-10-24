@@ -230,7 +230,7 @@ class GuestAuthIntegrationTest extends IntegrationTest {
   }
 
   @Test
-  @DisplayName("Invalid nickname (< 3 or banned words) returns 400 Bad Request")
+  @DisplayName("Invalid nickname (< 3, > 20, missing or banned words) returns 400 Bad Request")
   void invalidNicknameReturns400() throws Exception {
     String clientIp = "10.0.1.4";
     // Too short
@@ -240,6 +240,15 @@ class GuestAuthIntegrationTest extends IntegrationTest {
                 .header("X-Forwarded-For", clientIp)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"nickname\": \"ab\"}"))
+        .andExpect(status().isBadRequest());
+
+    // Missing nickname
+    mockMvc
+        .perform(
+            post("/api/v1/auth/guest")
+                .header("X-Forwarded-For", clientIp)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
         .andExpect(status().isBadRequest());
 
     // Banned word
@@ -253,7 +262,8 @@ class GuestAuthIntegrationTest extends IntegrationTest {
   }
 
   @Test
-  @DisplayName("Locked user cannot refresh session or access /api/v1/me (403 ACCOUNT_LOCKED)")
+  @DisplayName(
+      "Locked user cannot refresh session or access /api/v1/me (403 ACCOUNT_LOCKED) and no new token issued")
   void lockedUserDenied() throws Exception {
     String clientIp = "10.0.1.5";
     String createBody = "{\"nickname\": \"LockedTest\"}";
@@ -279,8 +289,14 @@ class GuestAuthIntegrationTest extends IntegrationTest {
     user.setLockedAt(Instant.now());
     appUserRepository.saveAndFlush(user);
 
+    long tokenCountBefore = refreshTokenRepository.count();
+
     // Refresh returns 403 Forbidden
     mockMvc.perform(post("/api/v1/auth/refresh").cookie(cookie)).andExpect(status().isForbidden());
+
+    // Verify no new token was created in DB for locked user
+    long tokenCountAfter = refreshTokenRepository.count();
+    assertThat(tokenCountAfter).isEqualTo(tokenCountBefore);
 
     // /api/v1/me returns 403 Forbidden
     mockMvc

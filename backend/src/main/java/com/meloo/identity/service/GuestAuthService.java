@@ -8,11 +8,11 @@ import com.meloo.generated.model.UserRoleDto;
 import com.meloo.identity.events.GuestCreated;
 import com.meloo.identity.persistence.AppUser;
 import com.meloo.identity.persistence.AppUserRepository;
-import com.meloo.identity.persistence.RefreshToken;
 import com.meloo.identity.persistence.UserKind;
 import com.meloo.identity.persistence.UserRole;
 import com.meloo.identity.persistence.UserStatus;
 import com.meloo.shared.api.ApiException;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -30,18 +30,21 @@ public class GuestAuthService {
   private final RefreshTokenService refreshTokenService;
   private final NicknameValidator nicknameValidator;
   private final ApplicationEventPublisher eventPublisher;
+  private final Clock clock;
 
   public GuestAuthService(
       AppUserRepository appUserRepository,
       JwtTokenService jwtTokenService,
       RefreshTokenService refreshTokenService,
       NicknameValidator nicknameValidator,
-      ApplicationEventPublisher eventPublisher) {
+      ApplicationEventPublisher eventPublisher,
+      Clock clock) {
     this.appUserRepository = appUserRepository;
     this.jwtTokenService = jwtTokenService;
     this.refreshTokenService = refreshTokenService;
     this.nicknameValidator = nicknameValidator;
     this.eventPublisher = eventPublisher;
+    this.clock = clock;
   }
 
   @Transactional
@@ -49,7 +52,7 @@ public class GuestAuthService {
     nicknameValidator.validate(request.getNickname());
 
     UUID userId = UUID.randomUUID();
-    Instant now = Instant.now();
+    Instant now = clock.instant();
     AppUser user =
         AppUser.builder()
             .id(userId)
@@ -85,19 +88,12 @@ public class GuestAuthService {
 
     RefreshTokenService.IssuedRefreshToken rotated =
         refreshTokenService.rotateRefreshToken(rawRefreshToken);
-    RefreshToken tokenEntity = rotated.tokenEntity();
-
-    AppUser user =
-        appUserRepository
-            .findById(tokenEntity.getUserId())
-            .orElseThrow(
-                () -> new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "User not found"));
-
-    if (user.getStatus() == UserStatus.LOCKED) {
-      throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_LOCKED", "Account is locked");
+    AppUser user = rotated.user();
+    if (user == null) {
+      throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "User not found");
     }
 
-    user.setLastActiveAt(Instant.now());
+    user.setLastActiveAt(clock.instant());
     appUserRepository.save(user);
 
     JwtTokenService.IssuedToken newAccessToken = jwtTokenService.generateAccessToken(user);

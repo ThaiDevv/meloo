@@ -1,1 +1,42 @@
 # Configuration owned by the catalog module.
+meloo:
+  catalog:
+    provider:
+      type: deezer
+      deezer:
+        base-url: https://api.deezer.com
+        timeout: 5s
+        max-attempts: 3
+        backoff: 500ms
+        circuit-breaker:
+          sliding-window-size: 10
+          failure-rate-threshold: 50.0
+          wait-duration-in-open-state: 10s
+      itunes:
+        enabled: false
+        base-url: https://itunes.apple.com
+        storefront: VN
+        timeout: 5s
+        max-attempts: 3
+        backoff: 500ms
+        circuit-breaker:
+          sliding-window-size: 10
+          failure-rate-threshold: 50.0
+          wait-duration-in-open-state: 10s
+      fake:
+        media-location: classpath:fake-media/
+      cache:
+        enabled: true
+        ttl: 10m
+        max-size: 1000
+
+---
+spring:
+  config:
+    activate:
+      on-profile: e2e,test
+
+meloo:
+  catalog:
+    provider:
+      type: fake

@@ -1,6 +1,9 @@
 spring:
   application:
     name: meloo-backend
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
   config:
     import:
       - classpath:config/shared.yml

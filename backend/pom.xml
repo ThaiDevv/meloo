@@ -300,6 +300,7 @@
                                     <generatorName>spring</generatorName>
                                     <apiPackage>com.meloo.generated.api</apiPackage>
                                     <modelPackage>com.meloo.generated.model</modelPackage>
+                                    <modelNameSuffix>Dto</modelNameSuffix>
                                     <generateApiTests>false</generateApiTests>
                                     <generateModelTests>false</generateModelTests>
                                     <configOptions>
@@ -307,6 +308,7 @@
                                         <useSpringBoot4>true</useSpringBoot4>
                                         <useJakartaEe>true</useJakartaEe>
                                         <openApiNullable>false</openApiNullable>
+                                        <useTags>true</useTags>
                                     </configOptions>
                                 </configuration>
                             </execution>

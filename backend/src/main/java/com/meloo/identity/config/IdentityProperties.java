@@ -1,5 +1,9 @@
 package com.meloo.identity.config;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -9,18 +13,14 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties(prefix = "meloo.identity")
 @Validated
 public record IdentityProperties(
-    JwtProperties jwt,
+    @NotNull @Valid JwtProperties jwt,
     CookieProperties cookie,
     RateLimitProperties rateLimit,
     List<String> bannedWords) {
 
   public IdentityProperties {
     if (jwt == null) {
-      jwt =
-          new JwtProperties(
-              "meloo-super-secret-key-for-jwt-signing-minimum-256-bits-length-meloo",
-              Duration.ofMinutes(15),
-              Duration.ofDays(30));
+      throw new IllegalArgumentException("meloo.identity.jwt configuration is required");
     }
     if (cookie == null) {
       cookie = new CookieProperties("meloo_refresh", "/api/v1/auth", true, "Lax");
@@ -34,16 +34,26 @@ public record IdentityProperties(
   }
 
   public record JwtProperties(
-      String secret,
+      @NotBlank String secret,
       @DefaultValue("15m") Duration accessTokenTtl,
-      @DefaultValue("30d") Duration refreshTokenTtl) {
+      @DefaultValue("30d") Duration refreshTokenTtl,
+      @DefaultValue("10s") Duration rotationGrace) {
 
     public JwtProperties {
+      if (secret == null || secret.isBlank()) {
+        throw new IllegalArgumentException("JWT secret must not be blank");
+      }
+      if (secret.getBytes(StandardCharsets.UTF_8).length < 32) {
+        throw new IllegalArgumentException("JWT secret must be at least 32 bytes (256 bits)");
+      }
       if (accessTokenTtl == null) {
         accessTokenTtl = Duration.ofMinutes(15);
       }
       if (refreshTokenTtl == null) {
         refreshTokenTtl = Duration.ofDays(30);
+      }
+      if (rotationGrace == null) {
+        rotationGrace = Duration.ofSeconds(10);
       }
     }
   }

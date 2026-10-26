@@ -29,6 +29,7 @@ public class RefreshTokenService {
   private final RefreshTokenRepository refreshTokenRepository;
   private final AppUserRepository appUserRepository;
   private final Duration refreshTokenTtl;
+  private final Duration rotationGrace;
   private final Clock clock;
   private final SecureRandom secureRandom = new SecureRandom();
 
@@ -48,6 +49,7 @@ public class RefreshTokenService {
     this.refreshTokenRepository = refreshTokenRepository;
     this.appUserRepository = appUserRepository;
     this.refreshTokenTtl = properties.jwt().refreshTokenTtl();
+    this.rotationGrace = properties.jwt().rotationGrace();
     this.clock = clock;
   }
 
@@ -103,8 +105,21 @@ public class RefreshTokenService {
     RefreshToken existingToken = optionalToken.get();
     Instant now = clock.instant();
 
-    // Check if token was already revoked: Reuse detected!
+    // Check if token was already revoked
     if (existingToken.getRevokedAt() != null) {
+      // Grace window check: concurrent refresh race condition (Q2)
+      if (existingToken.getReplacedById() != null) {
+        long elapsedMillis =
+            Math.abs(Duration.between(existingToken.getRevokedAt(), now).toMillis());
+        if (elapsedMillis <= rotationGrace.toMillis()) {
+          throw new ApiException(
+              HttpStatus.UNAUTHORIZED,
+              "REFRESH_RACE",
+              "Concurrent refresh detected, please use the new token");
+        }
+      }
+
+      // Beyond grace window or revoked without replaced_by_id (logout/lock): Reuse detected!
       refreshTokenRepository.revokeAllInFamily(existingToken.getFamilyId(), now);
       throw new ApiException(
           HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Refresh token reuse detected");

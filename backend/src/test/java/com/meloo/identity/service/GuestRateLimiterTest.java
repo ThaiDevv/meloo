@@ -3,6 +3,7 @@ package com.meloo.identity.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.meloo.identity.config.IdentityProperties;
+import java.time.Duration;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -11,8 +12,14 @@ class GuestRateLimiterTest {
   @Test
   @DisplayName("Allows 5 creations per hour per IP, blocks 6th with retryAfter > 0")
   void rateLimitEnforcesFivePerHour() {
+    IdentityProperties.JwtProperties jwt =
+        new IdentityProperties.JwtProperties(
+            "test-secret-that-is-at-least-32-bytes-long",
+            Duration.ofMinutes(15),
+            Duration.ofDays(30),
+            Duration.ofSeconds(10));
     IdentityProperties properties =
-        new IdentityProperties(null, null, new IdentityProperties.RateLimitProperties(5), null);
+        new IdentityProperties(jwt, null, new IdentityProperties.RateLimitProperties(5), null);
     GuestRateLimiter rateLimiter = new GuestRateLimiter(properties);
     String ip = "192.168.1.10";
 

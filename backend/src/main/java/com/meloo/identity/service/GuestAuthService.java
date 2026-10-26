@@ -49,7 +49,12 @@ public class GuestAuthService {
 
   @Transactional
   public AuthResult createGuest(GuestRequestDto request) {
-    nicknameValidator.validate(request.getNickname());
+    if (request == null || request.getNickname() == null) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_FAILED", "Nickname is required");
+    }
+    String normalizedNickname =
+        java.text.Normalizer.normalize(request.getNickname().trim(), java.text.Normalizer.Form.NFC);
+    nicknameValidator.validate(normalizedNickname);
 
     UUID userId = UUID.randomUUID();
     Instant now = clock.instant();
@@ -59,7 +64,7 @@ public class GuestAuthService {
             .kind(UserKind.GUEST)
             .role(UserRole.USER)
             .status(UserStatus.ACTIVE)
-            .nickname(request.getNickname().trim())
+            .nickname(normalizedNickname)
             .createdAt(now)
             .lastActiveAt(now)
             .build();
@@ -104,8 +109,14 @@ public class GuestAuthService {
   }
 
   @Transactional
-  public void logout(String rawRefreshToken) {
+  public void logout(String rawRefreshToken, String origin, List<String> allowedOrigins) {
+    validateOrigin(origin, allowedOrigins);
     refreshTokenService.revokeToken(rawRefreshToken);
+  }
+
+  @Transactional
+  public void logout(String rawRefreshToken) {
+    logout(rawRefreshToken, null, List.of());
   }
 
   @Transactional(readOnly = true)

@@ -6,13 +6,10 @@ import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.JWSSigner;
-import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jose.crypto.MACSigner;
-import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import java.nio.charset.StandardCharsets;
-import java.text.ParseException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -60,29 +57,6 @@ public class JwtTokenService {
     } catch (JOSEException e) {
       throw new IllegalStateException("Failed to sign access token", e);
     }
-  }
-
-  public boolean verifyToken(String token) {
-    try {
-      SignedJWT signedJWT = SignedJWT.parse(token);
-      JWSVerifier verifier = new MACVerifier(secretKeyBytes);
-      if (!signedJWT.verify(verifier)) {
-        return false;
-      }
-      Date expirationTime = signedJWT.getJWTClaimsSet().getExpirationTime();
-      return expirationTime != null && expirationTime.toInstant().isAfter(clock.instant());
-    } catch (ParseException | JOSEException e) {
-      return false;
-    }
-  }
-
-  public JWTClaimsSet getClaims(String token) throws ParseException, JOSEException {
-    SignedJWT signedJWT = SignedJWT.parse(token);
-    JWSVerifier verifier = new MACVerifier(secretKeyBytes);
-    if (!signedJWT.verify(verifier)) {
-      throw new IllegalArgumentException("Invalid token signature");
-    }
-    return signedJWT.getJWTClaimsSet();
   }
 
   public record IssuedToken(String token, Instant expiresAt) {}

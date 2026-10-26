@@ -25,14 +25,17 @@ cd backend
 ./mvnw spring-boot:run
 ```
 
-Backend mặc định dùng:
+Backend cần các biến môi trường cấu hình (tham khảo mẫu tại `.env.example`):
 
 ```text
 DB_URL=jdbc:postgresql://localhost:5432/meloo
 DB_USERNAME=meloo
 DB_PASSWORD=meloo
 MELOO_CORS_ALLOWED_ORIGINS=http://localhost:5173
+MELOO_JWT_SECRET=meloo-local-development-secret-key-at-least-256-bits-length
 ```
+
+> **Lưu ý về `MELOO_JWT_SECRET`:** Bắt buộc phải có độ dài tối thiểu 32 byte (256-bit) để ký HMAC-SHA256. Không được dùng chuỗi ngắn hơn hoặc để trống.
 
 `MELOO_CORS_ALLOWED_ORIGINS` nhận danh sách origin phân cách bằng dấu phẩy.
 

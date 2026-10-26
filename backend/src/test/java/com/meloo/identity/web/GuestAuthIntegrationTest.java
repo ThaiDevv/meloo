@@ -15,10 +15,18 @@ import com.meloo.identity.persistence.AppUserRepository;
 import com.meloo.identity.persistence.RefreshToken;
 import com.meloo.identity.persistence.RefreshTokenRepository;
 import com.meloo.identity.persistence.UserStatus;
+import com.meloo.identity.service.RefreshTokenService;
 import jakarta.servlet.http.Cookie;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +41,13 @@ import org.springframework.test.web.servlet.MvcResult;
 @AutoConfigureMockMvc
 @RecordApplicationEvents
 class GuestAuthIntegrationTest extends IntegrationTest {
+
+  @org.springframework.test.context.DynamicPropertySource
+  static void registerProperties(
+      org.springframework.test.context.DynamicPropertyRegistry registry) {
+    registry.add(
+        "MELOO_JWT_SECRET", () -> "test-meloo-jwt-secret-key-with-minimum-32-bytes-length-xyz");
+  }
 
   @Autowired private MockMvc mockMvc;
   @Autowired private AppUserRepository appUserRepository;
@@ -160,7 +175,13 @@ class GuestAuthIntegrationTest extends IntegrationTest {
     Cookie r2 = refreshResult.getResponse().getCookie("meloo_refresh");
     assertThat(r2).isNotNull();
 
-    // Replay R1 (attacker or duplicate) -> reuse detected!
+    // Fast-forward R1's revokedAt past grace window (15s ago)
+    String r1Hash = RefreshTokenService.hashToken(r1.getValue());
+    RefreshToken r1Token = refreshTokenRepository.findByTokenHash(r1Hash).orElseThrow();
+    r1Token.setRevokedAt(Instant.now().minus(15, ChronoUnit.SECONDS));
+    refreshTokenRepository.saveAndFlush(r1Token);
+
+    // Replay R1 (attacker or duplicate outside grace window) -> reuse detected!
     mockMvc.perform(post("/api/v1/auth/refresh").cookie(r1)).andExpect(status().isUnauthorized());
 
     // R2 must now also be revoked because the entire family was invalidated
@@ -325,6 +346,149 @@ class GuestAuthIntegrationTest extends IntegrationTest {
         .perform(
             post("/api/v1/auth/refresh")
                 .cookie(cookie)
+                .header(HttpHeaders.ORIGIN, "https://malicious-site.example.com"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  @DisplayName(
+      "Two concurrent refresh requests: exactly one 200, one 401 REFRESH_RACE; new token remains valid")
+  void concurrentRefreshRaceGracePeriod() throws Exception {
+    String clientIp = "10.0.1.7";
+    String createBody = "{\"nickname\": \"RaceTester\"}";
+    MvcResult createResult =
+        mockMvc
+            .perform(
+                post("/api/v1/auth/guest")
+                    .header("X-Forwarded-For", clientIp)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(createBody))
+            .andExpect(status().isCreated())
+            .andReturn();
+
+    Cookie initialCookie = createResult.getResponse().getCookie("meloo_refresh");
+    assertThat(initialCookie).isNotNull();
+
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    CyclicBarrier barrier = new CyclicBarrier(2);
+
+    Callable<MvcResult> refreshTask =
+        () -> {
+          barrier.await();
+          return mockMvc
+              .perform(
+                  post("/api/v1/auth/refresh")
+                      .cookie(initialCookie)
+                      .header(HttpHeaders.ORIGIN, "http://localhost:5173"))
+              .andReturn();
+        };
+
+    Future<MvcResult> future1 = executor.submit(refreshTask);
+    Future<MvcResult> future2 = executor.submit(refreshTask);
+
+    MvcResult result1 = future1.get(10, TimeUnit.SECONDS);
+    MvcResult result2 = future2.get(10, TimeUnit.SECONDS);
+    executor.shutdown();
+
+    int status1 = result1.getResponse().getStatus();
+    int status2 = result2.getResponse().getStatus();
+
+    List<Integer> statuses = List.of(status1, status2);
+    assertThat(statuses).containsExactlyInAnyOrder(200, 401);
+
+    MvcResult successResult = status1 == 200 ? result1 : result2;
+    MvcResult raceResult = status1 == 401 ? result1 : result2;
+
+    assertThat(raceResult.getResponse().getContentAsString()).contains("REFRESH_RACE");
+
+    Cookie newCookie = successResult.getResponse().getCookie("meloo_refresh");
+    assertThat(newCookie).isNotNull();
+
+    // Verify the new token is valid and can be refreshed again
+    mockMvc
+        .perform(
+            post("/api/v1/auth/refresh")
+                .cookie(newCookie)
+                .header(HttpHeaders.ORIGIN, "http://localhost:5173"))
+        .andExpect(status().isOk())
+        .andExpect(header().exists(HttpHeaders.SET_COOKIE));
+  }
+
+  @Test
+  @DisplayName(
+      "Replay of rotated token after grace window (10s) revokes entire family and returns 401")
+  void replayAfterGraceWindowRevokesFamily() throws Exception {
+    String clientIp = "10.0.1.8";
+    MvcResult createResult =
+        mockMvc
+            .perform(
+                post("/api/v1/auth/guest")
+                    .header("X-Forwarded-For", clientIp)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"nickname\": \"GraceWindowTest\"}"))
+            .andExpect(status().isCreated())
+            .andReturn();
+
+    Cookie oldCookie = createResult.getResponse().getCookie("meloo_refresh");
+
+    // Rotate once (normal)
+    MvcResult rotateResult =
+        mockMvc
+            .perform(
+                post("/api/v1/auth/refresh")
+                    .cookie(oldCookie)
+                    .header(HttpHeaders.ORIGIN, "http://localhost:5173"))
+            .andExpect(status().isOk())
+            .andReturn();
+
+    Cookie newCookie = rotateResult.getResponse().getCookie("meloo_refresh");
+
+    // Fast-forward the old token's revokedAt to 15 seconds ago (past the 10s grace window)
+    String oldTokenHash = RefreshTokenService.hashToken(oldCookie.getValue());
+    RefreshToken oldToken = refreshTokenRepository.findByTokenHash(oldTokenHash).orElseThrow();
+    oldToken.setRevokedAt(Instant.now().minus(15, ChronoUnit.SECONDS));
+    refreshTokenRepository.saveAndFlush(oldToken);
+
+    // Replay the old token -> Detected as reuse -> 401 UNAUTHORIZED
+    mockMvc
+        .perform(
+            post("/api/v1/auth/refresh")
+                .cookie(oldCookie)
+                .header(HttpHeaders.ORIGIN, "http://localhost:5173"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.errorCode").value("UNAUTHORIZED"))
+        .andExpect(jsonPath("$.detail").value("Refresh token reuse detected"));
+
+    // Verify the new token is also now revoked because whole family was revoked
+    mockMvc
+        .perform(
+            post("/api/v1/auth/refresh")
+                .cookie(newCookie)
+                .header(HttpHeaders.ORIGIN, "http://localhost:5173"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.detail").value("Refresh token reuse detected"));
+  }
+
+  @Test
+  @DisplayName(
+      "Valid Vietnamese nickname with banned sub-token (Nguyễn Văn A) creates guest successfully (201)")
+  void vietnameseNicknameWithBannedSubTokenSucceeds() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/auth/guest")
+                .header("X-Forwarded-For", "10.0.1.9")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nickname\": \"Nguyễn Văn A\"}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.user.nickname").value("Nguyễn Văn A"));
+  }
+
+  @Test
+  @DisplayName("Disallowed Origin header on /auth/logout returns 403 Forbidden")
+  void disallowedOriginOnLogoutReturns403() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/auth/logout")
                 .header(HttpHeaders.ORIGIN, "https://malicious-site.example.com"))
         .andExpect(status().isForbidden());
   }

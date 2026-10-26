@@ -96,7 +96,8 @@ public class IdentityController implements IdentityApi {
   @Override
   public ResponseEntity<Void> logout() {
     String rawRefreshToken = extractRefreshCookie(request);
-    guestAuthService.logout(rawRefreshToken);
+    String origin = request.getHeader(HttpHeaders.ORIGIN);
+    guestAuthService.logout(rawRefreshToken, origin, allowedOrigins);
 
     ResponseCookie cookie = buildClearRefreshCookie();
 
@@ -152,6 +153,15 @@ public class IdentityController implements IdentityApi {
         .orElse(null);
   }
 
+  /**
+   * Resolves client IP for rate limiting.
+   *
+   * <p>Assumptions & Constraints (MEL-33 / MEL-127): Backend is deployed behind Caddy reverse proxy
+   * on EC2 (ADR-006, infra/README.md). It assumes Caddy overwrites X-Forwarded-For with the real
+   * client IP ({remote_host}) and backend port is bound only to internal Docker network (not
+   * exposed publicly). Ticket MEL-127 will formalize Caddyfile headers and evaluate
+   * server.forward-headers-strategy.
+   */
   private String resolveClientIp(HttpServletRequest request) {
     String xForwardedFor = request.getHeader("X-Forwarded-For");
     if (xForwardedFor != null && !xForwardedFor.isBlank()) {

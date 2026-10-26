@@ -68,6 +68,41 @@ class CatalogSeedIntegrationTest extends IntegrationTest {
             .collect(java.util.stream.Collectors.toSet());
     assertThat(countries).contains("VN", "US", "GB", "KR");
 
+    // Verify AC1 & N3: Decade checks with real release years
+    var nostalgiaPlaylist =
+        playlistRepository.findAll().stream()
+            .filter(p -> "vpop-nostalgia-2010s".equals(p.getCode()))
+            .findFirst()
+            .orElseThrow();
+    long nostalgiaTracksIn2010s =
+        playlistTrackRepository.findAll().stream()
+            .filter(pt -> pt.getPlaylistId().equals(nostalgiaPlaylist.getId()))
+            .map(pt -> trackRepository.findById(pt.getTrackId()).orElseThrow())
+            .filter(
+                t ->
+                    t.getReleaseYear() != null
+                        && t.getReleaseYear() >= 2010
+                        && t.getReleaseYear() <= 2019)
+            .count();
+    assertThat(nostalgiaTracksIn2010s)
+        .as("vpop-nostalgia-2010s must contain real 2010s tracks")
+        .isGreaterThanOrEqualTo(10);
+
+    var classicsPlaylist =
+        playlistRepository.findAll().stream()
+            .filter(p -> "usuk-pop-classics".equals(p.getCode()))
+            .findFirst()
+            .orElseThrow();
+    long classicsTracksPre2020 =
+        playlistTrackRepository.findAll().stream()
+            .filter(pt -> pt.getPlaylistId().equals(classicsPlaylist.getId()))
+            .map(pt -> trackRepository.findById(pt.getTrackId()).orElseThrow())
+            .filter(t -> t.getReleaseYear() != null && t.getReleaseYear() < 2020)
+            .count();
+    assertThat(classicsTracksPre2020)
+        .as("usuk-pop-classics must contain real pre-2020 tracks")
+        .isGreaterThanOrEqualTo(10);
+
     // Re-run seed: must be completely idempotent (no duplicates created)
     CatalogSeedService.CatalogSeedResult rerunResult = seedService.seedCatalog();
     assertThat(rerunResult.tracksCount()).isEqualTo(0);

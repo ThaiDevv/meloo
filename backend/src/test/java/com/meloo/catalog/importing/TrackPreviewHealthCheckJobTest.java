@@ -204,8 +204,8 @@ class TrackPreviewHealthCheckJobTest extends IntegrationTest {
   void scheduledCheck_whenDisabled_doesNotCheckTracks() {
     CatalogImportProperties disabledProps =
         new CatalogImportProperties(
-            "classpath:seed/catalog-seed.json",
-            new CatalogImportProperties.SeedProperties(false, false),
+            new CatalogImportProperties.SeedProperties(
+                false, "classpath:seed/catalog-seed.json", false),
             new CatalogImportProperties.HealthCheckProperties(false, "0 0 3 * * *", 100));
 
     TrackPreviewHealthCheckJob disabledJob =
@@ -214,6 +214,45 @@ class TrackPreviewHealthCheckJobTest extends IntegrationTest {
 
     // Should return early and not throw or check
     disabledJob.scheduledCheck();
+  }
+
+  @Test
+  @DisplayName(
+      "BR-27 / m5: Tracks belonging to other inactive providers update check timestamp so they do not starve queue")
+  void healthCheckJob_otherProviderTrack_updatesTimestampAndDoesNotBlockQueue() {
+    when(musicProvider.getProviderName()).thenReturn("deezer");
+
+    Artist artist =
+        artistRepository.save(
+            Artist.builder()
+                .id(UUID.randomUUID())
+                .name("iTunes Artist")
+                .nameNormalized("itunes artist")
+                .provider(MusicProvider.ITUNES)
+                .providerArtistId("itunes-art-1")
+                .build());
+
+    Track itunesTrack =
+        trackRepository.save(
+            Track.builder()
+                .id(UUID.randomUUID())
+                .provider(MusicProvider.ITUNES)
+                .providerTrackId("itunes-track-1")
+                .title("iTunes Exclusive Track")
+                .titleNormalized("itunes exclusive track")
+                .primaryArtistId(artist.getId())
+                .enabled(true)
+                .lastPreviewCheckedAt(null)
+                .build());
+
+    healthCheckJob.runHealthCheck();
+
+    Track reloaded = trackRepository.findById(itunesTrack.getId()).orElseThrow();
+    assertThat(reloaded.getLastPreviewCheckedAt())
+        .as(
+            "Track belonging to another provider must update check timestamp to avoid starving the batch")
+        .isNotNull();
+    assertThat(reloaded.isEnabled()).isTrue();
   }
 
   @Test

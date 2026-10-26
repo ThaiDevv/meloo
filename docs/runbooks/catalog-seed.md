@@ -10,21 +10,21 @@ Tài liệu hướng dẫn chạy lệnh seed kho nhạc khởi tạo (≥ 1.000
 
 ## 1. Dữ liệu seed khởi tạo
 Tập dữ liệu seed đặt tại `backend/src/main/resources/seed/catalog-seed.json`, bao gồm:
-- **8 thể loại (Genre):** `vpop`, `usuk-pop`, `kpop`, `ballad`, `rap-hiphop`, `rock`, `edm`, `rnb` (mỗi thể loại có từ 100 đến 414 bài).
+- **8 thể loại (Genre):** `vpop`, `usuk-pop`, `kpop`, `ballad`, `rap-hiphop`, `rock`, `edm`, `rnb` (từ 45 đến 342 bài/thể loại).
 - **8 bộ đề tuyển chọn (Curated Playlist):**
-  - `vpop-hits-2020s`: V-Pop Hits 2020s (378 bài)
-  - `vpop-ballad`: Nhạc Trẻ Ballad Tâm Trạng (235 bài)
-  - `vpop-rap-hiphop`: Rap & Hip-hop Việt (70 bài)
-  - `vpop-nostalgia-2010s`: V-Pop Thập Niên 2010 (135 bài)
-  - `usuk-billboard-hits`: US-UK Billboard Hits (380 bài)
-  - `usuk-pop-classics`: US-UK Pop Bất Hủ (518 bài)
-  - `kpop-top-hits`: K-Pop Đỉnh Cao (414 bài)
-  - `kpop-girlgroups`: K-Pop Girl Groups (188 bài)
-- **1.446 bài hát thật từ Deezer:**
+  - `vpop-hits-2020s`: V-Pop Hits 2020s (433 bài)
+  - `vpop-ballad`: Nhạc Trẻ Ballad Tâm Trạng (137 bài)
+  - `vpop-rap-hiphop`: Rap & Hip-hop Việt (184 bài)
+  - `vpop-nostalgia-2010s`: V-Pop Thập Niên 2010 (94 bài — 100% bài có năm phát hành thật 2010–2019)
+  - `usuk-billboard-hits`: US-UK Billboard Hits (305 bài)
+  - `usuk-pop-classics`: US-UK Pop Bất Hủ (183 bài — 100% bài phát hành trước năm 2020)
+  - `kpop-top-hits`: K-Pop Đỉnh Cao (342 bài)
+  - `kpop-girlgroups`: K-Pop Girl Groups (200 bài)
+- **1.357 bài hát thật từ Deezer:**
   - Lấy từ API công khai của Deezer bằng script tái tạo `backend/src/main/resources/seed/generate-deezer-seed.py`.
-  - Phân bổ quốc gia: VN (479), US (276), GB (172), KR (414), CA (35), SE (35), NO (35).
-  - Đầy đủ thông tin: tiêu đề gốc, ca sĩ chính, thể loại, quốc gia, năm phát hành, thứ hạng phổ biến.
-  - Tên chuẩn hóa (`title_normalized`) theo quy tắc **BR-05** (bỏ dấu tiếng Việt, chữ thường, loại bỏ phần trong ngoặc và hậu tố phiên bản như Remix, Live, Acoustic, MV để gom phiên bản).
+  - Phân bổ quốc gia chuẩn hóa theo ca sĩ: VN (527), US (271), GB (114), KR (342), CA (61), SE (22), NO (20).
+  - Năm phát hành thật (`releaseYear`) truy vấn trực tiếp từ API `/track/{id}` của Deezer (không dùng giá trị bịa/ước lượng). Nếu bài không có ngày phát hành thì để `null` hợp lệ theo schema.
+  - Tên chuẩn hóa (`title_normalized`) theo quy tắc **BR-05** (bỏ dấu tiếng Việt, chữ thường, loại bỏ phần trong ngoặc và hậu tố phiên bản như Remix, Live, Acoustic, MV, feat., ft. để gom phiên bản).
   - Ảnh bìa album (`cover_url`) theo **Migration V10** phục vụ màn công bố đáp án.
   - Đảm bảo 100% bài có đoạn preview hợp lệ (`preview_url`), URL đã được lọc bỏ query parameter chứa token ký tạm thời (`hdnea=...`) theo **ADR-003** để không lưu token hết hạn vào repo và giữ URL tài nguyên tĩnh gọn nhẹ.
 
@@ -33,10 +33,12 @@ Tập dữ liệu seed đặt tại `backend/src/main/resources/seed/catalog-see
 ```bash
 python3 backend/src/main/resources/seed/generate-deezer-seed.py
 ```
-Script tự động phân bổ hạn mức theo từng nhóm nguồn (V-Pop: 450, US-UK: 550, K-Pop: 400), kiểm tra tính hợp lệ và chỉ ghi file khi thỏa mãn:
-- Tổng số bài ≥ 1.000 (thực tế: 1.446)
+Script tự động phân bổ hạn mức cân đối giữa các nghệ sĩ, truy vấn năm phát hành thật qua thread pool có throttle và kiểm tra nghiêm ngặt:
+- Tổng số bài ≥ 1.000 (thực tế: 1.357)
 - Đầy đủ 8 thể loại và 8 bộ đề tuyển chọn (mỗi bộ ≥ 20 bài)
-- Đủ bài cho cả VN (≥ 300), US (≥ 150), GB (≥ 50), KR (≥ 200).
+- Đủ bài cho cả VN (≥ 300), US (≥ 150), GB (≥ 40), KR (≥ 200)
+- Bộ `vpop-nostalgia-2010s` có ít nhất 20 bài thật trong khoảng 2010–2019
+- Bộ `usuk-pop-classics` có ít nhất 20 bài thật trước 2020.
 
 ---
 
@@ -56,16 +58,11 @@ cd backend
 ./mvnw spring-boot:run
 ```
 
-### Cách 3: Chạy trong IDE (IntelliJ IDEA / VS Code)
-Thêm tham số vào Run Configuration:
-- Program arguments: `--meloo.catalog.seed.enabled=true`
-- Hoặc Environment variables: `MELOO_CATALOG_SEED_ENABLED=true`
-
 ### Dấu hiệu thành công trong log
 ```text
 INFO ... CatalogSeedRunner : Starting one-off catalog seed runner...
-INFO ... CatalogSeedService : Catalog seed completed: 8 genres, 8 playlists, 1446 tracks seeded, 2318 playlist links
-INFO ... CatalogSeedRunner : One-off catalog seed finished successfully: 8 genres, 8 playlists, 1446 tracks seeded, 2318 playlist links
+INFO ... CatalogSeedService : Catalog seed completed: 8 genres, 8 playlists, 1357 tracks seeded, 2180 playlist links
+INFO ... CatalogSeedRunner : One-off catalog seed finished successfully: 8 genres, 8 playlists, 1357 tracks seeded, 2180 playlist links
 ```
 
 ---
@@ -75,7 +72,7 @@ INFO ... CatalogSeedRunner : One-off catalog seed finished successfully: 8 genre
 Trên production, kho nhạc chỉ cần seed một lần duy nhất sau khi chạy xong migration database (Flyway V1–V10).
 
 ### Lệnh chạy với Docker container
-Chạy một container độc lập một lần (one-off container) với cờ `--meloo.catalog.seed.exit-after-seed=true` và `--spring.main.web-application-type=none` để ứng dụng đóng Spring ApplicationContext và tự động thoát (`--rm`) ngay sau khi hoàn thành seed:
+Chạy một container độc lập một lần (one-off container) với cờ cấu hình `--meloo.catalog.seed.enabled=true` và `--meloo.catalog.seed.exit-after-seed=true` kết hợp `--spring.main.web-application-type=none`:
 
 ```bash
 docker run --rm \
@@ -84,15 +81,13 @@ docker run --rm \
   -e DB_USERNAME="${RDS_USERNAME}" \
   -e DB_PASSWORD="${RDS_PASSWORD}" \
   -e MELOO_JWT_SECRET="${MELOO_JWT_SECRET}" \
-  -e MELOO_CATALOG_SEED_ENABLED=true \
-  -e MELOO_CATALOG_SEED_EXIT_AFTER_SEED=true \
   ghcr.io/thaidevv/meloo-backend:latest \
   --meloo.catalog.seed.enabled=true \
   --meloo.catalog.seed.exit-after-seed=true \
   --spring.main.web-application-type=none
 ```
 
-Container sẽ khởi động, chạy Flyway migration, nạp toàn bộ danh mục bài hát vào database PostgreSQL, in thông báo hoàn thành và tự động thoát với mã 0 (`--rm` tự xóa container).
+Container sẽ khởi động, chạy Flyway migration, nạp toàn bộ danh mục bài hát vào database PostgreSQL, in thông báo hoàn thành và tự động thoát (`System.exit(0)` qua `SpringApplication.exit`) với mã 0 (`--rm` tự xóa container).
 
 ### Kiểm tra kết quả trong Database
 Kết nối vào database bằng `psql`:
@@ -108,14 +103,18 @@ SELECT code, name_vi, kind FROM playlist WHERE kind = 'CURATED';
 
 -- Kiểm tra số lượng bài hát đã nạp
 SELECT count(*) FROM track WHERE enabled = true;
--- Kỳ vọng: >= 1000 (thực tế: 1446 bài)
+-- Kỳ vọng: >= 1000 (thực tế: 1357 bài)
 
 -- Kiểm tra phân bổ quốc gia
 SELECT country_code, count(*) FROM track GROUP BY country_code ORDER BY count(*) DESC;
--- Kỳ vọng: VN (479), KR (414), US (276), GB (172)...
+-- Kỳ vọng: VN (527), KR (342), US (271), GB (114)...
 
--- Kiểm tra cột cover_url của Migration V10
-SELECT title, cover_url FROM track WHERE cover_url IS NOT NULL LIMIT 5;
+-- Kiểm tra năm phát hành thật của bộ đề thập niên 2010
+SELECT t.title, t.release_year FROM track t
+JOIN playlist_track pt ON t.id = pt.track_id
+JOIN playlist p ON pt.playlist_id = p.id
+WHERE p.code = 'vpop-nostalgia-2010s' AND t.release_year IS NOT NULL LIMIT 5;
+-- Kỳ vọng: release_year thuộc [2010, 2019]
 ```
 
 ---
@@ -135,8 +134,8 @@ Theo quy tắc nghiệp vụ **BR-27**, các bài hát có đoạn preview bị 
 ### Cơ chế quét xoay vòng (Round-robin)
 Job quét các bài hát theo thứ tự `ORDER BY last_preview_checked_at NULLS FIRST, created_at ASC` với giới hạn `batchSize` (mặc định 100 bài/lần quét):
 - Các bài chưa từng được kiểm tra (`last_preview_checked_at IS NULL`) sẽ được ưu tiên kiểm tra trước.
-- Sau mỗi lần kiểm tra, `last_preview_checked_at` được cập nhật thành thời điểm hiện tại.
-- Cơ chế này đảm bảo qua các đêm, toàn bộ kho nhạc (1.446+ bài) đều được quét xoay vòng đều đặn, không bị lặp lại chỉ 100 bài đầu tiên.
+- Sau mỗi lần kiểm tra, `last_preview_checked_at` được cập nhật thành thời điểm hiện tại (áp dụng cho cả bài active lẫn bài của provider khác để không nghẽn hàng đợi).
+- Cơ chế này đảm bảo qua các đêm, toàn bộ kho nhạc (1.357+ bài) đều được quét xoay vòng đều đặn, không bị lặp lại chỉ 100 bài đầu tiên.
 - Các lỗi mạng tạm thời (HTTP 429 rate limit, 5xx server error, timeout, open circuit breaker) **không làm tắt bài** (`enabled` giữ nguyên `true`). Job ngắt batch sớm khi gặp rate limit hoặc circuit breaker để tránh false positive.
 
 ### Cấu hình kích hoạt Job
@@ -144,11 +143,11 @@ Mặc định job tắt trên môi trường local. Để bật trên server ho�
 
 ```bash
 # Biến môi trường bật job
-export MELOO_CATALOG_IMPORT_HEALTH_CHECK_ENABLED=true
+export MELOO_CATALOG_HEALTH_CHECK_ENABLED=true
 
 # Cấu hình chu kỳ cron (mặc định: 3h sáng hàng ngày)
-export MELOO_CATALOG_IMPORT_HEALTH_CHECK_CRON="0 0 3 * * *"
+export MELOO_CATALOG_HEALTH_CHECK_CRON="0 0 3 * * *"
 
 # Cấu hình kích thước batch mỗi lần chạy (mặc định: 100)
-export MELOO_CATALOG_IMPORT_HEALTH_CHECK_BATCH_SIZE=100
+export MELOO_CATALOG_HEALTH_CHECK_BATCH_SIZE=100
 ```

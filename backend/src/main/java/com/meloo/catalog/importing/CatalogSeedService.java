@@ -107,7 +107,7 @@ public class CatalogSeedService {
 
   /** Seeds the catalog from the configured seed JSON resource. */
   public CatalogSeedResult seedCatalog() {
-    return seedCatalogFromResource(properties.seedPath());
+    return seedCatalogFromResource(properties.seed().seedPath());
   }
 
   /** Seeds the catalog from a specific resource path (e.g. "classpath:seed/catalog-seed.json"). */

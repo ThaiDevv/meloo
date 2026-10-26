@@ -5,9 +5,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationContext;
-import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
 /**
@@ -16,23 +15,22 @@ import org.springframework.stereotype.Component;
  * accounts are introduced in S4/BE-ID-02).
  */
 @Component
-@ConditionalOnExpression(
-    "${meloo.catalog.import.seed.enabled:false} or ${meloo.catalog.seed.enabled:false}")
+@ConditionalOnProperty(prefix = "meloo.catalog.seed", name = "enabled", havingValue = "true")
 public class CatalogSeedRunner implements ApplicationRunner {
 
   private static final Logger log = LoggerFactory.getLogger(CatalogSeedRunner.class);
 
   private final CatalogSeedService catalogSeedService;
+  private final CatalogImportProperties properties;
   private final ApplicationContext applicationContext;
-  private final Environment environment;
 
   public CatalogSeedRunner(
       CatalogSeedService catalogSeedService,
-      ApplicationContext applicationContext,
-      Environment environment) {
+      CatalogImportProperties properties,
+      ApplicationContext applicationContext) {
     this.catalogSeedService = catalogSeedService;
+    this.properties = properties;
     this.applicationContext = applicationContext;
-    this.environment = environment;
   }
 
   @Override
@@ -48,10 +46,7 @@ public class CatalogSeedRunner implements ApplicationRunner {
           result.playlistTracksCount());
 
       boolean exitAfterSeed =
-          Boolean.parseBoolean(
-                  environment.getProperty("meloo.catalog.seed.exit-after-seed", "false"))
-              || args.containsOption("meloo.catalog.seed.exit-after-seed")
-              || args.containsOption("exit-after-seed");
+          properties.seed().exitAfterSeed() || args.containsOption("exit-after-seed");
 
       if (exitAfterSeed) {
         log.info(

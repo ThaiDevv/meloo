@@ -51,7 +51,9 @@ public class TrackPreviewHealthCheckJob {
   public record HealthCheckResult(
       int checkedCount, int healthyCount, int disabledCount, int transientErrorCount) {}
 
-  @Scheduled(cron = "${meloo.catalog.import.health-check.cron:0 0 3 * * *}")
+  @Scheduled(
+      cron =
+          "${meloo.catalog.health-check.cron:${meloo.catalog.import.health-check.cron:0 0 3 * * *}}")
   public void scheduledCheck() {
     // Explicit guard: verify scheduling is enabled before running
     if (!properties.healthCheck().enabled()) {
@@ -99,6 +101,9 @@ public class TrackPreviewHealthCheckJob {
           && activeProviderName != null
           && !track.getProvider().name().equalsIgnoreCase(activeProviderName)
           && !"fake".equalsIgnoreCase(activeProviderName)) {
+        // Update check timestamp so tracks belonging to other inactive providers don't starve the
+        // queue
+        markTrackHealthyInTransaction(track.getId());
         continue;
       }
 

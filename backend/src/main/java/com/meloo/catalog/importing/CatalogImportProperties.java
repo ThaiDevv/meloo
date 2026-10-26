@@ -3,14 +3,14 @@ package com.meloo.catalog.importing;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
-@ConfigurationProperties("meloo.catalog.import")
+@ConfigurationProperties("meloo.catalog")
 public record CatalogImportProperties(
-    @DefaultValue("classpath:seed/catalog-seed.json") String seedPath,
-    @DefaultValue SeedProperties seed,
-    @DefaultValue HealthCheckProperties healthCheck) {
+    @DefaultValue SeedProperties seed, @DefaultValue HealthCheckProperties healthCheck) {
 
   public record SeedProperties(
-      @DefaultValue("false") boolean enabled, @DefaultValue("false") boolean exitAfterSeed) {}
+      @DefaultValue("false") boolean enabled,
+      @DefaultValue("classpath:seed/catalog-seed.json") String seedPath,
+      @DefaultValue("false") boolean exitAfterSeed) {}
 
   public record HealthCheckProperties(
       @DefaultValue("false") boolean enabled,

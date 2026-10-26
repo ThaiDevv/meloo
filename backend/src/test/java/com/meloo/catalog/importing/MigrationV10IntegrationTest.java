@@ -3,20 +3,25 @@ package com.meloo.catalog.importing;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.meloo.IntegrationTest;
+import java.sql.Connection;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.init.ScriptUtils;
 
 class MigrationV10IntegrationTest extends IntegrationTest {
 
   @Autowired private JdbcTemplate jdbc;
+  @Autowired private ResourceLoader resourceLoader;
 
   @Test
   @DisplayName(
       "Migration V10 runs on pre-existing data: legacy tracks have null cover_url, new tracks store cover_url")
-  void migrationV10_runsOnExistingData() {
+  void migrationV10_runsOnExistingData() throws Exception {
     UUID artistId = UUID.randomUUID();
     jdbc.update(
         """
@@ -40,11 +45,13 @@ class MigrationV10IntegrationTest extends IntegrationTest {
         preExistingTrackId,
         artistId);
 
-    // 3. Apply Migration V10 on the database containing pre-existing data
-    jdbc.execute("alter table track add column cover_url varchar(500)");
-    jdbc.execute("alter table track add column last_preview_checked_at timestamptz");
-    jdbc.execute(
-        "create index idx_track_health_check on track (enabled, last_preview_checked_at nulls first)");
+    // 3. Apply the ACTUAL Migration V10 SQL script file directly from classpath
+    Resource v10Script =
+        resourceLoader.getResource("classpath:db/migration/V10__catalog_track_cover_url.sql");
+    assertThat(v10Script.exists()).isTrue();
+    try (Connection conn = jdbc.getDataSource().getConnection()) {
+      ScriptUtils.executeSqlScript(conn, v10Script);
+    }
 
     // 4. Verify columns exist
     Integer coverColumnCount =

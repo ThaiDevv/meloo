@@ -34,7 +34,8 @@ class RoundStateMachineTest {
     assertThatThrownBy(() -> round.listenMore())
         .isInstanceOf(InvalidRoundStateException.class)
         .hasMessageContaining("WAITING");
-    assertThatThrownBy(() -> round.skip()).isInstanceOf(InvalidRoundStateException.class);
+    assertThatThrownBy(() -> round.skip(startInstant, comboTracker))
+        .isInstanceOf(InvalidRoundStateException.class);
     assertThatThrownBy(
             () ->
                 round.submitGuess(
@@ -74,18 +75,41 @@ class RoundStateMachineTest {
   }
 
   @Test
-  @DisplayName("AC-2, AC-6: Bỏ qua chuyển sang HẾT_LƯỢT (GAVE_UP) với 0 điểm")
+  @DisplayName(
+      "AC-2, AC-6: Bỏ qua chỉ ở mức 30 giây; bỏ qua ở mức thấp bị từ chối; bỏ qua đứt combo")
   void testSkipTransitionsToOutOfAttempts() {
     Round round = Round.standardRound(1, sampleTrack, true);
     round.start(startInstant);
 
-    RoundScoreDetail score = round.skip();
+    // Có chuỗi combo từ trước
+    comboTracker.recordRound(RoundOutcome.CORRECT, 1);
+    assertThat(comboTracker.currentStreak()).isEqualTo(1);
+
+    // Không thể bỏ qua khi chưa ở mức tối đa (mức 1 < 5)
+    assertThatThrownBy(() -> round.skip(startInstant.plusSeconds(1), comboTracker))
+        .isInstanceOf(InvalidRoundStateException.class)
+        .hasMessageContaining("maximum listening level");
+
+    // Xuống mức 5 (30s)
+    round.listenMore(); // 2
+    round.listenMore(); // 3
+    round.listenMore(); // 4
+    round.listenMore(); // 5
+    assertThat(round.currentLevel()).isEqualTo(5);
+
+    Instant skipTime = startInstant.plusSeconds(25);
+    RoundScoreDetail score = round.skip(skipTime, comboTracker);
     assertThat(round.status()).isEqualTo(RoundStatus.OUT_OF_ATTEMPTS);
     assertThat(round.outcome()).isEqualTo(RoundOutcome.GAVE_UP);
+    assertThat(round.endedAt()).isEqualTo(skipTime);
     assertThat(score.roundScore()).isZero();
 
+    // Chuỗi combo bị đứt về 0 (BR-08)
+    assertThat(comboTracker.currentStreak()).isZero();
+
     // Đã kết thúc vòng thì không thể thao tác tiếp
-    assertThatThrownBy(round::skip).isInstanceOf(InvalidRoundStateException.class);
+    assertThatThrownBy(() -> round.skip(skipTime, comboTracker))
+        .isInstanceOf(InvalidRoundStateException.class);
     assertThatThrownBy(round::listenMore).isInstanceOf(InvalidRoundStateException.class);
   }
 
@@ -230,18 +254,69 @@ class RoundStateMachineTest {
   }
 
   @Test
-  @DisplayName("AC-6: Gọi timeout chuyển sang HẾT_GIỜ (TIMEOUT)")
+  @DisplayName(
+      "AC-6: Gọi timeout chuyển sang HẾT_GIỜ (TIMEOUT); không được timeout trước mốc cutoff")
   void testTimeoutMethod() {
     Round round = Round.standardRound(1, sampleTrack, true);
     round.start(startInstant);
 
-    RoundScoreDetail score = round.timeout(startInstant.plusSeconds(45), comboTracker);
+    // Không thể timeout trước mốc 45.000 ms (vd lúc 10s)
+    assertThatThrownBy(() -> round.timeout(startInstant.plusSeconds(10), comboTracker))
+        .isInstanceOf(InvalidRoundStateException.class)
+        .hasMessageContaining("cutoff");
+
+    RoundScoreDetail score = round.timeout(startInstant.plusMillis(45_000), comboTracker);
     assertThat(round.status()).isEqualTo(RoundStatus.TIMEOUT);
     assertThat(round.outcome()).isEqualTo(RoundOutcome.TIMEOUT);
     assertThat(score.roundScore()).isZero();
 
-    // Sau khi timeout không thể thao tác tiếp
+    // Sau khi timeout không thể timeout tiếp
     assertThatThrownBy(() -> round.timeout(startInstant.plusSeconds(46), comboTracker))
         .isInstanceOf(InvalidRoundStateException.class);
+  }
+
+  @Test
+  @DisplayName(
+      "AC-4, BR-07: Lệnh timeout xử lý trước nhưng lượt đoán nhận trước 45.000 ms vẫn được chấm")
+  void testSubmitGuessAfterTimeoutProcessedBeforeCutoff() {
+    Round round = Round.standardRound(1, sampleTrack, true);
+    round.start(startInstant);
+
+    // Lệnh timeout chạy trong hàng đợi lúc 45.000 ms
+    round.timeout(startInstant.plusMillis(45_000), comboTracker);
+    assertThat(round.status()).isEqualTo(RoundStatus.TIMEOUT);
+
+    // Lượt đoán client gửi đã được server nhận lúc 44.990 ms (trước 45.000 ms 10 ms)
+    Instant guessReceivedAt = startInstant.plusMillis(44_990);
+    GuessEvaluation eval =
+        round.submitGuess("Chúng Ta Của Tương Lai", "Sơn Tùng M-TP", guessReceivedAt, comboTracker);
+
+    assertThat(eval.correct()).isTrue();
+    assertThat(round.status()).isEqualTo(RoundStatus.CORRECT);
+    assertThat(round.outcome()).isEqualTo(RoundOutcome.CORRECT);
+    assertThat(round.endedAt()).isEqualTo(guessReceivedAt);
+    assertThat(eval.scoreDetail().roundScore()).isGreaterThan(0);
+  }
+
+  @Test
+  @DisplayName(
+      "AC-4, BR-07: Lệnh timeout đã xử lý, lượt đoán nhận từ 45.000 ms trở đi thống nhất ném GuessRejectedException")
+  void testSubmitGuessAfterTimeoutProcessedAtOrAfterCutoff() {
+    Round round = Round.standardRound(1, sampleTrack, true);
+    round.start(startInstant);
+
+    // Lệnh timeout chạy lúc 45.000 ms
+    round.timeout(startInstant.plusMillis(45_000), comboTracker);
+
+    // Lượt đoán server nhận lúc 45.500 ms (sau mốc cutoff)
+    Instant lateGuessTime = startInstant.plusMillis(45_500);
+    assertThatThrownBy(
+            () ->
+                round.submitGuess(
+                    "Chúng Ta Của Tương Lai", "Sơn Tùng M-TP", lateGuessTime, comboTracker))
+        .isInstanceOf(GuessRejectedException.class)
+        .hasMessageContaining("45500 ms >= 45000 ms");
+
+    assertThat(round.status()).isEqualTo(RoundStatus.TIMEOUT);
   }
 }

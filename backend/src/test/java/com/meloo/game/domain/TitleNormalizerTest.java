@@ -37,7 +37,13 @@ class TitleNormalizerTest {
         "Em Của Ngày Hôm Qua | em cua ngay hom qua",
         "Shape of You (Stormzy Remix) | shape of you",
         "Shape of You feat. Stormzy | shape of you",
-        "Shape of You - Acoustic Cover | shape of you"
+        "Shape of You - Acoustic Cover | shape of you",
+        "봄날 | 봄날",
+        "봄날 (Spring Day) | 봄날",
+        "夜に駆ける | 夜に駆ける",
+        "ありがとう (Thank You) | ありがとう",
+        "Группа крови | группа крови",
+        "(Untitled) | untitled"
       })
   @DisplayName("BR-05: Chuẩn hóa tên bài bỏ dấu, bỏ ngoặc, bỏ tag phiên bản")
   void testNormalizationVariants(String rawTitle, String expectedNormalized) {
@@ -56,6 +62,12 @@ class TitleNormalizerTest {
 
     // Khác tên bài
     assertThat(TitleNormalizer.matches("Em Của Ngày Hôm Qua", target)).isFalse();
+
+    // Hỗ trợ nhạc quốc tế (Hangul, Kana, Cyrillic)
+    assertThat(TitleNormalizer.matches("봄날 (Spring Day)", "봄날")).isTrue();
+    assertThat(TitleNormalizer.matches("夜に駆ける (Live)", "夜に駆ける")).isTrue();
+    assertThat(TitleNormalizer.matches("Группа крови (Remix)", "Группа крови")).isTrue();
+    assertThat(TitleNormalizer.matches("(Untitled)", "(Untitled)")).isTrue();
   }
 
   @Test
@@ -64,9 +76,13 @@ class TitleNormalizerTest {
     assertThat(TitleNormalizer.normalizeArtist("Sơn Tùng M-TP")).isEqualTo("son tung m tp");
     assertThat(TitleNormalizer.normalizeArtist("Son Tung M-TP")).isEqualTo("son tung m tp");
     assertThat(TitleNormalizer.normalizeArtist("Đen Vâu")).isEqualTo("den vau");
+    assertThat(TitleNormalizer.normalizeArtist("방탄소년단")).isEqualTo("방탄소년단");
+    assertThat(TitleNormalizer.normalizeArtist("YOASOBI")).isEqualTo("yoasobi");
+    assertThat(TitleNormalizer.normalizeArtist("Кино")).isEqualTo("кино");
 
     assertThat(TitleNormalizer.matchesArtist("Sơn Tùng M-TP", "Son Tung M-TP")).isTrue();
     assertThat(TitleNormalizer.matchesArtist("Đen Vâu", "den vau")).isTrue();
+    assertThat(TitleNormalizer.matchesArtist("방탄소년단", "방탄소년단")).isTrue();
     assertThat(TitleNormalizer.matchesArtist("Vũ", "Đen Vâu")).isFalse();
   }
 

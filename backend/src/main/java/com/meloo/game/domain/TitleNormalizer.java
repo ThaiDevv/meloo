@@ -31,7 +31,8 @@ public final class TitleNormalizer {
   private static final Pattern DIACRITICS_PATTERN =
       Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
 
-  private static final Pattern NON_ALPHANUMERIC_PATTERN = Pattern.compile("[^a-z0-9\\s]");
+  private static final Pattern NON_ALPHANUMERIC_PATTERN =
+      Pattern.compile("[^\\p{L}\\p{M}\\p{N}\\s]");
 
   private static final Pattern MULTI_SPACE_PATTERN = Pattern.compile("\\s+");
 
@@ -60,18 +61,32 @@ public final class TitleNormalizer {
     // 5. Thay thế ký tự đ / Đ của tiếng Việt
     result = result.replace('đ', 'd').replace('Đ', 'd');
 
-    // 6. Tách dấu tổ hợp (NFD) và xóa dấu
+    // 6. Tách dấu tổ hợp (NFD) và xóa dấu Latin
     result = Normalizer.normalize(result, Normalizer.Form.NFD);
     result = DIACRITICS_PATTERN.matcher(result).replaceAll("");
 
     // 7. Chuyển chữ thường
     result = result.toLowerCase(Locale.ROOT);
 
-    // 8. Bỏ các ký tự không phải chữ số hoặc khoảng trắng
+    // 8. Bỏ các ký tự không phải chữ hoặc số Unicode
     result = NON_ALPHANUMERIC_PATTERN.matcher(result).replaceAll(" ");
 
-    // 9. Rút gọn khoảng trắng thừa và trim
+    // 9. Đưa về dạng chuẩn NFC (ghép lại các ký tự Hangul, v.v.)
+    result = Normalizer.normalize(result, Normalizer.Form.NFC);
+
+    // 10. Rút gọn khoảng trắng thừa và trim
     result = MULTI_SPACE_PATTERN.matcher(result).replaceAll(" ").trim();
+
+    // 11. Nếu kết quả bị rỗng (ví dụ tên chỉ toàn ngoặc như "(Untitled)"), fallback về tên gốc
+    if (result.isEmpty()) {
+      String fallback = title.trim().replace('đ', 'd').replace('Đ', 'd');
+      fallback = Normalizer.normalize(fallback, Normalizer.Form.NFD);
+      fallback = DIACRITICS_PATTERN.matcher(fallback).replaceAll("");
+      fallback = fallback.toLowerCase(Locale.ROOT);
+      fallback = NON_ALPHANUMERIC_PATTERN.matcher(fallback).replaceAll(" ");
+      fallback = Normalizer.normalize(fallback, Normalizer.Form.NFC);
+      result = MULTI_SPACE_PATTERN.matcher(fallback).replaceAll(" ").trim();
+    }
 
     return result;
   }
@@ -87,7 +102,17 @@ public final class TitleNormalizer {
     result = DIACRITICS_PATTERN.matcher(result).replaceAll("");
     result = result.toLowerCase(Locale.ROOT);
     result = NON_ALPHANUMERIC_PATTERN.matcher(result).replaceAll(" ");
-    return MULTI_SPACE_PATTERN.matcher(result).replaceAll(" ").trim();
+    result = Normalizer.normalize(result, Normalizer.Form.NFC);
+    result = MULTI_SPACE_PATTERN.matcher(result).replaceAll(" ").trim();
+
+    if (result.isEmpty()) {
+      String fallback = artistName.trim().toLowerCase(Locale.ROOT);
+      fallback = NON_ALPHANUMERIC_PATTERN.matcher(fallback).replaceAll(" ");
+      fallback = Normalizer.normalize(fallback, Normalizer.Form.NFC);
+      result = MULTI_SPACE_PATTERN.matcher(fallback).replaceAll(" ").trim();
+    }
+
+    return result;
   }
 
   /** So khớp đáp án tên bài theo BR-05. */

@@ -114,19 +114,37 @@ public class Round {
     currentLevel++;
   }
 
-  /** BR-04: Bỏ qua ở mức 30 giây: vòng được 0 điểm, chuyển sang HẾT_LƯỢT. */
-  public RoundScoreDetail skip() {
+  /**
+   * BR-04: Bỏ qua ở mức 30 giây: vòng được 0 điểm, đứt combo, chuyển sang HẾT_LƯỢT. Chỉ cho phép bỏ
+   * qua khi người chơi đã ở mức nghe tối đa (30s).
+   */
+  public RoundScoreDetail skip(Instant skipTime, ComboTracker comboTracker) {
+    Objects.requireNonNull(skipTime, "skipTime must not be null");
+    Objects.requireNonNull(comboTracker, "comboTracker must not be null");
+
     if (status != RoundStatus.IN_PROGRESS) {
       throw new InvalidRoundStateException("Cannot skip round when in state: " + status);
     }
+    if (currentLevel < gameRules.maxLevel()) {
+      throw new InvalidRoundStateException(
+          "Cannot skip round before reaching maximum listening level ("
+              + currentLevel
+              + " < "
+              + gameRules.maxLevel()
+              + "). Must listen more or guess.");
+    }
     this.status = RoundStatus.OUT_OF_ATTEMPTS;
     this.outcome = RoundOutcome.GAVE_UP;
+    this.endedAt = skipTime;
     this.scoreDetail = RoundScoreDetail.zero();
+    comboTracker.recordRound(RoundOutcome.GAVE_UP, 0);
     return this.scoreDetail;
   }
 
   /**
-   * Đánh giá lượt đoán của người chơi.
+   * Đánh giá lượt đoán của người chơi. BR-07: Lượt đoán và lúc hết giờ đến sát nhau thì phân xử
+   * theo lúc server nhận lượt đoán so với mốc 45.000 ms, không dựa vào việc lệnh hết giờ đã được xử
+   * lý hay chưa. Lượt đoán nhận từ mốc 45.000 ms trở đi bị từ chối bằng GuessRejectedException.
    *
    * @param guessTitle tên bài hát người chơi đoán
    * @param guessArtist tên ca sĩ người chơi đoán (để kiểm tra gợi ý BR-06)
@@ -142,11 +160,6 @@ public class Round {
     Objects.requireNonNull(receivedAt, "receivedAt must not be null");
     Objects.requireNonNull(comboTracker, "comboTracker must not be null");
 
-    if (status != RoundStatus.IN_PROGRESS) {
-      throw new InvalidRoundStateException("Cannot submit guess when in state: " + status);
-    }
-
-    // BR-07: Lượt đoán nhận từ mốc 45.000 ms trở đi bị từ chối
     if (hasTimeLimit) {
       if (startedAt == null) {
         throw new InvalidRoundStateException(
@@ -156,7 +169,9 @@ public class Round {
       if (elapsedMs >= gameRules.timeoutCutoffMs()) {
         this.status = RoundStatus.TIMEOUT;
         this.outcome = RoundOutcome.TIMEOUT;
-        this.endedAt = receivedAt;
+        if (this.endedAt == null) {
+          this.endedAt = receivedAt;
+        }
         this.scoreDetail = RoundScoreDetail.zero();
         comboTracker.recordRound(RoundOutcome.TIMEOUT, 0);
         throw new GuessRejectedException(
@@ -165,6 +180,17 @@ public class Round {
                 + " ms >= "
                 + gameRules.timeoutCutoffMs()
                 + " ms)");
+      }
+
+      // Lượt đoán đến trước mốc cutoff (< 45.000 ms)
+      // Nếu trước đó vòng đã chuyển sang TIMEOUT do lệnh timeout chạy trước trong hàng đợi,
+      // engine vẫn tôn trọng mốc thời gian nhận thực tế để phân xử theo BR-07.
+      if (status != RoundStatus.IN_PROGRESS && status != RoundStatus.TIMEOUT) {
+        throw new InvalidRoundStateException("Cannot submit guess when in state: " + status);
+      }
+    } else {
+      if (status != RoundStatus.IN_PROGRESS) {
+        throw new InvalidRoundStateException("Cannot submit guess when in state: " + status);
       }
     }
 
@@ -196,6 +222,9 @@ public class Round {
 
       if (currentLevel < gameRules.maxLevel()) {
         currentLevel++;
+        this.status = RoundStatus.IN_PROGRESS;
+        this.outcome = null;
+        this.endedAt = null;
         return new GuessEvaluation(
             false, rightArtist, false, status, null, null, wrongCount, RoundScoreDetail.zero());
       } else {
@@ -212,13 +241,27 @@ public class Round {
     }
   }
 
-  /** Hết giờ vòng chơi: chuyển sang HẾT_GIỜ (TIMEOUT), 0 điểm, đứt combo. */
+  /**
+   * Hết giờ vòng chơi: chuyển sang HẾT_GIỜ (TIMEOUT), 0 điểm, đứt combo. Chỉ cho phép timeout khi
+   * đã qua mốc cutoff.
+   */
   public RoundScoreDetail timeout(Instant timedOutAt, ComboTracker comboTracker) {
     Objects.requireNonNull(timedOutAt, "timedOutAt must not be null");
     Objects.requireNonNull(comboTracker, "comboTracker must not be null");
 
     if (status != RoundStatus.IN_PROGRESS) {
       throw new InvalidRoundStateException("Cannot timeout round when in state: " + status);
+    }
+    if (hasTimeLimit && startedAt != null) {
+      long elapsedMs = Duration.between(startedAt, timedOutAt).toMillis();
+      if (elapsedMs < gameRules.timeoutCutoffMs()) {
+        throw new InvalidRoundStateException(
+            "Cannot timeout round before cutoff ("
+                + elapsedMs
+                + " ms < "
+                + gameRules.timeoutCutoffMs()
+                + " ms)");
+      }
     }
     this.status = RoundStatus.TIMEOUT;
     this.outcome = RoundOutcome.TIMEOUT;

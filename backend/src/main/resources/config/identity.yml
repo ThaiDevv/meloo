@@ -1,1 +1,50 @@
 # Configuration owned by the identity module.
+
+meloo:
+  identity:
+    jwt:
+      secret: ${MELOO_JWT_SECRET}
+      access-token-ttl: 15m
+      refresh-token-ttl: 30d
+      rotation-grace: 10s
+    cookie:
+      name: meloo_refresh
+      path: /api/v1/auth
+      secure: ${MELOO_COOKIE_SECURE:true}
+      same-site: Lax
+    rate-limit:
+      guest-create-per-hour: 5
+    banned-words:
+      - địt
+      - đụ
+      - đéo
+      - đĩ
+      - điếm
+      - lồn
+      - buồi
+      - cặc
+      - chịch
+      - ngu
+      - nứng
+      - dm
+      - đm
+      - đmm
+      - dcm
+      - đcm
+      - dkm
+      - đkm
+      - clm
+      - cmm
+      - vcl
+      - vkl
+      - vl
+      - loz
+      - clgt
+      - khốn nạn
+      - đồ khốn
+      - mẹ mày
+      - con đĩ
+      - thằng chó
+      - đồ chó
+      - đụ má
+      - vãi lồn

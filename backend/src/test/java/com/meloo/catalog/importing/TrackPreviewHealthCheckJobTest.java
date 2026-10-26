@@ -245,7 +245,8 @@ class TrackPreviewHealthCheckJobTest extends IntegrationTest {
                 .lastPreviewCheckedAt(null)
                 .build());
 
-    healthCheckJob.runHealthCheck();
+    TrackPreviewHealthCheckJob.HealthCheckResult result = healthCheckJob.runHealthCheck();
+    assertThat(result.skippedProviderCount()).isGreaterThanOrEqualTo(1);
 
     Track reloaded = trackRepository.findById(itunesTrack.getId()).orElseThrow();
     assertThat(reloaded.getLastPreviewCheckedAt())

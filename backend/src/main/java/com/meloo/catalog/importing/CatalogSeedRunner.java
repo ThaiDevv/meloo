@@ -23,14 +23,24 @@ public class CatalogSeedRunner implements ApplicationRunner {
   private final CatalogSeedService catalogSeedService;
   private final CatalogImportProperties properties;
   private final ApplicationContext applicationContext;
+  private final java.util.function.Consumer<Integer> exitAction;
 
   public CatalogSeedRunner(
       CatalogSeedService catalogSeedService,
       CatalogImportProperties properties,
       ApplicationContext applicationContext) {
+    this(catalogSeedService, properties, applicationContext, System::exit);
+  }
+
+  CatalogSeedRunner(
+      CatalogSeedService catalogSeedService,
+      CatalogImportProperties properties,
+      ApplicationContext applicationContext,
+      java.util.function.Consumer<Integer> exitAction) {
     this.catalogSeedService = catalogSeedService;
     this.properties = properties;
     this.applicationContext = applicationContext;
+    this.exitAction = exitAction;
   }
 
   @Override
@@ -50,11 +60,11 @@ public class CatalogSeedRunner implements ApplicationRunner {
 
       if (exitAfterSeed) {
         log.info(
-            "One-off seed completed and exit-after-seed is enabled. Shutting down application...");
+            "One-off seed completed and exit-after-seed is enabled. Shutting down application with code 0...");
         new Thread(
                 () -> {
                   int exitCode = SpringApplication.exit(applicationContext, () -> 0);
-                  System.exit(exitCode);
+                  exitAction.accept(exitCode);
                 },
                 "seed-shutdown")
             .start();

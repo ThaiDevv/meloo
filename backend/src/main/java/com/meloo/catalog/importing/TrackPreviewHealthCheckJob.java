@@ -49,7 +49,16 @@ public class TrackPreviewHealthCheckJob {
   }
 
   public record HealthCheckResult(
-      int checkedCount, int healthyCount, int disabledCount, int transientErrorCount) {}
+      int checkedCount,
+      int healthyCount,
+      int disabledCount,
+      int transientErrorCount,
+      int skippedProviderCount) {
+    public HealthCheckResult(
+        int checkedCount, int healthyCount, int disabledCount, int transientErrorCount) {
+      this(checkedCount, healthyCount, disabledCount, transientErrorCount, 0);
+    }
+  }
 
   @Scheduled(
       cron =
@@ -64,11 +73,12 @@ public class TrackPreviewHealthCheckJob {
     log.info("Starting scheduled track preview health check per BR-27...");
     HealthCheckResult result = runHealthCheck();
     log.info(
-        "Track preview health check finished: checked={}, healthy={}, disabled={}, transientErrors={}",
+        "Track preview health check finished: checked={}, healthy={}, disabled={}, transientErrors={}, skippedProvider={}",
         result.checkedCount(),
         result.healthyCount(),
         result.disabledCount(),
-        result.transientErrorCount());
+        result.transientErrorCount(),
+        result.skippedProviderCount());
   }
 
   /**
@@ -92,6 +102,7 @@ public class TrackPreviewHealthCheckJob {
     int healthy = 0;
     int disabled = 0;
     int transientErrors = 0;
+    int skippedProvider = 0;
 
     String activeProviderName = musicProvider != null ? musicProvider.getProviderName() : null;
 
@@ -103,7 +114,8 @@ public class TrackPreviewHealthCheckJob {
           && !"fake".equalsIgnoreCase(activeProviderName)) {
         // Update check timestamp so tracks belonging to other inactive providers don't starve the
         // queue
-        markTrackHealthyInTransaction(track.getId());
+        markCheckedInTransaction(track.getId());
+        skippedProvider++;
         continue;
       }
 
@@ -149,7 +161,7 @@ public class TrackPreviewHealthCheckJob {
       }
 
       if (hasValidPreview) {
-        markTrackHealthyInTransaction(track.getId());
+        markCheckedInTransaction(track.getId());
         healthy++;
       } else {
         // Confirmed preview failure: track 404 or preview URL missing from provider
@@ -163,10 +175,10 @@ public class TrackPreviewHealthCheckJob {
       }
     }
 
-    return new HealthCheckResult(checked, healthy, disabled, transientErrors);
+    return new HealthCheckResult(checked, healthy, disabled, transientErrors, skippedProvider);
   }
 
-  private void markTrackHealthyInTransaction(java.util.UUID trackId) {
+  private void markCheckedInTransaction(java.util.UUID trackId) {
     transactionTemplate.executeWithoutResult(
         status -> {
           trackRepository

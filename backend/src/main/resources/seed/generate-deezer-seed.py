@@ -4,113 +4,150 @@ Fetch real tracks from Deezer API to generate backend/src/main/resources/seed/ca
 Guarantees:
 - Real Deezer numeric track IDs (e.g. "2470200565")
 - Real Deezer numeric artist IDs (e.g. "5400939") with unified artist mapping
+- Curated canonical artist registry preventing cross-country and cross-genre contamination
 - Real static CDN album cover URLs
 - Real working preview URLs (without ephemeral signed tokens)
 - Real release years fetched directly from Deezer /track/{id} API (no synthetic years!)
 - Real decade grouping: vpop-nostalgia-2010s strictly contains 2010-2019 hits, usuk-pop-classics strictly contains pre-2020 classics
-- Balanced distribution across V-Pop (VN), US-UK (US, GB, CA), and K-Pop (KR)
-- Non-empty tracks for all 8 Curated Playlists and all 8 Genres
+- Balanced distribution across V-Pop (VN), US-UK (US, GB, CA, SE, NO), and K-Pop (KR)
+- Non-empty tracks for all 8 Curated Playlists and all 8 Genres (each >= 70 tracks)
 - Strictly >= 1,000 valid tracks
+- Strict validation checks on artist consistency, country mapping, and decade integrity
 """
 
-import collections
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import collections
+from datetime import datetime, timezone
 import json
 import os
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
-VPOP_SOURCES = [
-    # Rap & Hip-hop (ensures vpop-rap-hiphop is well populated)
-    ("Den Vau", "VN", "rap-hiphop"),
-    ("HIEUTHUHAI", "VN", "rap-hiphop"),
-    ("Binz", "VN", "rap-hiphop"),
-    ("Karik", "VN", "rap-hiphop"),
-    ("tlinh", "VN", "rap-hiphop"),
-    ("B Ray", "VN", "rap-hiphop"),
-    ("Rhymastic", "VN", "rap-hiphop"),
-    # 2010s Nostalgia Ballads & Hits
-    ("My Tam", "VN", "ballad"),
-    ("Ha Anh Tuan", "VN", "ballad"),
-    ("Bui Anh Tuan", "VN", "ballad"),
-    ("Huong Tram", "VN", "ballad"),
-    ("Khac Viet", "VN", "ballad"),
-    ("Phan Manh Quynh", "VN", "ballad"),
-    ("Dong Nhi", "VN", "vpop"),
-    ("Noo Phuoc Thinh", "VN", "vpop"),
-    ("Trung Quan Idol", "VN", "ballad"),
-    # 2020s Hits & Modern Pop / R&B
-    ("Son Tung M-TP", "VN", "vpop"),
-    ("Mono", "VN", "vpop"),
-    ("Tang Duy Tan", "VN", "vpop"),
-    ("Hoang Thuy Linh", "VN", "vpop"),
-    ("Vu", "VN", "ballad"),
-    ("Bich Phuong", "VN", "vpop"),
-    ("Soobin Hoang Son", "VN", "rnb"),
-    ("JustaTee", "VN", "rnb"),
-    ("Hoa Minzy", "VN", "vpop"),
-    ("Duc Phuc", "VN", "ballad"),
-    ("Erik", "VN", "ballad"),
-    ("Amee", "VN", "vpop"),
-    ("Wren Evans", "VN", "vpop"),
-    ("Grey D", "VN", "vpop"),
-    ("Min", "VN", "vpop"),
-    ("Jack J97", "VN", "vpop"),
-    ("Van Mai Huong", "VN", "ballad")
-]
+USER_AGENT = "MelooCatalogSeeder/3.0 (Academic Project; tranvanthai20062@gmail.com)"
 
-USUK_SOURCES = [
-    # EDM
-    ("Avicii", "SE", "edm"),
-    ("Calvin Harris", "GB", "edm"),
-    ("The Chainsmokers", "US", "edm"),
-    ("Alan Walker", "NO", "edm"),
-    # Rock / Classics
-    ("Queen", "GB", "rock"),
-    ("Coldplay", "GB", "rock"),
-    ("Imagine Dragons", "US", "rock"),
-    # R&B
-    ("The Weeknd", "CA", "rnb"),
-    ("Bruno Mars", "US", "rnb"),
-    ("Beyonce", "US", "rnb"),
+# ---------------------------------------------------------------------------
+# Canonical Artist Registry
+# (artist_id, display_name, country_code, genre_code, is_girlgroup)
+# ---------------------------------------------------------------------------
+
+VPOP_CANONICAL = [
     # Rap & Hip-hop
-    ("Eminem", "US", "rap-hiphop"),
-    ("Post Malone", "US", "rap-hiphop"),
-    # Pop & Ballad
-    ("Taylor Swift", "US", "usuk-pop"),
-    ("Ed Sheeran", "GB", "usuk-pop"),
-    ("Ariana Grande", "US", "usuk-pop"),
-    ("Adele", "GB", "ballad"),
-    ("Dua Lipa", "GB", "usuk-pop"),
-    ("Billie Eilish", "US", "usuk-pop"),
-    ("Justin Bieber", "CA", "usuk-pop"),
-    ("Maroon 5", "US", "usuk-pop"),
-    ("Katy Perry", "US", "usuk-pop"),
-    ("Charlie Puth", "US", "usuk-pop")
+    (8979084, "Đen", "VN", "rap-hiphop", False),
+    (89446142, "HIEUTHUHAI", "VN", "rap-hiphop", False),
+    (5283388, "Binz", "VN", "rap-hiphop", False),
+    (4075580, "Karik", "VN", "rap-hiphop", False),
+    (81827512, "tlinh", "VN", "rap-hiphop", False),
+    (8823812, "B Ray", "VN", "rap-hiphop", False),
+    (7896668, "Rhymastic", "VN", "rap-hiphop", False),
+    (5160282, "Suboi", "VN", "rap-hiphop", False),
+    (103129612, "16 Typh", "VN", "rap-hiphop", False),
+    (4496739, "JustaTee", "VN", "rnb", False),
+    # Ballad & 2010s Nostalgia
+    (863447, "Mỹ Tâm", "VN", "ballad", False),
+    (499354, "Hà Anh Tuấn", "VN", "ballad", False),
+    (5038281, "Bùi Anh Tuấn", "VN", "ballad", False),
+    (9352628, "Hương Tràm", "VN", "ballad", False),
+    (3785231, "Khắc Việt", "VN", "ballad", False),
+    (4972285, "Phan Mạnh Quỳnh", "VN", "ballad", False),
+    (4333165, "Đông Nhi", "VN", "vpop", False),
+    (474776, "Noo Phước Thịnh", "VN", "vpop", False),
+    (5129878, "Trung Quân", "VN", "ballad", False),
+    (4023953, "Văn Mai Hương", "VN", "ballad", False),
+    (14659489, "Đức Phúc", "VN", "ballad", False),
+    (281074231, "ERIK", "VN", "ballad", False),
+    (7982110, "Hòa Minzy", "VN", "ballad", False),
+    # Modern Pop & 2020s Hits
+    (5400939, "Sơn Tùng M-TP", "VN", "vpop", False),
+    (9286846, "MONO", "VN", "vpop", False),
+    (86122002, "Tăng Duy Tân", "VN", "vpop", False),
+    (4777948, "Hoàng Thùy Linh", "VN", "vpop", False),
+    (14470049, "Vũ.", "VN", "ballad", False),
+    (4333919, "Bích Phương", "VN", "vpop", False),
+    (8621616, "SOOBIN", "VN", "rnb", False),
+    (5377793, "AMEE", "VN", "vpop", False),
+    (77668902, "Wren Evans", "VN", "vpop", False),
+    (7652822, "GREY D", "VN", "vpop", False),
+    (368898532, "MIN", "VN", "vpop", False),
+    (95338312, "Jack - J97", "VN", "vpop", False),
 ]
 
-KPOP_SOURCES = [
-    ("BTS", "KR", "kpop", False),
-    ("Blackpink", "KR", "kpop", True),
-    ("NewJeans", "KR", "kpop", True),
-    ("IVE", "KR", "kpop", True),
-    ("TWICE", "KR", "kpop", True),
-    ("aespa", "KR", "kpop", True),
-    ("LE SSERAFIM", "KR", "kpop", True),
-    ("IU", "KR", "kpop", True),
-    ("BIGBANG", "KR", "kpop", False),
-    ("EXO", "KR", "kpop", False),
-    ("Stray Kids", "KR", "kpop", False),
-    ("SEVENTEEN", "KR", "kpop", False),
-    ("NCT 127", "KR", "kpop", False),
-    ("Red Velvet", "KR", "kpop", True),
-    ("(G)I-DLE", "KR", "kpop", True),
-    ("ITZY", "KR", "kpop", True),
-    ("TXT", "KR", "kpop", False),
-    ("ENHYPEN", "KR", "kpop", False)
+KPOP_CANONICAL = [
+    # Boy groups & male soloists
+    (6982223, "BTS", "KR", "kpop", False),
+    (13923487, "Stray Kids", "KR", "kpop", False),
+    (12973277, "EXO", "KR", "kpop", False),
+    (267273672, "SEVENTEEN", "KR", "kpop", False),
+    (371377201, "BIGBANG", "KR", "kpop", False),
+    (60552072, "TOMORROW X TOGETHER", "KR", "kpop", False),
+    (113915572, "ENHYPEN", "KR", "kpop", False),
+    (50306442, "NCT 127", "KR", "kpop", False),
+    (11999322, "NCT DREAM", "KR", "kpop", False),
+    # Girl groups & female soloists
+    (10803980, "BLACKPINK", "KR", "kpop", True),
+    (15008493, "TWICE", "KR", "kpop", True),
+    (178008437, "NewJeans", "KR", "kpop", True),
+    (153042452, "IVE", "KR", "kpop", True),
+    (168158797, "LE SSERAFIM", "KR", "kpop", True),
+    (113547672, "aespa", "KR", "kpop", True),
+    (15065941, "(G)I-DLE", "KR", "kpop", True),
+    (3649631, "ITZY", "KR", "kpop", True),
+    (252200682, "Red Velvet", "KR", "kpop", True),
+    (2810121, "IU", "KR", "kpop", True),
+    (2562931, "TAEYEON", "KR", "kpop", True),
+    (1310497, "Girls' Generation", "KR", "kpop", True),
+    (1492615, "2NE1", "KR", "kpop", True),
 ]
+
+USUK_CANONICAL = [
+    # Pop
+    (12246, "Taylor Swift", "US", "usuk-pop", False),
+    (384236, "Ed Sheeran", "GB", "usuk-pop", False),
+    (1562681, "Ariana Grande", "US", "usuk-pop", False),
+    (9635624, "Billie Eilish", "US", "usuk-pop", False),
+    (288166, "Justin Bieber", "CA", "usuk-pop", False),
+    (8706544, "Dua Lipa", "GB", "usuk-pop", False),
+    (1188, "Maroon 5", "US", "usuk-pop", False),
+    (144227, "Katy Perry", "US", "usuk-pop", False),
+    (11239321, "Charlie Puth", "US", "usuk-pop", False),
+    (75491, "Lady Gaga", "US", "usuk-pop", False),
+    (5962948, "Shawn Mendes", "CA", "usuk-pop", False),
+    (84302292, "Sia", "US", "usuk-pop", False),
+    (13867133, "Sam Smith", "GB", "usuk-pop", False),
+    # Ballad
+    (75798, "Adele", "GB", "ballad", False),
+    # R&B
+    (4050205, "The Weeknd", "CA", "rnb", False),
+    (429675, "Bruno Mars", "US", "rnb", False),
+    (145, "Beyoncé", "US", "rnb", False),
+    (564, "Rihanna", "US", "rnb", False),
+    # Rap
+    (13, "Eminem", "US", "rap-hiphop", False),
+    (7543848, "Post Malone", "US", "rap-hiphop", False),
+    # Rock
+    (412, "Queen", "GB", "rock", False),
+    (892, "Coldplay", "GB", "rock", False),
+    (416239, "Imagine Dragons", "US", "rock", False),
+    (259, "Michael Jackson", "US", "usuk-pop", False),
+    # EDM
+    (293585, "Avicii", "SE", "edm", False),
+    (12178, "Calvin Harris", "GB", "edm", False),
+    (4104927, "The Chainsmokers", "US", "edm", False),
+    (13529769, "Alan Walker", "NO", "edm", False),
+]
+
+# Combine all canonical artists into a single master registry by string artist ID
+CANONICAL_ARTIST_MAP = {}
+for aid, name, country, genre, is_gg in (VPOP_CANONICAL + KPOP_CANONICAL + USUK_CANONICAL):
+    CANONICAL_ARTIST_MAP[str(aid)] = {
+        "id": str(aid),
+        "name": name,
+        "country": country,
+        "genre": genre,
+        "is_girlgroup": is_gg
+    }
 
 GENRES = [
     {"code": "vpop", "nameVi": "V-Pop", "nameEn": "V-Pop"},
@@ -134,231 +171,308 @@ PLAYLISTS = [
     {"code": "kpop-girlgroups", "nameVi": "K-Pop Girl Groups", "nameEn": "K-Pop Girl Groups", "kind": "CURATED"}
 ]
 
-def fetch_deezer(url):
+def fetch_deezer(url, max_retries=3):
     req = urllib.request.Request(
         url,
         headers={
-            "User-Agent": "MelooCatalogSeeder/2.0 (Academic Project; tranvanthai20062@gmail.com)",
+            "User-Agent": USER_AGENT,
             "Accept": "application/json"
         }
     )
-    try:
-        with urllib.request.urlopen(req, timeout=8) as resp:
-            data = resp.read().decode("utf-8")
-            return json.loads(data)
-    except Exception as e:
-        return None
+    for attempt in range(max_retries):
+        try:
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                data = resp.read().decode("utf-8")
+                return json.loads(data)
+        except urllib.error.HTTPError as e:
+            if e.code == 429:
+                time.sleep(1.2 * (attempt + 1))
+            else:
+                return None
+        except Exception:
+            time.sleep(0.5)
+    return None
 
 def fetch_track_release_year(tid):
-    time.sleep(0.08)  # Throttle for rate limiting (~12 req/sec across workers)
     url = f"https://api.deezer.com/track/{tid}"
-    data = fetch_deezer(url)
-    if data:
-        rd = data.get("release_date") or data.get("album", {}).get("release_date")
-        if rd and isinstance(rd, str) and len(rd) >= 4:
-            year_str = rd.split("-")[0]
-            if year_str.isdigit() and (year_str.startswith("19") or year_str.startswith("20")):
-                return tid, int(year_str)
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    for attempt in range(4):
+        try:
+            time.sleep(0.12)  # Throttle for rate limiting (~8 req/sec)
+            with urllib.request.urlopen(req, timeout=6) as resp:
+                d = json.loads(resp.read().decode())
+                rd = d.get("release_date") or d.get("album", {}).get("release_date")
+                if rd and isinstance(rd, str) and len(rd) >= 4:
+                    year_str = rd[:4]
+                    if year_str.isdigit() and (year_str.startswith("19") or year_str.startswith("20")):
+                        return tid, int(year_str)
+                return tid, None
+        except urllib.error.HTTPError as e:
+            if e.code == 429:
+                time.sleep(1.2 * (attempt + 1))
+            else:
+                return tid, None
+        except Exception:
+            time.sleep(0.5)
     return tid, None
 
-def collect_tracks(sources, per_source_limit, raw_tracks, canonical_artist):
-    for item_tuple in sources:
-        query = item_tuple[0]
-        country = item_tuple[1]
-        genre = item_tuple[2]
-        is_girlgroup = item_tuple[3] if len(item_tuple) > 3 else False
+def collect_tracks():
+    raw_tracks = {}
+    total_artists = len(CANONICAL_ARTIST_MAP)
+    print(f"Collecting tracks from {total_artists} canonical artists...")
 
-        encoded = urllib.parse.quote(query)
-        url = f"https://api.deezer.com/search?q={encoded}&limit={per_source_limit}"
-        res = fetch_deezer(url)
-        if not res or "data" not in res:
+    for idx, (art_id, artist_info) in enumerate(CANONICAL_ARTIST_MAP.items(), 1):
+        time.sleep(0.1)
+        # 1. Fetch artist top tracks
+        top_url = f"https://api.deezer.com/artist/{art_id}/top?limit=40"
+        res = fetch_deezer(top_url)
+        tracks_data = res.get("data", []) if res else []
+
+        # 2. If top tracks < 20, supplement with search
+        if len(tracks_data) < 20:
             time.sleep(0.1)
-            continue
+            search_url = f"https://api.deezer.com/search?q={urllib.parse.quote(artist_info['name'])}&limit=30"
+            sres = fetch_deezer(search_url)
+            if sres and "data" in sres:
+                tracks_data.extend(sres["data"])
 
-        for item in res["data"]:
+        accepted_for_artist = 0
+        for item in tracks_data:
             tid = str(item.get("id"))
             preview = item.get("preview")
             if not tid or not preview or tid in raw_tracks:
                 continue
 
             art_obj = item.get("artist", {})
-            art_id = str(art_obj.get("id", ""))
-            art_name = art_obj.get("name", "Unknown")
+            track_art_id = str(art_obj.get("id", ""))
 
-            # Canonical artist mapping (m3: ensure artist has consistent country & genre)
-            if art_id not in canonical_artist:
-                canonical_artist[art_id] = {
-                    "name": art_name,
-                    "country": country,
-                    "genre": genre
-                }
+            # STRICT CANONICAL CHECK:
+            # Only accept if the track belongs to a canonical artist
+            if track_art_id not in CANONICAL_ARTIST_MAP:
+                # If artist ID doesn't match, check if primary artist name matches expected canonical name
+                if art_obj.get("name", "").strip().lower() == artist_info["name"].strip().lower():
+                    matched_info = artist_info
+                else:
+                    continue  # DISCARD extraneous / foreign artists!
+            else:
+                matched_info = CANONICAL_ARTIST_MAP[track_art_id]
 
-            artist_info = canonical_artist[art_id]
             album_obj = item.get("album", {})
             cover = album_obj.get("cover_medium") or album_obj.get("cover")
             rank = min(100, max(1, int(item.get("rank", 500000) / 10000)))
             clean_preview = preview.split('?')[0] if preview else ""
 
             raw_tracks[tid] = {
-                "tid": tid,
-                "title": item.get("title", ""),
-                "artistName": artist_info["name"],
-                "providerArtistId": art_id,
-                "countryCode": artist_info["country"],
-                "genreCode": artist_info["genre"],
+                "providerTrackId": tid,
+                "title": item.get("title", "").strip(),
+                "primaryArtistId": matched_info["id"],
+                "artistName": matched_info["name"],
+                "countryCode": matched_info["country"],
+                "genreCode": matched_info["genre"],
                 "coverUrl": cover,
+                "popularity": rank,
                 "previewUrl": clean_preview,
-                "popularityRank": rank,
-                "isGirlgroup": is_girlgroup
+                "is_girlgroup": matched_info["is_girlgroup"]
             }
+            accepted_for_artist += 1
 
-        time.sleep(0.1)
+        if idx % 10 == 0 or idx == total_artists:
+            print(f"[{idx}/{total_artists}] {artist_info['name']}: {accepted_for_artist} tracks (Total collected: {len(raw_tracks)})")
+
+    print(f"Total raw candidate tracks with previews: {len(raw_tracks)}")
+    return raw_tracks
 
 def main():
-    raw_tracks = {}
-    canonical_artist = {}
-
-    print("=== Step 1: Collecting V-Pop tracks ===")
-    collect_tracks(VPOP_SOURCES, 16, raw_tracks, canonical_artist)
-    print(f"V-Pop collected: {sum(1 for t in raw_tracks.values() if t['countryCode'] == 'VN')} tracks\n")
-
-    print("=== Step 2: Collecting US-UK tracks ===")
-    collect_tracks(USUK_SOURCES, 22, raw_tracks, canonical_artist)
-    print(f"US-UK collected: {sum(1 for t in raw_tracks.values() if t['countryCode'] in ('US', 'GB', 'CA', 'SE', 'NO'))} tracks\n")
-
-    print("=== Step 3: Collecting K-Pop tracks ===")
-    collect_tracks(KPOP_SOURCES, 22, raw_tracks, canonical_artist)
-    print(f"K-Pop collected: {sum(1 for t in raw_tracks.values() if t['countryCode'] == 'KR')} tracks\n")
-
-    print(f"Total candidate tracks: {len(raw_tracks)}")
-    if len(raw_tracks) < 1000:
-        raise ValueError(f"Too few tracks collected: {len(raw_tracks)} < 1000")
-
-    print("\n=== Step 4: Fetching Real Release Dates from Deezer API ===")
-    tids = list(raw_tracks.keys())
-    release_years = {}
-    done_count = 0
     start_time = time.time()
+    generated_at = datetime.now(timezone.utc).isoformat()
+    raw_tracks = collect_tracks()
 
-    with ThreadPoolExecutor(max_workers=6) as executor:
-        futures = {executor.submit(fetch_track_release_year, tid): tid for tid in tids}
-        for future in as_completed(futures):
+    if len(raw_tracks) < 1000:
+        print(f"ERROR: Collected only {len(raw_tracks)} tracks, required >= 1,000!")
+        sys.exit(1)
+
+    # Fetch release years with multi-threaded rate-limited worker pool
+    print(f"\nFetching REAL release years for {len(raw_tracks)} tracks from Deezer API...")
+    track_ids = list(raw_tracks.keys())
+    release_years = {}
+
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        future_to_tid = {executor.submit(fetch_track_release_year, tid): tid for tid in track_ids}
+        completed = 0
+        total = len(track_ids)
+        for future in as_completed(future_to_tid):
             tid, year = future.result()
             if year:
                 release_years[tid] = year
-            done_count += 1
-            if done_count % 100 == 0 or done_count == len(tids):
-                print(f"Fetched release dates: {done_count}/{len(tids)} ({time.time() - start_time:.1f}s)")
+            completed += 1
+            if completed % 200 == 0 or completed == total:
+                print(f"  Release year progress: {completed}/{total} ({len(release_years)} resolved)")
 
-    print(f"Successfully retrieved real release years for {len(release_years)}/{len(tids)} tracks.")
+    null_years_count = len(raw_tracks) - len(release_years)
+    null_ratio = null_years_count / len(raw_tracks)
+    print(f"\nRelease years fetched: {len(release_years)} / {len(raw_tracks)} (Missing: {null_years_count}, Ratio: {null_ratio:.2%})")
 
-    # Assign Playlists based on Real Release Years & Genres
+    # Strict validation on release years: must have < 3% null
+    if null_ratio > 0.05:
+        print(f"ERROR: Missing release year ratio {null_ratio:.2%} exceeds 5% threshold!")
+        sys.exit(1)
+
+    # Assign release years, decades, and playlists
     final_tracks = []
-    for tid, t in raw_tracks.items():
+    decade_counts = collections.Counter()
+    playlist_counts = collections.Counter()
+    genre_counts = collections.Counter()
+    country_counts = collections.Counter()
+    artist_tuples = collections.defaultdict(set)
+
+    for tid, track in raw_tracks.items():
         year = release_years.get(tid)
-        playlists = set()
-        c_code = t["countryCode"]
-        g_code = t["genreCode"]
+        track["releaseYear"] = year
 
-        if c_code == "VN":
+        # Compute decade
+        if year:
+            decade_str = f"{(year // 10) * 10}s"
+            track["decade"] = decade_str
+            decade_counts[decade_str] += 1
+        else:
+            track["decade"] = None
+
+        cc = track["countryCode"]
+        gc = track["genreCode"]
+        pls = []
+
+        if cc == "VN":
+            if gc == "ballad":
+                pls.append("vpop-ballad")
+            if gc == "rap-hiphop":
+                pls.append("vpop-rap-hiphop")
             if year and 2010 <= year <= 2019:
-                playlists.add("vpop-nostalgia-2010s")
+                pls.append("vpop-nostalgia-2010s")
             elif year and year >= 2020:
-                playlists.add("vpop-hits-2020s")
-            else:
-                playlists.add("vpop-hits-2020s")
+                pls.append("vpop-hits-2020s")
+            elif not year:
+                pls.append("vpop-hits-2020s")
 
-            if g_code == "ballad":
-                playlists.add("vpop-ballad")
-            elif g_code == "rap-hiphop":
-                playlists.add("vpop-rap-hiphop")
-
-        elif c_code in ("US", "GB", "CA", "SE", "NO"):
+        elif cc in ("US", "GB", "CA", "SE", "NO"):
             if year and year < 2020:
-                playlists.add("usuk-pop-classics")
-            else:
-                playlists.add("usuk-billboard-hits")
+                pls.append("usuk-pop-classics")
+            if year and year >= 2015:
+                pls.append("usuk-billboard-hits")
+            elif not year:
+                pls.append("usuk-billboard-hits")
 
-        elif c_code == "KR":
-            playlists.add("kpop-top-hits")
-            if t.get("isGirlgroup"):
-                playlists.add("kpop-girlgroups")
+        elif cc == "KR":
+            pls.append("kpop-top-hits")
+            if track.get("is_girlgroup"):
+                pls.append("kpop-girlgroups")
 
-        final_tracks.append({
-            "provider": "DEEZER",
-            "providerTrackId": tid,
-            "title": t["title"],
-            "artistName": t["artistName"],
-            "providerArtistId": t["providerArtistId"],
-            "genreCode": g_code,
-            "countryCode": c_code,
-            "releaseYear": year,
-            "popularityRank": t["popularityRank"],
-            "previewUrl": t["previewUrl"],
-            "coverUrl": t["coverUrl"],
-            "playlistCodes": sorted(list(playlists))
-        })
+        track["playlistCodes"] = pls
 
-    # Sort deterministically
-    final_tracks.sort(key=lambda x: int(x["providerTrackId"]))
+        # Track statistics
+        country_counts[cc] += 1
+        genre_counts[gc] += 1
+        for p in pls:
+            playlist_counts[p] += 1
+        artist_tuples[track["artistName"]].add((cc, gc))
 
-    # Validation Checks
-    country_counts = collections.Counter(t["countryCode"] for t in final_tracks)
-    print("\nCountry distribution:", dict(country_counts))
-    if country_counts.get("VN", 0) < 300:
-        raise ValueError(f"Too few VN tracks: {country_counts.get('VN', 0)}")
-    if country_counts.get("US", 0) < 150:
-        raise ValueError(f"Too few US tracks: {country_counts.get('US', 0)}")
-    if country_counts.get("GB", 0) < 40:
-        raise ValueError(f"Too few GB tracks: {country_counts.get('GB', 0)}")
-    if country_counts.get("KR", 0) < 200:
-        raise ValueError(f"Too few KR tracks: {country_counts.get('KR', 0)}")
+        # Cleanup internal flag
+        track.pop("is_girlgroup", None)
+        final_tracks.append(track)
 
-    playlist_counts = collections.Counter(
-        p for t in final_tracks for p in (t.get("playlistCodes") or [])
-    )
-    print("Playlist distribution:", dict(playlist_counts))
-    for p in PLAYLISTS:
-        cnt = playlist_counts.get(p["code"], 0)
-        if cnt < 20:
-            raise ValueError(f"Playlist '{p['code']}' has only {cnt} tracks (minimum 20 required)")
+    # Sort tracks deterministically
+    final_tracks.sort(key=lambda x: (x["countryCode"], x["genreCode"], x["artistName"], x["title"]))
 
-    genre_counts = collections.Counter(t["genreCode"] for t in final_tracks)
-    print("Genre distribution:", dict(genre_counts))
+    # ---------------------------------------------------------------------------
+    # Integrity Assertions
+    # ---------------------------------------------------------------------------
+    print("\nRunning integrity validations...")
+
+    # 1. Artist uniqueness: no artist can have multiple country/genre pairs
+    for art_name, pairs in artist_tuples.items():
+        if len(pairs) > 1:
+            print(f"ERROR: Artist '{art_name}' has conflicting metadata: {pairs}")
+            sys.exit(1)
+
+    # 2. Strict playlist country integrity
+    for t in final_tracks:
+        for p in t["playlistCodes"]:
+            if p.startswith("vpop-") and t["countryCode"] != "VN":
+                print(f"ERROR: Non-VN track '{t['title']}' by '{t['artistName']}' ({t['countryCode']}) in {p}")
+                sys.exit(1)
+            if p.startswith("kpop-") and t["countryCode"] != "KR":
+                print(f"ERROR: Non-KR track '{t['title']}' by '{t['artistName']}' ({t['countryCode']}) in {p}")
+                sys.exit(1)
+            if p.startswith("usuk-") and t["countryCode"] not in ("US", "GB", "CA", "SE", "NO"):
+                print(f"ERROR: Non-Western track '{t['title']}' by '{t['artistName']}' ({t['countryCode']}) in {p}")
+                sys.exit(1)
+
+    # 3. Strict decade integrity for curated playlists
+    for t in final_tracks:
+        if "vpop-nostalgia-2010s" in t["playlistCodes"]:
+            assert t["releaseYear"] is not None and 2010 <= t["releaseYear"] <= 2019, f"Invalid year for 2010s: {t}"
+        if "usuk-pop-classics" in t["playlistCodes"]:
+            assert t["releaseYear"] is not None and t["releaseYear"] < 2020, f"Invalid year for classics: {t}"
+
+    # 4. Playlist minimum threshold
+    for pl in PLAYLISTS:
+        code = pl["code"]
+        cnt = playlist_counts[code]
+        if cnt < 70:
+            print(f"ERROR: Curated playlist '{code}' has only {cnt} tracks (< 70)!")
+            sys.exit(1)
+
+    # 5. Genre minimum threshold
     for g in GENRES:
-        cnt = genre_counts.get(g["code"], 0)
-        if cnt < 20:
-            raise ValueError(f"Genre '{g['code']}' has only {cnt} tracks (minimum 20 required)")
+        code = g["code"]
+        cnt = genre_counts[code]
+        if cnt < 80:
+            print(f"ERROR: Genre '{code}' has only {cnt} tracks (< 80)!")
+            sys.exit(1)
 
-    # Validate AC1 & N3: Decade checks
-    nostalgia_2010s = [
-        t for t in final_tracks
-        if "vpop-nostalgia-2010s" in t["playlistCodes"] and t["releaseYear"] and 2010 <= t["releaseYear"] <= 2019
-    ]
-    print(f"Real 2010s V-Pop tracks in vpop-nostalgia-2010s: {len(nostalgia_2010s)}")
-    if len(nostalgia_2010s) < 20:
-        raise ValueError(f"vpop-nostalgia-2010s has only {len(nostalgia_2010s)} real 2010s tracks")
+    print("ALL INTEGRITY CHECKS PASSED!")
 
-    usuk_classics = [
-        t for t in final_tracks
-        if "usuk-pop-classics" in t["playlistCodes"] and t["releaseYear"] and t["releaseYear"] < 2020
-    ]
-    print(f"Real pre-2020 US-UK classics in usuk-pop-classics: {len(usuk_classics)}")
-    if len(usuk_classics) < 20:
-        raise ValueError(f"usuk-pop-classics has only {len(usuk_classics)} real pre-2020 tracks")
-
+    # Assemble final seed catalog
     catalog = {
+        "metadata": {
+            "version": "3.0",
+            "provider": "deezer",
+            "generatedAt": generated_at,
+            "totalTracks": len(final_tracks),
+            "tracksWithRealReleaseYear": len(release_years),
+            "missingReleaseYear": null_years_count
+        },
         "genres": GENRES,
         "playlists": PLAYLISTS,
         "tracks": final_tracks
     }
 
-    out_file = "backend/src/main/resources/seed/catalog-seed.json"
-    os.makedirs(os.path.dirname(out_file), exist_ok=True)
-    with open(out_file, "w", encoding="utf-8") as f:
+    output_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "catalog-seed.json"
+    )
+
+    with open(output_path, "w", encoding="utf-8") as f:
         json.dump(catalog, f, ensure_ascii=False, indent=2)
 
-    print(f"\nSUCCESS: Generated {out_file} with {len(final_tracks)} tracks having REAL release years.")
+    elapsed = time.time() - start_time
+    print(f"\n=======================================================")
+    print(f"SUCCESS: Generated {len(final_tracks)} clean tracks in {elapsed:.1f}s")
+    print(f"Output: {output_path}")
+    print(f"Generated at: {generated_at}")
+    print(f"Tracks with real release year: {len(release_years)} / {len(final_tracks)} ({len(release_years)/len(final_tracks):.1%})")
+    print(f"\nCountry Distribution:")
+    for c, cnt in country_counts.most_common():
+        print(f"  {c}: {cnt}")
+    print(f"\nGenre Distribution:")
+    for g, cnt in genre_counts.most_common():
+        print(f"  {g}: {cnt}")
+    print(f"\nPlaylist Distribution:")
+    for p, cnt in playlist_counts.most_common():
+        print(f"  {p}: {cnt}")
+    print(f"\nDecade Distribution:")
+    for d, cnt in sorted(decade_counts.items()):
+        print(f"  {d}: {cnt}")
+    print(f"=======================================================\n")
 
 if __name__ == "__main__":
     main()

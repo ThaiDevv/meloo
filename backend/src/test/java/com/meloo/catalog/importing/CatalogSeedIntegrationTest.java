@@ -68,40 +68,78 @@ class CatalogSeedIntegrationTest extends IntegrationTest {
             .collect(java.util.stream.Collectors.toSet());
     assertThat(countries).contains("VN", "US", "GB", "KR");
 
-    // Verify AC1 & N3: Decade checks with real release years
+    // Verify AC1 & N3 & N4: Decade checks with real release years and strict country consistency
     var nostalgiaPlaylist =
         playlistRepository.findAll().stream()
             .filter(p -> "vpop-nostalgia-2010s".equals(p.getCode()))
             .findFirst()
             .orElseThrow();
-    long nostalgiaTracksIn2010s =
+    var nostalgiaTracks =
         playlistTrackRepository.findAll().stream()
             .filter(pt -> pt.getPlaylistId().equals(nostalgiaPlaylist.getId()))
             .map(pt -> trackRepository.findById(pt.getTrackId()).orElseThrow())
-            .filter(
-                t ->
-                    t.getReleaseYear() != null
-                        && t.getReleaseYear() >= 2010
-                        && t.getReleaseYear() <= 2019)
-            .count();
-    assertThat(nostalgiaTracksIn2010s)
-        .as("vpop-nostalgia-2010s must contain real 2010s tracks")
-        .isGreaterThanOrEqualTo(10);
+            .toList();
+    assertThat(nostalgiaTracks.size()).isGreaterThanOrEqualTo(50);
+    assertThat(nostalgiaTracks)
+        .allSatisfy(
+            t -> {
+              assertThat(t.getReleaseYear().intValue())
+                  .as("Track %s in vpop-nostalgia-2010s must be 2010-2019", t.getTitle())
+                  .isBetween(2010, 2019);
+              assertThat(t.getCountryCode())
+                  .as("Track %s in vpop-nostalgia-2010s must have VN country", t.getTitle())
+                  .isEqualTo("VN");
+            });
 
     var classicsPlaylist =
         playlistRepository.findAll().stream()
             .filter(p -> "usuk-pop-classics".equals(p.getCode()))
             .findFirst()
             .orElseThrow();
-    long classicsTracksPre2020 =
+    var classicsTracks =
         playlistTrackRepository.findAll().stream()
             .filter(pt -> pt.getPlaylistId().equals(classicsPlaylist.getId()))
             .map(pt -> trackRepository.findById(pt.getTrackId()).orElseThrow())
-            .filter(t -> t.getReleaseYear() != null && t.getReleaseYear() < 2020)
-            .count();
-    assertThat(classicsTracksPre2020)
-        .as("usuk-pop-classics must contain real pre-2020 tracks")
-        .isGreaterThanOrEqualTo(10);
+            .toList();
+    assertThat(classicsTracks.size()).isGreaterThanOrEqualTo(50);
+    assertThat(classicsTracks)
+        .allSatisfy(
+            t -> {
+              assertThat(t.getReleaseYear().intValue())
+                  .as("Track %s in usuk-pop-classics must be before 2020", t.getTitle())
+                  .isLessThan(2020);
+              assertThat(t.getCountryCode())
+                  .as("Track %s in usuk-pop-classics must have Western country", t.getTitle())
+                  .isIn("US", "GB", "CA", "SE", "NO");
+            });
+
+    var kpopPlaylist =
+        playlistRepository.findAll().stream()
+            .filter(p -> "kpop-top-hits".equals(p.getCode()))
+            .findFirst()
+            .orElseThrow();
+    var kpopTracks =
+        playlistTrackRepository.findAll().stream()
+            .filter(pt -> pt.getPlaylistId().equals(kpopPlaylist.getId()))
+            .map(pt -> trackRepository.findById(pt.getTrackId()).orElseThrow())
+            .toList();
+    assertThat(kpopTracks.size()).isGreaterThanOrEqualTo(50);
+    assertThat(kpopTracks)
+        .allSatisfy(
+            t -> {
+              assertThat(t.getCountryCode())
+                  .as("Track %s in kpop-top-hits must have KR country", t.getTitle())
+                  .isEqualTo("KR");
+            });
+
+    // Verify all seeded tracks have non-null real release years
+    assertThat(trackRepository.findAll())
+        .allSatisfy(
+            t -> {
+              assertThat(t.getReleaseYear())
+                  .as("Track %s must have non-null release year", t.getTitle())
+                  .isNotNull();
+            });
 
     // Re-run seed: must be completely idempotent (no duplicates created)
     CatalogSeedService.CatalogSeedResult rerunResult = seedService.seedCatalog();

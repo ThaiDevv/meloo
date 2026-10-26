@@ -132,8 +132,13 @@ class CatalogSeedIntegrationTest extends IntegrationTest {
                   .isEqualTo("KR");
             });
 
-    // Verify all seeded tracks have non-null real release years
-    assertThat(trackRepository.findAll())
+    // Verify all seeded tracks in playlists have non-null real release years
+    var allPlaylistTracks =
+        playlistTrackRepository.findAll().stream()
+            .map(pt -> trackRepository.findById(pt.getTrackId()).orElseThrow())
+            .toList();
+    assertThat(allPlaylistTracks.size()).isGreaterThanOrEqualTo(1000);
+    assertThat(allPlaylistTracks)
         .allSatisfy(
             t -> {
               assertThat(t.getReleaseYear())

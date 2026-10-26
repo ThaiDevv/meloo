@@ -46,6 +46,28 @@ class CatalogSeedIntegrationTest extends IntegrationTest {
     long totalLinks = playlistTrackRepository.count();
     assertThat(totalLinks).isPositive();
 
+    // Verify AC4 & N1: Every curated playlist has ample tracks (minimum 10)
+    playlistRepository
+        .findAll()
+        .forEach(
+            playlist -> {
+              long tracksInPlaylist =
+                  playlistTrackRepository.findAll().stream()
+                      .filter(pt -> pt.getPlaylistId().equals(playlist.getId()))
+                      .count();
+              assertThat(tracksInPlaylist)
+                  .as("Playlist '%s' must not be empty", playlist.getCode())
+                  .isGreaterThanOrEqualTo(10);
+            });
+
+    // Verify AC4 & N1: Catalog contains balanced country representation (VN, US, GB, KR)
+    java.util.Set<String> countries =
+        trackRepository.findAll().stream()
+            .map(t -> t.getCountryCode())
+            .filter(c -> c != null)
+            .collect(java.util.stream.Collectors.toSet());
+    assertThat(countries).contains("VN", "US", "GB", "KR");
+
     // Re-run seed: must be completely idempotent (no duplicates created)
     CatalogSeedService.CatalogSeedResult rerunResult = seedService.seedCatalog();
     assertThat(rerunResult.tracksCount()).isEqualTo(0);

@@ -6,6 +6,7 @@ import com.meloo.catalog.provider.MusicProviderException;
 import com.meloo.catalog.provider.MusicProviderRateLimitException;
 import com.meloo.catalog.provider.ProviderTrack;
 import jakarta.persistence.EntityManager;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.slf4j.Logger;
@@ -75,11 +76,12 @@ public class TrackPreviewHealthCheckJob {
   public HealthCheckResult runHealthCheck() {
     int batchSize = Math.max(1, properties.healthCheck().batchSize());
 
-    // Fetch batch of enabled tracks in read-only query
+    // Fetch batch of enabled tracks prioritized by oldest check timestamp (nulls first for
+    // uninspected tracks)
     List<Track> candidateTracks =
         entityManager
             .createQuery(
-                "select t from Track t where t.enabled = true order by t.createdAt asc",
+                "select t from Track t where t.enabled = true order by t.lastPreviewCheckedAt nulls first, t.createdAt asc",
                 Track.class)
             .setMaxResults(batchSize)
             .getResultList();
@@ -92,8 +94,6 @@ public class TrackPreviewHealthCheckJob {
     String activeProviderName = musicProvider != null ? musicProvider.getProviderName() : null;
 
     for (Track track : candidateTracks) {
-      checked++;
-
       // Provider matching: only check track if its provider matches the active musicProvider
       if (track.getProvider() != null
           && activeProviderName != null
@@ -101,6 +101,8 @@ public class TrackPreviewHealthCheckJob {
           && !"fake".equalsIgnoreCase(activeProviderName)) {
         continue;
       }
+
+      checked++;
 
       Optional<ProviderTrack> ptOpt;
       try {
@@ -119,7 +121,7 @@ public class TrackPreviewHealthCheckJob {
             e.getMessage());
         transientErrors++;
         // If circuit breaker is open, halt early
-        if (e.getMessage() != null && e.getMessage().contains("circuit breaker is open")) {
+        if (e.getMessage() != null && e.getMessage().toLowerCase().contains("circuit breaker")) {
           log.warn("Circuit breaker open, aborting remaining health check batch");
           break;
         }
@@ -142,6 +144,7 @@ public class TrackPreviewHealthCheckJob {
       }
 
       if (hasValidPreview) {
+        markTrackHealthyInTransaction(track.getId());
         healthy++;
       } else {
         // Confirmed preview failure: track 404 or preview URL missing from provider
@@ -158,6 +161,19 @@ public class TrackPreviewHealthCheckJob {
     return new HealthCheckResult(checked, healthy, disabled, transientErrors);
   }
 
+  private void markTrackHealthyInTransaction(java.util.UUID trackId) {
+    transactionTemplate.executeWithoutResult(
+        status -> {
+          trackRepository
+              .findById(trackId)
+              .ifPresent(
+                  t -> {
+                    t.setLastPreviewCheckedAt(Instant.now());
+                    trackRepository.save(t);
+                  });
+        });
+  }
+
   private void disableTrackInTransaction(java.util.UUID trackId) {
     transactionTemplate.executeWithoutResult(
         status -> {
@@ -168,6 +184,7 @@ public class TrackPreviewHealthCheckJob {
                     t.setEnabled(false);
                     t.setDisabledReason(
                         "Preview unavailable: track not found or preview URL missing from provider");
+                    t.setLastPreviewCheckedAt(Instant.now());
                     trackRepository.save(t);
                   });
         });

@@ -5,12 +5,13 @@ Guarantees:
 - Real Deezer numeric track IDs (e.g. "2470200565")
 - Real Deezer numeric artist IDs (e.g. "5400939") with unified artist mapping
 - Real static CDN album cover URLs
-- Real working preview URLs
-- Deduplication by track ID and unified artist identification
-- At least 1,000 valid tracks across V-Pop, US-UK, and K-Pop
-- 8 Genres and 8 Curated Playlists
+- Real working preview URLs (without ephemeral signed tokens)
+- Balanced distribution across V-Pop (VN), US-UK (US, GB, CA), and K-Pop (KR)
+- Non-empty tracks for all 8 Curated Playlists and all 8 Genres
+- Strictly >= 1,000 valid tracks
 """
 
+import collections
 import json
 import os
 import sys
@@ -18,8 +19,7 @@ import time
 import urllib.parse
 import urllib.request
 
-SEARCH_SOURCES = [
-    # V-Pop
+VPOP_SOURCES = [
     ("Son Tung M-TP", "VN", "vpop", ["vpop-hits-2020s"]),
     ("Den Vau", "VN", "rap-hiphop", ["vpop-hits-2020s", "vpop-rap-hiphop"]),
     ("Vu", "VN", "ballad", ["vpop-hits-2020s", "vpop-ballad"]),
@@ -57,44 +57,40 @@ SEARCH_SOURCES = [
     ("Vu Cat Tuong", "VN", "vpop", ["vpop-nostalgia-2010s"]),
     ("nhac tre", "VN", "vpop", ["vpop-hits-2020s"]),
     ("vietnamese rap", "VN", "rap-hiphop", ["vpop-rap-hiphop"]),
-    ("vpop ballad", "VN", "ballad", ["vpop-ballad"]),
+    ("vpop ballad", "VN", "ballad", ["vpop-ballad"])
+]
 
-    # US-UK
-    ("Taylor Swift", "US", "usuk-pop", ["usuk-billboard-hits", "usuk-pop-classics"]),
-    ("The Weeknd", "CA", "rnb", ["usuk-billboard-hits", "usuk-pop-classics"]),
-    ("Ed Sheeran", "GB", "usuk-pop", ["usuk-billboard-hits", "usuk-pop-classics"]),
-    ("Ariana Grande", "US", "usuk-pop", ["usuk-billboard-hits"]),
-    ("Bruno Mars", "US", "rnb", ["usuk-pop-classics", "usuk-billboard-hits"]),
-    ("Dua Lipa", "GB", "usuk-pop", ["usuk-billboard-hits"]),
-    ("Billie Eilish", "US", "usuk-pop", ["usuk-billboard-hits"]),
-    ("Justin Bieber", "CA", "usuk-pop", ["usuk-billboard-hits", "usuk-pop-classics"]),
-    ("Adele", "GB", "ballad", ["usuk-pop-classics", "usuk-billboard-hits"]),
-    ("Coldplay", "GB", "rock", ["usuk-pop-classics"]),
-    ("Maroon 5", "US", "usuk-pop", ["usuk-pop-classics"]),
-    ("Post Malone", "US", "rap-hiphop", ["usuk-billboard-hits"]),
-    ("Imagine Dragons", "US", "rock", ["usuk-billboard-hits", "usuk-pop-classics"]),
-    ("Katy Perry", "US", "usuk-pop", ["usuk-pop-classics"]),
-    ("Rihanna", "BB", "rnb", ["usuk-pop-classics"]),
-    ("Drake", "CA", "rap-hiphop", ["usuk-billboard-hits"]),
-    ("Eminem", "US", "rap-hiphop", ["usuk-pop-classics"]),
-    ("Charlie Puth", "US", "usuk-pop", ["usuk-billboard-hits"]),
-    ("Shawn Mendes", "CA", "usuk-pop", ["usuk-billboard-hits"]),
-    ("Harry Styles", "GB", "usuk-pop", ["usuk-billboard-hits"]),
-    ("Olivia Rodrigo", "US", "usuk-pop", ["usuk-billboard-hits"]),
-    ("Beyonce", "US", "rnb", ["usuk-pop-classics"]),
-    ("Lady Gaga", "US", "usuk-pop", ["usuk-pop-classics"]),
-    ("Michael Jackson", "US", "usuk-pop", ["usuk-pop-classics"]),
-    ("Queen", "GB", "rock", ["usuk-pop-classics"]),
-    ("Avicii", "SE", "edm", ["usuk-pop-classics"]),
+USUK_SOURCES = [
+    # EDM
+    ("Avicii", "SE", "edm", ["usuk-pop-classics", "usuk-billboard-hits"]),
     ("Calvin Harris", "GB", "edm", ["usuk-billboard-hits", "usuk-pop-classics"]),
     ("The Chainsmokers", "US", "edm", ["usuk-billboard-hits", "usuk-pop-classics"]),
     ("Alan Walker", "NO", "edm", ["usuk-pop-classics"]),
-    ("David Guetta", "FR", "edm", ["usuk-pop-classics"]),
-    ("Zedd", "DE", "edm", ["usuk-pop-classics"]),
-    ("Kygo", "NO", "edm", ["usuk-pop-classics"]),
-    ("billboard hot 100", "US", "usuk-pop", ["usuk-billboard-hits"]),
+    # Rock
+    ("Queen", "GB", "rock", ["usuk-pop-classics"]),
+    ("Coldplay", "GB", "rock", ["usuk-pop-classics"]),
+    ("Imagine Dragons", "US", "rock", ["usuk-billboard-hits", "usuk-pop-classics"]),
+    # R&B
+    ("The Weeknd", "CA", "rnb", ["usuk-billboard-hits", "usuk-pop-classics"]),
+    ("Bruno Mars", "US", "rnb", ["usuk-pop-classics", "usuk-billboard-hits"]),
+    ("Beyonce", "US", "rnb", ["usuk-pop-classics"]),
+    # Rap & Hip-hop
+    ("Eminem", "US", "rap-hiphop", ["usuk-pop-classics"]),
+    ("Post Malone", "US", "rap-hiphop", ["usuk-billboard-hits"]),
+    # Pop & Ballad
+    ("Taylor Swift", "US", "usuk-pop", ["usuk-billboard-hits", "usuk-pop-classics"]),
+    ("Ed Sheeran", "GB", "usuk-pop", ["usuk-billboard-hits", "usuk-pop-classics"]),
+    ("Ariana Grande", "US", "usuk-pop", ["usuk-billboard-hits", "usuk-pop-classics"]),
+    ("Adele", "GB", "ballad", ["usuk-pop-classics", "usuk-billboard-hits"]),
+    ("Dua Lipa", "GB", "usuk-pop", ["usuk-billboard-hits"]),
+    ("Billie Eilish", "US", "usuk-pop", ["usuk-billboard-hits"]),
+    ("Justin Bieber", "CA", "usuk-pop", ["usuk-billboard-hits", "usuk-pop-classics"]),
+    ("Maroon 5", "US", "usuk-pop", ["usuk-pop-classics"]),
+    ("Katy Perry", "US", "usuk-pop", ["usuk-pop-classics"]),
+    ("Charlie Puth", "US", "usuk-pop", ["usuk-billboard-hits"])
+]
 
-    # K-Pop
+KPOP_SOURCES = [
     ("BTS", "KR", "kpop", ["kpop-top-hits"]),
     ("Blackpink", "KR", "kpop", ["kpop-top-hits", "kpop-girlgroups"]),
     ("NewJeans", "KR", "kpop", ["kpop-top-hits", "kpop-girlgroups"]),
@@ -113,7 +109,7 @@ SEARCH_SOURCES = [
     ("ITZY", "KR", "kpop", ["kpop-girlgroups"]),
     ("TXT", "KR", "kpop", ["kpop-top-hits"]),
     ("ENHYPEN", "KR", "kpop", ["kpop-top-hits"]),
-    ("kpop top hits", "KR", "kpop", ["kpop-top-hits"])
+    ("kpop", "KR", "kpop", ["kpop-top-hits", "kpop-girlgroups"])
 ]
 
 GENRES = [
@@ -154,47 +150,12 @@ def fetch_deezer(url):
         print(f"Error fetching {url}: {e}", file=sys.stderr)
         return None
 
-def main():
-    tracks_by_id = {}
-    artist_canonical_id = {}  # normalize_name -> real_id
-
-    print("Fetching top global chart tracks...")
-    chart_data = fetch_deezer("https://api.deezer.com/chart/0/tracks?limit=100")
-    if chart_data and "data" in chart_data:
-        for item in chart_data["data"]:
-            tid = str(item.get("id"))
-            preview = item.get("preview")
-            if not tid or not preview:
-                continue
-            art_obj = item.get("artist", {})
-            art_name = art_obj.get("name", "Unknown")
-            art_id = str(art_obj.get("id", ""))
-            album_obj = item.get("album", {})
-            cover = album_obj.get("cover_medium") or album_obj.get("cover")
-            rank = min(100, max(1, int(item.get("rank", 500000) / 10000)))
-            
-            tracks_by_id[tid] = {
-                "provider": "DEEZER",
-                "providerTrackId": tid,
-                "title": item.get("title", ""),
-                "artistName": art_name,
-                "providerArtistId": art_id,
-                "genreCode": "usuk-pop",
-                "countryCode": "US",
-                "releaseYear": 2023,
-                "popularityRank": rank,
-                "previewUrl": preview,
-                "coverUrl": cover,
-                "playlistCodes": ["usuk-billboard-hits"]
-            }
-        print(f"Loaded {len(tracks_by_id)} tracks from global chart.")
-
-    time.sleep(0.5)
-
-    for query, country, genre, playlists in SEARCH_SOURCES:
-        if len(tracks_by_id) >= 1250:
+def collect_tracks(sources, target_quota, tracks_by_id):
+    collected_in_batch = 0
+    for query, country, genre, playlists in sources:
+        if collected_in_batch >= target_quota:
             break
-        print(f"Querying Deezer: '{query}' ({country}, {genre}) [current total: {len(tracks_by_id)}]")
+        print(f"Querying Deezer: '{query}' ({country}, {genre}) [collected: {collected_in_batch}/{target_quota}]")
         encoded = urllib.parse.quote(query)
         url = f"https://api.deezer.com/search?q={encoded}&limit=35"
         res = fetch_deezer(url)
@@ -215,6 +176,9 @@ def main():
             cover = album_obj.get("cover_medium") or album_obj.get("cover")
             rank = min(100, max(1, int(item.get("rank", 500000) / 10000)))
 
+            # Strip temporary signed query params (hdnea=...) to keep static clean asset URL
+            clean_preview = preview.split('?')[0] if preview else ""
+
             tracks_by_id[tid] = {
                 "provider": "DEEZER",
                 "providerTrackId": tid,
@@ -225,22 +189,68 @@ def main():
                 "countryCode": country,
                 "releaseYear": 2020 + (int(tid) % 5),
                 "popularityRank": rank,
-                "previewUrl": preview,
+                "previewUrl": clean_preview,
                 "coverUrl": cover,
                 "playlistCodes": playlists
             }
+            collected_in_batch += 1
 
         time.sleep(0.15)  # Rate limiting respect: max 50 requests / 5 sec
 
-    print(f"\nTotal unique Deezer tracks collected: {len(tracks_by_id)}")
+def main():
+    tracks_by_id = {}
+
+    print("=== Step 1: Collecting V-Pop tracks (Quota: 450) ===")
+    collect_tracks(VPOP_SOURCES, 450, tracks_by_id)
+    vpop_count = sum(1 for t in tracks_by_id.values() if t["countryCode"] == "VN")
+    print(f"V-Pop collected: {vpop_count} tracks\n")
+
+    print("=== Step 2: Collecting US-UK tracks (Quota: 550) ===")
+    collect_tracks(USUK_SOURCES, 550, tracks_by_id)
+    usuk_count = sum(1 for t in tracks_by_id.values() if t["countryCode"] in ("US", "GB", "CA", "FR", "DE", "SE", "NO"))
+    print(f"US-UK collected: {usuk_count} tracks\n")
+
+    print("=== Step 3: Collecting K-Pop tracks (Quota: 400) ===")
+    collect_tracks(KPOP_SOURCES, 400, tracks_by_id)
+    kpop_count = sum(1 for t in tracks_by_id.values() if t["countryCode"] == "KR")
+    print(f"K-Pop collected: {kpop_count} tracks\n")
+
+    print(f"Total unique Deezer tracks collected: {len(tracks_by_id)}")
+
+    # Strict Validation
+    country_counts = collections.Counter(t["countryCode"] for t in tracks_by_id.values())
+    print("Country distribution:", dict(country_counts))
+    if country_counts.get("VN", 0) < 300:
+        raise ValueError(f"Too few VN tracks: {country_counts.get('VN', 0)}")
+    if country_counts.get("US", 0) < 150:
+        raise ValueError(f"Too few US tracks: {country_counts.get('US', 0)}")
+    if country_counts.get("GB", 0) < 50:
+        raise ValueError(f"Too few GB tracks: {country_counts.get('GB', 0)}")
+    if country_counts.get("KR", 0) < 200:
+        raise ValueError(f"Too few KR tracks: {country_counts.get('KR', 0)}")
+
+    playlist_counts = collections.Counter(
+        p_code for t in tracks_by_id.values() for p_code in (t.get("playlistCodes") or [])
+    )
+    print("Playlist distribution:", dict(playlist_counts))
+    for p in PLAYLISTS:
+        cnt = playlist_counts.get(p["code"], 0)
+        if cnt < 20:
+            raise ValueError(f"Playlist '{p['code']}' has only {cnt} tracks (minimum 20 required)")
+
+    genre_counts = collections.Counter(t.get("genreCode") for t in tracks_by_id.values())
+    print("Genre distribution:", dict(genre_counts))
+    for g in GENRES:
+        cnt = genre_counts.get(g["code"], 0)
+        if cnt < 20:
+            raise ValueError(f"Genre '{g['code']}' has only {cnt} tracks (minimum 20 required)")
+
     if len(tracks_by_id) < 1000:
-        print(f"ERROR: Only collected {len(tracks_by_id)} tracks, requirement is >= 1000", file=sys.stderr)
-        sys.exit(1)
+        raise ValueError(f"Total tracks {len(tracks_by_id)} < 1000")
 
     # Sort tracks deterministically by providerTrackId
     track_list = sorted(tracks_by_id.values(), key=lambda t: t["providerTrackId"])
 
-    # Output catalog
     catalog = {
         "genres": GENRES,
         "playlists": PLAYLISTS,
@@ -252,7 +262,7 @@ def main():
     with open(out_file, "w", encoding="utf-8") as f:
         json.dump(catalog, f, ensure_ascii=False, indent=2)
 
-    print(f"Successfully generated {out_file} with {len(track_list)} real Deezer tracks.")
+    print(f"\nSUCCESS: Generated {out_file} with {len(track_list)} real tracks across VN/US/GB/CA/KR.")
 
 if __name__ == "__main__":
     main()

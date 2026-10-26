@@ -20,7 +20,7 @@ public final class TitleNormalizer {
           Pattern.CASE_INSENSITIVE);
 
   private static final Pattern FEAT_PATTERN =
-      Pattern.compile("(?i)\\s+\\b(feat\\.|ft\\.|featuring)\\b\\s+.*$", Pattern.CASE_INSENSITIVE);
+      Pattern.compile("(?i)\\s+(?:feat\\.?|ft\\.?|featuring)\\s+.*$", Pattern.CASE_INSENSITIVE);
 
   private static final Pattern DIACRITICS_PATTERN =
       Pattern.compile("\\p{InCombiningDiacriticalMarks}+");

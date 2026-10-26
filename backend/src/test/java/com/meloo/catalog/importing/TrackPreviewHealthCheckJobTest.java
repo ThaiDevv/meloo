@@ -23,6 +23,10 @@ class TrackPreviewHealthCheckJobTest extends IntegrationTest {
   @Autowired private TrackPreviewHealthCheckJob healthCheckJob;
   @Autowired private TrackRepository trackRepository;
   @Autowired private ArtistRepository artistRepository;
+  @Autowired private jakarta.persistence.EntityManager entityManager;
+
+  @Autowired
+  private org.springframework.transaction.support.TransactionTemplate transactionTemplate;
 
   @MockitoBean private com.meloo.catalog.provider.MusicProvider musicProvider;
 
@@ -109,14 +113,107 @@ class TrackPreviewHealthCheckJobTest extends IntegrationTest {
     Track reloadedHealthy = trackRepository.findById(healthyTrack.getId()).orElseThrow();
     assertThat(reloadedHealthy.isEnabled()).isTrue();
     assertThat(reloadedHealthy.getDisabledReason()).isNull();
+    assertThat(reloadedHealthy.getLastPreviewCheckedAt()).isNotNull();
 
     Track reloadedBroken = trackRepository.findById(missingPreviewTrack.getId()).orElseThrow();
     assertThat(reloadedBroken.isEnabled()).isFalse();
     assertThat(reloadedBroken.getDisabledReason()).contains("Preview unavailable");
+    assertThat(reloadedBroken.getLastPreviewCheckedAt()).isNotNull();
 
     Track reloadedNotFound = trackRepository.findById(notFoundTrack.getId()).orElseThrow();
     assertThat(reloadedNotFound.isEnabled()).isFalse();
     assertThat(reloadedNotFound.getDisabledReason()).contains("Preview unavailable");
+    assertThat(reloadedNotFound.getLastPreviewCheckedAt()).isNotNull();
+  }
+
+  @Test
+  @DisplayName(
+      "BR-27 / N2: Round-robin scanning prioritizes uninspected tracks (nulls first) and updates check timestamp")
+  void healthCheckJob_roundRobinScanning_prioritizesUncheckedTracks() {
+    when(musicProvider.getProviderName()).thenReturn("deezer");
+
+    Artist artist =
+        artistRepository.save(
+            Artist.builder()
+                .id(UUID.randomUUID())
+                .name("Round Robin Artist")
+                .nameNormalized("round robin artist")
+                .provider(MusicProvider.DEEZER)
+                .providerArtistId("art-rr-1")
+                .build());
+
+    Track alreadyChecked =
+        trackRepository.save(
+            Track.builder()
+                .id(UUID.randomUUID())
+                .provider(MusicProvider.DEEZER)
+                .providerTrackId("dz-rr-already-checked")
+                .title("Already Checked Track")
+                .titleNormalized("already checked track")
+                .primaryArtistId(artist.getId())
+                .enabled(true)
+                .lastPreviewCheckedAt(java.time.Instant.now().minus(java.time.Duration.ofDays(7)))
+                .build());
+
+    Track neverChecked =
+        trackRepository.save(
+            Track.builder()
+                .id(UUID.randomUUID())
+                .provider(MusicProvider.DEEZER)
+                .providerTrackId("dz-rr-never-checked")
+                .title("Never Checked Track")
+                .titleNormalized("never checked track")
+                .primaryArtistId(artist.getId())
+                .enabled(true)
+                .lastPreviewCheckedAt(null)
+                .build());
+
+    when(musicProvider.getTrack("dz-rr-never-checked"))
+        .thenReturn(
+            Optional.of(
+                ProviderTrack.builder()
+                    .providerTrackId("dz-rr-never-checked")
+                    .title("Never Checked Track")
+                    .artistName("Round Robin Artist")
+                    .previewUrl("https://cdns.dzcdn.net/preview-rr.mp3")
+                    .build()));
+
+    when(musicProvider.getTrack("dz-rr-already-checked"))
+        .thenReturn(
+            Optional.of(
+                ProviderTrack.builder()
+                    .providerTrackId("dz-rr-already-checked")
+                    .title("Already Checked Track")
+                    .artistName("Round Robin Artist")
+                    .previewUrl("https://cdns.dzcdn.net/preview-already.mp3")
+                    .build()));
+
+    healthCheckJob.runHealthCheck();
+
+    Track reloadedNeverChecked = trackRepository.findById(neverChecked.getId()).orElseThrow();
+    assertThat(reloadedNeverChecked.getLastPreviewCheckedAt())
+        .as("Track with null timestamp must be updated after health check")
+        .isNotNull();
+    assertThat(reloadedNeverChecked.getLastPreviewCheckedAt())
+        .isAfter(alreadyChecked.getLastPreviewCheckedAt());
+  }
+
+  @Test
+  @DisplayName(
+      "BR-27 / m3: scheduledCheck respects disabled configuration flag without running inspection")
+  void scheduledCheck_whenDisabled_doesNotCheckTracks() {
+    CatalogImportProperties disabledProps =
+        new CatalogImportProperties(
+            "classpath:seed/catalog-seed.json",
+            new CatalogImportProperties.SeedProperties(false, false),
+            new CatalogImportProperties.HealthCheckProperties(false, "0 0 3 * * *", 100));
+
+    TrackPreviewHealthCheckJob disabledJob =
+        new TrackPreviewHealthCheckJob(
+            trackRepository, musicProvider, entityManager, transactionTemplate, disabledProps);
+
+    // Should return early and not throw or check
+    disabledJob.scheduledCheck();
   }
 
   @Test

@@ -25,12 +25,17 @@ class FakeMusicProviderTest {
   }
 
   @Test
-  @DisplayName("mediaLocation defaults to classpath:fake-media/ and can be configured")
-  void mediaLocation_configurable() {
+  @DisplayName("mediaLocation defaults to classpath:fake-media/ and resolves previewUrls")
+  void mediaLocation_configurableAndResolvesPreviewUrls() {
     assertThat(provider.getMediaLocation()).isEqualTo("classpath:fake-media/");
+    assertThat(provider.getTrack("fake-1")).isPresent();
+    assertThat(provider.getTrack("fake-1").get().previewUrl()).isEqualTo("/fake-media/sample1.mp3");
 
     FakeMusicProvider custom = new FakeMusicProvider("/custom-location/");
     assertThat(custom.getMediaLocation()).isEqualTo("/custom-location/");
+    assertThat(custom.getTrack("fake-1")).isPresent();
+    assertThat(custom.getTrack("fake-1").get().previewUrl())
+        .isEqualTo("/custom-location/sample1.mp3");
   }
 
   @Test

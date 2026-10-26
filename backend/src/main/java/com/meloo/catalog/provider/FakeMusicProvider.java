@@ -30,7 +30,7 @@ public class FakeMusicProvider implements MusicProvider {
                 .artistId("art-1")
                 .albumTitle("LINK")
                 .durationSeconds(185)
-                .previewUrl("/fake-media/sample1.mp3")
+                .previewUrl(resolveSampleUrl("sample1.mp3"))
                 .coverUrl("https://fake-media.meloo.internal/covers/see-tinh.jpg")
                 .popularityRank(1)
                 .releaseYear((short) 2022)
@@ -43,7 +43,7 @@ public class FakeMusicProvider implements MusicProvider {
                 .artistId("art-2")
                 .albumTitle("22")
                 .durationSeconds(265)
-                .previewUrl("/fake-media/sample2.mp3")
+                .previewUrl(resolveSampleUrl("sample2.mp3"))
                 .coverUrl(null)
                 .popularityRank(2)
                 .releaseYear((short) 2022)
@@ -56,7 +56,7 @@ public class FakeMusicProvider implements MusicProvider {
                 .artistId("art-3")
                 .albumTitle(null)
                 .durationSeconds(191)
-                .previewUrl("/fake-media/sample3.mp3")
+                .previewUrl(resolveSampleUrl("sample3.mp3"))
                 .coverUrl("https://fake-media.meloo.internal/covers/cat-doi-noi-sau.jpg")
                 .popularityRank(3)
                 .releaseYear((short) 2023)
@@ -69,7 +69,7 @@ public class FakeMusicProvider implements MusicProvider {
                 .artistId("art-4")
                 .albumTitle("Divide")
                 .durationSeconds(233)
-                .previewUrl("/fake-media/sample1.mp3")
+                .previewUrl(resolveSampleUrl("sample1.mp3"))
                 .coverUrl(null)
                 .popularityRank(4)
                 .releaseYear((short) 2017)
@@ -82,7 +82,7 @@ public class FakeMusicProvider implements MusicProvider {
                 .artistId("art-5")
                 .albumTitle("BE")
                 .durationSeconds(199)
-                .previewUrl("/fake-media/sample2.mp3")
+                .previewUrl(resolveSampleUrl("sample2.mp3"))
                 .coverUrl("https://fake-media.meloo.internal/covers/dynamite.jpg")
                 .popularityRank(5)
                 .releaseYear((short) 2020)
@@ -95,7 +95,7 @@ public class FakeMusicProvider implements MusicProvider {
                 .artistId("art-6")
                 .albumTitle("m-tp M-TP")
                 .durationSeconds(260)
-                .previewUrl("/fake-media/sample3.mp3")
+                .previewUrl(resolveSampleUrl("sample3.mp3"))
                 .coverUrl("https://fake-media.meloo.internal/covers/noi-nay-co-anh.jpg")
                 .popularityRank(6)
                 .releaseYear((short) 2017)
@@ -105,6 +105,14 @@ public class FakeMusicProvider implements MusicProvider {
     this.trackMap =
         allTracks.stream()
             .collect(Collectors.toMap(ProviderTrack::providerTrackId, track -> track));
+  }
+
+  private String resolveSampleUrl(String filename) {
+    String base = mediaLocation.endsWith("/") ? mediaLocation : mediaLocation + "/";
+    if (base.startsWith("classpath:")) {
+      return "/" + base.substring("classpath:".length()) + filename;
+    }
+    return base + filename;
   }
 
   public String getMediaLocation() {

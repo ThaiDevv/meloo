@@ -8,13 +8,13 @@ Các file MP3 trong thư mục này được tạo tự động bằng `ffmpeg` 
   ```bash
   ffmpeg -f lavfi -i "sine=frequency=440:duration=5" -b:a 128k sample1.mp3
   ```
-- `sample2.mp3`: Tone 554 Hz (Note C#5), dài 5,00 giây, mono 128 kbps (CBR).
+- `sample2.mp3`: Tone 880 Hz (Note A5), dài 5,00 giây, mono 128 kbps (CBR).
   ```bash
-  ffmpeg -f lavfi -i "sine=frequency=554:duration=5" -b:a 128k sample2.mp3
+  ffmpeg -f lavfi -i "sine=frequency=880:duration=5" -b:a 128k sample2.mp3
   ```
-- `sample3.mp3`: Tone 659 Hz (Note E5), dài 5,00 giây, mono 128 kbps (CBR).
+- `sample3.mp3`: Tone 523 Hz (Note C5), dài 5,00 giây, mono 128 kbps (CBR).
   ```bash
-  ffmpeg -f lavfi -i "sine=frequency=659:duration=5" -b:a 128k sample3.mp3
+  ffmpeg -f lavfi -i "sine=frequency=523:duration=5" -b:a 128k sample3.mp3
   ```
 Tất cả file do dự án Meloo tự sinh, thuộc giấy phép nội bộ của đồ án môn học, không có ràng buộc bản quyền bên ngoài.
 

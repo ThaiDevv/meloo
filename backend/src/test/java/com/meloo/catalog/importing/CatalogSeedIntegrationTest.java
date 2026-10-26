@@ -138,18 +138,6 @@ class CatalogSeedIntegrationTest extends IntegrationTest {
                   .isEqualTo("KR");
             });
 
-    // Verify AC5 & N5: Seeded artists have valid numeric Deezer providerArtistId
-    var seededArtists = artistRepository.findAll();
-    assertThat(seededArtists).isNotEmpty();
-    assertThat(seededArtists)
-        .filteredOn(a -> a.getProvider() == MusicProvider.DEEZER)
-        .allSatisfy(
-            a -> {
-              assertThat(a.getProviderArtistId())
-                  .as("Artist %s providerArtistId must be numeric", a.getName())
-                  .matches("^\\d+$");
-            });
-
     // Verify all seeded tracks in playlists have non-null real release years, valid popularityRank,
     // and original versions per BR-05 & BR-09
     Pattern nonOriginalPattern =
@@ -178,6 +166,22 @@ class CatalogSeedIntegrationTest extends IntegrationTest {
               assertThat(t.getTitle())
                   .as("Track %s must be original version (no non-original pattern)", t.getTitle())
                   .doesNotMatch(nonOriginalPattern);
+            });
+
+    // Verify AC5 & N5: Seeded artists have valid numeric Deezer providerArtistId
+    var seededArtistIds =
+        distinctSeededTracks.stream().map(t -> t.getPrimaryArtistId()).collect(Collectors.toSet());
+
+    var seededArtists =
+        seededArtistIds.stream().map(id -> artistRepository.findById(id).orElseThrow()).toList();
+    assertThat(seededArtists).isNotEmpty();
+    assertThat(seededArtists)
+        .filteredOn(a -> a.getProvider() == MusicProvider.DEEZER)
+        .allSatisfy(
+            a -> {
+              assertThat(a.getProviderArtistId())
+                  .as("Artist %s providerArtistId must be numeric", a.getName())
+                  .matches("^\\d+$");
             });
 
     // Verify N6 & BR-09: No duplicate normalized titles per artist among seeded tracks

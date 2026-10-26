@@ -10,10 +10,12 @@ public class ComboTracker {
 
   private final boolean comboEnabled;
   private int currentStreak;
+  private int previousStreak;
 
   public ComboTracker(boolean comboEnabled) {
     this.comboEnabled = comboEnabled;
     this.currentStreak = 0;
+    this.previousStreak = 0;
   }
 
   public boolean isComboEnabled() {
@@ -24,6 +26,10 @@ public class ComboTracker {
     return currentStreak;
   }
 
+  public int previousStreak() {
+    return previousStreak;
+  }
+
   /**
    * Cập nhật chuỗi sau khi một vòng kết thúc và trả về hệ số combo (%) áp dụng cho vòng đó.
    *
@@ -32,6 +38,7 @@ public class ComboTracker {
    * @return hệ số combo (0, 10, hoặc 20)
    */
   public int recordRound(RoundOutcome outcome, int correctLevel) {
+    this.previousStreak = this.currentStreak;
     if (!comboEnabled) {
       currentStreak = 0;
       return 0;
@@ -52,7 +59,22 @@ public class ComboTracker {
     }
   }
 
+  /**
+   * Khôi phục lại streak trước lần gọi recordRound gần nhất. Dùng khi khôi phục trạng thái sau khi
+   * timeout() đã chạy nhưng có lượt đoán hợp lệ trước cutoff.
+   */
+  public void restorePreviousStreak() {
+    if (!comboEnabled) {
+      this.currentStreak = 0;
+      this.previousStreak = 0;
+      return;
+    }
+    this.currentStreak = this.previousStreak;
+    this.previousStreak = 0;
+  }
+
   public void reset() {
     this.currentStreak = 0;
+    this.previousStreak = 0;
   }
 }

@@ -103,16 +103,7 @@ public final class TitleNormalizer {
     result = result.toLowerCase(Locale.ROOT);
     result = NON_ALPHANUMERIC_PATTERN.matcher(result).replaceAll(" ");
     result = Normalizer.normalize(result, Normalizer.Form.NFC);
-    result = MULTI_SPACE_PATTERN.matcher(result).replaceAll(" ").trim();
-
-    if (result.isEmpty()) {
-      String fallback = artistName.trim().toLowerCase(Locale.ROOT);
-      fallback = NON_ALPHANUMERIC_PATTERN.matcher(fallback).replaceAll(" ");
-      fallback = Normalizer.normalize(fallback, Normalizer.Form.NFC);
-      result = MULTI_SPACE_PATTERN.matcher(fallback).replaceAll(" ").trim();
-    }
-
-    return result;
+    return MULTI_SPACE_PATTERN.matcher(result).replaceAll(" ").trim();
   }
 
   /** So khớp đáp án tên bài theo BR-05. */

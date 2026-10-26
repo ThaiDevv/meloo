@@ -167,13 +167,15 @@ public class Round {
       }
       long elapsedMs = Duration.between(startedAt, receivedAt).toMillis();
       if (elapsedMs >= gameRules.timeoutCutoffMs()) {
-        this.status = RoundStatus.TIMEOUT;
-        this.outcome = RoundOutcome.TIMEOUT;
-        if (this.endedAt == null) {
-          this.endedAt = receivedAt;
+        if (this.status != RoundStatus.TIMEOUT) {
+          this.status = RoundStatus.TIMEOUT;
+          this.outcome = RoundOutcome.TIMEOUT;
+          if (this.endedAt == null) {
+            this.endedAt = receivedAt;
+          }
+          this.scoreDetail = RoundScoreDetail.zero();
+          comboTracker.recordRound(RoundOutcome.TIMEOUT, 0);
         }
-        this.scoreDetail = RoundScoreDetail.zero();
-        comboTracker.recordRound(RoundOutcome.TIMEOUT, 0);
         throw new GuessRejectedException(
             "Guess received at or after timeout cutoff ("
                 + elapsedMs
@@ -194,8 +196,12 @@ public class Round {
       }
     }
 
+    boolean wasTimedOut = (this.status == RoundStatus.TIMEOUT);
     boolean correct = TitleNormalizer.matches(guessTitle, targetTrack.title());
     if (correct) {
+      if (wasTimedOut) {
+        comboTracker.restorePreviousStreak();
+      }
       this.status = RoundStatus.CORRECT;
       this.outcome = RoundOutcome.CORRECT;
       this.endedAt = receivedAt;
@@ -219,6 +225,20 @@ public class Round {
       boolean rightArtist =
           guessArtist != null
               && TitleNormalizer.matchesArtist(guessArtist, targetTrack.artistName());
+
+      if (wasTimedOut) {
+        // Vòng đã kết thúc do timeout trước đó; lượt đoán đến trước cutoff nhưng đoán sai
+        // không được làm vòng "sống lại" IN_PROGRESS và không ghi nhận combo lần hai.
+        return new GuessEvaluation(
+            false,
+            rightArtist,
+            true,
+            RoundStatus.TIMEOUT,
+            RoundOutcome.TIMEOUT,
+            null,
+            wrongCount,
+            RoundScoreDetail.zero());
+      }
 
       if (currentLevel < gameRules.maxLevel()) {
         currentLevel++;

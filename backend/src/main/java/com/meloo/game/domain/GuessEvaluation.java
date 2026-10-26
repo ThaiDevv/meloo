@@ -1,13 +1,15 @@
 package com.meloo.game.domain;
 
+import org.jspecify.annotations.Nullable;
+
 /** Kết quả sau khi engine đánh giá một lượt đoán. */
 public record GuessEvaluation(
     boolean correct,
     boolean rightArtist,
     boolean roundEnded,
     RoundStatus status,
-    RoundOutcome outcome,
-    Integer correctLevel,
+    @Nullable RoundOutcome outcome,
+    @Nullable Integer correctLevel,
     int wrongCount,
     RoundScoreDetail scoreDetail) {
 

@@ -98,5 +98,38 @@ class ComboTrackerTest {
 
     tracker.reset();
     assertThat(tracker.currentStreak()).isZero();
+    assertThat(tracker.previousStreak()).isZero();
+  }
+
+  @Test
+  @DisplayName("restorePreviousStreak: khôi phục streak trước khi timeout")
+  void testRestorePreviousStreak() {
+    ComboTracker tracker = new ComboTracker(true);
+    tracker.recordRound(RoundOutcome.CORRECT, 1);
+    tracker.recordRound(RoundOutcome.CORRECT, 2);
+    assertThat(tracker.currentStreak()).isEqualTo(2);
+
+    // Timeout làm đứt chuỗi
+    tracker.recordRound(RoundOutcome.TIMEOUT, 0);
+    assertThat(tracker.currentStreak()).isZero();
+    assertThat(tracker.previousStreak()).isEqualTo(2);
+
+    // Khôi phục streak và chấm đúng vòng 3
+    tracker.restorePreviousStreak();
+    assertThat(tracker.currentStreak()).isEqualTo(2);
+    assertThat(tracker.previousStreak()).isZero();
+
+    int combo3 = tracker.recordRound(RoundOutcome.CORRECT, 1);
+    assertThat(tracker.currentStreak()).isEqualTo(3);
+    assertThat(combo3).isEqualTo(20);
+  }
+
+  @Test
+  @DisplayName("restorePreviousStreak: không ảnh hưởng khi comboDisabled")
+  void testRestorePreviousStreakWhenDisabled() {
+    ComboTracker tracker = new ComboTracker(false);
+    tracker.restorePreviousStreak();
+    assertThat(tracker.currentStreak()).isZero();
+    assertThat(tracker.previousStreak()).isZero();
   }
 }

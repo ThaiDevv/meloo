@@ -277,25 +277,101 @@ class RoundStateMachineTest {
 
   @Test
   @DisplayName(
-      "AC-4, BR-07: Lệnh timeout xử lý trước nhưng lượt đoán nhận trước 45.000 ms vẫn được chấm")
-  void testSubmitGuessAfterTimeoutProcessedBeforeCutoff() {
-    Round round = Round.standardRound(1, sampleTrack, true);
+      "AC-4, BR-07: Lệnh timeout xử lý trước nhưng lượt đoán nhận trước 45.000 ms có kết quả chấm và combo giống hệt không có timeout")
+  void testSubmitGuessAfterTimeoutMatchesResultWithoutPriorTimeout() {
+    // 1. Trường hợp bình thường (không có lệnh timeout trước)
+    ComboTracker normalTracker = new ComboTracker(true);
+    normalTracker.recordRound(RoundOutcome.CORRECT, 1);
+    normalTracker.recordRound(RoundOutcome.CORRECT, 2);
+    assertThat(normalTracker.currentStreak()).isEqualTo(2);
+
+    Round normalRound = Round.standardRound(3, sampleTrack, true);
+    normalRound.start(startInstant);
+    Instant guessTime = startInstant.plusMillis(44_990);
+    GuessEvaluation normalEval =
+        normalRound.submitGuess(
+            "Chúng Ta Của Tương Lai", "Sơn Tùng M-TP", guessTime, normalTracker);
+
+    assertThat(normalEval.correct()).isTrue();
+    assertThat(normalEval.scoreDetail().baseScore()).isEqualTo(1000);
+    assertThat(normalEval.scoreDetail().comboPercent()).isEqualTo(20);
+    assertThat(normalEval.scoreDetail().speedBonus()).isZero();
+    assertThat(normalEval.scoreDetail().roundScore()).isEqualTo(1200);
+    assertThat(normalTracker.currentStreak()).isEqualTo(3);
+
+    // 2. Trường hợp có lệnh timeout chạy trước trong hàng đợi
+    ComboTracker timeoutTracker = new ComboTracker(true);
+    timeoutTracker.recordRound(RoundOutcome.CORRECT, 1);
+    timeoutTracker.recordRound(RoundOutcome.CORRECT, 2);
+    assertThat(timeoutTracker.currentStreak()).isEqualTo(2);
+
+    Round timeoutRound = Round.standardRound(3, sampleTrack, true);
+    timeoutRound.start(startInstant);
+
+    // Lệnh timeout chạy trong hàng đợi lúc 45.000 ms
+    timeoutRound.timeout(startInstant.plusMillis(45_000), timeoutTracker);
+    assertThat(timeoutRound.status()).isEqualTo(RoundStatus.TIMEOUT);
+    assertThat(timeoutTracker.currentStreak()).isZero(); // Bị reset tạm thời do timeout
+
+    // Lượt đoán client gửi đã được server nhận lúc 44.990 ms
+    GuessEvaluation timeoutEval =
+        timeoutRound.submitGuess(
+            "Chúng Ta Của Tương Lai", "Sơn Tùng M-TP", guessTime, timeoutTracker);
+
+    // Điểm, combo và streak phải giống hệt trường hợp không có timeout trước
+    assertThat(timeoutEval.correct()).isTrue();
+    assertThat(timeoutEval.status()).isEqualTo(RoundStatus.CORRECT);
+    assertThat(timeoutEval.outcome()).isEqualTo(RoundOutcome.CORRECT);
+    assertThat(timeoutRound.endedAt()).isEqualTo(guessTime);
+    assertThat(timeoutEval.scoreDetail().baseScore())
+        .isEqualTo(normalEval.scoreDetail().baseScore());
+    assertThat(timeoutEval.scoreDetail().comboPercent())
+        .isEqualTo(normalEval.scoreDetail().comboPercent());
+    assertThat(timeoutEval.scoreDetail().speedBonus())
+        .isEqualTo(normalEval.scoreDetail().speedBonus());
+    assertThat(timeoutEval.scoreDetail().roundScore())
+        .isEqualTo(normalEval.scoreDetail().roundScore());
+    assertThat(timeoutTracker.currentStreak()).isEqualTo(normalTracker.currentStreak());
+  }
+
+  @Test
+  @DisplayName(
+      "AC-4, AC-6: Đoán sai sau khi timeout() đã chạy không được làm vòng sống lại IN_PROGRESS và không ghi combo lần 2")
+  void testWrongGuessAfterTimeoutDoesNotResurrectRound() {
+    comboTracker.recordRound(RoundOutcome.CORRECT, 1);
+    comboTracker.recordRound(RoundOutcome.CORRECT, 2);
+    assertThat(comboTracker.currentStreak()).isEqualTo(2);
+
+    Round round = Round.standardRound(3, sampleTrack, true);
     round.start(startInstant);
 
     // Lệnh timeout chạy trong hàng đợi lúc 45.000 ms
     round.timeout(startInstant.plusMillis(45_000), comboTracker);
     assertThat(round.status()).isEqualTo(RoundStatus.TIMEOUT);
+    assertThat(round.outcome()).isEqualTo(RoundOutcome.TIMEOUT);
+    assertThat(comboTracker.currentStreak()).isZero();
 
-    // Lượt đoán client gửi đã được server nhận lúc 44.990 ms (trước 45.000 ms 10 ms)
-    Instant guessReceivedAt = startInstant.plusMillis(44_990);
+    // Lượt đoán nhận lúc 44.990 ms (trước cutoff) nhưng đoán sai
+    Instant guessTime = startInstant.plusMillis(44_990);
     GuessEvaluation eval =
-        round.submitGuess("Chúng Ta Của Tương Lai", "Sơn Tùng M-TP", guessReceivedAt, comboTracker);
+        round.submitGuess("Tên Bài Sai", "Sơn Tùng M-TP", guessTime, comboTracker);
 
-    assertThat(eval.correct()).isTrue();
-    assertThat(round.status()).isEqualTo(RoundStatus.CORRECT);
-    assertThat(round.outcome()).isEqualTo(RoundOutcome.CORRECT);
-    assertThat(round.endedAt()).isEqualTo(guessReceivedAt);
-    assertThat(eval.scoreDetail().roundScore()).isGreaterThan(0);
+    assertThat(eval.correct()).isFalse();
+    assertThat(eval.rightArtist()).isTrue();
+    assertThat(eval.roundEnded()).isTrue();
+    assertThat(eval.status()).isEqualTo(RoundStatus.TIMEOUT);
+    assertThat(eval.outcome()).isEqualTo(RoundOutcome.TIMEOUT);
+    assertThat(eval.scoreDetail().roundScore()).isZero();
+    assertThat(eval.wrongCount()).isEqualTo(1);
+
+    // Vòng giữ nguyên trạng thái TIMEOUT, KHÔNG bị sống lại IN_PROGRESS
+    assertThat(round.status()).isEqualTo(RoundStatus.TIMEOUT);
+    assertThat(round.outcome()).isEqualTo(RoundOutcome.TIMEOUT);
+    assertThat(round.currentLevel()).isEqualTo(1); // Không chuyển level
+
+    // Combo streak không bị ghi đè lần hai
+    assertThat(comboTracker.currentStreak()).isZero();
+    assertThat(comboTracker.previousStreak()).isEqualTo(2);
   }
 
   @Test

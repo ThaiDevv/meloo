@@ -1,5 +1,6 @@
 package com.meloo.catalog.importing;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.meloo.catalog.persistence.Artist;
 import com.meloo.catalog.persistence.ArtistRepository;
@@ -75,6 +76,7 @@ public class CatalogSeedService {
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record SeedCatalogDto(
+      @Nullable Map<String, Object> metadata,
       @Nullable List<SeedGenreDto> genres,
       @Nullable List<SeedPlaylistDto> playlists,
       @Nullable List<SeedTrackDto> tracks) {}
@@ -96,11 +98,12 @@ public class CatalogSeedService {
       String providerTrackId,
       String title,
       String artistName,
-      @Nullable String providerArtistId,
+      @JsonAlias({"primaryArtistId"}) @Nullable String providerArtistId,
       @Nullable String genreCode,
       @Nullable String countryCode,
       @Nullable Short releaseYear,
-      @Nullable Integer popularityRank,
+      @Nullable String decade,
+      @JsonAlias({"popularity"}) @Nullable Integer popularityRank,
       @Nullable String previewUrl,
       @Nullable String coverUrl,
       @Nullable List<String> playlistCodes) {}

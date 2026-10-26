@@ -3,11 +3,16 @@ package com.meloo.catalog.importing;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.meloo.IntegrationTest;
+import com.meloo.catalog.persistence.ArtistRepository;
 import com.meloo.catalog.persistence.GenreRepository;
+import com.meloo.catalog.persistence.MusicProvider;
 import com.meloo.catalog.persistence.PlaylistKind;
 import com.meloo.catalog.persistence.PlaylistRepository;
 import com.meloo.catalog.persistence.PlaylistTrackRepository;
 import com.meloo.catalog.persistence.TrackRepository;
+import java.util.Set;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +24,7 @@ class CatalogSeedIntegrationTest extends IntegrationTest {
   @Autowired private GenreRepository genreRepository;
   @Autowired private PlaylistRepository playlistRepository;
   @Autowired private PlaylistTrackRepository playlistTrackRepository;
+  @Autowired private ArtistRepository artistRepository;
 
   @Test
   @DisplayName("Seed loads >= 1000 tracks and 5-10 curated playlists idempotently")
@@ -132,19 +138,59 @@ class CatalogSeedIntegrationTest extends IntegrationTest {
                   .isEqualTo("KR");
             });
 
-    // Verify all seeded tracks in playlists have non-null real release years
-    var allPlaylistTracks =
+    // Verify AC5 & N5: Seeded artists have valid numeric Deezer providerArtistId
+    var seededArtists = artistRepository.findAll();
+    assertThat(seededArtists).isNotEmpty();
+    assertThat(seededArtists)
+        .filteredOn(a -> a.getProvider() == MusicProvider.DEEZER)
+        .allSatisfy(
+            a -> {
+              assertThat(a.getProviderArtistId())
+                  .as("Artist %s providerArtistId must be numeric", a.getName())
+                  .matches("^\\d+$");
+            });
+
+    // Verify all seeded tracks in playlists have non-null real release years, valid popularityRank,
+    // and original versions per BR-05 & BR-09
+    Pattern nonOriginalPattern =
+        Pattern.compile(
+            "(?i)\\b(remix|live|version|acoustic|edit|mix|cover|instrumental|piano|slowed|sped\\s*up|karaoke|orchestral|orchestra|demo|tribute)\\b");
+
+    var seededTrackIds =
         playlistTrackRepository.findAll().stream()
-            .map(pt -> trackRepository.findById(pt.getTrackId()).orElseThrow())
-            .toList();
-    assertThat(allPlaylistTracks.size()).isGreaterThanOrEqualTo(1000);
-    assertThat(allPlaylistTracks)
+            .map(pt -> pt.getTrackId())
+            .collect(Collectors.toSet());
+
+    var distinctSeededTracks =
+        seededTrackIds.stream().map(id -> trackRepository.findById(id).orElseThrow()).toList();
+
+    assertThat(distinctSeededTracks.size()).isGreaterThanOrEqualTo(1000);
+    assertThat(distinctSeededTracks)
         .allSatisfy(
             t -> {
               assertThat(t.getReleaseYear())
                   .as("Track %s must have non-null release year", t.getTitle())
                   .isNotNull();
+              assertThat(t.getPopularityRank())
+                  .as("Track %s must have popularityRank >= 1", t.getTitle())
+                  .isNotNull()
+                  .isGreaterThanOrEqualTo(1);
+              assertThat(t.getTitle())
+                  .as("Track %s must be original version (no non-original pattern)", t.getTitle())
+                  .doesNotMatch(nonOriginalPattern);
             });
+
+    // Verify N6 & BR-09: No duplicate normalized titles per artist among seeded tracks
+    var tracksByArtist =
+        distinctSeededTracks.stream().collect(Collectors.groupingBy(t -> t.getPrimaryArtistId()));
+    tracksByArtist.forEach(
+        (artistId, tracks) -> {
+          var titles = tracks.stream().map(t -> t.getTitleNormalized()).toList();
+          Set<String> uniqueTitles = Set.copyOf(titles);
+          assertThat(titles.size())
+              .as("Artist %s has duplicate track titles: %s", artistId, titles)
+              .isEqualTo(uniqueTitles.size());
+        });
 
     // Re-run seed: must be completely idempotent (no duplicates created)
     CatalogSeedService.CatalogSeedResult rerunResult = seedService.seedCatalog();

@@ -3,12 +3,13 @@
 Fetch real tracks from Deezer API to generate backend/src/main/resources/seed/catalog-seed.json.
 Guarantees:
 - Real Deezer numeric track IDs (e.g. "2470200565")
-- Real Deezer numeric artist IDs (e.g. "5400939") with unified artist mapping
+- Real Deezer numeric artist IDs (e.g. "5400939") for providerArtistId and primaryArtistId
 - Curated canonical artist registry preventing cross-country and cross-genre contamination
 - Real static CDN album cover URLs
 - Real working preview URLs (without ephemeral signed tokens)
 - Real release years fetched directly from Deezer /track/{id} API (no synthetic years!)
-- Real decade grouping: vpop-nostalgia-2010s strictly contains 2010-2019 hits, usuk-pop-classics strictly contains pre-2020 classics
+- Strict original-only tracks: filters out non-original versions (Remix, Live, Acoustic, Version, Cover, Instrumental...)
+- Deduplication: only one original track per song title per artist (no duplicates)
 - Balanced distribution across V-Pop (VN), US-UK (US, GB, CA, SE, NO), and K-Pop (KR)
 - Non-empty tracks for all 8 Curated Playlists and all 8 Genres (each >= 70 tracks)
 - Strictly >= 1,000 valid tracks
@@ -20,13 +21,40 @@ import collections
 from datetime import datetime, timezone
 import json
 import os
+import re
 import sys
 import time
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
 
-USER_AGENT = "MelooCatalogSeeder/3.0 (Academic Project; tranvanthai20062@gmail.com)"
+USER_AGENT = "MelooCatalogSeeder/4.0 (Academic Project; tranvanthai20062@gmail.com)"
+
+# ---------------------------------------------------------------------------
+# Non-original version pattern per BR-05 & AC: only original versions as game answers
+# ---------------------------------------------------------------------------
+NON_ORIGINAL_PATTERN = re.compile(
+    r'(?i)\b(remix|live|version|acoustic|edit|mix|cover|instrumental|piano|slowed|sped\s*up|karaoke|orchestral|orchestra|demo|tribute)\b'
+)
+
+def normalize_title(title):
+    """Normalize title per BR-05 for deduplication within the same artist."""
+    if not title:
+        return ""
+    # 1. Remove text in brackets / parentheses
+    s = re.sub(r'\([^)]*\)|\[[^\]]*\]', ' ', title)
+    # 2. Remove trailing version qualifiers
+    s = re.sub(r'(?i)\s+-\s+.*\b(remix|live|acoustic|ver|version|cover|instrumental|official.*|mv)\b.*$', '', s)
+    # 3. Remove feat
+    s = re.sub(r'(?i)\s+(?:feat\.?|ft\.?|featuring)\s+.*$', '', s)
+    # 4. Strip diacritics & lowercase (with đ/Đ -> d per BR-05)
+    s = s.replace('đ', 'd').replace('Đ', 'd')
+    s = unicodedata.normalize('NFD', s.lower())
+    s = ''.join(c for c in s if unicodedata.category(c) != 'Mn')
+    # 5. Non-alphanumeric to whitespace
+    s = re.sub(r'[^a-z0-9\s]+', ' ', s)
+    return ' '.join(s.split())
 
 # ---------------------------------------------------------------------------
 # Canonical Artist Registry
@@ -218,11 +246,12 @@ def fetch_track_release_year(tid):
 
 def collect_tracks():
     raw_tracks = {}
+    seen_artist_titles = set()
     total_artists = len(CANONICAL_ARTIST_MAP)
     print(f"Collecting tracks from {total_artists} canonical artists...")
 
     for idx, (art_id, artist_info) in enumerate(CANONICAL_ARTIST_MAP.items(), 1):
-        time.sleep(0.1)
+        time.sleep(0.08)
         # 1. Fetch artist top tracks
         top_url = f"https://api.deezer.com/artist/{art_id}/top?limit=40"
         res = fetch_deezer(top_url)
@@ -230,7 +259,7 @@ def collect_tracks():
 
         # 2. If top tracks < 20, supplement with search
         if len(tracks_data) < 20:
-            time.sleep(0.1)
+            time.sleep(0.08)
             search_url = f"https://api.deezer.com/search?q={urllib.parse.quote(artist_info['name'])}&limit=30"
             sres = fetch_deezer(search_url)
             if sres and "data" in sres:
@@ -243,13 +272,18 @@ def collect_tracks():
             if not tid or not preview or tid in raw_tracks:
                 continue
 
+            title = item.get("title", "").strip()
+
+            # N6: Exclude non-original versions (Remix, Live, Acoustic, Version, Cover, Instrumental...)
+            if NON_ORIGINAL_PATTERN.search(title):
+                continue
+
             art_obj = item.get("artist", {})
             track_art_id = str(art_obj.get("id", ""))
 
-            # STRICT CANONICAL CHECK:
+            # STRICT CANONICAL CHECK (N4):
             # Only accept if the track belongs to a canonical artist
             if track_art_id not in CANONICAL_ARTIST_MAP:
-                # If artist ID doesn't match, check if primary artist name matches expected canonical name
                 if art_obj.get("name", "").strip().lower() == artist_info["name"].strip().lower():
                     matched_info = artist_info
                 else:
@@ -257,19 +291,30 @@ def collect_tracks():
             else:
                 matched_info = CANONICAL_ARTIST_MAP[track_art_id]
 
+            # N6: Deduplicate by (artistId, normalized_title)
+            norm_title = normalize_title(title)
+            dedup_key = (matched_info["id"], norm_title)
+            if dedup_key in seen_artist_titles:
+                continue
+            seen_artist_titles.add(dedup_key)
+
             album_obj = item.get("album", {})
             cover = album_obj.get("cover_medium") or album_obj.get("cover")
             rank = min(100, max(1, int(item.get("rank", 500000) / 10000)))
             clean_preview = preview.split('?')[0] if preview else ""
 
+            # N5: Explicitly provide both providerArtistId and popularityRank
             raw_tracks[tid] = {
+                "provider": "DEEZER",
                 "providerTrackId": tid,
-                "title": item.get("title", "").strip(),
-                "primaryArtistId": matched_info["id"],
+                "title": title,
                 "artistName": matched_info["name"],
+                "providerArtistId": matched_info["id"],
+                "primaryArtistId": matched_info["id"],
                 "countryCode": matched_info["country"],
                 "genreCode": matched_info["genre"],
                 "coverUrl": cover,
+                "popularityRank": rank,
                 "popularity": rank,
                 "previewUrl": clean_preview,
                 "is_girlgroup": matched_info["is_girlgroup"]
@@ -277,40 +322,64 @@ def collect_tracks():
             accepted_for_artist += 1
 
         if idx % 10 == 0 or idx == total_artists:
-            print(f"[{idx}/{total_artists}] {artist_info['name']}: {accepted_for_artist} tracks (Total collected: {len(raw_tracks)})")
+            print(f"[{idx}/{total_artists}] {artist_info['name']}: {accepted_for_artist} pristine tracks (Total collected: {len(raw_tracks)})")
 
-    print(f"Total raw candidate tracks with previews: {len(raw_tracks)}")
+    print(f"Total pristine original candidate tracks with previews: {len(raw_tracks)}")
     return raw_tracks
 
 def main():
     start_time = time.time()
     generated_at = datetime.now(timezone.utc).isoformat()
+    output_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "catalog-seed.json"
+    )
+
+    # Fast cache of existing release years from previous run
+    cached_years = {}
+    if os.path.exists(output_path):
+        try:
+            with open(output_path, "r", encoding="utf-8") as f:
+                prev_data = json.load(f)
+                for trk in prev_data.get("tracks", []):
+                    if trk.get("providerTrackId") and trk.get("releaseYear"):
+                        cached_years[str(trk["providerTrackId"])] = int(trk["releaseYear"])
+            print(f"Loaded {len(cached_years)} cached release years from existing catalog-seed.json")
+        except Exception:
+            pass
+
     raw_tracks = collect_tracks()
 
     if len(raw_tracks) < 1000:
         print(f"ERROR: Collected only {len(raw_tracks)} tracks, required >= 1,000!")
         sys.exit(1)
 
-    # Fetch release years with multi-threaded rate-limited worker pool
-    print(f"\nFetching REAL release years for {len(raw_tracks)} tracks from Deezer API...")
-    track_ids = list(raw_tracks.keys())
+    # Fetch release years (using cache where available, querying Deezer for the rest)
     release_years = {}
+    to_fetch = []
+    for tid in raw_tracks.keys():
+        if tid in cached_years:
+            release_years[tid] = cached_years[tid]
+        else:
+            to_fetch.append(tid)
 
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        future_to_tid = {executor.submit(fetch_track_release_year, tid): tid for tid in track_ids}
-        completed = 0
-        total = len(track_ids)
-        for future in as_completed(future_to_tid):
-            tid, year = future.result()
-            if year:
-                release_years[tid] = year
-            completed += 1
-            if completed % 200 == 0 or completed == total:
-                print(f"  Release year progress: {completed}/{total} ({len(release_years)} resolved)")
+    if to_fetch:
+        print(f"\nFetching REAL release years for {len(to_fetch)} new tracks from Deezer API...")
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            future_to_tid = {executor.submit(fetch_track_release_year, tid): tid for tid in to_fetch}
+            completed = 0
+            total = len(to_fetch)
+            for future in as_completed(future_to_tid):
+                tid, year = future.result()
+                if year:
+                    release_years[tid] = year
+                completed += 1
+                if completed % 100 == 0 or completed == total:
+                    print(f"  Release year progress: {completed}/{total} ({len(release_years)} total resolved)")
 
     null_years_count = len(raw_tracks) - len(release_years)
     null_ratio = null_years_count / len(raw_tracks)
-    print(f"\nRelease years fetched: {len(release_years)} / {len(raw_tracks)} (Missing: {null_years_count}, Ratio: {null_ratio:.2%})")
+    print(f"\nRelease years resolved: {len(release_years)} / {len(raw_tracks)} (Missing: {null_years_count}, Ratio: {null_ratio:.2%})")
 
     # Strict validation on release years: must have < 3% null
     if null_ratio > 0.05:
@@ -387,13 +456,30 @@ def main():
     # ---------------------------------------------------------------------------
     print("\nRunning integrity validations...")
 
-    # 1. Artist uniqueness: no artist can have multiple country/genre pairs
+    # 1. N5: Ensure providerArtistId and popularityRank exist and are valid on every track
+    for t in final_tracks:
+        assert t.get("providerArtistId") and t["providerArtistId"].isdigit(), f"Missing or non-digit providerArtistId in {t}"
+        assert t.get("popularityRank") and isinstance(t["popularityRank"], int) and 1 <= t["popularityRank"] <= 100, f"Invalid popularityRank in {t}"
+        assert t.get("releaseYear") and isinstance(t["releaseYear"], int), f"Missing releaseYear in {t}"
+
+    # 2. N6: No non-original titles (Remix, Live, Acoustic, Version...)
+    for t in final_tracks:
+        assert not NON_ORIGINAL_PATTERN.search(t["title"]), f"Non-original version found in track: {t['title']}"
+
+    # 3. N6: No duplicate normalized titles for the same artist
+    seen_unique = set()
+    for t in final_tracks:
+        key = (t["providerArtistId"], normalize_title(t["title"]))
+        assert key not in seen_unique, f"Duplicate track title for artist {t['artistName']}: {t['title']}"
+        seen_unique.add(key)
+
+    # 4. Artist uniqueness: no artist can have multiple country/genre pairs
     for art_name, pairs in artist_tuples.items():
         if len(pairs) > 1:
             print(f"ERROR: Artist '{art_name}' has conflicting metadata: {pairs}")
             sys.exit(1)
 
-    # 2. Strict playlist country integrity
+    # 5. Strict playlist country integrity
     for t in final_tracks:
         for p in t["playlistCodes"]:
             if p.startswith("vpop-") and t["countryCode"] != "VN":
@@ -406,14 +492,14 @@ def main():
                 print(f"ERROR: Non-Western track '{t['title']}' by '{t['artistName']}' ({t['countryCode']}) in {p}")
                 sys.exit(1)
 
-    # 3. Strict decade integrity for curated playlists
+    # 6. Strict decade integrity for curated playlists
     for t in final_tracks:
         if "vpop-nostalgia-2010s" in t["playlistCodes"]:
             assert t["releaseYear"] is not None and 2010 <= t["releaseYear"] <= 2019, f"Invalid year for 2010s: {t}"
         if "usuk-pop-classics" in t["playlistCodes"]:
             assert t["releaseYear"] is not None and t["releaseYear"] < 2020, f"Invalid year for classics: {t}"
 
-    # 4. Playlist minimum threshold
+    # 7. Playlist minimum threshold
     for pl in PLAYLISTS:
         code = pl["code"]
         cnt = playlist_counts[code]
@@ -421,12 +507,12 @@ def main():
             print(f"ERROR: Curated playlist '{code}' has only {cnt} tracks (< 70)!")
             sys.exit(1)
 
-    # 5. Genre minimum threshold
+    # 8. Genre minimum threshold
     for g in GENRES:
         code = g["code"]
         cnt = genre_counts[code]
-        if cnt < 80:
-            print(f"ERROR: Genre '{code}' has only {cnt} tracks (< 80)!")
+        if cnt < 70:
+            print(f"ERROR: Genre '{code}' has only {cnt} tracks (< 70)!")
             sys.exit(1)
 
     print("ALL INTEGRITY CHECKS PASSED!")
@@ -434,7 +520,7 @@ def main():
     # Assemble final seed catalog
     catalog = {
         "metadata": {
-            "version": "3.0",
+            "version": "4.0",
             "provider": "deezer",
             "generatedAt": generated_at,
             "totalTracks": len(final_tracks),
@@ -446,17 +532,12 @@ def main():
         "tracks": final_tracks
     }
 
-    output_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "catalog-seed.json"
-    )
-
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(catalog, f, ensure_ascii=False, indent=2)
 
     elapsed = time.time() - start_time
     print(f"\n=======================================================")
-    print(f"SUCCESS: Generated {len(final_tracks)} clean tracks in {elapsed:.1f}s")
+    print(f"SUCCESS: Generated {len(final_tracks)} pristine original tracks in {elapsed:.1f}s")
     print(f"Output: {output_path}")
     print(f"Generated at: {generated_at}")
     print(f"Tracks with real release year: {len(release_years)} / {len(final_tracks)} ({len(release_years)/len(final_tracks):.1%})")

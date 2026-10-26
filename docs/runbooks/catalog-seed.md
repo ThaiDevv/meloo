@@ -10,22 +10,24 @@ Tài liệu hướng dẫn chạy lệnh seed kho nhạc khởi tạo (≥ 1.000
 
 ## 1. Dữ liệu seed khởi tạo
 Tập dữ liệu seed đặt tại `backend/src/main/resources/seed/catalog-seed.json`, bao gồm:
-- **8 thể loại (Genre):** `vpop`, `usuk-pop`, `kpop`, `ballad`, `rap-hiphop`, `rock`, `edm`, `rnb` (từ 94 đến 595 bài/thể loại).
+- **8 thể loại (Genre):** `kpop` (558), `usuk-pop` (384), `vpop` (224), `ballad` (223), `rap-hiphop` (202), `rnb` (159), `rock` (89), `edm` (75).
 - **8 bộ đề tuyển chọn (Curated Playlist):**
-  - `vpop-hits-2020s`: V-Pop Hits 2020s (479 bài — 100% ca sĩ Việt Nam)
-  - `vpop-ballad`: Nhạc Trẻ Ballad Tâm Trạng (216 bài — 100% ca sĩ Việt Nam)
-  - `vpop-rap-hiphop`: Rap & Hip-hop Việt (143 bài — 100% rapper/nghệ sĩ Hip-hop Việt Nam)
-  - `vpop-nostalgia-2010s`: V-Pop Thập Niên 2010 (162 bài — 100% bài có năm phát hành thật 2010–2019 của ca sĩ Việt Nam)
-  - `usuk-billboard-hits`: US-UK Billboard Hits (592 bài — 100% nghệ sĩ Âu Mỹ)
-  - `usuk-pop-classics`: US-UK Pop Bất Hủ (585 bài — 100% bài phát hành trước năm 2020 của nghệ sĩ Âu Mỹ)
-  - `kpop-top-hits`: K-Pop Đỉnh Cao (595 bài — 100% nghệ sĩ Hàn Quốc)
-  - `kpop-girlgroups`: K-Pop Girl Groups (337 bài — 100% nhóm nữ / nữ ca sĩ Hàn Quốc)
-- **2.148 bài hát thật từ Deezer:**
+  - `vpop-hits-2020s`: V-Pop Hits 2020s (418 bài — 100% ca sĩ Việt Nam)
+  - `vpop-ballad`: Nhạc Trẻ Ballad Tâm Trạng (191 bài — 100% ca sĩ Việt Nam)
+  - `vpop-rap-hiphop`: Rap & Hip-hop Việt (137 bài — 100% rapper/nghệ sĩ Hip-hop Việt Nam)
+  - `vpop-nostalgia-2010s`: V-Pop Thập Niên 2010 (156 bài — 100% bài có năm phát hành thật 2010–2019 của ca sĩ Việt Nam)
+  - `usuk-billboard-hits`: US-UK Billboard Hits (507 bài — 100% nghệ sĩ Âu Mỹ)
+  - `usuk-pop-classics`: US-UK Pop Bất Hủ (509 bài — 100% bài phát hành trước năm 2020 của nghệ sĩ Âu Mỹ)
+  - `kpop-top-hits`: K-Pop Đỉnh Cao (558 bài — 100% nghệ sĩ Hàn Quốc)
+  - `kpop-girlgroups`: K-Pop Girl Groups (308 bài — 100% nhóm nữ / nữ ca sĩ Hàn Quốc)
+- **1.914 bài hát thật từ Deezer:**
   - Lấy từ API công khai của Deezer bằng script tái tạo `backend/src/main/resources/seed/generate-deezer-seed.py`.
   - Được thu thập từ danh bạ 85 nghệ sĩ chuẩn hóa (35 V-Pop, 22 K-Pop, 28 US-UK) ngăn chặn 100% việc lẫn lộn ca sĩ, quốc gia hay thể loại (Beyoncé 100% US / R&B, Taylor Swift 100% US / Pop, Stray Kids 100% KR / K-pop, Coldplay 100% GB / Rock...).
-  - Phân bổ quốc gia chuẩn hóa: VN (652), KR (595), US (528), GB (235), CA (94), SE (22), NO (22).
-  - 100% bài hát (2.148/2.148) có năm phát hành thật (`releaseYear`) truy vấn trực tiếp từ API `/track/{id}` của Deezer (với cơ chế exponential backoff chống 429 rate limit, 0 bài bị null).
-  - Tên chuẩn hóa (`title_normalized`) theo quy tắc **BR-05** (bỏ dấu tiếng Việt, chữ thường, loại bỏ phần trong ngoặc và hậu tố phiên bản như Remix, Live, Acoustic, MV, feat., ft. để gom phiên bản).
+  - Phân bổ quốc gia chuẩn hóa: VN (584), KR (558), US (469), GB (183), CA (85), NO (20), SE (15).
+  - 100% bài hát (1.914/1.914) có năm phát hành thật (`releaseYear`) truy vấn trực tiếp từ API `/track/{id}` của Deezer (0 bài bị null).
+  - 100% bài hát là bản thu gốc nguyên bản (original track): tự động sàng lọc loại bỏ toàn bộ bản Remix, Live, Acoustic, Version, Cover, Instrumental, Karaoke, Slowed... per BR-05 & BR-09.
+  - Khử trùng triệt để: mỗi nghệ sĩ chỉ sở hữu tối đa 1 bài cho mỗi tên bài hát chuẩn hóa `title_normalized` (0 bài trùng tên cùng nghệ sĩ).
+  - Tên chuẩn hóa (`title_normalized`) theo quy tắc **BR-05** (bỏ dấu tiếng Việt bao gồm đ/Đ -> d, chữ thường, loại bỏ phần trong ngoặc và hậu tố phiên bản).
   - Ảnh bìa album (`cover_url`) theo **Migration V10** phục vụ màn công bố đáp án.
   - Đảm bảo 100% bài có đoạn preview hợp lệ (`preview_url`), URL đã được lọc bỏ query parameter chứa token ký tạm thời (`hdnea=...`) theo **ADR-003** để không lưu token hết hạn vào repo và giữ URL tài nguyên tĩnh gọn nhẹ.
 
@@ -35,9 +37,12 @@ Tập dữ liệu seed đặt tại `backend/src/main/resources/seed/catalog-see
 python3 backend/src/main/resources/seed/generate-deezer-seed.py
 ```
 Script tự động kiểm tra nghiêm ngặt tính toàn vẹn dữ liệu trước khi xuất file:
-- Tổng số bài ≥ 1.000 (thực tế: 2.148)
-- 100% bài hát có `release_year` thật (tỷ lệ null < 3%, thực tế: 0.0%)
-- Đầy đủ 8 thể loại (mỗi thể loại ≥ 80 bài) và 8 bộ đề tuyển chọn (mỗi bộ ≥ 70 bài)
+- Tổng số bài ≥ 1.000 (thực tế: 1.914)
+- 100% bài hát có `release_year` thật (tỷ lệ null = 0.0%)
+- 100% bài hát có `popularityRank` ≥ 1 và `providerArtistId` số chuẩn Deezer
+- 0 bản thu phiên bản (Remix, Live, Acoustic, Instrumental, Cover...)
+- 0 cặp bài trùng `title_normalized` cho cùng một nghệ sĩ
+- Đầy đủ 8 thể loại (mỗi thể loại ≥ 75 bài) và 8 bộ đề tuyển chọn (mỗi bộ ≥ 130 bài)
 - Không có ca sĩ nào có nhiều hơn một cặp (quốc gia, thể loại)
 - Toàn bộ bài trong `vpop-*` thuộc quốc gia VN, `kpop-*` thuộc KR, `usuk-*` thuộc Âu Mỹ
 - Bộ `vpop-nostalgia-2010s` chỉ chứa bài 2010–2019; `usuk-pop-classics` chỉ chứa bài trước 2020.
@@ -68,8 +73,8 @@ cd backend
 ### Dấu hiệu thành công trong log
 ```text
 INFO ... CatalogSeedRunner : Starting one-off catalog seed runner...
-INFO ... CatalogSeedService : Catalog seed completed: 8 genres, 8 playlists, 2148 tracks seeded, 3109 playlist links
-INFO ... CatalogSeedRunner : One-off catalog seed finished successfully: 8 genres, 8 playlists, 2148 tracks seeded, 3109 playlist links
+INFO ... CatalogSeedService : Catalog seed completed: 8 genres, 8 playlists, 1914 tracks seeded, 2784 playlist links
+INFO ... CatalogSeedRunner : One-off catalog seed finished successfully: 8 genres, 8 playlists, 1914 tracks seeded, 2784 playlist links
 ```
 
 ---
@@ -110,11 +115,11 @@ SELECT code, name_vi, kind FROM playlist WHERE kind = 'CURATED';
 
 -- Kiểm tra số lượng bài hát đã nạp
 SELECT count(*) FROM track WHERE enabled = true;
--- Kỳ vọng: >= 1000 (thực tế: 2148 bài)
+-- Kỳ vọng: >= 1000 (thực tế: 1914 bài)
 
 -- Kiểm tra phân bổ quốc gia
 SELECT country_code, count(*) FROM track GROUP BY country_code ORDER BY count(*) DESC;
--- Kỳ vọng: VN (652), KR (595), US (528), GB (235), CA (94), SE (22), NO (22)
+-- Kỳ vọng: VN (584), KR (558), US (469), GB (183), CA (85), NO (20), SE (15)
 
 -- Kiểm tra năm phát hành thật của bộ đề thập niên 2010
 SELECT t.title, t.release_year, t.country_code FROM track t

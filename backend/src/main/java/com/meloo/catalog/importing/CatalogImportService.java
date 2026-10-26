@@ -15,7 +15,7 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 public class CatalogImportService {
@@ -26,16 +26,19 @@ public class CatalogImportService {
   private final TrackRepository trackRepository;
   private final ArtistRepository artistRepository;
   private final EntityManager entityManager;
+  private final TransactionTemplate transactionTemplate;
 
   public CatalogImportService(
       com.meloo.catalog.provider.MusicProvider musicProvider,
       TrackRepository trackRepository,
       ArtistRepository artistRepository,
-      EntityManager entityManager) {
+      EntityManager entityManager,
+      TransactionTemplate transactionTemplate) {
     this.musicProvider = musicProvider;
     this.trackRepository = trackRepository;
     this.artistRepository = artistRepository;
     this.entityManager = entityManager;
+    this.transactionTemplate = transactionTemplate;
   }
 
   public record ImportResult(
@@ -46,7 +49,7 @@ public class CatalogImportService {
       List<Track> importedTracks) {}
 
   /**
-   * Imports tracks from provider chart. Note: HTTP call is done outside @Transactional boundary per
+   * Imports tracks from provider chart. HTTP call is performed outside database transaction per
    * Meloo backend rules.
    */
   public ImportResult importFromChart(
@@ -70,11 +73,10 @@ public class CatalogImportService {
   }
 
   /**
-   * Idempotently persists tracks in a single database transaction. - Bỏ bài không có preview URL -
-   * Chống trùng theo (provider, providerTrackId) - Chuẩn hóa tên bài gom remix/live theo BR-05 -
-   * Lưu coverUrl từ adapter
+   * Idempotently persists tracks in a database transaction via TransactionTemplate. - Bỏ bài không
+   * có preview URL - Chống trùng theo (provider, providerTrackId) - Chuẩn hóa tên bài gom
+   * remix/live theo BR-05 - Lưu coverUrl từ adapter
    */
-  @Transactional
   public ImportResult importTracks(
       List<ProviderTrack> providerTracks,
       @Nullable UUID genreId,
@@ -83,6 +85,14 @@ public class CatalogImportService {
       return new ImportResult(0, 0, 0, 0, List.of());
     }
 
+    return transactionTemplate.execute(
+        status -> doImportTracks(providerTracks, genreId, defaultCountryCode));
+  }
+
+  private ImportResult doImportTracks(
+      List<ProviderTrack> providerTracks,
+      @Nullable UUID genreId,
+      @Nullable String defaultCountryCode) {
     com.meloo.catalog.persistence.MusicProvider persistenceProvider = resolveProviderEnum();
 
     int imported = 0;
@@ -164,10 +174,15 @@ public class CatalogImportService {
 
   private com.meloo.catalog.persistence.MusicProvider resolveProviderEnum() {
     String name = musicProvider.getProviderName();
-    if (name != null && name.equalsIgnoreCase("itunes")) {
-      return com.meloo.catalog.persistence.MusicProvider.ITUNES;
+    if (name != null) {
+      if (name.equalsIgnoreCase("itunes")) {
+        return com.meloo.catalog.persistence.MusicProvider.ITUNES;
+      }
+      if (name.equalsIgnoreCase("deezer") || name.equalsIgnoreCase("fake")) {
+        return com.meloo.catalog.persistence.MusicProvider.DEEZER;
+      }
     }
-    return com.meloo.catalog.persistence.MusicProvider.DEEZER;
+    throw new IllegalArgumentException("Unsupported music provider: " + name);
   }
 
   private Optional<Track> findTrackByProvider(

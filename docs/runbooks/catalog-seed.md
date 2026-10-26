@@ -65,7 +65,7 @@ INFO ... CatalogSeedRunner : One-off catalog seed finished successfully: 8 genre
 Trên production, kho nhạc chỉ cần seed một lần duy nhất sau khi chạy xong migration database (Flyway V1–V10).
 
 ### Lệnh chạy với Docker container
-Chạy một container độc lập một lần (one-off container):
+Chạy một container độc lập một lần (one-off container) với `--spring.main.web-application-type=none` để ứng dụng tự động dừng sau khi hoàn thành seed:
 
 ```bash
 docker run --rm \
@@ -76,7 +76,8 @@ docker run --rm \
   -e MELOO_JWT_SECRET="${MELOO_JWT_SECRET}" \
   -e MELOO_CATALOG_SEED_ENABLED=true \
   ghcr.io/thaidevv/meloo-backend:latest \
-  --meloo.catalog.seed.enabled=true
+  --meloo.catalog.seed.enabled=true \
+  --spring.main.web-application-type=none
 ```
 
 Container sẽ khởi động, chạy Flyway migration, nạp toàn bộ danh mục bài hát vào database PostgreSQL, và tự động thoát (`--rm`).

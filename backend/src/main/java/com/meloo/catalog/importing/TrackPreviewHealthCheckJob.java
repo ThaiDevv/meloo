@@ -2,21 +2,26 @@ package com.meloo.catalog.importing;
 
 import com.meloo.catalog.persistence.Track;
 import com.meloo.catalog.persistence.TrackRepository;
-import com.meloo.catalog.provider.MusicProvider;
+import com.meloo.catalog.provider.MusicProviderException;
+import com.meloo.catalog.provider.MusicProviderRateLimitException;
 import com.meloo.catalog.provider.ProviderTrack;
 import jakarta.persistence.EntityManager;
 import java.util.List;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Periodic health check job verifying track preview availability per BR-27. BR-27: Automatically
  * disables tracks with missing/broken preview so they do not appear in future matches.
+ *
+ * <p>Resilience & Transaction rules: - HTTP calls to external provider are performed OUTSIDE
+ * database transactions. - Transient errors (HTTP 429 rate limit, 5xx, timeout, circuit breaker
+ * open) do NOT disable tracks. - Only confirmed missing previews (provider returns 404/empty or
+ * null/blank previewUrl) disable tracks. - Batch size throttling avoids overwhelming external APIs.
  */
 @Component
 public class TrackPreviewHealthCheckJob {
@@ -24,69 +29,123 @@ public class TrackPreviewHealthCheckJob {
   private static final Logger log = LoggerFactory.getLogger(TrackPreviewHealthCheckJob.class);
 
   private final TrackRepository trackRepository;
-  private final MusicProvider musicProvider;
+  private final com.meloo.catalog.provider.MusicProvider musicProvider;
   private final EntityManager entityManager;
+  private final TransactionTemplate transactionTemplate;
+  private final CatalogImportProperties properties;
 
   public TrackPreviewHealthCheckJob(
-      TrackRepository trackRepository, MusicProvider musicProvider, EntityManager entityManager) {
+      TrackRepository trackRepository,
+      com.meloo.catalog.provider.MusicProvider musicProvider,
+      EntityManager entityManager,
+      TransactionTemplate transactionTemplate,
+      CatalogImportProperties properties) {
     this.trackRepository = trackRepository;
     this.musicProvider = musicProvider;
     this.entityManager = entityManager;
+    this.transactionTemplate = transactionTemplate;
+    this.properties = properties;
   }
 
-  public record HealthCheckResult(int checkedCount, int healthyCount, int disabledCount) {}
+  public record HealthCheckResult(
+      int checkedCount, int healthyCount, int disabledCount, int transientErrorCount) {}
 
   @Scheduled(cron = "${meloo.catalog.import.health-check.cron:0 0 3 * * *}")
-  @ConditionalOnProperty(
-      prefix = "meloo.catalog.import.health-check",
-      name = "enabled",
-      havingValue = "true")
   public void scheduledCheck() {
+    // Explicit guard: verify scheduling is enabled before running
+    if (!properties.healthCheck().enabled()) {
+      log.debug("Catalog preview health check is disabled, skipping scheduled execution");
+      return;
+    }
+
     log.info("Starting scheduled track preview health check per BR-27...");
     HealthCheckResult result = runHealthCheck();
     log.info(
-        "Track preview health check finished: checked={}, healthy={}, disabled={}",
+        "Track preview health check finished: checked={}, healthy={}, disabled={}, transientErrors={}",
         result.checkedCount(),
         result.healthyCount(),
-        result.disabledCount());
+        result.disabledCount(),
+        result.transientErrorCount());
   }
 
-  /** Scans active tracks and disables any track whose preview is missing or invalid. */
-  @Transactional
+  /**
+   * Scans a batch of active tracks and disables only tracks with confirmed missing previews. HTTP
+   * calls run outside transactions; database updates run in individual short transactions.
+   */
   public HealthCheckResult runHealthCheck() {
-    List<Track> enabledTracks =
+    int batchSize = Math.max(1, properties.healthCheck().batchSize());
+
+    // Fetch batch of enabled tracks in read-only query
+    List<Track> candidateTracks =
         entityManager
-            .createQuery("select t from Track t where t.enabled = true", Track.class)
+            .createQuery(
+                "select t from Track t where t.enabled = true order by t.createdAt asc",
+                Track.class)
+            .setMaxResults(batchSize)
             .getResultList();
 
     int checked = 0;
     int healthy = 0;
     int disabled = 0;
+    int transientErrors = 0;
 
-    for (Track track : enabledTracks) {
+    String activeProviderName = musicProvider != null ? musicProvider.getProviderName() : null;
+
+    for (Track track : candidateTracks) {
       checked++;
-      boolean hasValidPreview = false;
+
+      // Provider matching: only check track if its provider matches the active musicProvider
+      if (track.getProvider() != null
+          && activeProviderName != null
+          && !track.getProvider().name().equalsIgnoreCase(activeProviderName)
+          && !"fake".equalsIgnoreCase(activeProviderName)) {
+        continue;
+      }
+
+      Optional<ProviderTrack> ptOpt;
       try {
-        Optional<ProviderTrack> ptOpt = musicProvider.getTrack(track.getProviderTrackId());
-        if (ptOpt.isPresent()) {
-          ProviderTrack pt = ptOpt.get();
-          if (pt.previewUrl() != null && !pt.previewUrl().isBlank()) {
-            hasValidPreview = true;
-          }
-        }
-      } catch (Exception e) {
+        // HTTP call strictly outside database transaction
+        ptOpt = musicProvider.getTrack(track.getProviderTrackId());
+      } catch (MusicProviderRateLimitException e) {
         log.warn(
-            "Error querying music provider for track {}: {}",
+            "Rate limit (HTTP 429) encountered while checking track {}. Halting health check batch early to prevent false positives.",
+            track.getProviderTrackId());
+        transientErrors++;
+        break; // Fail-fast: do not disable tracks when rate limited!
+      } catch (MusicProviderException e) {
+        log.warn(
+            "Transient provider error checking track {} ({}). Skipping without disabling.",
             track.getProviderTrackId(),
             e.getMessage());
+        transientErrors++;
+        // If circuit breaker is open, halt early
+        if (e.getMessage() != null && e.getMessage().contains("circuit breaker is open")) {
+          log.warn("Circuit breaker open, aborting remaining health check batch");
+          break;
+        }
+        continue;
+      } catch (Exception e) {
+        log.warn(
+            "Unexpected error checking track {}: {}. Skipping without disabling.",
+            track.getProviderTrackId(),
+            e.getMessage());
+        transientErrors++;
+        continue;
+      }
+
+      boolean hasValidPreview = false;
+      if (ptOpt.isPresent()) {
+        ProviderTrack pt = ptOpt.get();
+        if (pt.previewUrl() != null && !pt.previewUrl().isBlank()) {
+          hasValidPreview = true;
+        }
       }
 
       if (hasValidPreview) {
         healthy++;
       } else {
-        track.setEnabled(false);
-        track.setDisabledReason("Preview unavailable: missing from provider or broken link");
-        trackRepository.save(track);
+        // Confirmed preview failure: track 404 or preview URL missing from provider
+        disableTrackInTransaction(track.getId());
         disabled++;
         log.warn(
             "Disabled track '{}' (id={}, pid={}) due to missing preview per BR-27",
@@ -96,6 +155,21 @@ public class TrackPreviewHealthCheckJob {
       }
     }
 
-    return new HealthCheckResult(checked, healthy, disabled);
+    return new HealthCheckResult(checked, healthy, disabled, transientErrors);
+  }
+
+  private void disableTrackInTransaction(java.util.UUID trackId) {
+    transactionTemplate.executeWithoutResult(
+        status -> {
+          trackRepository
+              .findById(trackId)
+              .ifPresent(
+                  t -> {
+                    t.setEnabled(false);
+                    t.setDisabledReason(
+                        "Preview unavailable: track not found or preview URL missing from provider");
+                    trackRepository.save(t);
+                  });
+        });
   }
 }

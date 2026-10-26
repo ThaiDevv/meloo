@@ -16,18 +16,18 @@ public final class TitleNormalizer {
 
   private static final Pattern VERSION_SUFFIX_PATTERN =
       Pattern.compile(
-          "(?i)\\s*-\\s*(.*remix|.*live|.*acoustic|.*ver|.*version|.*cover|.*instrumental|.*official.*|mv).*$",
+          "(?i)\\s+-\\s+.*\\b(remix|live|acoustic|ver|version|cover|instrumental|official.*|mv)\\b.*$",
           Pattern.CASE_INSENSITIVE);
 
   private static final Pattern FEAT_PATTERN =
-      Pattern.compile("(?i)\\s+(feat\\.|ft\\.|featuring)\\s+.*$", Pattern.CASE_INSENSITIVE);
+      Pattern.compile("(?i)\\s+\\b(feat\\.|ft\\.|featuring)\\b\\s+.*$", Pattern.CASE_INSENSITIVE);
 
   private static final Pattern DIACRITICS_PATTERN =
       Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
 
-  private static final Pattern NON_ALPHANUMERIC = Pattern.compile("[^a-z0-9\\s]+");
+  private static final Pattern NON_ALPHANUMERIC = Pattern.compile("[^\\p{L}\\p{N}\\s]+");
 
-  private static final Pattern ARTIST_NON_ALPHANUMERIC = Pattern.compile("[^a-z0-9\\s\\-]+");
+  private static final Pattern ARTIST_NON_ALPHANUMERIC = Pattern.compile("[^\\p{L}\\p{N}\\s\\-]+");
 
   private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\s+");
 
@@ -77,7 +77,8 @@ public final class TitleNormalizer {
   }
 
   /**
-   * Replaces Vietnamese 'đ' / 'Đ' with 'd', decomposes characters and removes diacritical marks.
+   * Replaces Vietnamese 'đ' / 'Đ' with 'd', decomposes characters, removes diacritical marks, and
+   * recomposes remaining characters into canonical NFC form.
    */
   public static String stripDiacritics(String text) {
     if (text == null) {
@@ -85,6 +86,7 @@ public final class TitleNormalizer {
     }
     String dReplaced = text.replace('đ', 'd').replace('Đ', 'd');
     String normalized = Normalizer.normalize(dReplaced, Normalizer.Form.NFD);
-    return DIACRITICS_PATTERN.matcher(normalized).replaceAll("");
+    String stripped = DIACRITICS_PATTERN.matcher(normalized).replaceAll("");
+    return Normalizer.normalize(stripped, Normalizer.Form.NFC);
   }
 }

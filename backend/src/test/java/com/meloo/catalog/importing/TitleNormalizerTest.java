@@ -22,7 +22,9 @@ class TitleNormalizerTest {
         "Shape of You (feat. Stormzy) [Remix] | shape of you",
         "Blinding Lights - Acoustic | blinding lights",
         "Waiting For You (Speed Up Version) | waiting for you",
-        "Nơi Này Có Anh - Live Version | noi nay co anh"
+        "Nơi Này Có Anh - Live Version | noi nay co anh",
+        "T-Shirt | t shirt",
+        "봄날 (Spring Day) | 봄날"
       })
   @DisplayName("BR-05: Title normalizer strips accents, brackets, and version suffixes")
   void normalizeTitle_groupsRemixesAndCovers(String input, String expected) {

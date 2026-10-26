@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 @Service
@@ -45,6 +45,7 @@ public class CatalogSeedService {
   private final ArtistRepository artistRepository;
   private final TrackRepository trackRepository;
   private final EntityManager entityManager;
+  private final TransactionTemplate transactionTemplate;
 
   public CatalogSeedService(
       CatalogImportProperties properties,
@@ -55,7 +56,8 @@ public class CatalogSeedService {
       PlaylistTrackRepository playlistTrackRepository,
       ArtistRepository artistRepository,
       TrackRepository trackRepository,
-      EntityManager entityManager) {
+      EntityManager entityManager,
+      TransactionTemplate transactionTemplate) {
     this.properties = properties;
     this.resourceLoader = resourceLoader;
     this.objectMapper = objectMapper;
@@ -65,6 +67,7 @@ public class CatalogSeedService {
     this.artistRepository = artistRepository;
     this.trackRepository = trackRepository;
     this.entityManager = entityManager;
+    this.transactionTemplate = transactionTemplate;
   }
 
   public record CatalogSeedResult(
@@ -108,7 +111,6 @@ public class CatalogSeedService {
   }
 
   /** Seeds the catalog from a specific resource path (e.g. "classpath:seed/catalog-seed.json"). */
-  @Transactional
   public CatalogSeedResult seedCatalogFromResource(String resourceLocation) {
     Resource resource = resourceLoader.getResource(resourceLocation);
     if (!resource.exists()) {
@@ -125,21 +127,24 @@ public class CatalogSeedService {
     }
   }
 
-  @Transactional
+  /** Seeds database entities within an explicit TransactionTemplate boundary. */
   public CatalogSeedResult seedFromDto(SeedCatalogDto dto) {
-    Map<String, UUID> genreIdByCode = seedGenres(dto.genres());
-    Map<String, UUID> playlistIdByCode = seedPlaylists(dto.playlists());
-    int[] trackStats = seedTracks(dto.tracks(), genreIdByCode, playlistIdByCode);
+    return transactionTemplate.execute(
+        status -> {
+          Map<String, UUID> genreIdByCode = seedGenres(dto.genres());
+          Map<String, UUID> playlistIdByCode = seedPlaylists(dto.playlists());
+          int[] trackStats = seedTracks(dto.tracks(), genreIdByCode, playlistIdByCode);
 
-    log.info(
-        "Catalog seed completed: {} genres, {} playlists, {} tracks seeded, {} playlist links",
-        genreIdByCode.size(),
-        playlistIdByCode.size(),
-        trackStats[0],
-        trackStats[1]);
+          log.info(
+              "Catalog seed completed: {} genres, {} playlists, {} tracks seeded, {} playlist links",
+              genreIdByCode.size(),
+              playlistIdByCode.size(),
+              trackStats[0],
+              trackStats[1]);
 
-    return new CatalogSeedResult(
-        genreIdByCode.size(), playlistIdByCode.size(), trackStats[0], trackStats[1]);
+          return new CatalogSeedResult(
+              genreIdByCode.size(), playlistIdByCode.size(), trackStats[0], trackStats[1]);
+        });
   }
 
   private Map<String, UUID> seedGenres(@Nullable List<SeedGenreDto> genreDtos) {
@@ -287,12 +292,28 @@ public class CatalogSeedService {
           if (playlistId != null) {
             PlaylistTrackId id = new PlaylistTrackId(playlistId, track.getId());
             if (!playlistTrackRepository.existsById(id)) {
-              int pos = playlistPositionCounter.merge(playlistId, 1, Integer::sum);
+              // Ensure position continues after existing playlist tracks
+              int nextPos =
+                  playlistPositionCounter.computeIfAbsent(
+                          playlistId,
+                          pid -> {
+                            Integer maxPos =
+                                entityManager
+                                    .createQuery(
+                                        "select max(pt.position) from PlaylistTrack pt where pt.playlistId = :pid",
+                                        Integer.class)
+                                    .setParameter("pid", pid)
+                                    .getSingleResult();
+                            return (maxPos == null) ? 0 : maxPos;
+                          })
+                      + 1;
+              playlistPositionCounter.put(playlistId, nextPos);
+
               PlaylistTrack link =
                   PlaylistTrack.builder()
                       .playlistId(playlistId)
                       .trackId(track.getId())
-                      .position(pos)
+                      .position(nextPos)
                       .build();
               playlistTrackRepository.save(link);
               playlistLinks++;
@@ -307,10 +328,13 @@ public class CatalogSeedService {
 
   private com.meloo.catalog.persistence.MusicProvider resolveProvider(
       @Nullable String providerStr) {
-    if (providerStr != null && providerStr.equalsIgnoreCase("itunes")) {
+    if (providerStr == null || providerStr.isBlank() || providerStr.equalsIgnoreCase("deezer")) {
+      return com.meloo.catalog.persistence.MusicProvider.DEEZER;
+    }
+    if (providerStr.equalsIgnoreCase("itunes")) {
       return com.meloo.catalog.persistence.MusicProvider.ITUNES;
     }
-    return com.meloo.catalog.persistence.MusicProvider.DEEZER;
+    throw new IllegalArgumentException("Unsupported music provider in seed: " + providerStr);
   }
 
   private Optional<Track> findTrackByProvider(

@@ -9,6 +9,7 @@ import com.meloo.catalog.persistence.ArtistRepository;
 import com.meloo.catalog.persistence.MusicProvider;
 import com.meloo.catalog.persistence.Track;
 import com.meloo.catalog.persistence.TrackRepository;
+import com.meloo.catalog.provider.MusicProviderRateLimitException;
 import com.meloo.catalog.provider.ProviderTrack;
 import java.util.Optional;
 import java.util.UUID;
@@ -28,6 +29,8 @@ class TrackPreviewHealthCheckJobTest extends IntegrationTest {
   @Test
   @DisplayName("BR-27: Health check job automatically disables tracks with invalid/broken preview")
   void healthCheckJob_disablesBrokenTracks() {
+    when(musicProvider.getProviderName()).thenReturn("deezer");
+
     Artist artist =
         artistRepository.save(
             Artist.builder()
@@ -114,5 +117,45 @@ class TrackPreviewHealthCheckJobTest extends IntegrationTest {
     Track reloadedNotFound = trackRepository.findById(notFoundTrack.getId()).orElseThrow();
     assertThat(reloadedNotFound.isEnabled()).isFalse();
     assertThat(reloadedNotFound.getDisabledReason()).contains("Preview unavailable");
+  }
+
+  @Test
+  @DisplayName("BR-27 / M1: Transient errors (429 rate limit, 5xx) do NOT disable tracks")
+  void healthCheckJob_transientErrors_doNotDisableTracks() {
+    when(musicProvider.getProviderName()).thenReturn("deezer");
+
+    Artist artist =
+        artistRepository.save(
+            Artist.builder()
+                .id(UUID.randomUUID())
+                .name("Transient Artist")
+                .nameNormalized("transient artist")
+                .provider(MusicProvider.DEEZER)
+                .providerArtistId("art-hc-transient")
+                .build());
+
+    Track rateLimitedTrack =
+        trackRepository.save(
+            Track.builder()
+                .id(UUID.randomUUID())
+                .provider(MusicProvider.DEEZER)
+                .providerTrackId("dz-hc-ratelimit")
+                .title("Rate Limited Track")
+                .titleNormalized("rate limited track")
+                .primaryArtistId(artist.getId())
+                .enabled(true)
+                .build());
+
+    when(musicProvider.getTrack("dz-hc-ratelimit"))
+        .thenThrow(new MusicProviderRateLimitException("HTTP 429 Too Many Requests"));
+
+    TrackPreviewHealthCheckJob.HealthCheckResult result = healthCheckJob.runHealthCheck();
+
+    assertThat(result.transientErrorCount()).isGreaterThanOrEqualTo(1);
+
+    // Track must remain ENABLED despite rate limit error
+    Track reloaded = trackRepository.findById(rateLimitedTrack.getId()).orElseThrow();
+    assertThat(reloaded.isEnabled()).isTrue();
+    assertThat(reloaded.getDisabledReason()).isNull();
   }
 }

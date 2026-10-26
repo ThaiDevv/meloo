@@ -42,6 +42,7 @@ public class DeezerMusicProvider implements MusicProvider {
 
     this.restClient =
         restClientBuilder
+            .clone()
             .baseUrl(properties.deezer().baseUrl())
             .requestFactory(requestFactory)
             .build();
@@ -101,14 +102,7 @@ public class DeezerMusicProvider implements MusicProvider {
                   .retrieve()
                   .body(DeezerSearchResponse.class);
 
-          if (response == null || response.data() == null) {
-            return List.of();
-          }
-          checkApiError(response.error());
-          return response.data().stream()
-              .filter(item -> item.error() == null)
-              .map(this::toProviderTrack)
-              .toList();
+          return mapList(response);
         });
   }
 
@@ -124,14 +118,11 @@ public class DeezerMusicProvider implements MusicProvider {
                     .retrieve()
                     .body(DeezerTrackItem.class);
 
-            if (response == null || response.id() == null) {
+            if (response == null) {
               return Optional.empty();
             }
-            if (response.error() != null) {
-              if (response.error().code() != null && response.error().code() == 4) {
-                throw new MusicProviderRateLimitException(
-                    "Deezer quota exceeded: " + response.error().message());
-              }
+            checkApiError(response.error());
+            if (response.id() == null) {
               return Optional.empty();
             }
             return Optional.of(toProviderTrack(response));
@@ -154,14 +145,7 @@ public class DeezerMusicProvider implements MusicProvider {
                   .retrieve()
                   .body(DeezerSearchResponse.class);
 
-          if (response == null || response.data() == null) {
-            return List.of();
-          }
-          checkApiError(response.error());
-          return response.data().stream()
-              .filter(item -> item.error() == null)
-              .map(this::toProviderTrack)
-              .toList();
+          return mapList(response);
         });
   }
 
@@ -181,14 +165,7 @@ public class DeezerMusicProvider implements MusicProvider {
                   .retrieve()
                   .body(DeezerSearchResponse.class);
 
-          if (response == null || response.data() == null) {
-            return List.of();
-          }
-          checkApiError(response.error());
-          return response.data().stream()
-              .filter(item -> item.error() == null)
-              .map(this::toProviderTrack)
-              .toList();
+          return mapList(response);
         });
   }
 
@@ -208,14 +185,7 @@ public class DeezerMusicProvider implements MusicProvider {
                   .retrieve()
                   .body(DeezerSearchResponse.class);
 
-          if (response == null || response.data() == null) {
-            return List.of();
-          }
-          checkApiError(response.error());
-          return response.data().stream()
-              .filter(item -> item.error() == null)
-              .map(this::toProviderTrack)
-              .toList();
+          return mapList(response);
         });
   }
 
@@ -274,6 +244,20 @@ public class DeezerMusicProvider implements MusicProvider {
       return resEx.getStatusCode().is5xxServerError();
     }
     return false;
+  }
+
+  private List<ProviderTrack> mapList(@Nullable DeezerSearchResponse response) {
+    if (response == null) {
+      return List.of();
+    }
+    checkApiError(response.error());
+    if (response.data() == null) {
+      return List.of();
+    }
+    return response.data().stream()
+        .filter(item -> item.error() == null)
+        .map(this::toProviderTrack)
+        .toList();
   }
 
   private void checkApiError(@Nullable DeezerError error) {

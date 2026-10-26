@@ -25,6 +25,15 @@ class FakeMusicProviderTest {
   }
 
   @Test
+  @DisplayName("mediaLocation defaults to classpath:fake-media/ and can be configured")
+  void mediaLocation_configurable() {
+    assertThat(provider.getMediaLocation()).isEqualTo("classpath:fake-media/");
+
+    FakeMusicProvider custom = new FakeMusicProvider("/custom-location/");
+    assertThat(custom.getMediaLocation()).isEqualTo("/custom-location/");
+  }
+
+  @Test
   @DisplayName("contains both tracks with coverUrl and tracks without coverUrl (empty cover)")
   void tracksWithAndWithoutCovers() {
     List<ProviderTrack> all = provider.search("*", 100);

@@ -11,14 +11,16 @@ public class FakeMusicProvider implements MusicProvider {
 
   public static final String PROVIDER_NAME = "FAKE";
 
+  private final String mediaLocation;
   private final Map<String, ProviderTrack> trackMap;
   private final List<ProviderTrack> allTracks;
 
   public FakeMusicProvider() {
-    this(CatalogProviderProperties.FakeProperties.class.getSimpleName());
+    this("classpath:fake-media/");
   }
 
   public FakeMusicProvider(String mediaLocation) {
+    this.mediaLocation = mediaLocation != null ? mediaLocation : "classpath:fake-media/";
     this.allTracks =
         List.of(
             ProviderTrack.builder()
@@ -103,6 +105,10 @@ public class FakeMusicProvider implements MusicProvider {
     this.trackMap =
         allTracks.stream()
             .collect(Collectors.toMap(ProviderTrack::providerTrackId, track -> track));
+  }
+
+  public String getMediaLocation() {
+    return mediaLocation;
   }
 
   @Override

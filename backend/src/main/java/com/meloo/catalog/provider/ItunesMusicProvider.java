@@ -42,6 +42,7 @@ public class ItunesMusicProvider implements MusicProvider {
 
     this.restClient =
         restClientBuilder
+            .clone()
             .baseUrl(properties.itunes().baseUrl())
             .requestFactory(requestFactory)
             .build();

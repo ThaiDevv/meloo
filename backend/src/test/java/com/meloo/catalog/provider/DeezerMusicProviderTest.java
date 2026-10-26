@@ -335,6 +335,79 @@ class DeezerMusicProviderTest {
   }
 
   @Test
+  @DisplayName("quota limit (Deezer error code 4) in search throws MusicProviderRateLimitException")
+  void quotaLimitCode4_searchThrowsMusicProviderRateLimitException() {
+    wireMockServer.stubFor(
+        get(urlEqualTo("/search?q=QuotaSearch&limit=5"))
+            .willReturn(
+                aResponse()
+                    .withHeader("Content-Type", "application/json")
+                    .withBody(
+                        """
+                        {
+                          "error": {
+                            "type": "Exception",
+                            "message": "Quota limit exceeded",
+                            "code": 4
+                          }
+                        }
+                        """)));
+
+    assertThatThrownBy(() -> provider.search("QuotaSearch", 5))
+        .isInstanceOf(MusicProviderRateLimitException.class)
+        .hasMessageContaining("Deezer quota exceeded");
+  }
+
+  @Test
+  @DisplayName("quota limit (Deezer error code 4) in chart throws MusicProviderRateLimitException")
+  void quotaLimitCode4_chartThrowsMusicProviderRateLimitException() {
+    wireMockServer.stubFor(
+        get(urlEqualTo("/chart/0/tracks?limit=10"))
+            .willReturn(
+                aResponse()
+                    .withHeader("Content-Type", "application/json")
+                    .withBody(
+                        """
+                        {
+                          "error": {
+                            "type": "Exception",
+                            "message": "Quota limit exceeded",
+                            "code": 4
+                          }
+                        }
+                        """)));
+
+    assertThatThrownBy(() -> provider.chart(10))
+        .isInstanceOf(MusicProviderRateLimitException.class)
+        .hasMessageContaining("Deezer quota exceeded");
+  }
+
+  @Test
+  @DisplayName(
+      "quota limit (Deezer error code 4) in getTrack throws MusicProviderRateLimitException")
+  void quotaLimitCode4_getTrackThrowsMusicProviderRateLimitException() {
+    wireMockServer.stubFor(
+        get(urlEqualTo("/track/444444"))
+            .willReturn(
+                aResponse()
+                    .withHeader("Content-Type", "application/json")
+                    .withBody(
+                        """
+                        {
+                          "error": {
+                            "type": "Exception",
+                            "message": "Quota limit exceeded",
+                            "code": 4
+                          }
+                        }
+                        """)));
+
+    assertThatThrownBy(() -> provider.getTrack("444444"))
+        .isInstanceOf(MusicProviderRateLimitException.class)
+        .hasMessageContaining("Deezer quota exceeded");
+  }
+
+  @Test
   @DisplayName("timeout triggers retries and throws MusicProviderException")
   void timeout_triggersRetryAndThrows() {
     wireMockServer.stubFor(

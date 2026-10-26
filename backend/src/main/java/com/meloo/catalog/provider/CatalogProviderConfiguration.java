@@ -16,6 +16,10 @@ import org.springframework.web.client.RestClient;
 @EnableConfigurationProperties(CatalogProviderProperties.class)
 public class CatalogProviderConfiguration {
 
+  // Fallback registries when resilience4j auto-configuration is not active (e.g. focused context
+  // tests).
+  // Provider configuration is defined under meloo.catalog.provider.* rather than resilience4j.* in
+  // application.yml.
   @Bean
   @ConditionalOnMissingBean
   public CircuitBreakerRegistry circuitBreakerRegistry() {

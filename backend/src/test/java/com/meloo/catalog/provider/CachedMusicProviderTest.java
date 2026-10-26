@@ -1,6 +1,7 @@
 package com.meloo.catalog.provider;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -140,7 +141,7 @@ class CachedMusicProviderTest {
 
   @Test
   @DisplayName("cache item expires after TTL")
-  void cacheTtl_expiresItem() throws Exception {
+  void cacheTtl_expiresItem() {
     CachedMusicProvider shortLived = new CachedMusicProvider(delegate, Duration.ofMillis(50), 10);
 
     ProviderTrack track =
@@ -149,9 +150,13 @@ class CachedMusicProviderTest {
     when(delegate.getTrack("t-ttl")).thenReturn(Optional.of(track));
 
     shortLived.getTrack("t-ttl");
-    Thread.sleep(70);
-    shortLived.getTrack("t-ttl");
 
-    verify(delegate, times(2)).getTrack("t-ttl");
+    await()
+        .atMost(Duration.ofSeconds(1))
+        .untilAsserted(
+            () -> {
+              shortLived.getTrack("t-ttl");
+              verify(delegate, times(2)).getTrack("t-ttl");
+            });
   }
 }

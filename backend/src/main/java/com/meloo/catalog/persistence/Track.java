@@ -72,6 +72,9 @@ public class Track implements Persistable<UUID> {
   @Nullable @Column(name = "disabled_reason", length = 200)
   private String disabledReason;
 
+  @Nullable @Column(name = "cover_url", length = 500)
+  private String coverUrl;
+
   @Column(name = "created_at", updatable = false, nullable = false)
   private Instant createdAt;
 

@@ -20,9 +20,9 @@ const session: AuthSession = {
   },
 }
 
-function problem(status: number, code: string) {
+function problem(status: number, code: string, field: 'code' | 'errorCode' = 'code') {
   return HttpResponse.json(
-    { type: 'about:blank', title: code, status, code },
+    { type: 'about:blank', title: code, status, [field]: code },
     { status, headers: { 'Content-Type': 'application/problem+json' } },
   )
 }
@@ -62,6 +62,15 @@ describe('refreshSession', () => {
     expect(useSessionStore.getState().role).toBeNull()
   })
 
+  it('reads Spring ProblemDetail errorCode while retaining the contract code field', async () => {
+    useAuthStore.getState().setSession(session)
+    server.use(http.post('*/api/v1/auth/refresh', () => problem(401, 'UNAUTHORIZED', 'errorCode')))
+
+    await expect(refreshSession(BASE)).resolves.toBe('expired')
+    expect(useAuthStore.getState().accessToken).toBeNull()
+    expect(useSessionStore.getState().role).toBeNull()
+  })
+
   it('ends the session when the account is locked (403 ACCOUNT_LOCKED)', async () => {
     useAuthStore.getState().setSession(session)
     server.use(http.post('*/api/v1/auth/refresh', () => problem(403, 'ACCOUNT_LOCKED')))
@@ -77,6 +86,20 @@ describe('refreshSession', () => {
       http.post('*/api/v1/auth/refresh', () => {
         calls++
         return calls === 1 ? problem(401, 'REFRESH_RACE') : HttpResponse.json(session)
+      }),
+    )
+
+    await expect(refreshSession(BASE, { raceRetryDelayMs: 0 })).resolves.toBe('refreshed')
+    expect(calls).toBe(2)
+    expect(useAuthStore.getState().accessToken).toBe('fresh-token')
+  })
+
+  it('recognizes REFRESH_RACE from the backend errorCode field', async () => {
+    let calls = 0
+    server.use(
+      http.post('*/api/v1/auth/refresh', () => {
+        calls++
+        return calls === 1 ? problem(401, 'REFRESH_RACE', 'errorCode') : HttpResponse.json(session)
       }),
     )
 

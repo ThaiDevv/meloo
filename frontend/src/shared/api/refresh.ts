@@ -23,8 +23,11 @@ const UNAUTHORIZED = 'UNAUTHORIZED'
 const ACCOUNT_LOCKED = 'ACCOUNT_LOCKED'
 
 function problemCode(error: unknown): string | undefined {
-  if (typeof error !== 'object' || error === null || !('code' in error)) return undefined
-  return typeof error.code === 'string' ? error.code : undefined
+  if (typeof error !== 'object' || error === null) return undefined
+  if ('code' in error && typeof error.code === 'string') return error.code
+  // The current backend serializes ProblemDetail's stable code as `errorCode`.
+  if ('errorCode' in error && typeof error.errorCode === 'string') return error.errorCode
+  return undefined
 }
 
 function sleep(ms: number): Promise<void> {

@@ -36,8 +36,9 @@ public class CatalogQueryRepository {
   /**
    * Searches enabled tracks ranking: prefix match > word boundary match > trigram similarity.
    *
-   * <p>Optimized with CTE/UNION to leverage GIN indexes (idx_track_title_trgm and
-   * idx_artist_name_trgm) and index scan on primary_artist_id without table seq-scans.
+   * <p>Optimized with CTE/UNION to separate track title matching and artist name matching, allowing
+   * PostgreSQL planner to use GIN indexes (idx_track_title_trgm and idx_artist_name_trgm). For the
+   * initial page (page=0), if results are fewer than limit, skips count query.
    */
   public TrackPageDto searchTracks(String normalizedQuery, int page, int size) {
     if (normalizedQuery.isBlank() || normalizedQuery.length() < 2) {
@@ -65,42 +66,6 @@ public class CatalogQueryRepository {
             .addValue("contains", contains)
             .addValue("limit", limit)
             .addValue("offset", offset);
-
-    String countSql =
-        """
-        WITH matching_artists AS (
-          SELECT id
-          FROM artist
-          WHERE name_normalized LIKE :contains
-             OR name_normalized % :norm
-             OR replace(name_normalized, '-', ' ') LIKE :contains
-        ),
-        matching_tracks AS (
-          SELECT t.id
-          FROM track t
-          WHERE t.enabled = true
-            AND (t.title_normalized LIKE :contains OR t.title_normalized % :norm)
-          UNION
-          SELECT t.id
-          FROM track t
-          JOIN matching_artists ma ON t.primary_artist_id = ma.id
-          WHERE t.enabled = true
-        )
-        SELECT count(*) FROM matching_tracks
-        """;
-
-    Long totalItems = jdbcTemplate.queryForObject(countSql, params, Long.class);
-    long total = totalItems == null ? 0L : totalItems;
-    int totalPages = total == 0 ? 0 : (int) Math.ceil((double) total / limit);
-
-    if (total == 0 || offset >= total) {
-      return new TrackPageDto()
-          .page(page)
-          .size(limit)
-          .totalItems(total)
-          .totalPages(totalPages)
-          .items(Collections.emptyList());
-    }
 
     String selectSql =
         """
@@ -156,6 +121,47 @@ public class CatalogQueryRepository {
                     .title(rs.getString("title"))
                     .artistName(rs.getString("artist_name")));
 
+    long total;
+    if (page == 0 && items.size() < limit) {
+      total = items.size();
+    } else {
+      String countSql =
+          """
+          WITH matching_artists AS (
+            SELECT id
+            FROM artist
+            WHERE name_normalized LIKE :contains
+               OR name_normalized % :norm
+               OR replace(name_normalized, '-', ' ') LIKE :contains
+          ),
+          matching_tracks AS (
+            SELECT t.id
+            FROM track t
+            WHERE t.enabled = true
+              AND (t.title_normalized LIKE :contains OR t.title_normalized % :norm)
+            UNION
+            SELECT t.id
+            FROM track t
+            JOIN matching_artists ma ON t.primary_artist_id = ma.id
+            WHERE t.enabled = true
+          )
+          SELECT count(*) FROM matching_tracks
+          """;
+      Long totalItems = jdbcTemplate.queryForObject(countSql, params, Long.class);
+      total = totalItems == null ? 0L : totalItems;
+    }
+
+    int totalPages = total == 0 ? 0 : (int) Math.ceil((double) total / limit);
+
+    if (total == 0 || offset >= total) {
+      return new TrackPageDto()
+          .page(page)
+          .size(limit)
+          .totalItems(total)
+          .totalPages(totalPages)
+          .items(Collections.emptyList());
+    }
+
     return new TrackPageDto()
         .page(page)
         .size(limit)
@@ -171,20 +177,6 @@ public class CatalogQueryRepository {
 
     MapSqlParameterSource params =
         new MapSqlParameterSource().addValue("limit", limit).addValue("offset", offset);
-
-    String countSql = "SELECT count(*) FROM playlist WHERE enabled = true";
-    Long totalItems = jdbcTemplate.queryForObject(countSql, params, Long.class);
-    long total = totalItems == null ? 0L : totalItems;
-    int totalPages = total == 0 ? 0 : (int) Math.ceil((double) total / limit);
-
-    if (total == 0 || offset >= total) {
-      return new PlaylistPageDto()
-          .page(page)
-          .size(limit)
-          .totalItems(total)
-          .totalPages(totalPages)
-          .items(Collections.emptyList());
-    }
 
     String selectSql =
         """
@@ -211,6 +203,26 @@ public class CatalogQueryRepository {
                     .nameEn(rs.getString("name_en"))
                     .kind(PlaylistKindDto.fromValue(rs.getString("kind")))
                     .trackCount(rs.getInt("track_count")));
+
+    long total;
+    if (page == 0 && items.size() < limit) {
+      total = items.size();
+    } else {
+      String countSql = "SELECT count(*) FROM playlist WHERE enabled = true";
+      Long totalItems = jdbcTemplate.queryForObject(countSql, params, Long.class);
+      total = totalItems == null ? 0L : totalItems;
+    }
+
+    int totalPages = total == 0 ? 0 : (int) Math.ceil((double) total / limit);
+
+    if (total == 0 || offset >= total) {
+      return new PlaylistPageDto()
+          .page(page)
+          .size(limit)
+          .totalItems(total)
+          .totalPages(totalPages)
+          .items(Collections.emptyList());
+    }
 
     return new PlaylistPageDto()
         .page(page)

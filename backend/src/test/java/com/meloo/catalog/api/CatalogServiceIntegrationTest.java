@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -42,11 +43,7 @@ class CatalogServiceIntegrationTest extends IntegrationTest {
 
   @BeforeEach
   void setUpData() {
-    playlistTrackRepository.deleteAll();
-    trackRepository.deleteAll();
-    playlistRepository.deleteAll();
-    artistRepository.deleteAll();
-    genreRepository.deleteAll();
+    cleanDatabase();
 
     artistA =
         artistRepository.saveAndFlush(
@@ -96,6 +93,19 @@ class CatalogServiceIntegrationTest extends IntegrationTest {
                 .kind(PlaylistKind.STANDARD)
                 .enabled(true)
                 .build());
+  }
+
+  @AfterEach
+  void tearDown() {
+    cleanDatabase();
+  }
+
+  private void cleanDatabase() {
+    playlistTrackRepository.deleteAll();
+    trackRepository.deleteAll();
+    playlistRepository.deleteAll();
+    artistRepository.deleteAll();
+    genreRepository.deleteAll();
   }
 
   @Test

@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -55,11 +56,7 @@ class CatalogIntegrationTest extends IntegrationTest {
 
   @BeforeEach
   void setUpData() {
-    playlistTrackRepository.deleteAll();
-    trackRepository.deleteAll();
-    playlistRepository.deleteAll();
-    artistRepository.deleteAll();
-    genreRepository.deleteAll();
+    cleanDatabase();
 
     // Use TitleNormalizer to accurately match DB importing logic (e.g. "son tung m-tp")
     sonTung =
@@ -99,6 +96,19 @@ class CatalogIntegrationTest extends IntegrationTest {
                 .nameVi("Indie Việt")
                 .nameEn("Indie Viet")
                 .build());
+  }
+
+  @AfterEach
+  void tearDown() {
+    cleanDatabase();
+  }
+
+  private void cleanDatabase() {
+    playlistTrackRepository.deleteAll();
+    trackRepository.deleteAll();
+    playlistRepository.deleteAll();
+    artistRepository.deleteAll();
+    genreRepository.deleteAll();
   }
 
   @Test
@@ -224,6 +234,81 @@ class CatalogIntegrationTest extends IntegrationTest {
     assertThat(result.getItems().get(2).getId())
         .withFailMessage("Third result must be trigram similarity match (Tier 3)")
         .isEqualTo(trigramTrack.getId());
+  }
+
+  @Test
+  @DisplayName(
+      "AC 2: Ranking for hyphenated artist query: Prefix (Tier 1) / Word (Tier 2) > Trigram (Tier 3)")
+  void searchRankingForHyphenatedArtistOrder() {
+    // 1. Sơn Tùng M-TP track (artist name normalized: "son tung m-tp")
+    Track sonTungTrack =
+        trackRepository.saveAndFlush(
+            Track.builder()
+                .id(UUID.randomUUID())
+                .title("Nắng Ấm Xa Dần")
+                .titleNormalized(TitleNormalizer.normalizeTitle("Nắng Ấm Xa Dần"))
+                .primaryArtistId(sonTung.getId())
+                .provider(MusicProvider.DEEZER)
+                .providerTrackId("trk-st-rank")
+                .enabled(true)
+                .popularityRank(10)
+                .build());
+
+    // 2. Artist with similar name that matches via trigram similarity but not prefix or substring
+    Artist similarArtist =
+        artistRepository.saveAndFlush(
+            Artist.builder()
+                .id(UUID.randomUUID())
+                .name("Sơn Tùng M-TO")
+                .nameNormalized("son tung m-to")
+                .provider(MusicProvider.DEEZER)
+                .providerArtistId("art-st-similar")
+                .build());
+
+    Track trigramArtistTrack =
+        trackRepository.saveAndFlush(
+            Track.builder()
+                .id(UUID.randomUUID())
+                .title("Khác Biệt To Lớn")
+                .titleNormalized(TitleNormalizer.normalizeTitle("Khác Biệt To Lớn"))
+                .primaryArtistId(similarArtist.getId())
+                .provider(MusicProvider.DEEZER)
+                .providerTrackId("trk-similar-rank")
+                .enabled(true)
+                .popularityRank(1) // Higher popularity, but lower tier
+                .build());
+
+    // 3. Track with title "M-Tip" (similar trigram to query "m-tp", but doesn't contain "m-tp")
+    Track trigramTrack =
+        trackRepository.saveAndFlush(
+            Track.builder()
+                .id(UUID.randomUUID())
+                .title("M-Tip")
+                .titleNormalized("m-tip")
+                .primaryArtistId(vu.getId())
+                .provider(MusicProvider.DEEZER)
+                .providerTrackId("trk-mtip-rank")
+                .enabled(true)
+                .popularityRank(1)
+                .build());
+
+    // Test query "m-tp": Sơn Tùng M-TP matches word pattern (Tier 2), "M-Tip" matches trigram (Tier
+    // 3)
+    TrackPageDto resMtp = searchService.searchTracks("m-tp", 0, 10);
+    assertThat(resMtp.getItems()).isNotEmpty();
+    assertThat(resMtp.getItems().getFirst().getId())
+        .withFailMessage(
+            "Sơn Tùng M-TP (Tier 2) must rank before trigram similarity match (Tier 3)")
+        .isEqualTo(sonTungTrack.getId());
+
+    // Test query "son tung m-tp": Sơn Tùng M-TP matches prefix (Tier 1), "Sơn Tùng M-TO" matches
+    // trigram (Tier 3)
+    TrackPageDto resFullName = searchService.searchTracks("son tung m-tp", 0, 10);
+    assertThat(resFullName.getItems()).isNotEmpty();
+    assertThat(resFullName.getItems().getFirst().getId())
+        .withFailMessage(
+            "Sơn Tùng M-TP (Tier 1) must rank before trigram similarity match (Tier 3)")
+        .isEqualTo(sonTungTrack.getId());
   }
 
   @Test
@@ -403,39 +488,58 @@ class CatalogIntegrationTest extends IntegrationTest {
   @Test
   @DisplayName("AC 2: p95 latency under 100ms with >= 10,000 tracks in database")
   void searchLatencyP95With10kTracks() {
-    // 1. Seed 1,000 artists and 10,000 tracks via batch insert
-    seed10kTracks();
+    try {
+      // 1. Seed 1,000 artists and 10,000 tracks via batch insert
+      seed10kTracks();
 
-    long trackCount = trackRepository.count();
-    assertThat(trackCount).isGreaterThanOrEqualTo(10_000L);
+      long trackCount = trackRepository.count();
+      assertThat(trackCount).isGreaterThanOrEqualTo(10_000L);
 
-    // Analyze tables so Postgres planner has accurate statistics for GIN indexes
-    jdbcTemplate.getJdbcOperations().execute("ANALYZE track; ANALYZE artist;");
+      // Analyze tables so Postgres planner has accurate statistics for GIN indexes
+      jdbcTemplate.getJdbcOperations().execute("ANALYZE track; ANALYZE artist;");
 
-    // Warm-up queries
-    searchService.searchTracks("son tung", 0, 10);
-    searchService.searchTracks("mua", 0, 10);
+      // Warm-up queries
+      searchService.searchTracks("son tung", 0, 10);
+      searchService.searchTracks("mua", 0, 10);
 
-    String[] testQueries = {"son tung", "mua", "lac troi", "em", "ngay", "viet nam", "anh", "nang"};
-    List<Long> latencies = new ArrayList<>();
+      String[] testQueries = {
+        "son tung", "mua", "lac troi", "em", "ngay", "viet nam", "anh", "nang"
+      };
+      List<Long> latencies = new ArrayList<>();
 
-    for (int i = 0; i < 50; i++) {
-      String q = testQueries[i % testQueries.length];
-      long start = System.nanoTime();
-      TrackPageDto res = searchService.searchTracks(q, 0, 10);
-      long elapsedMs = (System.nanoTime() - start) / 1_000_000;
-      latencies.add(elapsedMs);
-      assertThat(res.getItems()).isNotNull();
+      for (int i = 0; i < 50; i++) {
+        String q = testQueries[i % testQueries.length];
+        long start = System.nanoTime();
+        TrackPageDto res = searchService.searchTracks(q, 0, 10);
+        long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+        latencies.add(elapsedMs);
+        assertThat(res.getItems()).isNotNull();
+      }
+
+      Collections.sort(latencies);
+      int p95Index = (int) Math.ceil(latencies.size() * 0.95) - 1;
+      long p95Latency = latencies.get(Math.max(0, p95Index));
+
+      assertThat(p95Latency)
+          .withFailMessage(
+              "p95 latency (%d ms) with %d tracks should be < 100 ms", p95Latency, trackCount)
+          .isLessThan(100L);
+    } finally {
+      cleanDatabase();
     }
+  }
 
-    Collections.sort(latencies);
-    int p95Index = (int) Math.ceil(latencies.size() * 0.95) - 1;
-    long p95Latency = latencies.get(Math.max(0, p95Index));
+  @Test
+  @DisplayName(
+      "AC 1/4: Large page number (e.g. Integer.MAX_VALUE) returns empty page without arithmetic overflow")
+  void largePageReturnsEmptyPageWithoutOverflow() {
+    TrackPageDto trackPage = searchService.searchTracks("son tung", Integer.MAX_VALUE, 10);
+    assertThat(trackPage.getItems()).isEmpty();
+    assertThat(trackPage.getPage()).isEqualTo(Integer.MAX_VALUE);
 
-    assertThat(p95Latency)
-        .withFailMessage(
-            "p95 latency (%d ms) with %d tracks should be < 100 ms", p95Latency, trackCount)
-        .isLessThan(100L);
+    PlaylistPageDto playlistPage = searchService.listPlaylists(Integer.MAX_VALUE, 10);
+    assertThat(playlistPage.getItems()).isEmpty();
+    assertThat(playlistPage.getPage()).isEqualTo(Integer.MAX_VALUE);
   }
 
   private void seed10kTracks() {

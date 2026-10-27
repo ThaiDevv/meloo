@@ -20,6 +20,7 @@ import com.meloo.catalog.persistence.PlaylistTrackRepository;
 import com.meloo.catalog.persistence.Track;
 import com.meloo.catalog.persistence.TrackRepository;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -52,11 +53,7 @@ class CatalogControllerIntegrationTest extends IntegrationTest {
 
   @BeforeEach
   void setUp() throws Exception {
-    playlistTrackRepository.deleteAll();
-    trackRepository.deleteAll();
-    playlistRepository.deleteAll();
-    artistRepository.deleteAll();
-    genreRepository.deleteAll();
+    cleanDatabase();
 
     MvcResult guestResult =
         mockMvc
@@ -122,6 +119,19 @@ class CatalogControllerIntegrationTest extends IntegrationTest {
             .trackId(track.getId())
             .position(1)
             .build());
+  }
+
+  @AfterEach
+  void tearDown() {
+    cleanDatabase();
+  }
+
+  private void cleanDatabase() {
+    playlistTrackRepository.deleteAll();
+    trackRepository.deleteAll();
+    playlistRepository.deleteAll();
+    artistRepository.deleteAll();
+    genreRepository.deleteAll();
   }
 
   @Test

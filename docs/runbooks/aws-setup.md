@@ -231,11 +231,14 @@ nc -zv <RDS_ENDPOINT> 5432
 
 | Type | Name | Content / Target | Proxy status | Ghi chú |
 |---|---|---|---|---|
-| **A** (hoặc CNAME) | `@` (hoặc domain chính) | IP của Vercel (hoặc `cname.vercel-dns.com`) | **Proxied** (Đám mây cam) | Trỏ frontend về Vercel |
+| **A** (hoặc CNAME) | `@` (hoặc domain chính) | IP của Vercel (hoặc `cname.vercel-dns.com`) | **DNS only** (Đám mây xám)* | Trỏ frontend về Vercel |
 | **A** | `api` | `<ELASTIC_IP>` của EC2 | **DNS only** (Đám mây xám)* | Trỏ API backend về EC2 |
 
 > [!NOTE]
-> **Lưu ý về SSL của Caddy:** Record `api` ban đầu nên để **DNS only (Đám mây xám)** để Caddy trực tiếp nhận kết nối ACME challenge (HTTP-01) từ Let's Encrypt / ZeroSSL và cấp phát chứng chỉ HTTPS mà không bị Cloudflare proxy can thiệp. Khi chứng chỉ đã được Caddy cấp phát thành công, nếu muốn bật Proxy Cloudflare, cần cấu hình Cloudflare SSL/TLS mode là **Full (strict)**.
+> **Lưu ý về DNS only và SSL:**
+> - **Frontend (`@`):** Vercel khuyến nghị để **DNS only (Đám mây xám)** khi dùng Cloudflare DNS để Vercel tự động cấp và gia hạn chứng chỉ SSL sạch sẽ, tránh xung đột proxy.
+> - **Backend (`api`):** Ban đầu bắt buộc để **DNS only (Đám mây xám)** để Caddy trực tiếp nhận kết nối ACME challenge (HTTP-01) từ Let's Encrypt / ZeroSSL qua port 80.
+> - **Khi muốn bật Cloudflare Proxy (Đám mây cam) cho `api` sau này:** Cần cấu hình SSL/TLS mode trên Cloudflare là **Full (strict)**. File `Caddyfile` của Meloo đã được cấu hình sẵn để tự động phát hiện header `CF-Connecting-IP`, bảo toàn IP thực của client cho các bộ lọc rate limit (`guest-create-per-hour`).
 
 3. Kiểm tra phân giải tên miền từ máy local:
    ```bash
@@ -252,45 +255,30 @@ nc -zv <RDS_ENDPOINT> 5432
    cd /opt/meloo
    ```
 
-2. Tạo file `Caddyfile` (chép nội dung từ `infra/caddy/Caddyfile` trong repo):
-   ```caddy
-   {
-       email admin@<tên-miền>
-       admin off
-   }
-
-   api.<tên-miền> {
-       encode zstd gzip
-
-       header {
-           Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-           X-Content-Type-Options "nosniff"
-           X-Frame-Options "DENY"
-           Referrer-Policy "strict-origin-when-cross-origin"
-           Permissions-Policy "geolocation=(), microphone=(), camera=()"
-           -Server
-       }
-
-       reverse_proxy backend:8080 {
-           header_up X-Real-IP {remote_host}
-       }
-   }
-   ```
-
-3. Tạo file `docker-compose.yml` (chép nội dung từ `infra/aws/docker-compose.prod.yml` trong repo).
-
-4. Tạo file `.env` trên EC2 từ mẫu `infra/aws/env.prod.example`:
+2. Đồng bộ các file cấu hình từ repository lên EC2:
+   *(Thực hiện từ máy local của bạn bằng `scp`)*
    ```bash
+   scp -i ~/.ssh/meloo-ec2-key.pem \
+     infra/caddy/Caddyfile \
+     infra/aws/docker-compose.prod.yml \
+     infra/aws/env.prod.example \
+     ubuntu@<ELASTIC_IP>:/opt/meloo/
+   ```
+   *(Hoặc trên EC2, đổi tên file compose cho tiện dùng: `mv /opt/meloo/docker-compose.prod.yml /opt/meloo/docker-compose.yml`)*
+
+3. Tạo file `.env` trên EC2 từ mẫu `env.prod.example`:
+   ```bash
+   cd /opt/meloo
    cp env.prod.example .env
    nano .env
    ```
    Điền các giá trị thực tế:
    ```text
-   BACKEND_IMAGE=ghcr.io/tranvanthai20062/meloo-backend:latest
+   BACKEND_IMAGE=ghcr.io/thaidevv/meloo-backend:latest
    API_DOMAIN=api.<tên-miền>
    ACME_EMAIL=admin@<tên-miền>
 
-   DB_URL=jdbc:postgresql://<RDS_ENDPOINT>:5432/meloo
+   DB_URL=jdbc:postgresql://<RDS_ENDPOINT>:5432/meloo?sslmode=require
    DB_USERNAME=meloo_admin
    DB_PASSWORD=<MẬT_KHẨU_RDS_ĐÃ_TẠO>
 
@@ -298,20 +286,23 @@ nc -zv <RDS_ENDPOINT> 5432
    MELOO_JWT_SECRET=<CHUỖI_NGẪU_NHIÊN_ÍT_NHẤT_32_BYTES>
    ```
 
-5. **Phân quyền bảo mật nghiêm ngặt cho `.env`:**
+4. **Phân quyền bảo mật nghiêm ngặt cho `.env`:**
    ```bash
    chmod 600 /opt/meloo/.env
    ls -la /opt/meloo/.env
    # Kết quả: -rw------- 1 ubuntu ubuntu ...
    ```
 
-6. Chạy thử nghiệm Caddy để xác nhận cấp phát chứng chỉ HTTPS tự động:
+5. Chạy thử nghiệm Caddy để xác nhận cấp phát chứng chỉ HTTPS tự động:
+   > [!NOTE]
+   > Do image backend chưa được build ở ticket này (sẽ thực hiện ở INF-02 MEL-41), ta sử dụng cờ `--no-deps` để khởi động riêng Caddy mà không kéo container backend. Nếu package GHCR ở chế độ private, hãy chạy `echo $GITHUB_TOKEN | docker login ghcr.io -u <github-user> --password-stdin` trước khi pull image backend sau này.
+
    ```bash
    cd /opt/meloo
-   docker compose up -d caddy
+   docker compose up -d --no-deps caddy
    docker compose logs -f caddy
    ```
-   *Quan sát log Caddy: Caddy sẽ liên hệ Let's Encrypt / ZeroSSL, xác thực domain `api.<tên-miền>` qua port 80 và hoàn tất lưu chứng chỉ HTTPS vào volume `caddy_data`.*
+   *Quan sát log Caddy: Caddy đọc biến môi trường `$API_DOMAIN`, liên hệ Let's Encrypt / ZeroSSL, xác thực domain qua HTTP-01 challenge cổng 80 và hoàn tất lưu chứng chỉ HTTPS vào volume `caddy_data`.*
 
 ---
 

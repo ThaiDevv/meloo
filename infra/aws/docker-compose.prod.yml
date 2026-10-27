@@ -2,7 +2,7 @@ name: meloo-prod
 
 services:
   backend:
-    image: ${BACKEND_IMAGE:-ghcr.io/tranvanthai20062/meloo-backend:latest}
+    image: ${BACKEND_IMAGE:-ghcr.io/thaidevv/meloo-backend:latest}
     container_name: meloo-backend
     restart: unless-stopped
     environment:
@@ -19,6 +19,7 @@ services:
     expose:
       - "8080"
     healthcheck:
+      # Lệnh healthcheck sẽ được kiểm chứng chính xác cùng Dockerfile ở INF-02 (MEL-41)
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health/readiness || exit 1"]
       interval: 15s
       timeout: 5s
@@ -37,10 +38,9 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "443:443/udp"
     environment:
-      - API_DOMAIN=${API_DOMAIN:-api.meloo.vn}
-      - ACME_EMAIL=${ACME_EMAIL:-admin@meloo.vn}
+      - API_DOMAIN=${API_DOMAIN:?Vui lòng cấu hình API_DOMAIN trong .env}
+      - ACME_EMAIL=${ACME_EMAIL:?Vui lòng cấu hình ACME_EMAIL trong .env}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

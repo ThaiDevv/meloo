@@ -105,24 +105,27 @@ NOTIFICATIONS_JSON=$(cat <<EOF
 EOF
 )
 
-# Tạo hoặc cập nhật Budget
+BUDGET_EXISTS=false
 if aws budgets describe-budget --account-id "$ACCOUNT_ID" --budget-name "Meloo-Monthly-Cost-Budget-1USD" &>/dev/null; then
+  BUDGET_EXISTS=true
   echo "Budget 'Meloo-Monthly-Cost-Budget-1USD' đã tồn tại. Đang cập nhật..."
-  aws budgets modify-budget \
-    --account-id "$ACCOUNT_ID" \
-    --new-budget "$BUDGET_JSON"
-else
-  echo "Đang tạo mới Budget 'Meloo-Monthly-Cost-Budget-1USD'..."
-  aws budgets create-budget \
-    --account-id "$ACCOUNT_ID" \
-    --budget "$BUDGET_JSON" \
-    --notifications-with-subscribers "$NOTIFICATIONS_JSON"
+  aws budgets delete-budget --account-id "$ACCOUNT_ID" --budget-name "Meloo-Monthly-Cost-Budget-1USD"
 fi
 
+echo "Đang áp dụng Budget 'Meloo-Monthly-Cost-Budget-1USD' kèm thông báo..."
+aws budgets create-budget \
+  --account-id "$ACCOUNT_ID" \
+  --budget "$BUDGET_JSON" \
+  --notifications-with-subscribers "$NOTIFICATIONS_JSON"
+
 echo "=========================================================================="
-echo "Thành công: Đã tạo AWS Budget 1.00 USD!"
+if [[ "$BUDGET_EXISTS" = true ]]; then
+  echo "Thành công: Đã cập nhật AWS Budget 1.00 USD!"
+else
+  echo "Thành công: Đã tạo mới AWS Budget 1.00 USD!"
+fi
 echo "Cảnh báo sẽ được gửi tới: $EMAIL"
-echo "- Khi chi phí thực tế vượt 80% ($0.80 USD)"
-echo "- Khi chi phí thực tế vượt 100% ($1.00 USD)"
-echo "- Khi dự báo chi phí tháng (Forecasted) vượt 100% ($1.00 USD)"
+echo "- Khi chi phí thực tế vượt 80% (\$0.80 USD)"
+echo "- Khi chi phí thực tế vượt 100% (\$1.00 USD)"
+echo "- Khi dự báo chi phí tháng (Forecasted) vượt 100% (\$1.00 USD)"
 echo "=========================================================================="

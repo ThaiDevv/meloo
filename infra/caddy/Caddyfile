@@ -1,15 +1,11 @@
 {
-	# Global options
-	email {$ACME_EMAIL:admin@meloo.vn}
-	# Tắt admin API trên production nếu không cần thiết
+	email {$ACME_EMAIL}
 	admin off
 }
 
-# Domain endpoint cho API backend
-{$API_DOMAIN:api.meloo.vn} {
+{$API_DOMAIN} {
 	encode zstd gzip
 
-	# Security Headers
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
 		X-Content-Type-Options "nosniff"
@@ -19,9 +15,12 @@
 		-Server
 	}
 
-	# Reverse proxy tới Spring Boot backend
-	# Caddy tự động hỗ trợ WebSocket upgrade (STOMP over WebSocket) và gắn X-Forwarded-*
+	# Giữ IP thực tế của client:
+	# Mặc định dùng remote_host khi kết nối trực tiếp (DNS only).
+	# Khi bật Cloudflare Proxy, tự động ghi đè bằng header CF-Connecting-IP.
+	@has_cf header CF-Connecting-IP *
 	reverse_proxy backend:8080 {
 		header_up X-Real-IP {remote_host}
+		header_up @has_cf X-Real-IP {header.CF-Connecting-IP}
 	}
 }

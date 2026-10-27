@@ -13,7 +13,7 @@ on:
         default: false
 
 concurrency:
-  group: deploy-backend-${{ github.ref }}
+  group: deploy-backend-production
   cancel-in-progress: false
 
 permissions:
@@ -45,7 +45,12 @@ jobs:
         id: check
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            if [ "${{ github.ref }}" = "refs/heads/main" ] || [ "${{ inputs.force_deploy }}" = "true" ]; then
+              echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "::error::workflow_dispatch chỉ cho phép chạy từ nhánh main trừ khi bật force_deploy=true."
+              echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+            fi
           elif [[ "${{ github.ref }}" =~ ^refs/tags/v ]]; then
             echo "should_deploy=true" >> "$GITHUB_OUTPUT"
           elif [ "${{ steps.filter.outputs.backend }}" = "true" ] || [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
@@ -143,100 +148,33 @@ jobs:
             exit 1
           fi
 
+          if [ -z "${EC2_SSH_KNOWN_HOSTS:-}" ]; then
+            echo "::error::Thiếu GitHub Secret EC2_SSH_KNOWN_HOSTS. Để bảo vệ StrictHostKeyChecking không bị MITM, vui lòng cấu hình public key của EC2 vào secret EC2_SSH_KNOWN_HOSTS."
+            exit 1
+          fi
+
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
           echo "$EC2_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
 
-          if [ -n "${EC2_SSH_KNOWN_HOSTS:-}" ]; then
-            echo "$EC2_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          else
-            ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts 2>/dev/null
-          fi
+          echo "$EC2_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
           SSH_CMD="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes"
           SCP_CMD="scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes"
 
-          echo "Đồng bộ file docker-compose.prod.yml lên EC2..."
+          echo "Đăng nhập GHCR trên EC2 qua stdin..."
+          echo "$GH_TOKEN" | $SSH_CMD "${EC2_USER}@${EC2_HOST}" \
+            "docker login ghcr.io -u '$ACTOR' --password-stdin"
+
+          echo "Đồng bộ file cấu hình và script deploy lên EC2..."
           $SCP_CMD infra/compose/docker-compose.prod.yml "${EC2_USER}@${EC2_HOST}:/opt/meloo/docker-compose.yml"
+          $SCP_CMD infra/compose/deploy-ec2.sh "${EC2_USER}@${EC2_HOST}:/opt/meloo/deploy-ec2.sh"
 
-          echo "Thực hiện deploy trên EC2..."
+          echo "Thực thi kịch bản deploy trên EC2..."
           $SSH_CMD "${EC2_USER}@${EC2_HOST}" \
-            "DEPLOY_IMAGE='$DEPLOY_IMAGE' GH_TOKEN='$GH_TOKEN' ACTOR='$ACTOR' bash -s" << 'EOF'
-            set -euo pipefail
-            cd /opt/meloo
-
-            if [ ! -f .env ]; then
-              echo "::error::Không tìm thấy file /opt/meloo/.env trên EC2! Vui lòng chuẩn bị theo hướng dẫn INF-01."
-              exit 1
-            fi
-
-            # Đăng nhập GHCR trên EC2 nếu có token
-            if [ -n "${GH_TOKEN:-}" ] && [ -n "${ACTOR:-}" ]; then
-              echo "$GH_TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin >/dev/null 2>&1 || true
-            fi
-
-            # Ghi nhận tag trước đó phục vụ rollback
-            PREV_IMAGE=$(grep -E '^BACKEND_IMAGE=' .env | cut -d= -f2- || true)
-            if [ -z "$PREV_IMAGE" ]; then
-              PREV_IMAGE="ghcr.io/thaidevv/meloo-backend:latest"
-            fi
-            echo "Current backend image: $PREV_IMAGE"
-            echo "Deploying target image: $DEPLOY_IMAGE"
-
-            # Cập nhật BACKEND_IMAGE trong .env
-            if grep -q '^BACKEND_IMAGE=' .env; then
-              sed -i "s|^BACKEND_IMAGE=.*|BACKEND_IMAGE=${DEPLOY_IMAGE}|" .env
-            else
-              echo "BACKEND_IMAGE=${DEPLOY_IMAGE}" >> .env
-            fi
-
-            # Pull image mới kèm bảo vệ rollback nếu kéo thất bại
-            echo "Pulling backend image: $DEPLOY_IMAGE..."
-            if ! docker compose pull backend; then
-              echo "❌ docker compose pull thất bại! Đang hoàn tác .env về $PREV_IMAGE..."
-              sed -i "s|^BACKEND_IMAGE=.*|BACKEND_IMAGE=${PREV_IMAGE}|" .env
-              exit 1
-            fi
-
-            # Khởi động lại service backend kèm bảo vệ rollback
-            echo "Restarting backend container..."
-            if ! docker compose up -d backend; then
-              echo "❌ docker compose up thất bại! Đang rollback về $PREV_IMAGE..."
-              sed -i "s|^BACKEND_IMAGE=.*|BACKEND_IMAGE=${PREV_IMAGE}|" .env
-              docker compose pull backend || true
-              docker compose up -d backend
-              exit 1
-            fi
-
-            # Kiểm tra sức khỏe backend có retry
-            echo "Kiểm tra /actuator/health trên EC2..."
-            HEALTHY=0
-            for i in $(seq 1 12); do
-              sleep 5
-              echo "Lần thử $i/12 kiểm tra healthcheck..."
-              STATUS=$(docker compose exec -T backend wget -qO- http://localhost:8080/actuator/health 2>/dev/null || true)
-              if echo "$STATUS" | grep -q '"UP"'; then
-                echo "✅ Backend đã sẵn sàng (status UP): $STATUS"
-                HEALTHY=1
-                break
-              fi
-            done
-
-            if [ "$HEALTHY" -ne 1 ]; then
-              echo "❌ Backend health check thất bại sau 60s! Đang rollback về $PREV_IMAGE..."
-              sed -i "s|^BACKEND_IMAGE=.*|BACKEND_IMAGE=${PREV_IMAGE}|" .env
-              docker compose pull backend || true
-              docker compose up -d backend
-              echo "❌ Đã rollback về $PREV_IMAGE. Báo lỗi workflow."
-              exit 1
-            fi
-
-            # Cập nhật các service phụ thuộc nếu cần (Caddy)
-            docker compose up -d --remove-orphans
-            echo "✅ Deploy thành công và backend hoạt động ổn định!"
-          EOF
+            "chmod +x /opt/meloo/deploy-ec2.sh && /opt/meloo/deploy-ec2.sh '$DEPLOY_IMAGE'"
 
   release:
     name: GitHub Release (Tags)
@@ -253,7 +191,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "${{ github.ref_name }}" \
-            --title "Meloo ${{ github.ref_name }} — Walking Skeleton" \
-            --generate-notes \
-            --notes-start-tag "$(git describe --tags --abbrev=0 "${{ github.ref_name }}^" 2>/dev/null || true)" || \
-          gh release edit "${{ github.ref_name }}" --title "Meloo ${{ github.ref_name }} — Walking Skeleton"
+            --title "Meloo ${{ github.ref_name }}" \
+            --generate-notes || \
+          gh release edit "${{ github.ref_name }}" --title "Meloo ${{ github.ref_name }}"

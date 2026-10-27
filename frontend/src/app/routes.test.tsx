@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import { RouterProvider, createMemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { Providers } from './providers'
@@ -18,7 +18,6 @@ function renderAt(path: string) {
 // Every route in .claude/skills/meloo-frontend/references/routes.md → ticket that replaces it.
 const routes: [path: string, ticket: string][] = [
   ['/', 'FE-SOLO-01'],
-  ['/start', 'FE-AUTH-01'],
   ['/auth/callback', 'FE-AUTH-02'],
   ['/solo', 'FE-SOLO-01'],
   ['/solo/abc', 'FE-SOLO-02'],
@@ -76,10 +75,14 @@ describe('app routes', () => {
   it('redirects /profile to /start for anonymous visitors, lets guests in', async () => {
     useSessionStore.getState().setRole(null)
     const router = renderAt('/profile')
-    await screen.findByTestId('placeholder')
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(
+      'Đặt biệt danh là vào chơi được',
+    )
     expect(router.state.location.pathname).toBe('/start')
 
-    useSessionStore.getState().setRole('GUEST')
+    act(() => {
+      useSessionStore.getState().setRole('GUEST')
+    })
     const guest = renderAt('/profile')
     await screen.findAllByTestId('placeholder')
     expect(guest.state.location.pathname).toBe('/profile')

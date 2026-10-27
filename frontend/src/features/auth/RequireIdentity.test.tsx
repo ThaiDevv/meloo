@@ -1,0 +1,86 @@
+import { render, screen } from '@testing-library/react'
+import { http, HttpResponse } from 'msw'
+import { I18nextProvider } from 'react-i18next'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { afterEach, describe, expect, it } from 'vitest'
+import i18n from '@/i18n'
+import { server } from '@/mocks/server'
+import { useAuthStore } from '@/shared/api/authStore'
+import { RequireIdentity } from './RequireIdentity'
+
+function StartProbe() {
+  const location = useLocation()
+  return <p>start from {(location.state as { from?: string } | null)?.from}</p>
+}
+
+function renderGuard() {
+  return render(
+    <I18nextProvider i18n={i18n}>
+      <MemoryRouter initialEntries={['/profile?tab=stats']}>
+        <Routes>
+          <Route element={<RequireIdentity />}>
+            <Route path="/profile" element={<p>profile</p>} />
+          </Route>
+          <Route path="/start" element={<StartProbe />} />
+        </Routes>
+      </MemoryRouter>
+    </I18nextProvider>,
+  )
+}
+
+const session = {
+  accessToken: 'restored-token',
+  tokenType: 'Bearer',
+  expiresAt: '2026-10-23T13:40:00Z',
+  user: {
+    id: '7c1d2a64-3b5e-4f08-9a1b-2e6f0c4d8a11',
+    kind: 'GUEST',
+    role: 'USER',
+    nickname: 'Meloman',
+    createdAt: '2026-10-23T13:10:00Z',
+  },
+}
+
+afterEach(() => {
+  useAuthStore.getState().clear()
+})
+
+describe('RequireIdentity', () => {
+  it('restores the session from the refresh cookie after a reload', async () => {
+    server.use(http.post('*/api/v1/auth/refresh', () => HttpResponse.json(session)))
+    renderGuard()
+
+    expect(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true')
+    expect(await screen.findByText('profile')).toBeInTheDocument()
+    expect(useAuthStore.getState().accessToken).toBe('restored-token')
+  })
+
+  it('sends visitors with no session to /start and remembers where they were going', async () => {
+    server.use(
+      http.post('*/api/v1/auth/refresh', () =>
+        HttpResponse.json(
+          { type: 'about:blank', title: 'Unauthorized', status: 401, code: 'UNAUTHORIZED' },
+          { status: 401, headers: { 'Content-Type': 'application/problem+json' } },
+        ),
+      ),
+    )
+    renderGuard()
+
+    expect(await screen.findByText('start from /profile?tab=stats')).toBeInTheDocument()
+  })
+
+  it('lets a signed-in user straight through without calling refresh', () => {
+    let refreshCalls = 0
+    server.use(
+      http.post('*/api/v1/auth/refresh', () => {
+        refreshCalls++
+        return HttpResponse.json(session)
+      }),
+    )
+    useAuthStore.getState().setSession(session as never)
+    renderGuard()
+
+    expect(screen.getByText('profile')).toBeInTheDocument()
+    expect(refreshCalls).toBe(0)
+  })
+})

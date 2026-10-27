@@ -1,5 +1,5 @@
 import { CircleAlert, CircleCheck, Info, X } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/shared/lib/utils'
 import { Button } from './Button'
@@ -19,17 +19,35 @@ function ToastView({ item }: { item: ToastItem }) {
   const dismiss = useToastStore((s) => s.dismiss)
   const Icon = icons[item.tone]
 
+  // WCAG 2.2.1: hovering or focusing a toast stops its countdown; leaving it starts a fresh one.
+  const [paused, setPaused] = useState(false)
+
   useEffect(() => {
+    if (paused) return
     const timer = setTimeout(() => {
       dismiss(item.id)
     }, AUTO_DISMISS_MS)
     return () => {
       clearTimeout(timer)
     }
-  }, [dismiss, item.id])
+  }, [dismiss, item.id, paused])
 
   return (
-    <li className="motion-rise pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-2xl bg-raised p-4 shadow-xl">
+    <li
+      onMouseEnter={() => {
+        setPaused(true)
+      }}
+      onMouseLeave={() => {
+        setPaused(false)
+      }}
+      onFocus={() => {
+        setPaused(true)
+      }}
+      onBlur={() => {
+        setPaused(false)
+      }}
+      className="motion-rise pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-2xl bg-raised p-4 shadow-xl"
+    >
       <Icon
         aria-hidden="true"
         className={cn('mt-0.5 size-[18px] shrink-0', iconTone[item.tone])}

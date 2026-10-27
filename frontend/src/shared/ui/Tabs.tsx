@@ -22,17 +22,26 @@ function useTabs(): TabsContext {
   return ctx
 }
 
-interface TabsProps extends Omit<ComponentProps<'div'>, 'defaultValue' | 'onChange'> {
-  defaultValue: string
+type TabsProps = Omit<ComponentProps<'div'>, 'defaultValue' | 'onChange'> & {
   onValueChange?: (value: string) => void
-}
+} & ({ defaultValue: string; value?: never } | { value: string; defaultValue?: never })
 
-/** WAI-ARIA tabs with automatic activation: arrows, Home and End move focus and select. */
-export function Tabs({ defaultValue, onValueChange, className, ...props }: TabsProps) {
-  const [value, setValue] = useState(defaultValue)
+/**
+ * WAI-ARIA tabs with automatic activation: arrows, Home and End move focus and select.
+ * Uncontrolled with `defaultValue`, or controlled with `value` + `onValueChange`.
+ */
+export function Tabs({
+  defaultValue,
+  value: controlled,
+  onValueChange,
+  className,
+  ...props
+}: TabsProps) {
+  const [inner, setInner] = useState(defaultValue ?? '')
+  const value = controlled ?? inner
   const idBase = useId()
   const select = (next: string) => {
-    setValue(next)
+    if (controlled === undefined) setInner(next)
     onValueChange?.(next)
   }
   return (

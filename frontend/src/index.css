@@ -3,4 +3,4 @@
 @import 'tw-animate-css';
 @import './shared/theme/theme.css';
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:where(.dark, .dark *));

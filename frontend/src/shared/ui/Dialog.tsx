@@ -20,6 +20,7 @@ export function Dialog({ open, onClose, title, description, children }: DialogPr
   const { t } = useTranslation('common')
   const ref = useRef<HTMLDialogElement>(null)
   const id = useId()
+  const pressedBackdrop = useRef(false)
 
   useEffect(() => {
     const dialog = ref.current
@@ -33,10 +34,19 @@ export function Dialog({ open, onClose, title, description, children }: DialogPr
       ref={ref}
       aria-labelledby={`${id}-title`}
       aria-describedby={description ? `${id}-description` : undefined}
-      onClose={onClose}
+      onCancel={(event) => {
+        // Esc: only ask. The owner decides, and closing through `open` never calls onClose again.
+        event.preventDefault()
+        onClose()
+      }}
+      onMouseDown={(event) => {
+        pressedBackdrop.current = event.target === event.currentTarget
+      }}
       onClick={(event) => {
-        // The backdrop belongs to the <dialog> itself; the panel inside fills the rest.
-        if (event.target === event.currentTarget) onClose()
+        // The backdrop belongs to the <dialog> itself; the panel inside fills the rest. A drag that
+        // starts in the panel (selecting text) and ends outside is not a click on the backdrop.
+        if (event.target === event.currentTarget && pressedBackdrop.current) onClose()
+        pressedBackdrop.current = false
       }}
       className="m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl bg-surface p-0 text-foreground shadow-2xl backdrop:bg-black/60"
     >

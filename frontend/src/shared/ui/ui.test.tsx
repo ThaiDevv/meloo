@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useThemeStore } from '@/shared/theme/store'
 import { Avatar } from './Avatar'
@@ -38,6 +39,53 @@ describe('Dialog', () => {
 
     await userEvent.click(screen.getByRole('dialog'))
     expect(onClose).toHaveBeenCalledTimes(2)
+  })
+
+  function Controlled({ onClose }: { onClose: () => void }) {
+    const [open, setOpen] = useState(true)
+    return (
+      <Dialog
+        open={open}
+        onClose={() => {
+          onClose()
+          setOpen(false)
+        }}
+        title="Rời phòng?"
+      />
+    )
+  }
+
+  it('reports one request to close per user action when the owner closes it', async () => {
+    const onClose = vi.fn()
+    render(<Controlled onClose={onClose} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Đóng' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('does not call onClose when the owner closes it on its own', () => {
+    const onClose = vi.fn()
+    const { rerender } = render(<Dialog open onClose={onClose} title="Rời phòng?" />)
+    rerender(<Dialog open={false} onClose={onClose} title="Rời phòng?" />)
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('asks to close on Esc (the native cancel event) and leaves the decision to the owner', () => {
+    const onClose = vi.fn()
+    render(<Dialog open onClose={onClose} title="Rời phòng?" />)
+    const cancel = new Event('cancel', { cancelable: true })
+    screen.getByRole('dialog').dispatchEvent(cancel)
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(cancel.defaultPrevented).toBe(true)
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('ignores a click that started inside the panel and ended on the backdrop', () => {
+    const onClose = vi.fn()
+    render(<Dialog open onClose={onClose} title="Rời phòng?" />)
+    fireEvent.mouseDown(screen.getByRole('heading', { name: 'Rời phòng?' }))
+    fireEvent.click(screen.getByRole('dialog'))
+    expect(onClose).not.toHaveBeenCalled()
   })
 
   it('stays closed until `open` is true', () => {
@@ -90,6 +138,36 @@ describe('Tabs', () => {
     expect(screen.getByRole('tab', { name: 'Ba' })).toHaveFocus()
   })
 
+  it('can be controlled from outside with `value`', async () => {
+    const onValueChange = vi.fn()
+    const { rerender } = render(
+      <Tabs value="a" onValueChange={onValueChange}>
+        <TabsList aria-label="Chế độ">
+          <TabsTrigger value="a">Một</TabsTrigger>
+          <TabsTrigger value="b">Hai</TabsTrigger>
+        </TabsList>
+        <TabsContent value="a">Nội dung một</TabsContent>
+        <TabsContent value="b">Nội dung hai</TabsContent>
+      </Tabs>,
+    )
+    await userEvent.click(screen.getByRole('tab', { name: 'Hai' }))
+    expect(onValueChange).toHaveBeenCalledWith('b')
+    // The owner has not changed `value` yet, so the selection does not move by itself.
+    expect(screen.getByRole('tabpanel')).toHaveTextContent('Nội dung một')
+
+    rerender(
+      <Tabs value="b" onValueChange={onValueChange}>
+        <TabsList aria-label="Chế độ">
+          <TabsTrigger value="a">Một</TabsTrigger>
+          <TabsTrigger value="b">Hai</TabsTrigger>
+        </TabsList>
+        <TabsContent value="a">Nội dung một</TabsContent>
+        <TabsContent value="b">Nội dung hai</TabsContent>
+      </Tabs>,
+    )
+    expect(screen.getByRole('tabpanel')).toHaveTextContent('Nội dung hai')
+  })
+
   it('keeps only the selected tab in the tab order', () => {
     renderTabs()
     expect(screen.getByRole('tab', { name: 'Một' })).toHaveAttribute('tabindex', '0')
@@ -129,6 +207,56 @@ describe('Toast', () => {
       vi.advanceTimersByTime(5000)
     })
     expect(screen.queryByText('Mất kết nối')).not.toBeInTheDocument()
+  })
+})
+
+describe('Toast countdown', () => {
+  beforeEach(() => {
+    useToastStore.setState({ toasts: [] })
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('pauses while hovered and restarts a full countdown when the pointer leaves', () => {
+    render(<Toaster />)
+    act(() => {
+      toast({ title: 'Mất kết nối' })
+    })
+    const item = screen.getByText('Mất kết nối').closest('li')
+    if (!item) throw new Error('toast item not found')
+
+    fireEvent.mouseEnter(item)
+    act(() => {
+      vi.advanceTimersByTime(20_000)
+    })
+    expect(screen.getByText('Mất kết nối')).toBeInTheDocument()
+
+    fireEvent.mouseLeave(item)
+    act(() => {
+      vi.advanceTimersByTime(4_999)
+    })
+    expect(screen.getByText('Mất kết nối')).toBeInTheDocument()
+    act(() => {
+      vi.advanceTimersByTime(1)
+    })
+    expect(screen.queryByText('Mất kết nối')).not.toBeInTheDocument()
+  })
+
+  it('pauses while the keyboard focus is inside it', () => {
+    render(<Toaster />)
+    act(() => {
+      toast({ title: 'Mất kết nối' })
+    })
+    const dismiss = screen.getByRole('button', { name: 'Ẩn thông báo' })
+    act(() => {
+      dismiss.focus()
+    })
+    act(() => {
+      vi.advanceTimersByTime(20_000)
+    })
+    expect(screen.getByText('Mất kết nối')).toBeInTheDocument()
   })
 })
 

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { useAuthStore } from '@/shared/api/authStore'
 import type { AvatarId } from './avatars'
 
 interface AvatarState {
@@ -16,3 +17,7 @@ export const useAvatarStore = create<AvatarState>((set) => ({
     set({ avatarId })
   },
 }))
+
+useAuthStore.subscribe((state) => {
+  if (state.user === null) useAvatarStore.getState().setAvatarId(null)
+})

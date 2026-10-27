@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { I18nextProvider } from 'react-i18next'
@@ -11,6 +11,7 @@ import { server } from '@/mocks/server'
 import { useAuthStore } from '@/shared/api/authStore'
 import { GuestStartPage } from './GuestStartPage'
 import { useAvatarStore } from './store'
+import { resetSessionRestoreForTests } from '../useSessionRestore'
 
 function renderPage(initialEntry: string | { pathname: string; state: unknown } = '/start') {
   return render(
@@ -48,11 +49,14 @@ function spyOnGuestRequests() {
 
 beforeEach(() => {
   resetAuthMock()
+  resetSessionRestoreForTests()
 })
 
 afterEach(() => {
   server.events.removeAllListeners()
-  useAuthStore.getState().clear()
+  act(() => {
+    useAuthStore.getState().clear()
+  })
   useAvatarStore.getState().setAvatarId(null)
 })
 
@@ -106,6 +110,34 @@ describe('GuestStartPage', () => {
     await user.click(screen.getByRole('button', { name: 'Vào chơi' }))
 
     expect(await screen.findByText('home')).toBeInTheDocument()
+  })
+
+  it('goes home instead of navigating back to /start when already signed in', () => {
+    useAuthStore.getState().setSession({
+      accessToken: 't',
+      tokenType: 'Bearer',
+      expiresAt: '2026-10-23T13:25:00Z',
+      user: {
+        id: '7c1d2a64-3b5e-4f08-9a1b-2e6f0c4d8a11',
+        kind: 'GUEST',
+        role: 'USER',
+        nickname: 'Meloman',
+        createdAt: '2026-10-23T13:10:00Z',
+      },
+    })
+    renderPage({ pathname: '/start', state: { from: '/start' } })
+
+    expect(screen.getByText('home')).toBeInTheDocument()
+  })
+
+  it('clears the client-side avatar when the auth session is cleared', () => {
+    useAvatarStore.getState().setAvatarId('piano')
+
+    act(() => {
+      useAuthStore.getState().clear()
+    })
+
+    expect(useAvatarStore.getState().avatarId).toBeNull()
   })
 
   it('offers all avatars as one radio group with the first picked, and moves with the arrow keys', async () => {

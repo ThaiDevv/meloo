@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { I18nextProvider } from 'react-i18next'
@@ -7,24 +8,28 @@ import { afterEach, describe, expect, it } from 'vitest'
 import i18n from '@/i18n'
 import { server } from '@/mocks/server'
 import { useAuthStore } from '@/shared/api/authStore'
+import { GuestStartPage } from './guest/GuestStartPage'
 import { RequireIdentity } from './RequireIdentity'
+import { resetSessionRestoreForTests } from './useSessionRestore'
 
 function StartProbe() {
   const location = useLocation()
   return <p>start from {(location.state as { from?: string } | null)?.from}</p>
 }
 
-function renderGuard() {
+function renderGuard(showGuestPage = false) {
   return render(
     <I18nextProvider i18n={i18n}>
-      <MemoryRouter initialEntries={['/profile?tab=stats']}>
-        <Routes>
-          <Route element={<RequireIdentity />}>
-            <Route path="/profile" element={<p>profile</p>} />
-          </Route>
-          <Route path="/start" element={<StartProbe />} />
-        </Routes>
-      </MemoryRouter>
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter initialEntries={['/profile?tab=stats']}>
+          <Routes>
+            <Route element={<RequireIdentity />}>
+              <Route path="/profile" element={<p>profile</p>} />
+            </Route>
+            <Route path="/start" element={showGuestPage ? <GuestStartPage /> : <StartProbe />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
     </I18nextProvider>,
   )
 }
@@ -43,7 +48,10 @@ const session = {
 }
 
 afterEach(() => {
-  useAuthStore.getState().clear()
+  act(() => {
+    useAuthStore.getState().clear()
+  })
+  resetSessionRestoreForTests()
 })
 
 describe('RequireIdentity', () => {
@@ -68,6 +76,23 @@ describe('RequireIdentity', () => {
     renderGuard()
 
     expect(await screen.findByText('start from /profile?tab=stats')).toBeInTheDocument()
+  })
+
+  it('does not refresh again when the guard redirects a visitor to /start', async () => {
+    let refreshCalls = 0
+    server.use(
+      http.post('*/api/v1/auth/refresh', () => {
+        refreshCalls++
+        return HttpResponse.json(
+          { type: 'about:blank', title: 'Unauthorized', status: 401, code: 'UNAUTHORIZED' },
+          { status: 401, headers: { 'Content-Type': 'application/problem+json' } },
+        )
+      }),
+    )
+    renderGuard(true)
+
+    expect(await screen.findByLabelText('Biệt danh')).toBeInTheDocument()
+    expect(refreshCalls).toBe(1)
   })
 
   it('lets a signed-in user straight through without calling refresh', () => {

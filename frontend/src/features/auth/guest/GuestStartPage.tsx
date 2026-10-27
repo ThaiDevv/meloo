@@ -9,7 +9,14 @@ import { GuestForm } from './GuestForm'
 function safeFrom(state: unknown): string {
   const from =
     typeof state === 'object' && state !== null && 'from' in state ? state.from : undefined
-  return typeof from === 'string' && from.startsWith('/') && !from.startsWith('//') ? from : '/'
+  return typeof from === 'string' &&
+    from.startsWith('/') &&
+    !from.startsWith('//') &&
+    from !== '/start' &&
+    !from.startsWith('/start?') &&
+    !from.startsWith('/start#')
+    ? from
+    : '/'
 }
 
 export function GuestStartPage() {

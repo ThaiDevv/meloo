@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import { RouterProvider, createMemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { Providers } from './providers'
@@ -80,7 +80,9 @@ describe('app routes', () => {
     )
     expect(router.state.location.pathname).toBe('/start')
 
-    useSessionStore.getState().setRole('GUEST')
+    act(() => {
+      useSessionStore.getState().setRole('GUEST')
+    })
     const guest = renderAt('/profile')
     await screen.findAllByTestId('placeholder')
     expect(guest.state.location.pathname).toBe('/profile')

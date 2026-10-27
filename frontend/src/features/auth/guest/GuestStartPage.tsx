@@ -1,6 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useSessionStore } from '@/shared/session/store'
+import { SessionRestoreFailed, SessionRestoring } from '../SessionRestoreStates'
+import { useSessionRestore } from '../useSessionRestore'
 import { GuestForm } from './GuestForm'
 
 /** Only in-app paths: `from` comes from router state, but never trust it to leave the site. */
@@ -14,9 +16,14 @@ export function GuestStartPage() {
   const { t } = useTranslation('auth')
   const role = useSessionStore((s) => s.role)
   const location = useLocation()
+  const { state, retry } = useSessionRestore()
 
   // Signed in (or just became a guest through the form): nothing to ask here.
   if (role !== null) return <Navigate to={safeFrom(location.state)} replace />
+
+  // Ask before offering the form: someone whose cookie is still valid must not become a new guest.
+  if (state === 'checking') return <SessionRestoring />
+  if (state === 'failed') return <SessionRestoreFailed onRetry={retry} />
 
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-12 md:grid-cols-2 md:items-center md:gap-16 md:py-24">

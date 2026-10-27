@@ -30,6 +30,11 @@ function renderPage(initialEntry: string | { pathname: string; state: unknown } 
   )
 }
 
+async function renderForm(initialEntry?: Parameters<typeof renderPage>[0]) {
+  renderPage(initialEntry)
+  await screen.findByLabelText('Biệt danh')
+}
+
 /** Records every POST /auth/guest body; answers with the mock server unless overridden. */
 function spyOnGuestRequests() {
   const bodies: unknown[] = []
@@ -52,8 +57,8 @@ afterEach(() => {
 })
 
 describe('GuestStartPage', () => {
-  it('has one h1 and a labelled nickname field with its limit next to it', () => {
-    renderPage()
+  it('has one h1 and a labelled nickname field with its limit next to it', async () => {
+    await renderForm()
 
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
     const field = screen.getByLabelText('Biệt danh')
@@ -68,7 +73,7 @@ describe('GuestStartPage', () => {
   ])('rejects %j before sending anything (BR-22)', async (nickname, message) => {
     const bodies = spyOnGuestRequests()
     const user = userEvent.setup()
-    renderPage()
+    await renderForm()
 
     if (nickname) await user.type(screen.getByLabelText('Biệt danh'), nickname)
     await user.click(screen.getByRole('button', { name: 'Vào chơi' }))
@@ -81,7 +86,7 @@ describe('GuestStartPage', () => {
   it('trims the nickname, sends it and lets the guest in with the chosen avatar', async () => {
     const bodies = spyOnGuestRequests()
     const user = userEvent.setup()
-    renderPage({ pathname: '/start', state: { from: '/solo' } })
+    await renderForm({ pathname: '/start', state: { from: '/solo' } })
 
     await user.type(screen.getByLabelText('Biệt danh'), '  Meloman  ')
     await user.click(screen.getByRole('radio', { name: 'Piano' }))
@@ -95,7 +100,7 @@ describe('GuestStartPage', () => {
 
   it('goes home when no page asked for the sign-in, and ignores a `from` that leaves the site', async () => {
     const user = userEvent.setup()
-    renderPage({ pathname: '/start', state: { from: '//evil.example' } })
+    await renderForm({ pathname: '/start', state: { from: '//evil.example' } })
 
     await user.type(screen.getByLabelText('Biệt danh'), 'Meloman')
     await user.click(screen.getByRole('button', { name: 'Vào chơi' }))
@@ -105,7 +110,7 @@ describe('GuestStartPage', () => {
 
   it('offers all avatars as one radio group with the first picked, and moves with the arrow keys', async () => {
     const user = userEvent.setup()
-    renderPage()
+    await renderForm()
 
     const group = screen.getByRole('group', { name: 'Avatar' })
     const radios = screen.getAllByRole('radio')
@@ -120,7 +125,7 @@ describe('GuestStartPage', () => {
 
   it('shows the field error when the server rejects the nickname (banned word)', async () => {
     const user = userEvent.setup()
-    renderPage()
+    await renderForm()
 
     await user.type(screen.getByLabelText('Biệt danh'), 'xxbadwordxx')
     await user.click(screen.getByRole('button', { name: 'Vào chơi' }))
@@ -132,7 +137,7 @@ describe('GuestStartPage', () => {
 
   it('tells the player to wait on 429 and to check the connection on other failures', async () => {
     const user = userEvent.setup()
-    renderPage()
+    await renderForm()
     server.use(
       http.post('*/api/v1/auth/guest', () =>
         HttpResponse.json(
@@ -170,11 +175,56 @@ describe('GuestStartPage', () => {
     expect(screen.getByText('home')).toBeInTheDocument()
   })
 
+  it('does not offer the form to someone whose refresh cookie is still valid', async () => {
+    server.use(
+      http.post('*/api/v1/auth/refresh', () =>
+        HttpResponse.json({
+          accessToken: 'restored-token',
+          tokenType: 'Bearer',
+          expiresAt: '2026-10-23T13:40:00Z',
+          user: {
+            id: '7c1d2a64-3b5e-4f08-9a1b-2e6f0c4d8a11',
+            kind: 'GUEST',
+            role: 'USER',
+            nickname: 'Meloman',
+            createdAt: '2026-10-23T13:10:00Z',
+          },
+        }),
+      ),
+    )
+    renderPage()
+
+    expect(await screen.findByText('home')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Biệt danh')).not.toBeInTheDocument()
+  })
+
+  it('keeps the form away, with a retry, when the server cannot say if a session exists', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.post('*/api/v1/auth/refresh', () =>
+        HttpResponse.json(
+          { type: 'about:blank', title: 'Unavailable', status: 503, code: 'UNAVAILABLE' },
+          { status: 503, headers: { 'Content-Type': 'application/problem+json' } },
+        ),
+      ),
+    )
+    renderPage()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Chưa khôi phục được phiên')
+    expect(screen.queryByLabelText('Biệt danh')).not.toBeInTheDocument()
+
+    server.resetHandlers()
+    await user.click(screen.getByRole('button', { name: 'Thử lại' }))
+    expect(await screen.findByLabelText('Biệt danh')).toBeInTheDocument()
+  })
+
   it('renders in English too', async () => {
     await i18n.changeLanguage('en')
     renderPage()
 
-    expect(screen.getByLabelText('Nickname')).toHaveAccessibleDescription('3 to 20 characters.')
+    expect(await screen.findByLabelText('Nickname')).toHaveAccessibleDescription(
+      '3 to 20 characters.',
+    )
     expect(screen.getByRole('button', { name: 'Start playing' })).toBeInTheDocument()
   })
 })

@@ -25,12 +25,13 @@ if [[ -z "$ACCOUNT_ID" ]]; then
   exit 1
 fi
 
-echo "Đang cấu hình AWS Budget cho Account ID: $ACCOUNT_ID..."
+BUDGET_NAME="Meloo-Monthly-Cost-Budget-1USD"
+echo "Đang cấu hình AWS Budget cho Account ID: $ACCOUNT_ID (Budget: $BUDGET_NAME)..."
 echo "Email nhận cảnh báo: $EMAIL"
 
 BUDGET_JSON=$(cat <<EOF
 {
-  "BudgetName": "Meloo-Monthly-Cost-Budget-1USD",
+  "BudgetName": "$BUDGET_NAME",
   "BudgetLimit": {
     "Amount": "1.0",
     "Unit": "USD"
@@ -105,25 +106,56 @@ NOTIFICATIONS_JSON=$(cat <<EOF
 EOF
 )
 
-BUDGET_EXISTS=false
-if aws budgets describe-budget --account-id "$ACCOUNT_ID" --budget-name "Meloo-Monthly-Cost-Budget-1USD" &>/dev/null; then
-  BUDGET_EXISTS=true
-  echo "Budget 'Meloo-Monthly-Cost-Budget-1USD' đã tồn tại. Đang cập nhật..."
-  aws budgets delete-budget --account-id "$ACCOUNT_ID" --budget-name "Meloo-Monthly-Cost-Budget-1USD"
-fi
+create_or_update_notifications() {
+  local notif_array=('{"NotificationType":"ACTUAL","ComparisonOperator":"GREATER_THAN","Threshold":80,"ThresholdType":"PERCENTAGE"}'
+                     '{"NotificationType":"ACTUAL","ComparisonOperator":"GREATER_THAN","Threshold":100,"ThresholdType":"PERCENTAGE"}'
+                     '{"NotificationType":"FORECASTED","ComparisonOperator":"GREATER_THAN","Threshold":100,"ThresholdType":"PERCENTAGE"}')
+  local sub_json="[{\"SubscriptionType\":\"EMAIL\",\"Address\":\"$EMAIL\"}]"
 
-echo "Đang áp dụng Budget 'Meloo-Monthly-Cost-Budget-1USD' kèm thông báo..."
-aws budgets create-budget \
-  --account-id "$ACCOUNT_ID" \
-  --budget "$BUDGET_JSON" \
-  --notifications-with-subscribers "$NOTIFICATIONS_JSON"
+  # Xóa các notification cũ nếu có để tránh trùng lặp
+  local existing_notifs
+  existing_notifs=$(aws budgets describe-notifications-for-budget \
+    --account-id "$ACCOUNT_ID" \
+    --budget-name "$BUDGET_NAME" \
+    --query "Notifications" \
+    --output json 2>/dev/null || echo "[]")
 
-echo "=========================================================================="
-if [[ "$BUDGET_EXISTS" = true ]]; then
+  # Thu hồi notification cũ an toàn
+  for notif in "${notif_array[@]}"; do
+    aws budgets delete-notification \
+      --account-id "$ACCOUNT_ID" \
+      --budget-name "$BUDGET_NAME" \
+      --notification "$notif" 2>/dev/null || true
+  done
+
+  # Thêm các notification mới
+  for notif in "${notif_array[@]}"; do
+    aws budgets create-notification \
+      --account-id "$ACCOUNT_ID" \
+      --budget-name "$BUDGET_NAME" \
+      --notification "$notif" \
+      --subscribers "$sub_json"
+  done
+}
+
+if aws budgets describe-budget --account-id "$ACCOUNT_ID" --budget-name "$BUDGET_NAME" &>/dev/null; then
+  echo "Budget '$BUDGET_NAME' đã tồn tại. Đang cập nhật định mức và thông báo (không xóa budget)..."
+  aws budgets modify-budget \
+    --account-id "$ACCOUNT_ID" \
+    --new-budget "$BUDGET_JSON"
+  create_or_update_notifications
+  echo "=========================================================================="
   echo "Thành công: Đã cập nhật AWS Budget 1.00 USD!"
 else
+  echo "Đang tạo mới Budget '$BUDGET_NAME' kèm thông báo..."
+  aws budgets create-budget \
+    --account-id "$ACCOUNT_ID" \
+    --budget "$BUDGET_JSON" \
+    --notifications-with-subscribers "$NOTIFICATIONS_JSON"
+  echo "=========================================================================="
   echo "Thành công: Đã tạo mới AWS Budget 1.00 USD!"
 fi
+
 echo "Cảnh báo sẽ được gửi tới: $EMAIL"
 echo "- Khi chi phí thực tế vượt 80% (\$0.80 USD)"
 echo "- Khi chi phí thực tế vượt 100% (\$1.00 USD)"

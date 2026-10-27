@@ -98,7 +98,7 @@ echo "Cấu hình Inbound Rules cho $EC2_SG_NAME..."
 authorize_ingress "$EC2_SG_ID" --protocol tcp --port 80 --cidr 0.0.0.0/0
 authorize_ingress "$EC2_SG_ID" --protocol tcp --port 443 --cidr 0.0.0.0/0
 
-# Thu hồi các rule SSH cũ không khớp IP hiện tại (đảm bảo AC2: chỉ từ IP của bạn)
+# Thu hồi các rule SSH IPv4 cũ không khớp IP hiện tại (đảm bảo AC2: chỉ từ IP của bạn)
 echo "Kiểm tra và dọn dẹp các rule SSH cũ..."
 OLD_SSH_CIDRS=$(aws ec2 describe-security-group-rules \
   --region "$REGION" \
@@ -108,13 +108,38 @@ OLD_SSH_CIDRS=$(aws ec2 describe-security-group-rules \
 
 for cidr in $OLD_SSH_CIDRS; do
   if [[ "$cidr" != "$SSH_CIDR" && "$cidr" != "None" ]]; then
-    echo "Thu hồi SSH rule cũ không khớp: $cidr..."
-    aws ec2 revoke-security-group-ingress \
+    echo "Thu hồi SSH IPv4 rule cũ không khớp: $cidr..."
+    if ! aws ec2 revoke-security-group-ingress \
       --region "$REGION" \
       --group-id "$EC2_SG_ID" \
       --protocol tcp \
       --port 22 \
-      --cidr "$cidr" 2>/dev/null || true
+      --cidr "$cidr"; then
+      echo "Lỗi: Không thể thu hồi SSH rule cũ ($cidr). Dừng script để tránh vi phạm AC2." >&2
+      exit 1
+    fi
+  fi
+done
+
+# Kiểm tra và thu hồi các rule SSH IPv6 nếu có (AC2 chỉ cho phép SSH từ IP của bạn)
+OLD_SSH_IPV6=$(aws ec2 describe-security-group-rules \
+  --region "$REGION" \
+  --filters "Name=group-id,Values=$EC2_SG_ID" \
+  --query "SecurityGroupRules[?FromPort==\`22\` && ToPort==\`22\` && !IsEgress].CidrIpv6" \
+  --output text 2>/dev/null || true)
+
+for cidr_v6 in $OLD_SSH_IPV6; do
+  if [[ "$cidr_v6" != "None" && -n "$cidr_v6" ]]; then
+    echo "Thu hồi SSH IPv6 rule không xác định: $cidr_v6..."
+    if ! aws ec2 revoke-security-group-ingress \
+      --region "$REGION" \
+      --group-id "$EC2_SG_ID" \
+      --protocol tcp \
+      --port 22 \
+      --ipv6-cidr "$cidr_v6"; then
+      echo "Lỗi: Không thể thu hồi SSH IPv6 rule cũ ($cidr_v6)." >&2
+      exit 1
+    fi
   fi
 done
 
@@ -151,7 +176,7 @@ echo "==========================================================================
 echo "Hoàn tất thiết lập Security Groups:"
 echo "- EC2 Security Group ID: $EC2_SG_ID ($EC2_SG_NAME)"
 echo "  + Inbound 80, 443 (TCP): 0.0.0.0/0"
-echo "  + Inbound 22 (SSH TCP): $SSH_CIDR (đã dọn các rule SSH cũ)"
+echo "  + Inbound 22 (SSH TCP): $SSH_CIDR (đã dọn các rule SSH cũ an toàn)"
 echo "- RDS Security Group ID: $RDS_SG_ID ($RDS_SG_NAME)"
 echo "  + Inbound 5432 (Postgres): CHỈ từ $EC2_SG_ID"
 echo "  + Public access: KHÔNG MỞ"

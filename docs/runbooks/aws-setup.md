@@ -238,7 +238,7 @@ nc -zv <RDS_ENDPOINT> 5432
 > **Lưu ý về DNS only và SSL:**
 > - **Frontend (`@`):** Vercel khuyến nghị để **DNS only (Đám mây xám)** khi dùng Cloudflare DNS để Vercel tự động cấp và gia hạn chứng chỉ SSL sạch sẽ, tránh xung đột proxy.
 > - **Backend (`api`):** Ban đầu bắt buộc để **DNS only (Đám mây xám)** để Caddy trực tiếp nhận kết nối ACME challenge (HTTP-01) từ Let's Encrypt / ZeroSSL qua port 80.
-> - **Khi muốn bật Cloudflare Proxy (Đám mây cam) cho `api` sau này:** Cần cấu hình SSL/TLS mode trên Cloudflare là **Full (strict)**. File `Caddyfile` của Meloo đã được cấu hình sẵn để tự động phát hiện header `CF-Connecting-IP`, bảo toàn IP thực của client cho các bộ lọc rate limit (`guest-create-per-hour`).
+> - **Chưa bật Cloudflare Proxy (Đám mây cam) cho `api`:** Cần giữ `api` ở chế độ DNS only cho tới khi có ticket chính thức (MEL-127) thiết lập cấu hình trusted proxy nhận diện IP client. Nếu bật proxy sớm, Caddy sẽ thấy IP của Cloudflare edge khiến rate-limit khách (`guest-create-per-hour`) trong backend bị chia sẻ chung một bucket.
 
 3. Kiểm tra phân giải tên miền từ máy local:
    ```bash
@@ -258,13 +258,10 @@ nc -zv <RDS_ENDPOINT> 5432
 2. Đồng bộ các file cấu hình từ repository lên EC2:
    *(Thực hiện từ máy local của bạn bằng `scp`)*
    ```bash
-   scp -i ~/.ssh/meloo-ec2-key.pem \
-     infra/caddy/Caddyfile \
-     infra/aws/docker-compose.prod.yml \
-     infra/aws/env.prod.example \
-     ubuntu@<ELASTIC_IP>:/opt/meloo/
+   scp -i ~/.ssh/meloo-ec2-key.pem infra/caddy/Caddyfile ubuntu@<ELASTIC_IP>:/opt/meloo/
+   scp -i ~/.ssh/meloo-ec2-key.pem infra/aws/docker-compose.prod.yml ubuntu@<ELASTIC_IP>:/opt/meloo/docker-compose.yml
+   scp -i ~/.ssh/meloo-ec2-key.pem infra/aws/env.prod.example ubuntu@<ELASTIC_IP>:/opt/meloo/
    ```
-   *(Hoặc trên EC2, đổi tên file compose cho tiện dùng: `mv /opt/meloo/docker-compose.prod.yml /opt/meloo/docker-compose.yml`)*
 
 3. Tạo file `.env` trên EC2 từ mẫu `env.prod.example`:
    ```bash

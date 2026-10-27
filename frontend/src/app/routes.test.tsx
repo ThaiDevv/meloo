@@ -40,7 +40,6 @@ const routes: [path: string, ticket: string][] = [
   ['/legal/privacy', 'LEG-01'],
   ['/legal/terms', 'LEG-01'],
   ['/legal/data-deletion', 'LEG-01'],
-  ['/_ui', 'FE-01'],
 ]
 
 describe('app routes', () => {
@@ -52,6 +51,13 @@ describe('app routes', () => {
     renderAt(path)
     const placeholder = await screen.findByTestId('placeholder')
     expect(placeholder).toHaveTextContent(ticket)
+  })
+
+  it('serves the component gallery at /_ui', async () => {
+    renderAt('/_ui')
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Thư viện giao diện' }),
+    ).toBeInTheDocument()
   })
 
   it('shows not-found for unknown paths', async () => {

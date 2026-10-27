@@ -52,7 +52,7 @@ class CatalogSeedJsonQualityTest {
             .as("Track title must not be blank")
             .isNotBlank()
             .as("Track %s must be original version (no remixes/lives/etc)", track.title())
-            .doesNotMatch(NON_ORIGINAL_PATTERN);
+            .doesNotContainPattern(NON_ORIGINAL_PATTERN);
 
         assertThat(track.releaseYear())
             .as("Track %s must have releaseYear", track.title())
@@ -80,5 +80,29 @@ class CatalogSeedJsonQualityTest {
             .isTrue();
       }
     }
+  }
+
+  @Test
+  @DisplayName(
+      "NON_ORIGINAL_PATTERN correctly detects derivative titles and fails doesNotContainPattern")
+  void nonOriginalPattern_detectsDerivativeTitles() {
+    assertThat(NON_ORIGINAL_PATTERN.matcher("Faded (Slowed Remix)").find()).isTrue();
+    assertThat(NON_ORIGINAL_PATTERN.matcher("Hotel California - Live On MTV").find()).isTrue();
+    assertThat(NON_ORIGINAL_PATTERN.matcher("Attention (Acoustic Version)").find()).isTrue();
+    assertThat(NON_ORIGINAL_PATTERN.matcher("Shape of You (Piano Cover)").find()).isTrue();
+    assertThat(NON_ORIGINAL_PATTERN.matcher("Shape of You (Sped Up)").find()).isTrue();
+    assertThat(NON_ORIGINAL_PATTERN.matcher("Shape of You (Demo)").find()).isTrue();
+    assertThat(NON_ORIGINAL_PATTERN.matcher("Shape of You (Instrumental)").find()).isTrue();
+    assertThat(NON_ORIGINAL_PATTERN.matcher("Shape of You (Karaoke)").find()).isTrue();
+
+    // Pristine titles should not match
+    assertThat(NON_ORIGINAL_PATTERN.matcher("Shape of You").find()).isFalse();
+    assertThat(NON_ORIGINAL_PATTERN.matcher("Nơi Này Có Anh").find()).isFalse();
+    assertThat(NON_ORIGINAL_PATTERN.matcher("Chạy Ngay Đi").find()).isFalse();
+
+    // Verify doesNotContainPattern fails on derivative titles
+    org.junit.jupiter.api.Assertions.assertThrows(
+        AssertionError.class,
+        () -> assertThat("Faded (Slowed Remix)").doesNotContainPattern(NON_ORIGINAL_PATTERN));
   }
 }

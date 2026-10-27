@@ -165,7 +165,7 @@ class CatalogSeedIntegrationTest extends IntegrationTest {
                   .isGreaterThanOrEqualTo(1);
               assertThat(t.getTitle())
                   .as("Track %s must be original version (no non-original pattern)", t.getTitle())
-                  .doesNotMatch(nonOriginalPattern);
+                  .doesNotContainPattern(nonOriginalPattern);
             });
 
     // Verify AC5 & N5: Seeded artists have valid numeric Deezer providerArtistId

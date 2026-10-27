@@ -71,7 +71,7 @@ export function GuestForm() {
         </p>
         {nicknameError ? (
           <p id="guest-nickname-error" role="alert" className="text-sm font-medium text-negative">
-            {t(nicknameError)}
+            {t(nicknameError, { min: NICKNAME_MIN, max: NICKNAME_MAX })}
           </p>
         ) : null}
       </div>

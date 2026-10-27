@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { I18nextProvider } from 'react-i18next'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
@@ -82,5 +83,40 @@ describe('RequireIdentity', () => {
 
     expect(screen.getByText('profile')).toBeInTheDocument()
     expect(refreshCalls).toBe(0)
+  })
+
+  it('keeps the player here, with a retry, when the server is unavailable', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.post('*/api/v1/auth/refresh', () =>
+        HttpResponse.json(
+          { type: 'about:blank', title: 'Unavailable', status: 503, code: 'UNAVAILABLE' },
+          { status: 503, headers: { 'Content-Type': 'application/problem+json' } },
+        ),
+      ),
+    )
+    renderGuard()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Chưa khôi phục được phiên')
+    expect(screen.queryByText(/^start from/)).not.toBeInTheDocument()
+
+    server.use(http.post('*/api/v1/auth/refresh', () => HttpResponse.json(session)))
+    await user.click(screen.getByRole('button', { name: 'Thử lại' }))
+    expect(await screen.findByText('profile')).toBeInTheDocument()
+  })
+
+  it('does not treat a repeated REFRESH_RACE as a lost session', async () => {
+    server.use(
+      http.post('*/api/v1/auth/refresh', () =>
+        HttpResponse.json(
+          { type: 'about:blank', title: 'Race', status: 401, code: 'REFRESH_RACE' },
+          { status: 401, headers: { 'Content-Type': 'application/problem+json' } },
+        ),
+      ),
+    )
+    renderGuard()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Chưa khôi phục được phiên')
+    expect(screen.queryByText(/^start from/)).not.toBeInTheDocument()
   })
 })

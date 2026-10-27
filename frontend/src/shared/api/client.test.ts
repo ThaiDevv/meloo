@@ -116,6 +116,32 @@ describe('apiClient', () => {
     expect(refreshCalls).toBe(1)
   })
 
+  it('replays the request after a REFRESH_RACE that resolves on the single retry', async () => {
+    useAuthStore.getState().setSession(sessionWith('expired-token'))
+    let refreshCalls = 0
+    server.use(
+      http.get('*/api/v1/me', ({ request }) =>
+        request.headers.get('Authorization') === 'Bearer new-token'
+          ? HttpResponse.json(meBody)
+          : unauthorized(),
+      ),
+      http.post('*/api/v1/auth/refresh', () => {
+        refreshCalls++
+        return refreshCalls === 1
+          ? HttpResponse.json(
+              { type: 'about:blank', title: 'Race', status: 401, code: 'REFRESH_RACE' },
+              { status: 401, headers: { 'Content-Type': 'application/problem+json' } },
+            )
+          : HttpResponse.json(sessionWith('new-token'))
+      }),
+    )
+
+    const { response } = await createApiClient(BASE).GET('/api/v1/me')
+
+    expect(response.status).toBe(200)
+    expect(refreshCalls).toBe(2)
+  })
+
   it('replays a request body after the refresh', async () => {
     useAuthStore.getState().setSession(sessionWith('expired-token'))
     const bodies: unknown[] = []

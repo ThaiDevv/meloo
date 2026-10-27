@@ -62,6 +62,14 @@ describe('refreshSession', () => {
     expect(useSessionStore.getState().role).toBeNull()
   })
 
+  it('ends the session when the account is locked (403 ACCOUNT_LOCKED)', async () => {
+    useAuthStore.getState().setSession(session)
+    server.use(http.post('*/api/v1/auth/refresh', () => problem(403, 'ACCOUNT_LOCKED')))
+
+    await expect(refreshSession(BASE)).resolves.toBe('expired')
+    expect(useAuthStore.getState().accessToken).toBeNull()
+  })
+
   it('keeps the session and retries once after REFRESH_RACE', async () => {
     useAuthStore.getState().setSession({ ...session, accessToken: 'old-token' })
     let calls = 0

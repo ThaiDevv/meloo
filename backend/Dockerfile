@@ -13,7 +13,7 @@ COPY backend/mvnw /workspace/backend/mvnw
 COPY backend/pom.xml /workspace/backend/pom.xml
 
 WORKDIR /workspace/backend
-RUN chmod +x ./mvnw
+RUN chmod +x ./mvnw && ./mvnw dependency:go-offline -B || true
 
 # Copy source code and build jar without running tests (tests run in CI verify)
 COPY backend/src/ /workspace/backend/src/

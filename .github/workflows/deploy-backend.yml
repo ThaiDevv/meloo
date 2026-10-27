@@ -88,6 +88,7 @@ jobs:
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=sha,prefix=sha-,format=short
+            type=ref,event=tag
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
 
@@ -121,6 +122,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -190,13 +192,23 @@ jobs:
               echo "BACKEND_IMAGE=${DEPLOY_IMAGE}" >> .env
             fi
 
-            # Pull image mới
+            # Pull image mới kèm bảo vệ rollback nếu kéo thất bại
             echo "Pulling backend image: $DEPLOY_IMAGE..."
-            docker compose pull backend
+            if ! docker compose pull backend; then
+              echo "❌ docker compose pull thất bại! Đang hoàn tác .env về $PREV_IMAGE..."
+              sed -i "s|^BACKEND_IMAGE=.*|BACKEND_IMAGE=${PREV_IMAGE}|" .env
+              exit 1
+            fi
 
-            # Khởi động lại service backend
+            # Khởi động lại service backend kèm bảo vệ rollback
             echo "Restarting backend container..."
-            docker compose up -d backend
+            if ! docker compose up -d backend; then
+              echo "❌ docker compose up thất bại! Đang rollback về $PREV_IMAGE..."
+              sed -i "s|^BACKEND_IMAGE=.*|BACKEND_IMAGE=${PREV_IMAGE}|" .env
+              docker compose pull backend || true
+              docker compose up -d backend
+              exit 1
+            fi
 
             # Kiểm tra sức khỏe backend có retry
             echo "Kiểm tra /actuator/health trên EC2..."

@@ -1,0 +1,247 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Bỏ qua paths-filter và deploy ngay'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-backend-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  detect-changes:
+    name: Detect deploy triggers
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      should_deploy: ${{ steps.check.outputs.should_deploy }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Paths filter on push to main
+        id: filter
+        if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/v') && github.event.before != '0000000000000000000000000000000000000000'
+        uses: dorny/paths-filter@v4
+        with:
+          base: ${{ github.event.before }}
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'contracts/**'
+              - 'infra/**'
+              - '.github/workflows/deploy-*.yml'
+      - name: Determine if deploy should run
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.ref }}" =~ ^refs/tags/v ]]; then
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.filter.outputs.backend }}" = "true" ] || [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-and-push:
+    name: Build & Push to GHCR
+    needs: detect-changes
+    if: needs.detect-changes.outputs.should_deploy == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      deploy_image: ${{ steps.output-image.outputs.deploy_image }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/meloo-backend
+          flavor: |
+            latest=auto
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,prefix=sha-,format=short
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Resolve target deployment image
+        id: output-image
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          SHA7=$(echo "${{ github.sha }}" | cut -c1-7)
+          if [[ "${{ github.ref }}" =~ ^refs/tags/v ]]; then
+            TAG_NAME="${{ github.ref_name }}"
+            echo "deploy_image=ghcr.io/${OWNER}/meloo-backend:${TAG_NAME}" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy_image=ghcr.io/${OWNER}/meloo-backend:sha-${SHA7}" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy-ec2:
+    name: Deploy to EC2
+    needs: [detect-changes, build-and-push]
+    if: needs.detect-changes.outputs.should_deploy == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Deploy on EC2 via SSH
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER || 'ubuntu' }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_SSH_KNOWN_HOSTS: ${{ secrets.EC2_SSH_KNOWN_HOSTS }}
+          DEPLOY_IMAGE: ${{ needs.build-and-push.outputs.deploy_image }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          if [ -z "${EC2_HOST:-}" ] || [ -z "${EC2_SSH_KEY:-}" ]; then
+            echo "::error::Thiếu GitHub Secrets (EC2_HOST hoặc EC2_SSH_KEY). Vui lòng cấu hình theo docs/runbooks/aws-setup.md."
+            exit 1
+          fi
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "$EC2_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          if [ -n "${EC2_SSH_KNOWN_HOSTS:-}" ]; then
+            echo "$EC2_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          fi
+          chmod 644 ~/.ssh/known_hosts
+
+          SSH_CMD="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes"
+          SCP_CMD="scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes"
+
+          echo "Đồng bộ file docker-compose.prod.yml lên EC2..."
+          $SCP_CMD infra/compose/docker-compose.prod.yml "${EC2_USER}@${EC2_HOST}:/opt/meloo/docker-compose.yml"
+
+          echo "Thực hiện deploy trên EC2..."
+          $SSH_CMD "${EC2_USER}@${EC2_HOST}" \
+            "DEPLOY_IMAGE='$DEPLOY_IMAGE' GH_TOKEN='$GH_TOKEN' ACTOR='$ACTOR' bash -s" << 'EOF'
+            set -euo pipefail
+            cd /opt/meloo
+
+            if [ ! -f .env ]; then
+              echo "::error::Không tìm thấy file /opt/meloo/.env trên EC2! Vui lòng chuẩn bị theo hướng dẫn INF-01."
+              exit 1
+            fi
+
+            # Đăng nhập GHCR trên EC2 nếu có token
+            if [ -n "${GH_TOKEN:-}" ] && [ -n "${ACTOR:-}" ]; then
+              echo "$GH_TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin >/dev/null 2>&1 || true
+            fi
+
+            # Ghi nhận tag trước đó phục vụ rollback
+            PREV_IMAGE=$(grep -E '^BACKEND_IMAGE=' .env | cut -d= -f2- || true)
+            if [ -z "$PREV_IMAGE" ]; then
+              PREV_IMAGE="ghcr.io/thaidevv/meloo-backend:latest"
+            fi
+            echo "Current backend image: $PREV_IMAGE"
+            echo "Deploying target image: $DEPLOY_IMAGE"
+
+            # Cập nhật BACKEND_IMAGE trong .env
+            if grep -q '^BACKEND_IMAGE=' .env; then
+              sed -i "s|^BACKEND_IMAGE=.*|BACKEND_IMAGE=${DEPLOY_IMAGE}|" .env
+            else
+              echo "BACKEND_IMAGE=${DEPLOY_IMAGE}" >> .env
+            fi
+
+            # Pull image mới
+            echo "Pulling backend image: $DEPLOY_IMAGE..."
+            docker compose pull backend
+
+            # Khởi động lại service backend
+            echo "Restarting backend container..."
+            docker compose up -d backend
+
+            # Kiểm tra sức khỏe backend có retry
+            echo "Kiểm tra /actuator/health trên EC2..."
+            HEALTHY=0
+            for i in $(seq 1 12); do
+              sleep 5
+              echo "Lần thử $i/12 kiểm tra healthcheck..."
+              STATUS=$(docker compose exec -T backend wget -qO- http://localhost:8080/actuator/health 2>/dev/null || true)
+              if echo "$STATUS" | grep -q '"UP"'; then
+                echo "✅ Backend đã sẵn sàng (status UP): $STATUS"
+                HEALTHY=1
+                break
+              fi
+            done
+
+            if [ "$HEALTHY" -ne 1 ]; then
+              echo "❌ Backend health check thất bại sau 60s! Đang rollback về $PREV_IMAGE..."
+              sed -i "s|^BACKEND_IMAGE=.*|BACKEND_IMAGE=${PREV_IMAGE}|" .env
+              docker compose pull backend || true
+              docker compose up -d backend
+              echo "❌ Đã rollback về $PREV_IMAGE. Báo lỗi workflow."
+              exit 1
+            fi
+
+            # Cập nhật các service phụ thuộc nếu cần (Caddy)
+            docker compose up -d --remove-orphans
+            echo "✅ Deploy thành công và backend hoạt động ổn định!"
+          EOF
+
+  release:
+    name: GitHub Release (Tags)
+    needs: deploy-ec2
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+      - name: Create or update GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "Meloo ${{ github.ref_name }} — Walking Skeleton" \
+            --generate-notes \
+            --notes-start-tag "$(git describe --tags --abbrev=0 "${{ github.ref_name }}^" 2>/dev/null || true)" || \
+          gh release edit "${{ github.ref_name }}" --title "Meloo ${{ github.ref_name }} — Walking Skeleton"

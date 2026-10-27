@@ -284,7 +284,7 @@ class CatalogIntegrationTest extends IntegrationTest {
             Track.builder()
                 .id(UUID.randomUUID())
                 .title("M-Tip")
-                .titleNormalized("m-tip")
+                .titleNormalized(TitleNormalizer.normalizeTitle("M-Tip"))
                 .primaryArtistId(vu.getId())
                 .provider(MusicProvider.DEEZER)
                 .providerTrackId("trk-mtip-rank")
@@ -301,14 +301,38 @@ class CatalogIntegrationTest extends IntegrationTest {
             "Sơn Tùng M-TP (Tier 2) must rank before trigram similarity match (Tier 3)")
         .isEqualTo(sonTungTrack.getId());
 
-    // Test query "son tung m-tp": Sơn Tùng M-TP matches prefix (Tier 1), "Sơn Tùng M-TO" matches
-    // trigram (Tier 3)
+    // 4. Competitor track whose title contains "Sơn Tùng M-TP" (word/substring match -> Tier 2)
+    Track competitorTrack =
+        trackRepository.saveAndFlush(
+            Track.builder()
+                .id(UUID.randomUUID())
+                .title("Hát Về Sơn Tùng M-TP")
+                .titleNormalized(TitleNormalizer.normalizeTitle("Hát Về Sơn Tùng M-TP"))
+                .primaryArtistId(vu.getId())
+                .provider(MusicProvider.DEEZER)
+                .providerTrackId("trk-competitor-rank")
+                .enabled(true)
+                .popularityRank(1) // Higher popularity than sonTungTrack (1 vs 10)
+                .build());
+
+    // Test query "son tung m-tp":
+    // - Sơn Tùng M-TP matches artist prefix via replace('-', ' ') -> Tier 1
+    // - Competitor track matches word in title -> Tier 2
+    // - "Sơn Tùng M-TO" matches trigram -> Tier 3
+    // On old code (without hyphen handling), sonTungTrack fell into Tier 3 so competitorTrack (Tier
+    // 2) was ranked first. This test explicitly verifies Tier 1 > Tier 2 > Tier 3.
     TrackPageDto resFullName = searchService.searchTracks("son tung m-tp", 0, 10);
-    assertThat(resFullName.getItems()).isNotEmpty();
-    assertThat(resFullName.getItems().getFirst().getId())
-        .withFailMessage(
-            "Sơn Tùng M-TP (Tier 1) must rank before trigram similarity match (Tier 3)")
+    assertThat(resFullName.getItems()).hasSizeGreaterThanOrEqualTo(3);
+    assertThat(resFullName.getItems().get(0).getId())
+        .withFailMessage("Sơn Tùng M-TP (Tier 1) must rank before title word match (Tier 2)")
         .isEqualTo(sonTungTrack.getId());
+    assertThat(resFullName.getItems().get(1).getId())
+        .withFailMessage(
+            "Title word match (Tier 2) must rank before trigram similarity match (Tier 3)")
+        .isEqualTo(competitorTrack.getId());
+    assertThat(resFullName.getItems().get(2).getId())
+        .withFailMessage("Third result must be trigram similarity match (Tier 3)")
+        .isEqualTo(trigramArtistTrack.getId());
   }
 
   @Test
@@ -533,13 +557,39 @@ class CatalogIntegrationTest extends IntegrationTest {
   @DisplayName(
       "AC 1/4: Large page number (e.g. Integer.MAX_VALUE) returns empty page without arithmetic overflow")
   void largePageReturnsEmptyPageWithoutOverflow() {
+    // Seed at least one enabled track and one enabled playlist so total > 0,
+    // ensuring the query verifies offset arithmetic with non-empty tables.
+    trackRepository.saveAndFlush(
+        Track.builder()
+            .id(UUID.randomUUID())
+            .title("Cơn Mưa Ngang Qua")
+            .titleNormalized(TitleNormalizer.normalizeTitle("Cơn Mưa Ngang Qua"))
+            .primaryArtistId(sonTung.getId())
+            .provider(MusicProvider.DEEZER)
+            .providerTrackId("trk-st-large-page")
+            .enabled(true)
+            .popularityRank(1)
+            .build());
+
+    playlistRepository.saveAndFlush(
+        Playlist.builder()
+            .id(UUID.randomUUID())
+            .code("vpop-hits-large-page")
+            .nameVi("V-Pop Tuyển Chọn")
+            .nameEn("V-Pop Hits")
+            .kind(PlaylistKind.CURATED)
+            .enabled(true)
+            .build());
+
     TrackPageDto trackPage = searchService.searchTracks("son tung", Integer.MAX_VALUE, 10);
     assertThat(trackPage.getItems()).isEmpty();
     assertThat(trackPage.getPage()).isEqualTo(Integer.MAX_VALUE);
+    assertThat(trackPage.getTotalItems()).isGreaterThanOrEqualTo(1L);
 
     PlaylistPageDto playlistPage = searchService.listPlaylists(Integer.MAX_VALUE, 10);
     assertThat(playlistPage.getItems()).isEmpty();
     assertThat(playlistPage.getPage()).isEqualTo(Integer.MAX_VALUE);
+    assertThat(playlistPage.getTotalItems()).isGreaterThanOrEqualTo(1L);
   }
 
   private void seed10kTracks() {

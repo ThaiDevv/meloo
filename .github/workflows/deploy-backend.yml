@@ -132,6 +132,47 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
+      - name: Get GitHub runner public IP
+        id: runner-ip
+        run: |
+          set -euo pipefail
+          RUNNER_IP="$(curl -fsS --retry 3 https://checkip.amazonaws.com | tr -d '\r\n')"
+          python3 -c 'import ipaddress, sys; ipaddress.IPv4Address(sys.argv[1])' "$RUNNER_IP"
+          echo "cidr=${RUNNER_IP}/32" >> "$GITHUB_OUTPUT"
+          echo "rule_description=meloo-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
+
+      - name: Temporarily allow SSH from this runner
+        id: allow-ssh
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_EC2_METADATA_DISABLED: 'true'
+          EC2_SECURITY_GROUP_ID: ${{ secrets.EC2_SECURITY_GROUP_ID }}
+          RUNNER_CIDR: ${{ steps.runner-ip.outputs.cidr }}
+          RULE_DESCRIPTION: ${{ steps.runner-ip.outputs.rule_description }}
+        run: |
+          set -euo pipefail
+          if [ -z "${AWS_ACCESS_KEY_ID:-}" ] || [ -z "${AWS_SECRET_ACCESS_KEY:-}" ] || \
+             [ -z "${AWS_REGION:-}" ] || [ -z "${EC2_SECURITY_GROUP_ID:-}" ]; then
+            echo "::error::Thiếu một trong các GitHub Secrets AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION hoặc EC2_SECURITY_GROUP_ID."
+            exit 1
+          fi
+
+          IP_PERMISSIONS="$(python3 -c 'import json, os; print(json.dumps([{"IpProtocol": "tcp", "FromPort": 22, "ToPort": 22, "IpRanges": [{"CidrIp": os.environ["RUNNER_CIDR"], "Description": os.environ["RULE_DESCRIPTION"]}]}]))')"
+          echo "cleanup=true" >> "$GITHUB_OUTPUT"
+          RULE_ID="$(aws ec2 authorize-security-group-ingress \
+            --region "$AWS_REGION" \
+            --group-id "$EC2_SECURITY_GROUP_ID" \
+            --ip-permissions "$IP_PERMISSIONS" \
+            --query 'SecurityGroupRules[0].SecurityGroupRuleId' \
+            --output text)"
+          if [ -z "$RULE_ID" ] || [ "$RULE_ID" = "None" ]; then
+            echo "::error::AWS không trả về ID của rule SSH vừa mở."
+            exit 1
+          fi
+          echo "rule_id=$RULE_ID" >> "$GITHUB_OUTPUT"
+
       - name: Deploy on EC2 via SSH
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
@@ -175,6 +216,62 @@ jobs:
           echo "Thực thi kịch bản deploy trên EC2..."
           $SSH_CMD "${EC2_USER}@${EC2_HOST}" \
             "chmod +x /opt/meloo/deploy-ec2.sh && /opt/meloo/deploy-ec2.sh '$DEPLOY_IMAGE'"
+
+      - name: Revoke temporary SSH ingress
+        if: ${{ always() && steps.allow-ssh.outputs.cleanup == 'true' }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_EC2_METADATA_DISABLED: 'true'
+          EC2_SECURITY_GROUP_ID: ${{ secrets.EC2_SECURITY_GROUP_ID }}
+          RUNNER_CIDR: ${{ steps.runner-ip.outputs.cidr }}
+          RULE_DESCRIPTION: ${{ steps.runner-ip.outputs.rule_description }}
+          AWS_SECURITY_GROUP_RULE_ID: ${{ steps.allow-ssh.outputs.rule_id }}
+        run: |
+          set -euo pipefail
+          RULE_ID="${AWS_SECURITY_GROUP_RULE_ID:-}"
+          if [ -z "$RULE_ID" ] || [ "$RULE_ID" = "None" ]; then
+            for attempt in 1 2 3 4 5 6; do
+              SECURITY_GROUP_RULES="$(aws ec2 describe-security-group-rules \
+                --region "$AWS_REGION" \
+                --filters "Name=group-id,Values=$EC2_SECURITY_GROUP_ID" \
+                --output json)"
+              RULE_ID="$(python3 -c '
+          import json
+          import sys
+
+          cidr, description = sys.argv[1:]
+          rules = json.load(sys.stdin)["SecurityGroupRules"]
+          matches = [
+              rule for rule in rules
+              if not rule.get("IsEgress", False)
+              and rule.get("IpProtocol") == "tcp"
+              and rule.get("FromPort") == 22
+              and rule.get("ToPort") == 22
+              and rule.get("CidrIpv4") == cidr
+              and rule.get("Description") == description
+          ]
+          if len(matches) > 1:
+              raise SystemExit("Multiple matching temporary SSH rules found")
+          print(matches[0]["SecurityGroupRuleId"] if matches else "")
+          ' "$RUNNER_CIDR" "$RULE_DESCRIPTION" <<< "$SECURITY_GROUP_RULES")"
+              if [ -n "$RULE_ID" ]; then
+                break
+              fi
+              sleep 5
+            done
+          fi
+
+          if [ -z "$RULE_ID" ] || [ "$RULE_ID" = "None" ]; then
+            echo "::notice::Không tìm thấy rule SSH tạm của lần chạy này để thu hồi."
+            exit 0
+          fi
+
+          aws ec2 revoke-security-group-ingress \
+            --region "$AWS_REGION" \
+            --group-id "$EC2_SECURITY_GROUP_ID" \
+            --security-group-rule-ids "$RULE_ID"
 
   release:
     name: GitHub Release (Tags)

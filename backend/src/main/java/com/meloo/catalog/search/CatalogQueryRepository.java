@@ -23,10 +23,8 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 @Repository
-@Transactional(readOnly = true)
 public class CatalogQueryRepository {
 
   private final NamedParameterJdbcTemplate jdbcTemplate;
@@ -35,7 +33,12 @@ public class CatalogQueryRepository {
     this.jdbcTemplate = jdbcTemplate;
   }
 
-  /** Searches enabled tracks ranking: prefix match > word boundary match > trigram similarity. */
+  /**
+   * Searches enabled tracks ranking: prefix match > word boundary match > trigram similarity.
+   *
+   * <p>Optimized with CTE/UNION to leverage GIN indexes (idx_track_title_trgm and
+   * idx_artist_name_trgm) and index scan on primary_artist_id without table seq-scans.
+   */
   public TrackPageDto searchTracks(String normalizedQuery, int page, int size) {
     if (normalizedQuery.isBlank() || normalizedQuery.length() < 2) {
       return new TrackPageDto()
@@ -52,7 +55,7 @@ public class CatalogQueryRepository {
     String contains = "%" + norm + "%";
 
     int limit = Math.max(1, Math.min(size, 50));
-    int offset = Math.max(0, page) * limit;
+    long offset = (long) Math.max(0, page) * limit;
 
     MapSqlParameterSource params =
         new MapSqlParameterSource()
@@ -65,18 +68,25 @@ public class CatalogQueryRepository {
 
     String countSql =
         """
-        SELECT count(*)
-        FROM track t
-        JOIN artist a ON t.primary_artist_id = a.id
-        WHERE t.enabled = true
-          AND (
-            t.title_normalized LIKE :contains
-            OR a.name_normalized LIKE :contains
-            OR t.title_normalized % :norm
-            OR a.name_normalized % :norm
-            OR similarity(t.title_normalized, :norm) >= 0.25
-            OR similarity(a.name_normalized, :norm) >= 0.25
-          )
+        WITH matching_artists AS (
+          SELECT id
+          FROM artist
+          WHERE name_normalized LIKE :contains
+             OR name_normalized % :norm
+             OR replace(name_normalized, '-', ' ') LIKE :contains
+        ),
+        matching_tracks AS (
+          SELECT t.id
+          FROM track t
+          WHERE t.enabled = true
+            AND (t.title_normalized LIKE :contains OR t.title_normalized % :norm)
+          UNION
+          SELECT t.id
+          FROM track t
+          JOIN matching_artists ma ON t.primary_artist_id = ma.id
+          WHERE t.enabled = true
+        )
+        SELECT count(*) FROM matching_tracks
         """;
 
     Long totalItems = jdbcTemplate.queryForObject(countSql, params, Long.class);
@@ -94,26 +104,45 @@ public class CatalogQueryRepository {
 
     String selectSql =
         """
-        SELECT t.id, t.title, a.name AS artist_name,
+        WITH matching_artists AS (
+          SELECT id, name, name_normalized
+          FROM artist
+          WHERE name_normalized LIKE :contains
+             OR name_normalized % :norm
+             OR replace(name_normalized, '-', ' ') LIKE :contains
+        ),
+        matching_tracks AS (
+          SELECT t.id, t.title, t.title_normalized, t.primary_artist_id, t.popularity_rank
+          FROM track t
+          WHERE t.enabled = true
+            AND (t.title_normalized LIKE :contains OR t.title_normalized % :norm)
+          UNION
+          SELECT t.id, t.title, t.title_normalized, t.primary_artist_id, t.popularity_rank
+          FROM track t
+          JOIN matching_artists ma ON t.primary_artist_id = ma.id
+          WHERE t.enabled = true
+        )
+        SELECT mt.id, mt.title, a.name AS artist_name,
           CASE
-            WHEN t.title_normalized LIKE :prefix OR a.name_normalized LIKE :prefix THEN 1
-            WHEN t.title_normalized LIKE :wordPrefix OR a.name_normalized LIKE :wordPrefix
-              OR t.title_normalized LIKE :contains OR a.name_normalized LIKE :contains THEN 2
+            WHEN mt.title_normalized LIKE :prefix
+              OR a.name_normalized LIKE :prefix
+              OR replace(a.name_normalized, '-', ' ') LIKE :prefix THEN 1
+            WHEN mt.title_normalized LIKE :wordPrefix
+              OR a.name_normalized LIKE :wordPrefix
+              OR replace(a.name_normalized, '-', ' ') LIKE :wordPrefix
+              OR mt.title_normalized LIKE :contains
+              OR a.name_normalized LIKE :contains
+              OR replace(a.name_normalized, '-', ' ') LIKE :contains THEN 2
             ELSE 3
           END AS tier,
-          GREATEST(similarity(t.title_normalized, :norm), similarity(a.name_normalized, :norm)) AS sim
-        FROM track t
-        JOIN artist a ON t.primary_artist_id = a.id
-        WHERE t.enabled = true
-          AND (
-            t.title_normalized LIKE :contains
-            OR a.name_normalized LIKE :contains
-            OR t.title_normalized % :norm
-            OR a.name_normalized % :norm
-            OR similarity(t.title_normalized, :norm) >= 0.25
-            OR similarity(a.name_normalized, :norm) >= 0.25
-          )
-        ORDER BY tier ASC, sim DESC, t.popularity_rank ASC NULLS LAST, t.title ASC
+          GREATEST(
+            similarity(mt.title_normalized, :norm),
+            similarity(a.name_normalized, :norm),
+            similarity(replace(a.name_normalized, '-', ' '), :norm)
+          ) AS sim
+        FROM matching_tracks mt
+        JOIN artist a ON mt.primary_artist_id = a.id
+        ORDER BY tier ASC, sim DESC, mt.popularity_rank ASC NULLS LAST, mt.title ASC
         LIMIT :limit OFFSET :offset
         """;
 
@@ -138,7 +167,7 @@ public class CatalogQueryRepository {
   /** Lists enabled playlists with count of enabled tracks. */
   public PlaylistPageDto listPlaylists(int page, int size) {
     int limit = Math.max(1, Math.min(size, 50));
-    int offset = Math.max(0, page) * limit;
+    long offset = (long) Math.max(0, page) * limit;
 
     MapSqlParameterSource params =
         new MapSqlParameterSource().addValue("limit", limit).addValue("offset", offset);

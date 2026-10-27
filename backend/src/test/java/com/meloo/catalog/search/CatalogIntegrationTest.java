@@ -3,6 +3,7 @@ package com.meloo.catalog.search;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.meloo.IntegrationTest;
+import com.meloo.catalog.importing.TitleNormalizer;
 import com.meloo.catalog.persistence.Artist;
 import com.meloo.catalog.persistence.ArtistRepository;
 import com.meloo.catalog.persistence.Genre;
@@ -22,6 +23,10 @@ import com.meloo.generated.model.PlaylistDto;
 import com.meloo.generated.model.PlaylistPageDto;
 import com.meloo.generated.model.TrackPageDto;
 import com.meloo.generated.model.TrackSuggestionDto;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -30,6 +35,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
 class CatalogIntegrationTest extends IntegrationTest {
 
@@ -39,6 +46,7 @@ class CatalogIntegrationTest extends IntegrationTest {
   @Autowired private GenreRepository genreRepository;
   @Autowired private PlaylistRepository playlistRepository;
   @Autowired private PlaylistTrackRepository playlistTrackRepository;
+  @Autowired private NamedParameterJdbcTemplate jdbcTemplate;
 
   private Artist sonTung;
   private Artist vu;
@@ -53,12 +61,13 @@ class CatalogIntegrationTest extends IntegrationTest {
     artistRepository.deleteAll();
     genreRepository.deleteAll();
 
+    // Use TitleNormalizer to accurately match DB importing logic (e.g. "son tung m-tp")
     sonTung =
         artistRepository.saveAndFlush(
             Artist.builder()
                 .id(UUID.randomUUID())
                 .name("Sơn Tùng M-TP")
-                .nameNormalized("son tung m tp")
+                .nameNormalized(TitleNormalizer.normalizeArtist("Sơn Tùng M-TP"))
                 .provider(MusicProvider.DEEZER)
                 .providerArtistId("art-st-01")
                 .build());
@@ -68,7 +77,7 @@ class CatalogIntegrationTest extends IntegrationTest {
             Artist.builder()
                 .id(UUID.randomUUID())
                 .name("Vũ.")
-                .nameNormalized("vu")
+                .nameNormalized(TitleNormalizer.normalizeArtist("Vũ."))
                 .provider(MusicProvider.DEEZER)
                 .providerArtistId("art-vu-01")
                 .build());
@@ -101,7 +110,7 @@ class CatalogIntegrationTest extends IntegrationTest {
             Track.builder()
                 .id(UUID.randomUUID())
                 .title("Lạc Trôi")
-                .titleNormalized("lac troi")
+                .titleNormalized(TitleNormalizer.normalizeTitle("Lạc Trôi"))
                 .primaryArtistId(sonTung.getId())
                 .provider(MusicProvider.DEEZER)
                 .providerTrackId("trk-st-01")
@@ -113,7 +122,7 @@ class CatalogIntegrationTest extends IntegrationTest {
             Track.builder()
                 .id(UUID.randomUUID())
                 .title("Chúng Ta Của Hiện Tại")
-                .titleNormalized("chung ta cua hien tai")
+                .titleNormalized(TitleNormalizer.normalizeTitle("Chúng Ta Của Hiện Tại"))
                 .primaryArtistId(sonTung.getId())
                 .provider(MusicProvider.DEEZER)
                 .providerTrackId("trk-st-02")
@@ -138,12 +147,18 @@ class CatalogIntegrationTest extends IntegrationTest {
         .extracting(TrackSuggestionDto::getArtistName)
         .containsOnly("Sơn Tùng M-TP");
 
-    // 4. Special characters: "Lạc Trôi!?" matches
+    // 4. Search by artist hyphenated suffix: "m-tp" and "m tp"
+    TrackPageDto resMtp = searchService.searchTracks("m-tp", 0, 10);
+    assertThat(resMtp.getItems()).hasSize(2);
+    TrackPageDto resMtpSpace = searchService.searchTracks("m tp", 0, 10);
+    assertThat(resMtpSpace.getItems()).hasSize(2);
+
+    // 5. Special characters: "Lạc Trôi!?" matches
     TrackPageDto resSpecial = searchService.searchTracks("Lạc Trôi!?", 0, 10);
     assertThat(resSpecial.getItems()).hasSize(1);
     assertThat(resSpecial.getItems().getFirst().getId()).isEqualTo(t1.getId());
 
-    // 5. Short string (< 2 characters) and empty return empty results
+    // 6. Short string (< 2 characters) and empty return empty results
     assertThat(searchService.searchTracks("", 0, 10).getItems()).isEmpty();
     assertThat(searchService.searchTracks(" ", 0, 10).getItems()).isEmpty();
     assertThat(searchService.searchTracks("s", 0, 10).getItems()).isEmpty();
@@ -151,44 +166,44 @@ class CatalogIntegrationTest extends IntegrationTest {
   }
 
   @Test
-  @DisplayName("AC 2: Ranking: Khớp đầu chuỗi > Khớp từ > Trigram")
+  @DisplayName("AC 2: Ranking: Khớp đầu chuỗi (Tier 1) > Khớp từ (Tier 2) > Trigram (Tier 3)")
   void searchRankingOrder() {
-    // Prefix match: starts with "mua" -> "Mùa Hè Của Em"
+    // Tier 1 (Khớp đầu chuỗi): starts with "lac troi"
     Track prefixTrack =
         trackRepository.saveAndFlush(
             Track.builder()
                 .id(UUID.randomUUID())
-                .title("Mùa Hè Của Em")
-                .titleNormalized("mua he cua em")
-                .primaryArtistId(vu.getId())
+                .title("Lạc Trôi")
+                .titleNormalized(TitleNormalizer.normalizeTitle("Lạc Trôi")) // "lac troi"
+                .primaryArtistId(sonTung.getId())
                 .provider(MusicProvider.DEEZER)
                 .providerTrackId("trk-rk-01")
                 .enabled(true)
-                .popularityRank(10)
+                .popularityRank(50)
                 .build());
 
-    // Word boundary match: contains " mua" -> "Cơn Mưa Ngang Qua"
+    // Tier 2 (Khớp từ / substring): contains "lac troi" as word
     Track wordTrack =
         trackRepository.saveAndFlush(
             Track.builder()
                 .id(UUID.randomUUID())
-                .title("Cơn Mưa Ngang Qua")
-                .titleNormalized("con mua ngang qua")
+                .title("Bài Ca Lạc Trôi")
+                .titleNormalized(
+                    TitleNormalizer.normalizeTitle("Bài Ca Lạc Trôi")) // "bai ca lac troi"
                 .primaryArtistId(sonTung.getId())
                 .provider(MusicProvider.DEEZER)
                 .providerTrackId("trk-rk-02")
                 .enabled(true)
-                .popularityRank(5)
+                .popularityRank(1)
                 .build());
 
-    // Trigram match: "Mưa" misspelled as "mia" -> "Mưa Hồng" (similarity on 'mua' vs 'muaf')
-    // Or title similar to search query "mua"
+    // Tier 3 (Trigram similarity): typo "Lạc Tối" vs query "lac troi"
     Track trigramTrack =
         trackRepository.saveAndFlush(
             Track.builder()
                 .id(UUID.randomUUID())
-                .title("Muôn Màu")
-                .titleNormalized("muon mau")
+                .title("Lạc Tối")
+                .titleNormalized(TitleNormalizer.normalizeTitle("Lạc Tối")) // "lac toi"
                 .primaryArtistId(vu.getId())
                 .provider(MusicProvider.DEEZER)
                 .providerTrackId("trk-rk-03")
@@ -196,12 +211,19 @@ class CatalogIntegrationTest extends IntegrationTest {
                 .popularityRank(1)
                 .build());
 
-    TrackPageDto result = searchService.searchTracks("mua", 0, 10);
+    TrackPageDto result = searchService.searchTracks("lac troi", 0, 10);
 
-    // Prefix track should come first (tier 1), then word track (tier 2)
-    assertThat(result.getItems()).isNotEmpty();
-    assertThat(result.getItems().getFirst().getId()).isEqualTo(prefixTrack.getId());
-    assertThat(result.getItems().get(1).getId()).isEqualTo(wordTrack.getId());
+    // Verify ordering: Tier 1 > Tier 2 > Tier 3
+    assertThat(result.getItems()).hasSize(3);
+    assertThat(result.getItems().get(0).getId())
+        .withFailMessage("First result must be prefix match (Tier 1)")
+        .isEqualTo(prefixTrack.getId());
+    assertThat(result.getItems().get(1).getId())
+        .withFailMessage("Second result must be word/substring match (Tier 2)")
+        .isEqualTo(wordTrack.getId());
+    assertThat(result.getItems().get(2).getId())
+        .withFailMessage("Third result must be trigram similarity match (Tier 3)")
+        .isEqualTo(trigramTrack.getId());
   }
 
   @Test
@@ -379,17 +401,31 @@ class CatalogIntegrationTest extends IntegrationTest {
   }
 
   @Test
-  @DisplayName("AC 2: p95 latency under 100ms for search")
-  void searchLatencyP95() {
-    // Warm up
-    searchService.searchTracks("lac troi", 0, 10);
+  @DisplayName("AC 2: p95 latency under 100ms with >= 10,000 tracks in database")
+  void searchLatencyP95With10kTracks() {
+    // 1. Seed 1,000 artists and 10,000 tracks via batch insert
+    seed10kTracks();
 
+    long trackCount = trackRepository.count();
+    assertThat(trackCount).isGreaterThanOrEqualTo(10_000L);
+
+    // Analyze tables so Postgres planner has accurate statistics for GIN indexes
+    jdbcTemplate.getJdbcOperations().execute("ANALYZE track; ANALYZE artist;");
+
+    // Warm-up queries
+    searchService.searchTracks("son tung", 0, 10);
+    searchService.searchTracks("mua", 0, 10);
+
+    String[] testQueries = {"son tung", "mua", "lac troi", "em", "ngay", "viet nam", "anh", "nang"};
     List<Long> latencies = new ArrayList<>();
-    for (int i = 0; i < 30; i++) {
+
+    for (int i = 0; i < 50; i++) {
+      String q = testQueries[i % testQueries.length];
       long start = System.nanoTime();
-      searchService.searchTracks("son tung", 0, 10);
+      TrackPageDto res = searchService.searchTracks(q, 0, 10);
       long elapsedMs = (System.nanoTime() - start) / 1_000_000;
       latencies.add(elapsedMs);
+      assertThat(res.getItems()).isNotNull();
     }
 
     Collections.sort(latencies);
@@ -397,7 +433,97 @@ class CatalogIntegrationTest extends IntegrationTest {
     long p95Latency = latencies.get(Math.max(0, p95Index));
 
     assertThat(p95Latency)
-        .withFailMessage("p95 latency (%d ms) should be < 100 ms", p95Latency)
+        .withFailMessage(
+            "p95 latency (%d ms) with %d tracks should be < 100 ms", p95Latency, trackCount)
         .isLessThan(100L);
+  }
+
+  private void seed10kTracks() {
+    int artistCount = 1_000;
+    int totalTracks = 10_000;
+
+    List<UUID> artistIds = new ArrayList<>(artistCount);
+    for (int i = 0; i < artistCount; i++) {
+      artistIds.add(UUID.randomUUID());
+    }
+
+    String insertArtistSql =
+        """
+        INSERT INTO artist (id, name, name_normalized, provider, provider_artist_id, created_at)
+        VALUES (?, ?, ?, 'DEEZER', ?, ?)
+        """;
+
+    Timestamp now = Timestamp.from(Instant.now());
+
+    jdbcTemplate
+        .getJdbcOperations()
+        .batchUpdate(
+            insertArtistSql,
+            new BatchPreparedStatementSetter() {
+              @Override
+              public void setValues(PreparedStatement ps, int i) throws SQLException {
+                UUID id = artistIds.get(i);
+                String name = "Artist " + i + " " + (i % 2 == 0 ? "V-Pop" : "M-TP");
+                String nameNorm = TitleNormalizer.normalizeArtist(name);
+                ps.setObject(1, id);
+                ps.setString(2, name);
+                ps.setString(3, nameNorm);
+                ps.setString(4, "batch-art-" + i);
+                ps.setTimestamp(5, now);
+              }
+
+              @Override
+              public int getBatchSize() {
+                return artistCount;
+              }
+            });
+
+    String insertTrackSql =
+        """
+        INSERT INTO track (id, provider, provider_track_id, title, title_normalized, primary_artist_id, genre_id, country_code, release_year, popularity_rank, enabled, created_at)
+        VALUES (?, 'DEEZER', ?, ?, ?, ?, ?, 'VN', 2022, ?, true, ?)
+        """;
+
+    String[] sampleWords = {
+      "Mưa",
+      "Nắng",
+      "Lạc Trôi",
+      "Em Của Ngày Hôm Qua",
+      "Chạy Ngay Đi",
+      "Bước Qua Mùa Cô Đơn",
+      "Gió",
+      "Yêu",
+      "Nhớ",
+      "Thương"
+    };
+
+    jdbcTemplate
+        .getJdbcOperations()
+        .batchUpdate(
+            insertTrackSql,
+            new BatchPreparedStatementSetter() {
+              @Override
+              public void setValues(PreparedStatement ps, int i) throws SQLException {
+                UUID trackId = UUID.randomUUID();
+                UUID artistId = artistIds.get(i % artistCount);
+                String word = sampleWords[i % sampleWords.length];
+                String title = word + " " + i;
+                String titleNorm = TitleNormalizer.normalizeTitle(title);
+
+                ps.setObject(1, trackId);
+                ps.setString(2, "batch-trk-" + i);
+                ps.setString(3, title);
+                ps.setString(4, titleNorm);
+                ps.setObject(5, artistId);
+                ps.setObject(6, vpop.getId());
+                ps.setInt(7, (i % 100) + 1);
+                ps.setTimestamp(8, now);
+              }
+
+              @Override
+              public int getBatchSize() {
+                return totalTracks;
+              }
+            });
   }
 }

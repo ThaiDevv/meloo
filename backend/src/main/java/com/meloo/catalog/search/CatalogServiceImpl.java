@@ -11,8 +11,10 @@ import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional(readOnly = true)
 public class CatalogServiceImpl implements CatalogService {
 
   private final CatalogQueryRepository catalogQueryRepository;

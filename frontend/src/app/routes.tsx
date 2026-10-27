@@ -9,7 +9,7 @@ import { routes as profile } from '@/features/profile/routes'
 import { routes as room } from '@/features/room/routes'
 import { routes as solo } from '@/features/solo/routes'
 import { routes as ui } from '@/shared/ui/routes'
-import { AppLayout } from './AppLayout'
+import { AppLayout } from './layout/AppLayout'
 import { NotFoundPage } from './NotFoundPage'
 
 /** Feature routes are declared in each feature's routes.tsx; only import them here. */

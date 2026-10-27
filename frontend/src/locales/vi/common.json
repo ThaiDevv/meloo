@@ -1,10 +1,31 @@
 {
   "title": "Thư viện giao diện",
   "appName": "Meloo",
+  "skipToContent": "Bỏ qua, tới nội dung chính",
   "language": {
     "label": "Ngôn ngữ",
     "vi": "Tiếng Việt",
     "en": "English"
+  },
+  "theme": {
+    "switchToLight": "Chuyển sang giao diện sáng",
+    "switchToDark": "Chuyển sang giao diện tối"
+  },
+  "footer": {
+    "label": "Liên kết pháp lý",
+    "copyright": "© {{year}} Meloo. Đồ án môn học.",
+    "privacy": "Chính sách quyền riêng tư",
+    "terms": "Điều khoản"
+  },
+  "ui": {
+    "close": "Đóng",
+    "dismiss": "Ẩn thông báo",
+    "notifications": "Thông báo",
+    "retry": "Thử lại"
+  },
+  "errorState": {
+    "title": "Có lỗi xảy ra",
+    "description": "Không tải được nội dung. Hãy thử lại."
   },
   "notFound": {
     "title": "Không tìm thấy trang",
@@ -14,7 +35,88 @@
     "body": "Màn hình này sẽ được làm trong ticket {{ticket}}."
   },
   "gallery": {
-    "primary": "Nút chính",
-    "ghost": "Nút phụ"
+    "intro": "Mọi màn hình dùng các thành phần này. Đổi giao diện sáng/tối và ngôn ngữ ở thanh trên để xem cả hai.",
+    "colors": {
+      "title": "Màu",
+      "background": "Nền trang",
+      "surface": "Mặt thẻ",
+      "raised": "Nổi",
+      "primary": "Hành động chính",
+      "positive": "Tích cực",
+      "negative": "Lỗi",
+      "warning": "Lưu ý"
+    },
+    "buttons": {
+      "title": "Nút",
+      "primary": "Chơi ngay",
+      "outline": "Tạo phòng",
+      "ghost": "Bỏ qua",
+      "destructive": "Rời phòng",
+      "small": "Nhỏ",
+      "icon": "Ví dụ nút biểu tượng",
+      "disabled": "Không khả dụng"
+    },
+    "fields": {
+      "title": "Ô nhập",
+      "label": "Biệt danh",
+      "placeholder": "Ví dụ: nhacsi2006",
+      "invalidLabel": "Mã phòng",
+      "invalidValue": "AB1",
+      "invalidHint": "Mã phòng gồm 4 ký tự."
+    },
+    "cards": {
+      "title": "Thẻ và huy hiệu",
+      "cardTitle": "Thử thách ngày",
+      "cardBody": "Mười bài hát mới mỗi ngày, ai cũng chơi cùng một bộ.",
+      "neutral": "Chưa chơi",
+      "positive": "Hoàn thành",
+      "negative": "Hết giờ",
+      "warning": "Sắp hết hạn"
+    },
+    "avatars": {
+      "title": "Ảnh đại diện",
+      "a": "Minh",
+      "b": "Linh",
+      "c": "Quốc Bảo"
+    },
+    "tabs": {
+      "title": "Tab",
+      "label": "Chế độ chơi",
+      "solo": "Chơi đơn",
+      "daily": "Thử thách ngày",
+      "room": "Phòng",
+      "soloBody": "Chơi một mình, chọn bộ nhạc bạn thích.",
+      "dailyBody": "Mỗi ngày một bộ bài hát cố định cho mọi người.",
+      "roomBody": "Từ 2 đến 5 người chơi cùng lúc."
+    },
+    "dialog": {
+      "title": "Hộp thoại",
+      "open": "Mở hộp thoại",
+      "heading": "Rời phòng?",
+      "body": "Bạn sẽ mất lượt chơi hiện tại.",
+      "confirm": "Rời phòng"
+    },
+    "toasts": {
+      "title": "Thông báo",
+      "neutral": "Thông tin",
+      "positive": "Thành công",
+      "negative": "Lỗi",
+      "neutralTitle": "Phòng đã đầy",
+      "positiveTitle": "Đã sao chép mã phòng",
+      "negativeTitle": "Mất kết nối",
+      "negativeBody": "Đang thử kết nối lại."
+    },
+    "loading": {
+      "title": "Đang tải"
+    },
+    "empty": {
+      "title": "Trạng thái rỗng",
+      "heading": "Chưa có trận nào",
+      "body": "Chơi một ván để thấy lịch sử ở đây.",
+      "action": "Chơi đơn"
+    },
+    "error": {
+      "title": "Trạng thái lỗi"
+    }
   }
 }

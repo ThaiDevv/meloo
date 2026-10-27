@@ -1,10 +1,31 @@
 {
   "title": "UI gallery",
   "appName": "Meloo",
+  "skipToContent": "Skip to main content",
   "language": {
     "label": "Language",
     "vi": "Tiếng Việt",
     "en": "English"
+  },
+  "theme": {
+    "switchToLight": "Switch to light theme",
+    "switchToDark": "Switch to dark theme"
+  },
+  "footer": {
+    "label": "Legal links",
+    "copyright": "© {{year}} Meloo. A course project.",
+    "privacy": "Privacy policy",
+    "terms": "Terms of service"
+  },
+  "ui": {
+    "close": "Close",
+    "dismiss": "Dismiss notification",
+    "notifications": "Notifications",
+    "retry": "Try again"
+  },
+  "errorState": {
+    "title": "Something went wrong",
+    "description": "We could not load this. Please try again."
   },
   "notFound": {
     "title": "Page not found",
@@ -14,7 +35,88 @@
     "body": "This screen will be built in ticket {{ticket}}."
   },
   "gallery": {
-    "primary": "Primary",
-    "ghost": "Ghost"
+    "intro": "Every screen is built from these parts. Use the header to switch light/dark and language and see both.",
+    "colors": {
+      "title": "Colours",
+      "background": "Page background",
+      "surface": "Card surface",
+      "raised": "Raised",
+      "primary": "Main action",
+      "positive": "Positive",
+      "negative": "Error",
+      "warning": "Notice"
+    },
+    "buttons": {
+      "title": "Buttons",
+      "primary": "Play now",
+      "outline": "Create room",
+      "ghost": "Skip",
+      "destructive": "Leave room",
+      "small": "Small",
+      "icon": "Icon button example",
+      "disabled": "Unavailable"
+    },
+    "fields": {
+      "title": "Fields",
+      "label": "Nickname",
+      "placeholder": "e.g. musicfan2006",
+      "invalidLabel": "Room code",
+      "invalidValue": "AB1",
+      "invalidHint": "A room code has 4 characters."
+    },
+    "cards": {
+      "title": "Cards and badges",
+      "cardTitle": "Daily challenge",
+      "cardBody": "Ten new songs every day, the same set for everyone.",
+      "neutral": "Not played",
+      "positive": "Completed",
+      "negative": "Time's up",
+      "warning": "Ending soon"
+    },
+    "avatars": {
+      "title": "Avatars",
+      "a": "Minh",
+      "b": "Linh",
+      "c": "Quốc Bảo"
+    },
+    "tabs": {
+      "title": "Tabs",
+      "label": "Game mode",
+      "solo": "Solo",
+      "daily": "Daily challenge",
+      "room": "Room",
+      "soloBody": "Play alone and pick the playlist you like.",
+      "dailyBody": "One fixed set of songs a day for everyone.",
+      "roomBody": "From 2 to 5 players at the same time."
+    },
+    "dialog": {
+      "title": "Dialog",
+      "open": "Open dialog",
+      "heading": "Leave the room?",
+      "body": "You will lose your current turn.",
+      "confirm": "Leave room"
+    },
+    "toasts": {
+      "title": "Toasts",
+      "neutral": "Info",
+      "positive": "Success",
+      "negative": "Error",
+      "neutralTitle": "The room is full",
+      "positiveTitle": "Room code copied",
+      "negativeTitle": "Connection lost",
+      "negativeBody": "Trying to reconnect."
+    },
+    "loading": {
+      "title": "Loading"
+    },
+    "empty": {
+      "title": "Empty state",
+      "heading": "No matches yet",
+      "body": "Play a game and your history will show up here.",
+      "action": "Play solo"
+    },
+    "error": {
+      "title": "Error state"
+    }
   }
 }

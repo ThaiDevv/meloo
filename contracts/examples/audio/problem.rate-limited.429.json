@@ -3,6 +3,6 @@
   "title": "Too Many Requests",
   "status": 429,
   "code": "RATE_LIMITED",
-  "detail": "Too many audio stream requests. Please wait before retrying.",
-  "instance": "/api/v1/audio/Hq3TnV8wYb5RsLd2PzXe9KcMu6AfJg1oWiNtB7yEx0Q"
+  "detail": "Too many audio stream requests for this token. Please wait before retrying.",
+  "instance": "/api/v1/audio/{token}"
 }

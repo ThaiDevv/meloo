@@ -353,9 +353,11 @@ export interface paths {
          * @description Streams an audio preview clip (MP3) for the requested listening level (ADR-008).
          *     Public endpoint without Authorization header: authenticated solely by the HMAC token in the path,
          *     since HTML5 `<audio>` elements cannot send custom Authorization headers.
-         *     The token encodes roundId, playerId, level, and expiration (≤ 2 minutes).
+         *     The token is an opaque token bound server-side to round, player, level and expiry (ADR-008). Clients must not parse it.
+         *     Expiry (<= 2 minutes) is checked on every request, including subsequent Range requests.
          *     Supports HTTP Range requests (206 Partial Content) for browser buffering and seek.
          *     Responses are marked `Cache-Control: no-store` to prevent client-side disk caching of clips.
+         *     Implementations must not echo raw token values in error instance URIs or logs.
          */
         get: operations["getAudioClip"];
         put?: never;
@@ -942,6 +944,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["NotEnoughTracksProblem"];
                 };
             };
+            429: components["responses"]["TooManyRequests"];
         };
     };
     getActiveSoloMatch: {
@@ -972,6 +975,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            429: components["responses"]["TooManyRequests"];
         };
     };
     getCurrentRound: {
@@ -1005,6 +1009,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            429: components["responses"]["TooManyRequests"];
         };
     };
     listenMore: {
@@ -1040,6 +1045,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            429: components["responses"]["TooManyRequests"];
         };
     };
     skipRound: {
@@ -1234,7 +1240,11 @@ export interface operations {
                 Range?: string;
             };
             path: {
-                /** @description Opaque HMAC-SHA256 token encoding roundId, playerId, level, and expiresAt (ADR-008). */
+                /**
+                 * @description Opaque token bound server-side to round, player, level and expiry (ADR-008).
+                 *     Malformed syntax or exceeding length triggers 400 (`AUDIO_TOKEN_INVALID`).
+                 *     Valid syntax with invalid signature or HMAC mismatch triggers 401 (`AUDIO_TOKEN_INVALID`).
+                 */
                 token: string;
             };
             cookie?: never;
@@ -1244,8 +1254,6 @@ export interface operations {
             /** @description Full audio clip stream. */
             200: {
                 headers: {
-                    /** @description Audio MIME type (`audio/mpeg`). */
-                    "Content-Type"?: string;
                     /** @description Preview clips must not be cached by client or proxy (ADR-008). */
                     "Cache-Control"?: string;
                     /** @description Indicates support for byte range requests. */
@@ -1261,8 +1269,6 @@ export interface operations {
             /** @description Partial audio clip stream for byte-range requests. */
             206: {
                 headers: {
-                    /** @description Audio MIME type (`audio/mpeg`). */
-                    "Content-Type"?: string;
                     /** @description Preview clips must not be cached by client or proxy (ADR-008). */
                     "Cache-Control"?: string;
                     /** @description Indicates support for byte range requests. */
@@ -1277,7 +1283,7 @@ export interface operations {
                     "audio/mpeg": string;
                 };
             };
-            /** @description Token format is malformed (`AUDIO_TOKEN_INVALID`). */
+            /** @description Token format is malformed or exceeds maximum length (`AUDIO_TOKEN_INVALID`). */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1295,8 +1301,27 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            403: components["responses"]["Forbidden"];
-            /** @description Rate limit hit (`RATE_LIMITED`). Preview token requests are rate-limited per player (ADR-008). */
+            /** @description The account associated with the session is locked (`ACCOUNT_LOCKED`, BR-28) or origin is refused. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The requested byte range is invalid or exceeds the clip size (`RANGE_NOT_SATISFIABLE`). */
+            416: {
+                headers: {
+                    /** @description Unsatisfiable range indication (e.g. `bytes *\/65536`). */
+                    "Content-Range"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Rate limit hit (`RATE_LIMITED`). Excessive stream or chunk requests for this token. */
             429: {
                 headers: {
                     "Retry-After"?: number;

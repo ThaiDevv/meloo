@@ -4,5 +4,5 @@
   "status": 401,
   "code": "AUDIO_TOKEN_INVALID",
   "detail": "The audio preview token signature is invalid or HMAC verification failed.",
-  "instance": "/api/v1/audio/invalidTokenString"
+  "instance": "/api/v1/audio/{token}"
 }

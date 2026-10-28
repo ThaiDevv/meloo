@@ -3,6 +3,6 @@
   "title": "Malformed audio token",
   "status": 400,
   "code": "AUDIO_TOKEN_INVALID",
-  "detail": "The audio preview token format is malformed.",
-  "instance": "/api/v1/audio/malformed-token"
+  "detail": "The audio preview token format is malformed or exceeds maximum length.",
+  "instance": "/api/v1/audio/{token}"
 }

@@ -151,7 +151,7 @@ class RefreshTokenServiceTest {
             ex -> {
               ApiException apiEx = (ApiException) ex;
               assertThat(apiEx.status()).isEqualTo(HttpStatus.FORBIDDEN);
-              assertThat(apiEx.errorCode()).isEqualTo("ACCOUNT_LOCKED");
+              assertThat(apiEx.code()).isEqualTo("ACCOUNT_LOCKED");
             });
 
     assertThat(existing.getRevokedAt()).isEqualTo(fixedNow);
@@ -186,7 +186,7 @@ class RefreshTokenServiceTest {
             ex -> {
               ApiException apiEx = (ApiException) ex;
               assertThat(apiEx.status()).isEqualTo(HttpStatus.UNAUTHORIZED);
-              assertThat(apiEx.errorCode()).isEqualTo("UNAUTHORIZED");
+              assertThat(apiEx.code()).isEqualTo("UNAUTHORIZED");
             });
 
     verify(refreshTokenRepository).revokeAllInFamily(familyId, fixedNow);
@@ -222,7 +222,7 @@ class RefreshTokenServiceTest {
             ex -> {
               ApiException apiEx = (ApiException) ex;
               assertThat(apiEx.status()).isEqualTo(HttpStatus.UNAUTHORIZED);
-              assertThat(apiEx.errorCode()).isEqualTo("REFRESH_RACE");
+              assertThat(apiEx.code()).isEqualTo("REFRESH_RACE");
             });
 
     verify(refreshTokenRepository, never()).revokeAllInFamily(eq(familyId), any());
@@ -258,7 +258,7 @@ class RefreshTokenServiceTest {
             ex -> {
               ApiException apiEx = (ApiException) ex;
               assertThat(apiEx.status()).isEqualTo(HttpStatus.UNAUTHORIZED);
-              assertThat(apiEx.errorCode()).isEqualTo("UNAUTHORIZED");
+              assertThat(apiEx.code()).isEqualTo("UNAUTHORIZED");
             });
 
     verify(refreshTokenRepository).revokeAllInFamily(familyId, fixedNow);
@@ -293,7 +293,7 @@ class RefreshTokenServiceTest {
             ex -> {
               ApiException apiEx = (ApiException) ex;
               assertThat(apiEx.status()).isEqualTo(HttpStatus.UNAUTHORIZED);
-              assertThat(apiEx.errorCode()).isEqualTo("UNAUTHORIZED");
+              assertThat(apiEx.code()).isEqualTo("UNAUTHORIZED");
             });
 
     verify(refreshTokenRepository).revokeAllInFamily(familyId, fixedNow);
@@ -325,7 +325,7 @@ class RefreshTokenServiceTest {
             ex -> {
               ApiException apiEx = (ApiException) ex;
               assertThat(apiEx.status()).isEqualTo(HttpStatus.UNAUTHORIZED);
-              assertThat(apiEx.errorCode()).isEqualTo("UNAUTHORIZED");
+              assertThat(apiEx.code()).isEqualTo("UNAUTHORIZED");
             });
 
     verify(refreshTokenRepository, never()).revokeAllInFamily(eq(familyId), any());

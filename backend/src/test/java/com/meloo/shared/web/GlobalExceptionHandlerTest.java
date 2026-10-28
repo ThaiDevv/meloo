@@ -3,6 +3,8 @@ package com.meloo.shared.web;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.meloo.shared.api.ApiException;
+import com.meloo.shared.api.ProblemConstants;
+import java.net.URI;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,11 +29,14 @@ class GlobalExceptionHandlerTest {
         handler.handleApiException(
             new ApiException(HttpStatus.CONFLICT, "STATE_CONFLICT", "Invalid state"), request);
 
+    assertThat(detail.getType()).isEqualTo(URI.create("about:blank"));
+    assertThat(detail.getTitle()).isEqualTo("Conflict");
     assertThat(detail.getStatus()).isEqualTo(409);
     assertThat(detail.getDetail()).isEqualTo("Invalid state");
     assertThat(detail.getProperties())
-        .containsEntry("errorCode", "STATE_CONFLICT")
-        .containsEntry("correlationId", correlationId)
+        .containsEntry(ProblemConstants.PROPERTY_CODE, "STATE_CONFLICT")
+        .containsEntry(ProblemConstants.PROPERTY_CORRELATION_ID, correlationId)
+        .doesNotContainKey("errorCode")
         .doesNotContainKey("stackTrace");
   }
 
@@ -41,9 +46,15 @@ class GlobalExceptionHandlerTest {
 
     ProblemDetail detail = handler.handleUnexpected(new RuntimeException("secret"), request);
 
+    assertThat(detail.getType()).isEqualTo(URI.create("about:blank"));
+    assertThat(detail.getTitle()).isEqualTo("Internal server error");
     assertThat(detail.getStatus()).isEqualTo(500);
+    assertThat(detail.getDetail()).isEqualTo("An unexpected error occurred");
     assertThat(detail.getDetail()).doesNotContain("secret");
-    assertThat(detail.getProperties()).containsEntry("errorCode", "INTERNAL_ERROR");
+    assertThat(detail.getProperties())
+        .containsEntry(ProblemConstants.PROPERTY_CODE, ProblemConstants.CODE_INTERNAL_ERROR)
+        .doesNotContainKey("errorCode")
+        .doesNotContainKey("stackTrace");
     assertThat(output).doesNotContain("secret");
   }
 }

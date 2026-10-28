@@ -62,7 +62,7 @@ class NicknameValidatorTest {
               ApiException apiEx = (ApiException) ex;
               org.assertj.core.api.Assertions.assertThat(apiEx.status())
                   .isEqualTo(HttpStatus.BAD_REQUEST);
-              org.assertj.core.api.Assertions.assertThat(apiEx.errorCode())
+              org.assertj.core.api.Assertions.assertThat(apiEx.code())
                   .isEqualTo("VALIDATION_FAILED");
             });
   }
@@ -78,7 +78,7 @@ class NicknameValidatorTest {
               ApiException apiEx = (ApiException) ex;
               org.assertj.core.api.Assertions.assertThat(apiEx.status())
                   .isEqualTo(HttpStatus.BAD_REQUEST);
-              org.assertj.core.api.Assertions.assertThat(apiEx.errorCode())
+              org.assertj.core.api.Assertions.assertThat(apiEx.code())
                   .isEqualTo("VALIDATION_FAILED");
             });
   }
@@ -105,7 +105,7 @@ class NicknameValidatorTest {
               ApiException apiEx = (ApiException) ex;
               org.assertj.core.api.Assertions.assertThat(apiEx.status())
                   .isEqualTo(HttpStatus.BAD_REQUEST);
-              org.assertj.core.api.Assertions.assertThat(apiEx.errorCode())
+              org.assertj.core.api.Assertions.assertThat(apiEx.code())
                   .isEqualTo("VALIDATION_FAILED");
             });
   }

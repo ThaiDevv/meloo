@@ -44,7 +44,8 @@ class GlobalExceptionHandlerIntegrationTest extends IntegrationTest {
         .perform(get("/test/typed").param("value", "not-a-number"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.status").value(400))
-        .andExpect(jsonPath("$.errorCode").value("HTTP_400"))
+        .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+        .andExpect(jsonPath("$.errorCode").doesNotExist())
         .andExpect(jsonPath("$.correlationId").isNotEmpty());
   }
 
@@ -54,12 +55,24 @@ class GlobalExceptionHandlerIntegrationTest extends IntegrationTest {
         .perform(
             get("/test/admin")
                 .with(SecurityMockMvcRequestPostProcessors.user("member").roles("USER")))
-        .andExpect(status().isForbidden());
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.type").value("about:blank"))
+        .andExpect(jsonPath("$.title").value("Forbidden"))
+        .andExpect(jsonPath("$.status").value(403))
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"))
+        .andExpect(jsonPath("$.errorCode").doesNotExist());
   }
 
   @Test
   void unauthenticatedMethodRemainsUnauthorized() throws Exception {
-    mockMvc.perform(get("/test/authenticated")).andExpect(status().isUnauthorized());
+    mockMvc
+        .perform(get("/test/authenticated"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.type").value("about:blank"))
+        .andExpect(jsonPath("$.title").value("Unauthorized"))
+        .andExpect(jsonPath("$.status").value(401))
+        .andExpect(jsonPath("$.code").value("UNAUTHORIZED"))
+        .andExpect(jsonPath("$.errorCode").doesNotExist());
   }
 
   @Test
@@ -67,7 +80,8 @@ class GlobalExceptionHandlerIntegrationTest extends IntegrationTest {
     mockMvc
         .perform(post("/test/method"))
         .andExpect(status().isMethodNotAllowed())
-        .andExpect(jsonPath("$.errorCode").value("HTTP_405"));
+        .andExpect(jsonPath("$.code").value("METHOD_NOT_ALLOWED"))
+        .andExpect(jsonPath("$.errorCode").doesNotExist());
   }
 
   @Test
@@ -75,7 +89,8 @@ class GlobalExceptionHandlerIntegrationTest extends IntegrationTest {
     mockMvc
         .perform(post("/test/media").contentType(MediaType.TEXT_PLAIN).content("unsupported"))
         .andExpect(status().isUnsupportedMediaType())
-        .andExpect(jsonPath("$.errorCode").value("HTTP_415"));
+        .andExpect(jsonPath("$.code").value("UNSUPPORTED_MEDIA_TYPE"))
+        .andExpect(jsonPath("$.errorCode").doesNotExist());
   }
 
   @Test
@@ -83,7 +98,8 @@ class GlobalExceptionHandlerIntegrationTest extends IntegrationTest {
     mockMvc
         .perform(get("/test/conflict"))
         .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.errorCode").value("HTTP_409"))
+        .andExpect(jsonPath("$.code").value("CONFLICT"))
+        .andExpect(jsonPath("$.errorCode").doesNotExist())
         .andExpect(jsonPath("$.detail").value("The request could not be completed"));
   }
 

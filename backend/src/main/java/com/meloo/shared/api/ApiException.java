@@ -6,22 +6,22 @@ import org.springframework.http.HttpStatusCode;
 public final class ApiException extends RuntimeException {
 
   private final HttpStatusCode status;
-  private final String errorCode;
+  private final String code;
 
-  public ApiException(HttpStatusCode status, String errorCode, String message) {
+  public ApiException(HttpStatusCode status, String code, String message) {
     super(message);
-    if (errorCode.isBlank()) {
-      throw new IllegalArgumentException("errorCode must not be blank");
+    if (code.isBlank()) {
+      throw new IllegalArgumentException("code must not be blank");
     }
     this.status = status;
-    this.errorCode = errorCode;
+    this.code = code;
   }
 
   public HttpStatusCode status() {
     return status;
   }
 
-  public String errorCode() {
-    return errorCode;
+  public String code() {
+    return code;
   }
 }

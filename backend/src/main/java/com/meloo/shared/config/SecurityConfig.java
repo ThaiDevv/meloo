@@ -4,7 +4,10 @@ import com.meloo.shared.api.ModuleSecurityRules;
 import com.meloo.shared.api.ModuleSecurityRules.HttpRule;
 import com.meloo.shared.api.ModuleSecurityRules.StompFrameRule;
 import com.meloo.shared.api.ModuleSecurityRules.StompRule;
+import com.meloo.shared.web.ProblemAccessDeniedHandler;
+import com.meloo.shared.web.ProblemAuthenticationEntryPoint;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
@@ -26,6 +29,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import tools.jackson.databind.ObjectMapper;
 
 @Configuration(proxyBeanMethods = false)
 @EnableMethodSecurity
@@ -33,9 +37,24 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 public class SecurityConfig implements WebSocketMessageBrokerConfigurer {
 
   private final List<ModuleSecurityRules> moduleRules;
+  private final ProblemAuthenticationEntryPoint authenticationEntryPoint;
+  private final ProblemAccessDeniedHandler accessDeniedHandler;
 
   public SecurityConfig(List<ModuleSecurityRules> moduleRules) {
+    this(
+        moduleRules,
+        new ProblemAuthenticationEntryPoint(new ObjectMapper()),
+        new ProblemAccessDeniedHandler(new ObjectMapper()));
+  }
+
+  @Autowired
+  public SecurityConfig(
+      List<ModuleSecurityRules> moduleRules,
+      ProblemAuthenticationEntryPoint authenticationEntryPoint,
+      ProblemAccessDeniedHandler accessDeniedHandler) {
     this.moduleRules = List.copyOf(moduleRules);
+    this.authenticationEntryPoint = authenticationEntryPoint;
+    this.accessDeniedHandler = accessDeniedHandler;
   }
 
   @Bean
@@ -43,6 +62,11 @@ public class SecurityConfig implements WebSocketMessageBrokerConfigurer {
       throws Exception {
     http.csrf(AbstractHttpConfigurer::disable)
         .cors(Customizer.withDefaults())
+        .exceptionHandling(
+            exceptions ->
+                exceptions
+                    .authenticationEntryPoint(authenticationEntryPoint)
+                    .accessDeniedHandler(accessDeniedHandler))
         .authorizeHttpRequests(
             requests -> {
               requests.requestMatchers("/actuator/health/**").permitAll();
@@ -62,10 +86,13 @@ public class SecurityConfig implements WebSocketMessageBrokerConfigurer {
     }
     if (moduleRules.stream().anyMatch(ModuleSecurityRules::oauth2ResourceServerEnabled)) {
       http.oauth2ResourceServer(
-          resourceServer ->
-              moduleRules.stream()
-                  .filter(ModuleSecurityRules::oauth2ResourceServerEnabled)
-                  .forEach(rules -> rules.configureOAuth2ResourceServer(resourceServer)));
+          resourceServer -> {
+            moduleRules.stream()
+                .filter(ModuleSecurityRules::oauth2ResourceServerEnabled)
+                .forEach(rules -> rules.configureOAuth2ResourceServer(resourceServer));
+            resourceServer.authenticationEntryPoint(authenticationEntryPoint);
+            resourceServer.accessDeniedHandler(accessDeniedHandler);
+          });
     }
     return http.build();
   }

@@ -1,18 +1,18 @@
 # Thẩm định quyền sử dụng preview nhạc cho Meloo (LEG-02)
 
 - **Mã tài liệu:** LEG-02
-- **Ngày lập:** 2026-10-28 · Sprint S1
-- **Trạng thái:** Chờ phản hồi từ nhà cung cấp (Pending) · Thẩm định ToS hoàn tất
+- **Ngày lập:** 2026-10-28 · Sprint S1 · **Cập nhật:** 2026-10-28 (sau phản hồi của Deezer)
+- **Trạng thái:** Đã có phản hồi bằng văn bản của Deezer: **không có đường xin duyệt** cho dự án như Meloo · Thái quyết định (2026-10-28) vẫn dùng Deezer ở mọi môi trường và tự chấp nhận rủi ro; Jamendo là nguồn thay thế ưu tiên nếu cần đổi
 - **Thuộc ticket:** MEL-120
 - **Phụ thuộc:** SPK-01 (MEL-25, đã merge qua PR #16)
-- **Tác giả:** Antigravity (nghiên cứu & soạn thảo) · **Phê duyệt:** Chờ Trần Văn Thái (PO / Tech Lead) quyết định
+- **Tác giả:** Antigravity (bản đầu, PR #39) · Claude (cập nhật sau phản hồi của Deezer) · **Phê duyệt:** Trần Văn Thái (PO / Tech Lead), thể hiện bằng việc merge PR này; các dòng ghi "Đề xuất" ở Mục 6 chỉ có hiệu lực khi Thái duyệt bằng việc merge
 
 ---
 
 ## 1. Mục tiêu & Bối cảnh pháp lý
 
 ### 1.1. Mục tiêu
-Xác định cơ sở pháp lý, phân tích các điều khoản dịch vụ (Terms of Service - ToS) và thẩm định quyền sử dụng đoạn nghe thử (preview) âm thanh tối đa 30 giây của các nhà cung cấp bên thứ ba (Deezer, Apple/iTunes) trong trò chơi đoán nhạc trực tuyến Meloo. Thiết lập cổng phê duyệt (Release Gate) rõ ràng cho đợt thử nghiệm công khai (Beta công khai - BIZ-07, MEL-78) nhằm bảo đảm tuân thủ Luật Sở hữu trí tuệ Việt Nam và các thỏa thuận dịch vụ quốc tế.
+Xác định cơ sở pháp lý, phân tích các điều khoản dịch vụ (Terms of Service - ToS) và thẩm định quyền sử dụng đoạn nghe thử (preview) âm thanh tối đa 30 giây của các nhà cung cấp bên thứ ba (Deezer, Apple/iTunes và nguồn thay thế Jamendo) trong trò chơi đoán nhạc trực tuyến Meloo. Thiết lập cổng phê duyệt (Release Gate) rõ ràng cho đợt thử nghiệm công khai (Beta công khai - BIZ-07, MEL-78) nhằm bảo đảm tuân thủ Luật Sở hữu trí tuệ Việt Nam và các thỏa thuận dịch vụ quốc tế.
 
 ### 1.2. Bối cảnh kỹ thuật của Meloo
 Meloo là nền tảng web game đoán tên bài hát trực tuyến nhiều người chơi (2–5 người/phòng) được xây dựng dưới dạng đồ án học thuật phi thương mại. Cơ chế chơi cốt lõi (BR-02) là mở dần đoạn nghe thử theo các mốc thời gian: 2 → 5 → 10 → 20 → 30 giây; đoán càng sớm điểm càng cao.
@@ -27,7 +27,7 @@ Meloo là nền tảng web game đoán tên bài hát trực tuyến nhiều ng�
 
 ## 2. Phân tích Điều khoản dịch vụ của các nhà cung cấp
 
-### 2.1. Deezer for Developers (Nguồn đề xuất chính có điều kiện)
+### 2.1. Deezer for Developers (nguồn dùng cho dev/test; không dùng cho Public Beta)
 Tham chiếu: [Deezer Developer Terms of Use](https://developers.deezer.com/termsofuse), rà soát ngày 2026-10-21 và 2026-10-28.
 
 | Tiêu chí | Quy định chính xác trong ToS Deezer | Phân tích đối với Meloo | Rủi ro pháp lý |
@@ -38,11 +38,19 @@ Tham chiếu: [Deezer Developer Terms of Use](https://developers.deezer.com/term
 | **Ghi nhận nguồn (Attribution)** (Section IV) | ToS chung **không có** điều khoản quy định attribution bắt buộc; trái lại Section IV cấm liên kết Dịch vụ/Nội dung với bất kỳ nhãn hiệu hay logo nào (*shall not be associated with any trademark, brand name, or logo*) trừ khi tuân thủ Trademark Guidelines riêng. | Meloo chủ động hiển thị logo Deezer, tên bài, ca sĩ và liên kết deep link tại `RoundEndSummary` để tôn trọng quyền tác giả và quảng bá cho nhà cung cấp. Đây là nỗ lực tự thân của nhóm, cần đối chiếu với Trademark Guidelines riêng của Deezer. | **TRUNG BÌNH**: Cần xác nhận với Deezer về mẫu hiển thị logo và liên kết. |
 | **Lãnh thổ & Bản quyền** | ToS **không có** điều khoản cụ thể về giới hạn phân phối theo lãnh thổ (Section XI chỉ quy định luật áp dụng là pháp luật Cộng hòa Pháp). | Thực tế phân phối bản thu phụ thuộc vào catalog storefront từng quốc gia. SPK-01 đo tại Việt Nam đạt 94,3% (66/70 bài). Catalog có thể biến động bất kỳ lúc nào theo bản quyền của hãng đĩa. | **RỦI RO VẬN HÀNH**: Cần cơ chế fallback bỏ qua bài lỗi trong adapter kho nhạc. |
 
+> **Cập nhật 2026-10-28:** Deezer đã trả lời bằng văn bản (Mục 3.4): không nhận đăng ký ứng dụng API mới, không có mốc mở lại và không xác nhận cách dùng của Meloo. Các mức rủi ro trong bảng trên vì vậy không còn đường làm rõ chính thức; Thái quyết định vẫn dùng Deezer ở mọi môi trường và tự chấp nhận rủi ro (Mục 6).
+
 > [!NOTE]
 > **Về căn cứ pháp lý theo Luật Sở hữu trí tuệ Việt Nam (Luật 50/2005/QH11, sửa đổi bởi Luật 07/2022/QH15):**
-> - Đối với tác phẩm âm nhạc (quyền tác giả): Điều 25 khoản 1 điểm a quy định ngoại lệ không phải xin phép, không phải trả tiền bản quyền khi *"Tự sao chép một bản nhằm mục đích nghiên cứu khoa học, giảng dạy của cá nhân và không nhằm mục đích thương mại"*, đi kèm điều kiện tại khoản 2 (*"không được làm ảnh hưởng đến việc khai thác bình thường tác phẩm, không gây phương hại đến các quyền của tác giả, chủ sở hữu quyền tác giả; phải thông tin về tên tác giả và nguồn gốc, xuất xứ của tác phẩm"*).
-> - Đối với bản ghi âm (quyền liên quan): Điều 32 khoản 1 điểm a cũng quy định giới hạn tương tự: *"Tự sao chép một bản nhằm mục đích nghiên cứu khoa học, giảng dạy của cá nhân và không nhằm mục đích thương mại"*.
-> - **Phân tích giới hạn:** Cả Điều 25 và Điều 32 đều chỉ giới hạn ở hành vi *"tự sao chép một bản ... của cá nhân"*. Việc máy chủ backend streaming proxy phát đoạn nhạc qua mạng cho phòng 2–5 người chơi hoặc nhóm thử nghiệm Closed Beta nhiều khả năng **vượt ra ngoài phạm vi ngoại lệ tự sao chép của cá nhân**. Ngoài ra, các ngoại lệ luật định của quốc gia không mặc nhiên giải trừ nghĩa vụ ràng buộc theo hợp đồng dân sự khi chấp nhận ToS của Deezer. Do đó, việc sử dụng nội bộ vẫn cần được xem xét thận trọng và cần tham vấn chuyên gia pháp lý.
+> - Đối với tác phẩm âm nhạc (quyền tác giả): Điều 25 khoản 1 cho phép sử dụng tác phẩm đã công bố không phải xin phép, không phải trả tiền bản quyền *"nhưng phải thông tin về tên tác giả và nguồn gốc, xuất xứ của tác phẩm"*. Điểm a: *"Tự sao chép một bản để nghiên cứu khoa học, học tập của cá nhân và không nhằm mục đích thương mại. Quy định này không áp dụng trong trường hợp sao chép bằng thiết bị sao chép"*. Khoản 2: *"không được mâu thuẫn với việc khai thác bình thường tác phẩm và không gây thiệt hại một cách bất hợp lý đến lợi ích hợp pháp của tác giả, chủ sở hữu quyền tác giả"*.
+> - Đối với bản ghi âm (quyền liên quan): Điều 32 khoản 1 cũng yêu cầu *"phải thông tin về cuộc biểu diễn, bản ghi âm, ghi hình, chương trình phát sóng"*. Điểm a chỉ nói về ghi âm, ghi hình trực tiếp một phần cuộc biểu diễn để giảng dạy không thương mại hoặc đưa tin thời sự. Quy định tự sao chép nằm ở điểm b: *"Tự sao chép hoặc hỗ trợ người khuyết tật sao chép một phần cuộc biểu diễn, bản ghi âm, ghi hình, chương trình phát sóng nhằm mục đích nghiên cứu khoa học, học tập của cá nhân và không nhằm mục đích thương mại"*; điểm c là sao chép hợp lý một phần để giảng dạy trực tiếp của cá nhân. Khoản 2: *"không được mâu thuẫn với việc khai thác bình thường [...] và không gây thiệt hại một cách bất hợp lý đến lợi ích hợp pháp"* của người biểu diễn, nhà sản xuất bản ghi âm, tổ chức phát sóng.
+> - **Phân tích giới hạn (diễn giải của nhóm, không phải trích dẫn luật hay tư vấn pháp lý):**
+>   1. *Tự sao chép (Điều 25 khoản 1 điểm a, Điều 32 khoản 1 điểm b):* chỉ nói về việc cá nhân tự sao chép để nghiên cứu, học tập, không thương mại. Meloo không phải là cá nhân tự sao chép: server của dự án truyền phát (stream) đoạn nhạc cho nhiều người chơi. Nhiều khả năng nằm ngoài phạm vi này.
+>   2. *Ngoại lệ giảng dạy (Điều 25 khoản 1 điểm c, Điều 32 khoản 1 điểm a và c):* Điều 25(1)(c) cho *"sử dụng hợp lý tác phẩm để minh họa trong bài giảng"* nhằm mục đích giảng dạy, kể cả trên mạng nội bộ nếu có biện pháp kỹ thuật bảo đảm *"chỉ người học và người dạy trong buổi học đó"* tiếp cận. Điều 32(1)(a) là ghi âm, ghi hình trực tiếp một phần cuộc biểu diễn; điểm c là sao chép hợp lý một phần để giảng dạy trực tiếp của cá nhân. Nhóm cho rằng Meloo nhiều khả năng không thuộc các điểm này: Meloo là game giải trí chứ không phải bài giảng; người chơi trong phòng và trong beta không chỉ là người học và người dạy của một buổi học, và chưa có biện pháp giới hạn như điều luật đòi hỏi; Điều 32(1)(a) áp dụng cho ghi âm trực tiếp cuộc biểu diễn, không phải bản ghi âm đã công bố như preview của nhà cung cấp. Riêng buổi bảo vệ đồ án trước hội đồng có thể có lập luận gần hơn với bối cảnh giảng dạy, nhưng chưa được xác minh.
+>   3. *Điều kiện chung:* Điều 25 khoản 2 và Điều 32 khoản 2 vẫn yêu cầu không mâu thuẫn với việc khai thác bình thường và không gây thiệt hại một cách bất hợp lý đến lợi ích hợp pháp.
+>   4. Các ngoại lệ luật định của quốc gia không mặc nhiên giải trừ nghĩa vụ hợp đồng dân sự khi chấp nhận ToS của Deezer. Việc sử dụng nội bộ vẫn cần được xem xét thận trọng và cần tham vấn chuyên gia pháp lý.
+>
+> Nguồn: Luật 07/2022/QH15, [bản đăng Công báo số 573 + 574 ngày 16-7-2022](https://datafiles.chinhphu.vn/cpp/files/vbpq/2022/07/07-2022-qh15..pdf), Điều 25 và Điều 32 (đối chiếu ngày 2026-10-28); chưa đối chiếu văn bản hợp nhất mới nhất.
 
 ### 2.2. Apple / iTunes Search API (Nguồn dự phòng kỹ thuật)
 Tham chiếu: [Apple Services Base Terms](https://www.apple.com/legal/internet-services/itunes/) và [Apple Search API / Affiliate Program Terms](https://performance-partners.apple.com/search-api), rà soát ngày 2026-10-21 và 2026-10-28.
@@ -60,16 +68,18 @@ Tham chiếu: [Apple Services Base Terms](https://www.apple.com/legal/internet-s
 
 ## 3. Nhật ký liên hệ nhà cung cấp (AC 1)
 
-Nhằm làm rõ quyền sử dụng cho trường hợp đặc thù của Meloo, nhóm phát triển đã tiến hành liên hệ chính thức tới Deezer.
+Nhằm làm rõ quyền sử dụng cho trường hợp đặc thù của Meloo, Thái đã liên hệ Deezer qua email hỗ trợ. Giờ trong mục này tính theo múi giờ +0700 và được đối chiếu với hộp thư Gmail của Thái (đọc bằng công cụ chỉ đọc ngày 2026-10-28), không phải số liệu tự khai.
 
 ### 3.1. Thông tin gửi thư
-* **Đơn vị nhận:** Email hỗ trợ chung `support@deezer.com` (kênh hỗ trợ đối tác chung; *lưu ý: trang Developers ToS không công khai email, kênh cần xác minh chính thức*).
-* **Cổng hỗ trợ nhà phát triển chính thức:** `https://developers.deezer.com/support` (yêu cầu đăng nhập tài khoản Deezer để gửi yêu cầu hỗ trợ kỹ thuật).
+* **Đơn vị nhận:** Email hỗ trợ chung `support@deezer.com`. Trang Developers và ToS không công khai địa chỉ email; Deezer đã trả lời thư gửi tới địa chỉ này và mở ticket hỗ trợ, nên kênh này liên lạc được, nhưng chưa được Deezer công bố là kênh dành riêng cho nhà phát triển.
+* **Cổng hỗ trợ nhà phát triển:** `https://developers.deezer.com/support` (yêu cầu đăng nhập tài khoản Deezer). Chưa dùng.
 * **Người gửi:** Trần Văn Thái (Chủ sở hữu dự án & Lập trình viên chính).
-* **Ngày giờ gửi:** **2026-10-28, khoảng 08:17** (Sprint S1).
-* **Trạng thái:** **Đang chờ phản hồi (Pending)**.
+* **Bản 1:** gửi **2026-10-28 08:16** tới `support@deezer.com` (nội dung ở 3.2).
+* **Bản 2 (câu hỏi bổ sung về phạm vi gia đình):** gửi **2026-10-28 09:11**, trả lời trong cùng chuỗi thư (nội dung ở 3.3).
+* **Ticket hỗ trợ:** **8870718**, mở **2026-10-28 14:30** sau khi Thái yêu cầu chuyển cho nhân viên thật.
+* **Trạng thái:** **Đã có phản hồi từ nhân viên Deezer (16:38 cùng ngày)**, xem 3.4.
 
-### 3.2. Nội dung thư chính thức đã gửi (Bản 1 - Gửi ngày 28/10/2026 lúc ~08:17)
+### 3.2. Nội dung thư chính thức đã gửi (Bản 1 - Gửi 2026-10-28 lúc 08:16)
 
 #### 3.2.1. Nguyên văn tiếng Anh (Bản 1)
 ```text
@@ -144,24 +154,106 @@ Trần Văn Thái
 Lập trình viên chính, Dự án Meloo
 ```
 
-### 3.3. Bản nháp câu hỏi bổ sung (Bản 2 - Dự kiến gửi qua cổng support của Deezer)
-Nhằm làm rõ thêm điều khoản giới hạn trong phạm vi gia đình (*family scope*) được phát hiện qua đợt rà soát ToS, nhóm đã chuẩn bị sẵn câu hỏi bổ sung để gửi tiếp khi mở ticket hỗ trợ trên cổng `https://developers.deezer.com/support` hoặc khi nhận được thư phản hồi đầu tiên:
+### 3.3. Câu hỏi bổ sung về phạm vi gia đình (Bản 2, đã gửi 2026-10-28 09:11)
+Nội dung dưới đây là bản đã gửi thật, lấy từ hộp thư Gmail của Thái.
+
+#### 3.3.1. Nguyên văn tiếng Anh (Bản 2)
 ```text
-Question 3.b (Additional inquiry):
-Does Section IV's restriction regarding "strictly private use within a family scope" permit non-commercial testing among small study groups or student peers (2-5 users per room in an educational project)?
-(Bản dịch: Quy định tại Mục IV về việc sử dụng "nghiêm ngặt trong phạm vi gia đình" có cho phép thử nghiệm phi thương mại trong các nhóm học tập nhỏ hoặc bạn học sinh viên từ 2–5 người/phòng trong một đồ án giáo dục hay không?)
+Dear Deezer Developer Support Team,
+
+Following up on my inquiry sent earlier today (2026-10-28) regarding Meloo, an educational, non-commercial music guessing game, I would like to add one more question that arose while reviewing the Deezer Developer Terms of Use.
+
+Section IV states that "the use of the Content is limited to a strictly private use within a family scope." Meloo is a student project where 2-5 players join a room to guess a track from progressively unlocked previews. The players may not belong to the same family; they would be classmates, friends and instructors invited to test the project.
+
+Additional question:
+Does the restriction on "strictly private use within a family scope" permit non-commercial testing among small groups of students or peers (2-5 users per room) in an educational project? If it does not, could you please tell us whether a developer program agreement or another arrangement exists that would allow this kind of use?
+
+A written reply would be very helpful, as it determines whether we can use Deezer previews at all in our upcoming beta.
+
+Thank you for your time and guidance.
+
+Sincerely,
+Tran Van Thai
+Lead Developer, Meloo Project
+https://github.com/ThaiDevv/meloo
 ```
 
-### 3.4. Quy tắc xử lý thời hạn phản hồi (Quy tắc mốc S4)
-* Do quy trình phản hồi của các hãng cung cấp quốc tế thường kéo dài nhiều ngày hoặc nhiều tuần:
-  * Nếu Deezer phản hồi chấp thuận bằng văn bản trước Sprint S4: Bổ sung phản hồi (đã che thông tin cá nhân/nhạy cảm) vào tài liệu này và chuyển kết luận sang **"Được phép có điều kiện"**.
-  * **Nếu đến hết Sprint S4 (chuẩn bị mở Beta) mà vẫn chưa có phản hồi chính thức:** Tự động kết luận là **"Chưa có kết luận / Không đủ căn cứ pháp lý" (No-go)** đối với việc dùng preview Deezer cho Public Beta. Cổng phát hành BIZ-07 sẽ kích hoạt phương án nguồn nhạc thay thế được cấp phép riêng do Thái quyết định.
+#### 3.3.2. Bản dịch tiếng Việt đối chiếu (Bản 2)
+```text
+Kính gửi Đội ngũ Hỗ trợ Nhà phát triển Deezer,
+
+Tiếp theo thư tôi đã gửi sáng nay (28/10/2026) về Meloo, một game đoán nhạc phi thương mại phục vụ học tập, tôi xin bổ sung một câu hỏi phát sinh khi rà soát Điều khoản sử dụng dành cho nhà phát triển của Deezer.
+
+Mục IV quy định việc sử dụng Nội dung "giới hạn nghiêm ngặt trong mục đích riêng tư trong phạm vi gia đình". Meloo là đồ án sinh viên, mỗi phòng 2-5 người cùng đoán một bài hát qua đoạn preview được mở dần. Người chơi có thể không cùng gia đình; họ là bạn học, bạn bè và giảng viên được mời thử nghiệm.
+
+Câu hỏi bổ sung:
+Quy định "chỉ dùng riêng tư trong phạm vi gia đình" có cho phép thử nghiệm phi thương mại trong các nhóm nhỏ gồm sinh viên hoặc bạn học (2-5 người mỗi phòng) trong một đồ án giáo dục hay không? Nếu không, Deezer có thỏa thuận dành cho nhà phát triển hoặc cách sắp xếp nào khác cho phép cách dùng này không?
+
+Một phản hồi bằng văn bản sẽ rất hữu ích, vì nó quyết định việc chúng tôi có thể dùng preview của Deezer trong đợt beta sắp tới hay không.
+
+Cảm ơn quý đội ngũ đã dành thời gian hướng dẫn.
+
+Trân trọng,
+Trần Văn Thái
+Lập trình viên chính, Dự án Meloo
+```
+
+### 3.4. Phản hồi của Deezer (AC 1)
+
+#### 3.4.1. Diễn biến (giờ +0700, theo hộp thư của Thái)
+| Giờ | Ai | Nội dung chính |
+|---|---|---|
+| 08:17 | Deezer Virtual Agent (trợ lý ảo) | Xếp yêu cầu vào "professional or business use", chuyển sang cổng Deezer Business |
+| 09:11 | Deezer Virtual Agent | Phân tích điều khoản chuẩn; không xác nhận cách dùng của Meloo (trích dẫn ở 3.4.2) |
+| 14:20 | Thái | Trả lời: dự án sinh viên phi thương mại, đề nghị chuyển cho nhóm duyệt API theo Section IX |
+| 14:20 | Deezer Virtual Agent | Gợi ý lại biểu mẫu Business; thư đóng hồ sơ tự động |
+| 14:29 | Thái | Yêu cầu nối với nhân viên thật, đề nghị không đóng hồ sơ |
+| 14:30 | Deezer Virtual Agent | Mở ticket **8870718** |
+| 16:38 | Nhân viên Deezer, Customer Care Tier 2 | Trả lời về quyền truy cập API (trích dẫn ở 3.4.3) |
+
+Hai thư đầu và các thư giữa ngày đều là của trợ lý ảo, không phải quyết định của bộ phận có thẩm quyền. Chỉ thư lúc 16:38 là của nhân viên thật.
+
+#### 3.4.2. Thư của trợ lý ảo lúc 09:11 (trích)
+> *"The terms do not indicate that a non-commercial educational project is automatically permitted merely because it is limited to 2–5 participants. They state that use of the Services and Content is limited to a strictly private use within a family scope. A group of classmates, friends, or instructors would not clearly fall within that stated scope."*
+>
+> *"...the standard Developer Terms do not provide written confirmation that Meloo’s proposed multiplayer preview gameplay or its server-side proxy arrangement is permitted."*
+>
+> *"...you should not treat the current terms as approval for the proposed public beta. Any permission or alternative arrangement for this use would need to be reviewed and approved in advance by Deezer."*
+
+Ý nghĩa: đây là cách đọc điều khoản chuẩn, không phải lập trường pháp lý chính thức. Nhưng nó khớp với ToS đã trích ở Mục 2.1.
+
+#### 3.4.3. Thư của nhân viên Deezer lúc 16:38, ticket 8870718 (trích; đã bỏ tên cá nhân)
+> *"Deezer is currently not accepting new application registrations for API access."*
+>
+> *"If you already have an app with API access, it should continue to work for now, but there’s no guarantee this will remain unchanged."*
+>
+> *"The web SDK has been retired and is no longer available."*
+>
+> *"There is no official timeline for when—or if—API access will be opened up to new applications."*
+>
+> *"...you may want to explore alternative solutions until Deezer’s API platform becomes available again."*
+
+Thư còn chỉ biểu mẫu partnership của Deezer, dành cho việc tích hợp với phần cứng, xe hơi hoặc sản phẩm khác.
+
+#### 3.4.4. Thư này trả lời và không trả lời điều gì
+* **Trả lời:** không có đường đăng ký ứng dụng mới; không có mốc thời gian mở lại; Deezer khuyên tìm giải pháp thay thế.
+* **Không trả lời:** (a) điều khoản "phạm vi gia đình" có áp dụng cho nhóm nhỏ phi thương mại hay không; (b) proxy cắt đoạn và giữ URL ký trong RAM có chấp nhận được không; (c) các endpoint công khai không cần đăng ký có được dùng cho dự án như Meloo hay không.
+* **Quan sát kỹ thuật (2026-10-28, do Claude kiểm tra):** tìm kiếm, bảng xếp hạng và link preview của Deezer vẫn trả HTTP 200 mà không cần ứng dụng hay token; link preview trả `audio/mpeg` 479.827 byte, khớp một đoạn 30 giây ở 128 kbps. Quan sát này chỉ chứng minh Deezer **chạy được hôm nay**, không chứng minh việc dùng đó được **cho phép**.
+
+### 3.5. Kết luận AC 1 và quy tắc mốc S4
+* AC 1 yêu cầu xác nhận bằng văn bản từ Deezer. Deezer đã trả lời bằng văn bản và **không xác nhận** quyền sử dụng; kết luận về nguồn Deezer cho Public Beta là **"Không được phép / không có đường duyệt" (No-go)**.
+* Theo ghi chú của ticket, khi không có xác nhận thì BIZ-07 (MEL-78) **không được dùng preview của provider**. Phần nguồn thay thế ở Mục 5.
+* **Ngoại lệ do Thái quyết định:** Thái vẫn dùng Deezer cho Closed Beta và Public Beta. Quyết định này trái với kết luận ở trên, với AC 6 của ticket và với ghi chú "BR-27 và mục 5" trong `docs/srs/02-business-rules.md`. Tài liệu ghi nhận đây là ngoại lệ có chủ đích và **không** coi đó là sự cho phép của Deezer (Mục 6).
+* Quy tắc mốc S4 giữ lại để dùng nếu Deezer đổi chính sách: nếu Deezer có phê duyệt bằng văn bản trước khi mở Public Beta thì bổ sung bằng chứng (đã che thông tin cá nhân) vào Mục 3 và đánh giá lại Mục 6. Hết S4 mà không có phê duyệt thì kết luận vẫn là No-go.
+* Thái có thể hỏi thêm Deezer qua chính ticket 8870718 (câu hỏi về endpoint công khai và phạm vi gia đình). Việc này không bắt buộc để hoàn thành LEG-02.
 
 ---
 
 ## 4. Giới hạn lưu giữ URL preview, Attribution & Lãnh thổ (AC 2)
 
 Dựa trên phân tích ToS và thiết kế hệ thống, các giới hạn tự áp đặt sau đây phải được áp dụng nghiêm ngặt trong mã nguồn để hạn chế tối đa rủi ro vi phạm:
+
+Các giới hạn dưới đây áp dụng khi dùng Deezer. Với Jamendo, xem thêm điều kiện ở Mục 5.1.
 
 1. **Giới hạn lưu giữ URL và Audio (Storage Boundaries):**
    - **Tuyệt đối không lưu tệp audio:** Backend không lưu trữ tệp `.mp3` xuống ổ cứng (EBS), cơ sở dữ liệu (PostgreSQL) hay bất kỳ hệ thống lưu trữ đối tượng nào (S3).
@@ -179,39 +271,71 @@ Dựa trên phân tích ToS và thiết kế hệ thống, các giới hạn t�
 
 ## 5. Nguồn audio được cấp phép riêng thay thế cho Beta (AC 4)
 
-Trong trường hợp không nhận được văn bản chấp thuận từ Deezer trước thời điểm phát hành Beta công khai (BIZ-07), nhóm phát triển chuẩn bị sẵn 2 phương án nguồn audio được cấp phép riêng đáp ứng đầy đủ yêu cầu của AC 4:
+Deezer không có đường xin duyệt (Mục 3.4). Tài liệu này đề xuất nguồn audio được cấp phép riêng cho beta, nhưng Thái quyết định (2026-10-28) vẫn dùng Deezer ở mọi môi trường (Mục 6). Vì vậy AC 4 (chọn nguồn audio được cấp phép riêng) **không được thực hiện theo quyết định đó**; Jamendo được ghi nhận là nguồn thay thế ưu tiên khi cần chuyển.
 
 ```mermaid
 flowchart TD
-    A["Đánh giá điều kiện phát hành Beta (BIZ-07)"] --> B{"Deezer có văn bản<br/>chấp thuận trước S4?"}
-    B -- "Có" --> C["Mở Beta công khai với Deezer (Được phép có điều kiện)"]
-    B -- "Không có / Chưa phản hồi" --> D["KÍCH HOẠT NGUỒN AUDIO ĐƯỢC CẤP PHÉP RIÊNG (Thái quyết định)"]
-    D --> E["Phương án 1: Kho nhạc bản quyền mở Creative Commons / Tự host S3"]
-    D --> F["Phương án 2: Cấp phép trực tiếp từ nghệ sĩ Indie (P2-04)"]
+    A["Mở Closed Beta / Public Beta (BIZ-07)"] --> B["Quyết định của Thái: dùng Deezer, tự chấp nhận rủi ro"]
+    B --> C{"Deezer chặn truy cập<br/>hoặc yêu cầu dừng?"}
+    C -- "Không" --> D["Tiếp tục dùng Deezer"]
+    C -- "Có" --> E["Chuyển sang Jamendo (ưu tiên)"]
+    E --> F["Dự phòng: nhạc indie VN (P2-04), nhạc CC0 / CC-BY tự host"]
+    C -- "Có, chưa kịp có Jamendo" --> G["Tạm dùng FakeMusicProvider (âm thanh tổng hợp)"]
 ```
 
-### 5.1. Hai phương án nguồn audio cấp phép riêng (AC 4)
-1. **Phương án 1 (Khuyến nghị kỹ thuật): Kho nhạc bản quyền tự do Creative Commons (CC-BY / CC0) tự host:**
-   - Sử dụng các bản thu từ các nền tảng mở như Free Music Archive (FMA), Musopen hoặc Wikimedia Commons có giấy phép CC0 (Public Domain) hoặc CC-BY (ghi công tác giả).
-   - Lưu trữ các đoạn preview 30 giây được chuẩn hóa trực tiếp trên AWS S3 và phân phối qua CloudFront.
-   - *Ưu điểm:* 100% sạch về pháp lý, tự chủ hoàn toàn về bitrate, offset thời gian và không phụ thuộc vào hạ tầng hay ToS của bên thứ ba.
-2. **Phương án 2: Hợp tác cấp phép trực tiếp với nghệ sĩ Indie:**
-   - Liên hệ trực tiếp các nghệ sĩ trẻ / indie tại Việt Nam để xin cấp quyền sử dụng các bản nhạc độc lập phục vụ quảng bá trong game (phù hợp định hướng phát triển bài hát tài trợ P2-04).
+### 5.1. Nguồn thay thế ưu tiên: Jamendo API
+Tham chiếu: [Jamendo API Terms of Use](https://devportal.jamendo.com/api_terms_of_use), đọc ngày 2026-10-28. Trang trả về một số câu bị cắt, nên bảng dưới chỉ gồm những câu đọc được nguyên vẹn.
 
-### 5.2. Biện pháp quản lý phạm vi thử nghiệm: Closed Beta (< 50 người)
+| Chủ đề | Điều khoản (trích) | Hệ quả đối với Meloo |
+|---|---|---|
+| **Giấy phép nội dung** (3.1) | *"Each Content available through the API is published on the JAMENDO Platform under a Creative Commons license."* Loại giấy phép cụ thể nằm ở trang của từng bài. | Mỗi bài có giấy phép riêng; Meloo phải đọc và lọc theo giấy phép khi nhập catalog. |
+| **Phi thương mại** (3.3) | *"The API may be used freely for non-commercial uses."* Cách dùng khác, gồm thương mại, phải liên hệ bộ phận cấp phép của Jamendo (`licensing@jamendo.com`). | Phù hợp đồ án phi thương mại. Nếu Meloo sau này thu phí hoặc quảng cáo thì phải xin phép lại. |
+| **Lưu trữ / cache** (3.3) | *"Applications must not be specifically designed to cache the content nor offering an offline access to the content."* Cache chỉ ở mức "reasonably necessary for the operation of the Application". | Khớp thiết kế proxy không lưu audio của ADR-008. Không được tự lưu bản sao hàng loạt từ Jamendo. |
+| **Ghi nhận nguồn** (4.1) | Ghi tên nghệ sĩ (Members) là tác giả; ghi Jamendo là nhà cung cấp; có liên kết trực tiếp từ mỗi bài tới trang bài đó trên Jamendo. | Mở rộng yêu cầu attribution ở Mục 4 cho Jamendo; hiển thị khi vòng kết thúc, không lộ đáp án trước đó. |
+| **Giới hạn tần suất** (3.3) | Jamendo bảo lưu quyền giới hạn số lượng và tần suất yêu cầu; **không nêu con số**. | Cần cache metadata hợp lý và theo dõi lỗi 429. |
+| **Proxy cắt đoạn 2/5/10/20/30s** | **Không được đề cập** trong trang điều khoản. | Chưa có xác nhận. Cần hỏi Jamendo (xem 5.1.2). |
+
+#### 5.1.1. Điều kiện nếu chuyển sang Jamendo
+* Chỉ dùng các bài có giấy phép cho phép cách dùng của Meloo. Giấy phép CC có biến thể (ví dụ cấm sửa đổi) có thể ảnh hưởng việc cắt đoạn ngắn; cần xác minh trước khi nhập bài thuộc biến thể đó.
+* Hiển thị đầy đủ ghi nhận nguồn theo điều 4.1.
+* Không lưu audio ngoài mức cần thiết cho vận hành; giữ thiết kế proxy không persist audio (Mục 4, ADR-008).
+
+#### 5.1.2. Việc chưa xác minh (cần làm trước khi chuyển sang Jamendo)
+1. Trang tài liệu `tracks` của API Jamendo: có trả trường giấy phép, URL stream và cờ cho phép tải hay không. Chưa đọc được trang này.
+2. Đo thử một mẫu như SPK-01: số bài dùng được theo giấy phép, độ dài và bitrate của đoạn nghe, độ phủ theo thể loại. Quy mô kho hiện tại **chưa rõ**: các nguồn đọc được chỉ là số liệu cũ (hàng chục nghìn đến hơn 300.000 bài).
+3. Hỏi Jamendo (`licensing@jamendo.com`) rằng việc stream qua proxy server và cắt đoạn ngắn có phù hợp điều khoản không, vì điều khoản không nói. Cần phản hồi bằng văn bản **cho phép** proxy và cắt đoạn thì mới coi là được xác nhận. Nếu Jamendo trả lời không cho phép thì cách tích hợp qua proxy với Jamendo là No-go và phải đổi cách tích hợp. Nếu Jamendo không trả lời thì dùng Jamendo cũng chỉ là dùng không có xác nhận, cùng loại rủi ro với Deezer, và Thái quyết định có chấp nhận hay không.
+
+#### 5.1.3. Đánh đổi chính
+Jamendo là kho nhạc của nghệ sĩ độc lập, **không có bài hit** của các hãng đĩa. Trải nghiệm game đổi từ "đoán bài hit quen thuộc" sang "đoán trong bộ đề theo thể loại hoặc tâm trạng". Đây là thay đổi về sản phẩm cần Thái cân nhắc khi thiết kế bộ đề.
+
+#### 5.1.4. Ảnh hưởng kỹ thuật (chỉ ghi nhận, ngoài phạm vi ticket này)
+Backend hiện có interface `MusicProvider` và enum `MusicProvider` {`DEEZER`, `ITUNES`}, chọn nguồn bằng cấu hình `meloo.catalog.provider.type`. Thêm Jamendo cần giá trị enum mới, adapter mới, và chỗ lưu thông tin giấy phép/ghi công của từng bài (bảng `track` hiện chưa có cột này). Module `audio` mới có khung, chưa có proxy phát nhạc. Các việc này cần ticket riêng.
+
+### 5.2. Phương án dự phòng
+1. **Nhạc indie Việt Nam (P2-04):** liên hệ trực tiếp nghệ sĩ để xin quyền sử dụng trong game. Rõ ràng về pháp lý nhưng tốn công liên hệ, quy mô nhỏ.
+2. **Tự host nhạc CC0 / CC-BY** (Free Music Archive, Musopen, Wikimedia Commons): chỉ dùng bản có giấy phép cho phép phân phối lại. Lưu preview trên S3 khác với nguyên tắc không lưu audio ở Mục 4, nên chỉ áp dụng với nội dung mà giấy phép cho phép.
+
+### 5.3. Biện pháp quản lý phạm vi thử nghiệm: Closed Beta (< 50 người)
 * Đây là biện pháp giới hạn quy mô thử nghiệm nhằm hạn chế phát tán ra công chúng, không phải là một "nguồn audio cấp phép riêng".
-* Nếu Thái quyết định giới hạn đợt thử nghiệm thành Closed Beta (chỉ mở cho danh sách mời dưới 50 người dùng bao gồm sinh viên trong lớp và giảng viên), đợt thử nghiệm này giảm thiểu rủi ro lan truyền trên mạng mở. Tuy nhiên, rủi ro điều khoản "family scope" của Deezer và ranh giới ngoại lệ tự sao chép của Luật SHTT vẫn tồn tại và cần được Thái cân nhắc, tham vấn.
+* Giới hạn quy mô (danh sách mời dưới 50 người, gồm sinh viên trong lớp và giảng viên) giảm rủi ro lan truyền trên mạng mở nhưng **không giải quyết** điều khoản "family scope" của Deezer và ranh giới ngoại lệ tự sao chép của Luật SHTT. Thái chọn vẫn dùng Deezer cho Closed Beta (Mục 6), nên rủi ro này được chấp nhận chứ không được giải quyết.
 
 ---
 
-## 6. Đề xuất ma trận quyết định Go/No-go cho Beta (Chờ Thái quyết định)
+## 6. Ma trận quyết định Go/No-go
 
-| Môi trường / Mục đích | Nguồn nhạc áp dụng | Đề xuất của agent | Rủi ro pháp lý & Điều kiện áp dụng |
-|---|---|:---:|---|
-| **Môi trường phát triển & Đồ án nội bộ** (Local dev, CI/CD, bảo vệ tốt nghiệp) | Deezer (MP3 128 kbps) | **ĐỀ XUẤT NỘI BỘ (CHỜ THAM VẤN / THÁI QUYẾT ĐỊNH)** | Chưa có kết luận pháp lý chính thức. Chỉ nên giới hạn nghiêm ngặt trên môi trường máy cá nhân của lập trình viên (localhost); streaming qua mạng nội bộ cần được tham vấn pháp lý hoặc chờ Deezer xác nhận. |
-| **Thử nghiệm đóng** (Closed Beta nội bộ, giới hạn < 50 người dùng) | Deezer (MP3 128 kbps) | **CHỜ THÁI QUYẾT ĐỊNH** | Tồn tại rủi ro vi phạm điều khoản *"family scope"* của Deezer và vượt ngoài ngoại lệ tự sao chép cá nhân của Luật SHTT. Nếu Thái chấp nhận rủi ro này thì áp dụng kèm attribution đầy đủ; nếu không, chuyển sang Phương án 1 (nhạc Creative Commons tự host). |
-| **Beta công khai** (Public Beta - BIZ-07 / MEL-78) | Deezer (MP3 128 kbps) | **NO-GO (CHƯA ĐỦ ĐIỀU KIỆN)** | **Tuyệt đối không mở Public Beta với Deezer** khi chưa có văn bản chấp thuận từ Deezer. Nếu đến hết S4 không có phản hồi, Thái quyết định kích hoạt Phương án 1 (nhạc Creative Commons tự host). |
-| **Mọi môi trường** (Dev, Beta, Production) | Apple / iTunes Preview | **NO-GO (TẮT MẶC ĐỊNH)** | Vi phạm điều khoản cấm tạo giá trị giải trí độc lập của Apple. Tuyệt đối không kích hoạt nếu không có hợp đồng thương mại riêng với Apple (khớp AC 3). |
+Ghi chú cách đọc: cột "Trạng thái" cho biết dòng đó là **quyết định của Thái** (lấy từ trao đổi ngày 2026-10-28), **kết luận từ căn cứ** (có bằng chứng ở Mục 2-3) hay **đề xuất** (chờ điều kiện ở 5.1.2). Tài liệu này không tuyên bố bất kỳ cách dùng Deezer nào là tuân thủ hay được Deezer cho phép.
+
+| Môi trường / Mục đích | Nguồn nhạc | Kết luận | Trạng thái | Điều kiện và rủi ro |
+|---|---|:---:|:---:|---|
+| **Dev, test với nhóm bạn, bảo vệ đồ án** | Deezer | **DÙNG, TỰ CHẤP NHẬN RỦI RO** | Quyết định của Thái | Deezer chưa xác nhận cách dùng này. Rủi ro chính: Deezer chặn truy cập bất kỳ lúc nào. Khi bảo vệ, nói rõ tình trạng pháp lý với hội đồng theo tài liệu này. |
+| **Closed Beta** (danh sách mời < 50 người) | Deezer | **DÙNG, TỰ CHẤP NHẬN RỦI RO** | Quyết định của Thái | Vượt khỏi "phạm vi gia đình": Deezer nói nhóm bạn học, bạn bè, giảng viên *"would not clearly fall within"* phạm vi đó và không có đường xin duyệt. |
+| **Public Beta** (BIZ-07 / MEL-78) | Deezer | **DÙNG, TỰ CHẤP NHẬN RỦI RO (trái với kết luận từ căn cứ)** | Quyết định của Thái, ngoại lệ so với AC 6 | Deezer viết: *"you should not treat the current terms as approval for the proposed public beta"* và không có đường duyệt. Rủi ro cao hơn hai dòng trên: nhiều người dùng, link công khai, dễ bị chú ý; Deezer có thể chặn khiến game mất nguồn nhạc giữa lúc mở beta. |
+| **Điều kiện tối thiểu cho ba dòng Deezer ở trên** | Deezer | **ĐỀ XUẤT** | Chờ Thái duyệt khi merge | (1) Không ghi "tuân thủ" hay "được Deezer cho phép" ở bất kỳ đâu: giao diện, trang giới thiệu, báo cáo, slide; (2) vẫn phi thương mại: không quảng cáo, không thu phí; (3) không lưu audio, URL ký chỉ trong RAM, hiển thị attribution (Mục 4); (4) có cách tắt nhanh nguồn Deezer; (5) có đường lui chạy được: `FakeMusicProvider` (3 file âm thanh tổng hợp tự sinh, không dính bản quyền) hoặc Jamendo khi xong 5.1.2; (6) Deezer yêu cầu dừng thì dừng. |
+| **Khi Deezer chặn hoặc yêu cầu dừng** | Jamendo | **CHUYỂN SANG** | Đề xuất, nguồn thay thế ưu tiên | Sau khi hoàn thành 5.1.1 và 5.1.2: giấy phép từng bài, đo mẫu, **có phản hồi bằng văn bản của Jamendo cho phép proxy và cắt đoạn**; kèm ghi công theo 4.1. |
+| **Mọi môi trường** | Apple / iTunes | **NO-GO** | Kết luận từ căn cứ | Điều khoản Apple cấm giá trị giải trí độc lập; chỉ bật nếu có hợp đồng thương mại riêng với Apple (khớp AC 3). |
+
+### 6.1. Ghi nhận ngoại lệ
+Quyết định dùng Deezer cho Closed Beta và Public Beta khác với: (a) kết luận ở Mục 3.5; (b) AC 6 của ticket MEL-120 ("không dùng preview từ provider để phát beta công khai trước khi có kết luận Được phép hoặc Được phép có điều kiện"); (c) ghi chú "BR-27 và mục 5" trong `docs/srs/02-business-rules.md`. Tài liệu ghi nhận đây là ngoại lệ do Thái (PO) quyết định, và Thái xác nhận lại ngày 2026-10-28 trong vòng review 1 của PR #42 rằng vẫn giữ quyết định này. AC 6 trên Jira đã được cập nhật để ghi nhận ngoại lệ này; AC 4 trên Jira và ghi chú SRS còn chờ cập nhật qua quy trình riêng. PR này **chưa** sửa SRS vì nằm ngoài phạm vi ticket. Kết luận LEG-02 vì vậy là "Chưa được phép", không phải "Được phép có điều kiện".
 
 ---
 
@@ -220,11 +344,14 @@ flowchart TD
 1. **Tại sao Meloo không gửi trực tiếp URL preview từ nhà cung cấp cho người chơi mà phải dùng máy chủ làm proxy trung gian?**
    - *Trả lời:* Nếu gửi thẳng URL của nhà cung cấp về trình duyệt, người chơi chỉ cần mở tab Network trong công cụ lập trình (DevTools) là sẽ thấy ngay `trackId`, tên bài hát hoặc metadata trong URL/header, phá vỡ hoàn toàn tính công bằng của game (NFR-07). Máy chủ làm streaming proxy với token mờ HMAC ngắn hạn (`/api/v1/audio/{token}`) giúp che giấu toàn bộ thông tin bài hát trước khi vòng chơi kết thúc, đồng thời kiểm soát chính xác độ dài byte phát tương ứng với từng mức thời gian mở dần 2/5/10/20/30 giây.
 
-2. **Việc máy chủ làm proxy và điều khoản "family scope" của Deezer được xử lý ra sao?**
-   - *Trả lời:* Rà soát pháp lý của nhóm chỉ ra rằng ToS của Deezer giới hạn sử dụng *"within a family scope"* và cấm vượt rào kỹ thuật để tải nội dung. Đồng thời, ngoại lệ tại Điều 25 và 32 Luật SHTT Việt Nam cũng chỉ áp dụng cho việc tự sao chép của cá nhân. Mặc dù Meloo tuân thủ nguyên tắc không lưu trữ tệp audio ra đĩa và chỉ cache tạm URL ký trong RAM < 15 phút, rủi ro pháp lý vẫn tồn tại khi phát qua mạng. Nhóm đã chủ động gửi thư làm rõ (Bản 1 ngày 28/10/2026) và đang chuẩn bị gửi câu hỏi bổ sung về phạm vi gia đình (Bản 2), đồng thời đặt quy định Release Gate (AC 6): Public Beta bị chặn (No-go) cho đến khi Deezer chấp thuận bằng văn bản. Nếu không có phản hồi trước S4, dự án sẽ chuyển sang kho nhạc bản quyền tự do Creative Commons do Thái quyết định.
+2. **Điều khoản "family scope" của Deezer được xử lý ra sao, và Deezer đã trả lời thế nào?**
+   - *Trả lời:* ToS của Deezer giới hạn sử dụng *"within a family scope"* và cấm vượt rào kỹ thuật để tải nội dung; ngoại lệ tại Điều 25 và 32 Luật SHTT chỉ áp dụng cho việc tự sao chép của cá nhân, nên không bao phủ việc phát qua mạng cho phòng nhiều người. Nhóm đã gửi hai thư hỏi Deezer (08:16 và 09:11 ngày 28/10/2026) và mở ticket 8870718. Nhân viên Deezer trả lời rằng hiện không nhận đăng ký ứng dụng API mới, không có mốc mở lại, và khuyên tìm giải pháp thay thế; Deezer cũng không xác nhận cách dùng của Meloo. Vì vậy Deezer **chưa được cho phép ở bất kỳ môi trường nào**; chủ dự án quyết định vẫn dùng và tự chấp nhận rủi ro (Mục 6), và nhóm không tuyên bố việc đó là tuân thủ điều khoản.
 
 3. **Tại sao nhóm không sử dụng iTunes Search API dù độ phủ bản thu của Apple đạt 100% trong bài đo SPK-01?**
    - *Trả lời:* Điều khoản của Apple quy định rõ ràng rằng đoạn nghe thử *"is not used for independent entertainment value apart from its promotional purpose"*. Vì game đoán nhạc sử dụng âm thanh làm nội dung giải trí chính, việc dùng iTunes sẽ vi phạm ToS của Apple nếu không có hợp đồng thương mại riêng. Ngược lại, Deezer sử dụng định dạng MP3 128 kbps giúp tiết kiệm hơn 52% băng thông mạng máy chủ so với định dạng AAC 268 kbps của Apple.
 
-4. **Nếu nhà cung cấp không phản hồi thư hoặc từ chối cấp quyền, dự án xử lý thế nào để không bị dừng đợt Beta?**
-   - *Trả lời:* Nhóm đã thiết kế sẵn kiến trúc Adapter cho kho nhạc và có 2 phương án nguồn audio cấp phép riêng: chuyển sang sử dụng kho nhạc bản quyền mở Creative Commons (CC-BY / CC0 tự host trên S3) hoặc hợp tác với nghệ sĩ Indie (P2-04). Kiến trúc streaming proxy qua token mờ của Meloo hoàn toàn độc lập với nguồn phát, sẵn sàng chuyển đổi nguồn nhạc mà không cần thay đổi kiến trúc hệ thống.
+4. **Nếu Deezer chặn truy cập giữa chừng thì dự án xử lý thế nào?**
+   - *Trả lời:* Có ba lớp. Trước hết `FakeMusicProvider` với âm thanh tổng hợp tự sinh, không dính bản quyền, vẫn chứng minh cơ chế mở dần 2/5/10/20/30 giây. Tiếp theo, nguồn thay thế ưu tiên là Jamendo API, kho nhạc Creative Commons của nghệ sĩ độc lập, có điều khoản cho dùng API tự do cho mục đích phi thương mại và yêu cầu ghi công. Cuối cùng là nhạc indie Việt Nam hoặc nhạc CC0/CC-BY tự host. Việc đổi nguồn không đổi kiến trúc proxy token HMAC của Meloo vì cơ chế này không phụ thuộc nguồn phát; tuy vậy cần thêm adapter, giá trị enum nhà cung cấp mới và nơi lưu giấy phép từng bài, và điều khoản Jamendo chưa nói về proxy nên còn một câu hỏi chờ gửi Jamendo. Đánh đổi lớn nhất là kho nhạc độc lập không có bài hit.
+
+5. **Vì sao vẫn dùng Deezer ở mọi môi trường dù Deezer không xác nhận và không có đường duyệt?**
+   - *Trả lời:* Các endpoint công khai của Deezer (tìm kiếm, bảng xếp hạng, link preview) vẫn chạy mà không cần đăng ký ứng dụng vào ngày 28/10/2026, và nhân viên Deezer nói truy cập hiện có "should continue to work for now". Nhóm hiểu rằng điều này không phải sự cho phép. Chủ dự án quyết định tự chấp nhận rủi ro vì đây là đồ án phi thương mại, rủi ro thực tế chủ yếu là bị chặn truy cập chứ không phải tranh chấp quy mô lớn; đó là đánh giá của chủ dự án, không có bằng chứng từ Deezer. Nhóm minh bạch về tình trạng này, giữ các điều kiện tối thiểu ở Mục 6 và có đường lui chạy được.

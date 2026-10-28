@@ -24,7 +24,9 @@ Lý do ưu tiên Deezer là băng thông thấp hơn, URL có chữ ký hết h�
 
 iTunes Search tự nó không có chart endpoint. Apple RSS Builder có feed top songs và top playlists; feed VN đã trả HTTP 200 trong lần kiểm tra ngày 2026-10-21. Có thể lấy preview bằng iTunes lookup theo track ID trong feed. Độ bền, rate limit và điều kiện dùng feed cho mục đích của Meloo chưa được xác nhận, nên không dùng điều này làm lý do pháp lý để chọn provider.
 
-Điều kiện phát hành: phải có xác nhận bằng văn bản hoặc giấy phép cho phép dùng preview Deezer trong beta game nhiều người, gồm proxy và giới hạn stream. iTunes tắt mặc định; chỉ được bật khi có hợp đồng cấp phép riêng cho mục đích game; attribution và badge không thay thế quyền này. Thẩm định pháp lý LEG-02 (MEL-120) đã hoàn tất rà soát ToS và ghi nhận việc gửi thư tới Deezer ngày 2026-10-28 (xem `docs/legal/music-preview-licensing.md`). Nếu Deezer phản hồi chấp thuận trước S4, Deezer được dùng cho Public Beta theo các điều kiện xác nhận (tuân thủ attribution và in-memory cache URL ký < 15 phút). Nếu đến hết S4 chưa có phản hồi, Thái quyết định chọn nguồn audio được cấp phép riêng trước beta (như kho nhạc Creative Commons CC-BY/CC0 tự host); agent không tự chọn nhà cung cấp thay thế.
+Điều kiện phát hành: phải có xác nhận bằng văn bản hoặc giấy phép cho phép dùng preview Deezer trong beta game nhiều người, gồm proxy và giới hạn stream. iTunes tắt mặc định; chỉ được bật khi có hợp đồng cấp phép riêng cho mục đích game; attribution và badge không thay thế quyền này.
+
+Kết quả LEG-02 (MEL-120, 2026-10-28, xem `docs/legal/music-preview-licensing.md`): Deezer đã phản hồi bằng văn bản, không xác nhận được việc dùng preview cho gameplay nhiều người, và cho biết hiện không nhận đăng ký ứng dụng API mới và không có mốc mở lại. Vì vậy **điều kiện phát hành chưa được đáp ứng**. Thái quyết định (2026-10-28) vẫn dùng Deezer ở mọi môi trường, kể cả closed beta và beta công khai, và tự chấp nhận rủi ro. Đây là ngoại lệ so với cổng phát hành ở trên, được ghi nhận có chủ đích trong LEG-02 (Mục 6.1) và **không phải sự cho phép của Deezer**. Jamendo API là nguồn thay thế ưu tiên nếu Deezer chặn truy cập hoặc yêu cầu dừng; việc xác minh giấy phép từng bài, đo mẫu và hỏi Jamendo về proxy cần ticket riêng, và agent không tự chọn nhà cung cấp thay thế. iTunes giữ nguyên là dự phòng kỹ thuật, tắt mặc định.
 
 Adapter lưu provider track ID và metadata, không persist URL preview hoặc audio. Có thể giữ URL ký Deezer trong memory của tiến trình cho request/vòng hiện tại, tối đa tới khi vòng kết thúc và không quá thời hạn URL (đo khoảng 15 phút); không dùng URL sau hạn hoặc qua phiên. Đây là cách triển khai đề xuất cần được xác nhận trong cổng pháp lý. Lỗi provider phải được xử lý như nguồn tạm thời không sẵn sàng.
 
@@ -43,6 +45,8 @@ Adapter lưu provider track ID và metadata, không persist URL preview hoặc a
 - Tốt: dữ liệu đo và script tái hiện được, ghép cả tên bài lẫn nghệ sĩ để tránh nhập nhầm cover.
 - Rủi ro: Deezer thiếu 20% mẫu K-pop. Catalog import phải báo bài không match để quản trị viên duyệt, không tự hạ ngưỡng.
 - Rủi ro: quyền sử dụng chưa được xác nhận cho beta công khai. Đây là release gate; không giải quyết bằng thay đổi kỹ thuật.
+- Rủi ro: Deezer đã cho biết không nhận ứng dụng API mới và truy cập hiện có không được đảm bảo giữ nguyên (LEG-02, 2026-10-28). Không xây thêm phần phụ thuộc vào Deezer ngoài dev và test.
+- Rủi ro: Jamendo là kho nhạc độc lập, không có bài hit; giấy phép từng bài khác nhau và điều khoản không nói về proxy cắt đoạn (LEG-02, Mục 5.1). Backend cần giá trị enum nhà cung cấp mới, adapter và chỗ lưu giấy phép/ghi công.
 - Rủi ro: provider có thể đổi catalog, format, URL và quota. Chạy lại spike trước khi seed catalog và theo dõi lỗi resolve preview.
 - Rủi ro: provider không công bố offset trong bài. Đoạn 2 giây đầu có thể khác độ khó giữa các bài, ảnh hưởng công bằng tính điểm; cần playtest và xác định cách chọn/căn đoạn khi có quyền xử lý audio.
 - Chi phí: backend phải proxy audio; băng thông ước lượng ở trên chưa gồm overhead. Mức RAM và tải đồng thời còn chờ đo trong MEL-118.
@@ -50,6 +54,7 @@ Adapter lưu provider track ID và metadata, không persist URL preview hoặc a
 ## Nguồn
 
 - [LEG-02: Thẩm định quyền sử dụng preview nhạc cho Meloo](../../legal/music-preview-licensing.md), 2026-10-28.
+- [Jamendo API Terms of Use](https://devportal.jamendo.com/api_terms_of_use), truy cập 2026-10-28.
 - [Kết quả và phương pháp SPK-01](../../../spikes/music-provider/README.md), đo 2026-10-21.
 - [Deezer for Developers Terms of Use](https://developers.deezer.com/termsofuse), truy cập 2026-10-21.
 - [iTunes Search API và Legal](https://performance-partners.apple.com/search-api), truy cập 2026-10-21.
@@ -63,4 +68,4 @@ Adapter lưu provider track ID và metadata, không persist URL preview hoặc a
 2. Bốn bài K-pop thiếu xử lý thế nào? — Loại khỏi bộ đề hoặc lấy từ nguồn có quyền khác; không dùng cover sai nghệ sĩ.
 3. URL Deezer hết hạn có gây gián đoạn vòng không? — Có thể giữ URL ký tạm thời trong memory tối đa vòng hiện tại và hạn URL; thiết kế này vẫn cần provider xác nhận.
 4. Vì sao vẫn cần token Meloo khi URL Deezer đã ký? — URL nguồn không gắn với người chơi, vòng và mức nghe; token Meloo mới kiểm quyền và che metadata đáp án.
-5. Có thể ra beta ngay với Deezer không? — Chưa. Cần xác nhận quyền cho beta nhiều người và việc proxy/cắt stream; nếu không có thì dùng nguồn đã cấp phép.
+5. Có thể ra beta ngay với Deezer không? — Về kỹ thuật được; về quyền thì chưa. Deezer đã trả lời không nhận ứng dụng mới và không xác nhận cách dùng của Meloo (LEG-02). Thái quyết định vẫn dùng Deezer cho beta và tự chấp nhận rủi ro; Jamendo là phương án đổi nguồn nếu Deezer chặn.

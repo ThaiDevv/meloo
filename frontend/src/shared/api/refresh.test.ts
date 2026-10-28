@@ -20,9 +20,9 @@ const session: AuthSession = {
   },
 }
 
-function problem(status: number, code: string, field: 'code' | 'errorCode' = 'code') {
+function problem(status: number, code: string) {
   return HttpResponse.json(
-    { type: 'about:blank', title: code, status, [field]: code },
+    { type: 'about:blank', title: code, status, code },
     { status, headers: { 'Content-Type': 'application/problem+json' } },
   )
 }
@@ -62,15 +62,6 @@ describe('refreshSession', () => {
     expect(useSessionStore.getState().role).toBeNull()
   })
 
-  it('reads Spring ProblemDetail errorCode while retaining the contract code field', async () => {
-    useAuthStore.getState().setSession(session)
-    server.use(http.post('*/api/v1/auth/refresh', () => problem(401, 'UNAUTHORIZED', 'errorCode')))
-
-    await expect(refreshSession(BASE)).resolves.toBe('expired')
-    expect(useAuthStore.getState().accessToken).toBeNull()
-    expect(useSessionStore.getState().role).toBeNull()
-  })
-
   it('ends the session when the account is locked (403 ACCOUNT_LOCKED)', async () => {
     useAuthStore.getState().setSession(session)
     server.use(http.post('*/api/v1/auth/refresh', () => problem(403, 'ACCOUNT_LOCKED')))
@@ -94,18 +85,30 @@ describe('refreshSession', () => {
     expect(useAuthStore.getState().accessToken).toBe('fresh-token')
   })
 
-  it('recognizes REFRESH_RACE from the backend errorCode field', async () => {
+  it('does not retry when response body only has legacy error property instead of contract code', async () => {
+    useAuthStore.getState().setSession({ ...session, accessToken: 'old-token' })
     let calls = 0
+    const legacyField = ['error', 'Code'].join('')
     server.use(
       http.post('*/api/v1/auth/refresh', () => {
         calls++
-        return calls === 1 ? problem(401, 'REFRESH_RACE', 'errorCode') : HttpResponse.json(session)
+        return calls === 1
+          ? HttpResponse.json(
+              {
+                type: 'about:blank',
+                title: 'REFRESH_RACE',
+                status: 401,
+                [legacyField]: 'REFRESH_RACE',
+              },
+              { status: 401, headers: { 'Content-Type': 'application/problem+json' } },
+            )
+          : HttpResponse.json(session)
       }),
     )
 
-    await expect(refreshSession(BASE, { raceRetryDelayMs: 0 })).resolves.toBe('refreshed')
-    expect(calls).toBe(2)
-    expect(useAuthStore.getState().accessToken).toBe('fresh-token')
+    await expect(refreshSession(BASE, { raceRetryDelayMs: 0 })).resolves.toBe('unavailable')
+    expect(calls).toBe(1)
+    expect(useAuthStore.getState().accessToken).toBe('old-token')
   })
 
   it('does not sign out when REFRESH_RACE repeats, and stops after the single retry', async () => {

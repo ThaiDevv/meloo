@@ -39,7 +39,7 @@ Người tổ chức (lớp trưởng, giáo viên, HR, streamer) dùng phòng r
 ### 2.2 Ràng buộc
 - Chỉ dùng đoạn preview 30 giây từ API âm nhạc hợp lệ; không phát cả bài. Sau mỗi vòng hiện link nghe đầy đủ trên nền tảng gốc (BR-29).
 - Nguồn nhạc chính dự kiến là Deezer; iTunes là dự phòng kỹ thuật, tắt mặc định (đề xuất ở ADR-003, đang ở trạng thái Đề xuất; SPK-01 đo ngày 21/10/2026). Spotify bị loại vì đã cắt preview với app mới từ 27/11/2024.
-- Beta công khai chỉ dùng preview của nhà cung cấp khi LEG-02 (MEL-120) xác nhận quyền sử dụng. Ngoại lệ 2026-10-28: Thái (PO) quyết định vẫn dùng Deezer cho beta và tự chấp nhận rủi ro; LEG-02 kết luận "Chưa được phép" (xem [`docs/legal/music-preview-licensing.md`](../legal/music-preview-licensing.md) Mục 6.1).
+- Beta công khai chỉ dùng preview của nhà cung cấp khi LEG-02 (MEL-120) xác nhận quyền sử dụng. **Ngoại lệ 2026-10-28:** Thái (PO) quyết định vẫn dùng Deezer cho beta và tự chấp nhận rủi ro; LEG-02 kết luận "Chưa được phép" (xem [`docs/legal/music-preview-licensing.md`](../legal/music-preview-licensing.md) Mục 6.1).
 - Backend không lưu lâu dài URL preview của Deezer (URL có chữ ký, hết hạn sau khoảng 15 phút) và không lưu file audio.
 - Server là trọng tài: đáp án, điểm và đồng hồ do server quyết, client chỉ hiển thị.
 - Đoạn nhạc cấp qua token mờ, chỉ đúng mức đã mở.

@@ -137,8 +137,8 @@ Lưu ý: bản preview khoảng 30 giây do nền tảng nhạc tự cắt. "2 g
 
 ## 5. Nguồn nhạc
 
-- **Đề xuất: Deezer là nguồn chính; iTunes là dự phòng kỹ thuật, tắt mặc định** (ADR-003, đang ở trạng thái Đề xuất; số liệu SPK-01 đo ngày 21/10/2026). ADR-003 chỉ chuyển sang Chấp nhận khi LEG-02 kết luận "Được phép" hoặc "Được phép có điều kiện"; nếu không được phép thì ADR-003 phải viết lại với nguồn audio khác. Lý do: điều khoản iTunes Search API cấm dùng preview làm giá trị giải trí độc lập, mà game đoán nhạc dùng preview đúng theo cách đó. Deezer có preview cho 100% bài V-pop và US-UK trong mẫu đo, dùng khoảng nửa băng thông (MP3 128 kbps so với AAC khoảng 268 kbps) và có API chart, playlist, ca sĩ để nhập kho nhạc hàng loạt.
-- **Cổng phát hành:** beta công khai chỉ dùng preview Deezer khi LEG-02 (MEL-120) có kết luận "Được phép" hoặc "Được phép có điều kiện".
+- **Đề xuất: Deezer là nguồn chính; iTunes là dự phòng kỹ thuật, tắt mặc định** (ADR-003, đang ở trạng thái Đề xuất; số liệu SPK-01 đo ngày 21/10/2026). ADR-003 chỉ chuyển sang Chấp nhận khi LEG-02 kết luận "Được phép" hoặc "Được phép có điều kiện"; nếu không được phép thì ADR-003 phải viết lại với nguồn audio khác. **Ngoại lệ 2026-10-28:** Thái (PO) quyết định vẫn dùng Deezer cho beta và tự chấp nhận rủi ro; LEG-02 kết luận "Chưa được phép", Deezer chưa xác nhận cách dùng của Meloo (xem [`docs/legal/music-preview-licensing.md`](../legal/music-preview-licensing.md) Mục 6.1). Lý do: điều khoản iTunes Search API cấm dùng preview làm giá trị giải trí độc lập, mà game đoán nhạc dùng preview đúng theo cách đó. Deezer có preview cho 100% bài V-pop và US-UK trong mẫu đo, dùng khoảng nửa băng thông (MP3 128 kbps so với AAC khoảng 268 kbps) và có API chart, playlist, ca sĩ để nhập kho nhạc hàng loạt.
+- **Cổng phát hành:** beta công khai chỉ dùng preview Deezer khi LEG-02 (MEL-120) có kết luận "Được phép" hoặc "Được phép có điều kiện". **Ngoại lệ 2026-10-28:** Thái (PO) quyết định vẫn dùng Deezer cho beta và tự chấp nhận rủi ro; LEG-02 kết luận "Chưa được phép" (xem [`docs/legal/music-preview-licensing.md`](../legal/music-preview-licensing.md) Mục 6.1).
 - **Hệ quả cho luật chơi:** BR-29 hiện nguồn Deezer và link nghe đầy đủ trên Deezer. Bài không có trên Deezer (4/20 bài K-pop trong mẫu đo) bị loại khỏi bộ đề, không thay bằng bản cover. BR-05 chỉ chấp nhận bản cover khi chấm câu trả lời của người chơi; bài dùng làm đáp án luôn là bản gốc.
 
 ## 6. Ticket đã cập nhật Acceptance Criteria theo bản này
@@ -171,11 +171,12 @@ Product Owner: Trần Văn Thái. Ngày 22/10/2026, Thái giao Claude chốt cá
 | Review PR lần 3 | 22/10/2026 | 4 điểm tùy chọn của QA: phạm vi BR-12, lượt đoán sát giờ, công thức "chỉ khi đoán đúng", cách viết "5s" và "5 giây" | Claude, theo ủy quyền của Thái | Dòng "(review PR lần 3)" ở mục 2.2 |
 | Nghiệm thu | 22/10/2026 | Nhãn mức đoán đúng trong kết quả chia sẻ (BR-25); thêm biên bản này | Claude, theo ủy quyền của Thái | Dòng "(nghiệm thu)" ở mục 2.2 |
 | Đặc tả use case (MEL-29) | 22/10/2026 | 8 điểm còn mở khi đặc tả use case: luyện tập và trận bỏ dở (BR-23), khách xem bảng và hồ sơ (BR-20), ngày của lượt và trần 5 phút (BR-25, BR-07), đếm ngược khi người rời (BR-13), chặn tin từ cấm (BR-17), cảnh cáo và khóa khách (BR-28) | Thái | Dòng "(use case MEL-29)" ở mục 2.2; `usecases/00-tong-quan.md` mục 5 |
+| Quyết định LEG-02 (MEL-133) | 28/10/2026 | Ghi ngoại lệ: LEG-02 kết luận "Chưa được phép" nhưng vẫn dùng Deezer cho beta và tự chấp nhận rủi ro; giữ nguyên quy tắc gốc, không đổi BR nào | Thái (PO) quyết định | Mục 5: "Đề xuất: Deezer là nguồn chính", "Cổng phát hành"; "BR-27 và mục 5" ở danh sách BR cần theo dõi |
 
 **BR cần theo dõi sau khi duyệt** (đánh dấu để hỏi lại, theo AC của MEL-28):
 
 - **BR-01:** preview không công bố vị trí đoạn trích trong bài (SPK-01), nên độ khó mức 2 giây có thể chênh giữa các bài. Xem lại sau playtest.
-- **BR-27 và mục 5:** chỉ dùng preview Deezer cho beta công khai khi LEG-02 (MEL-120) kết luận "Được phép" hoặc "Được phép có điều kiện".
+- **BR-27 và mục 5:** chỉ dùng preview Deezer cho beta công khai khi LEG-02 (MEL-120) kết luận "Được phép" hoặc "Được phép có điều kiện". **Ngoại lệ 2026-10-28:** Thái (PO) quyết định vẫn dùng Deezer cho beta và tự chấp nhận rủi ro; LEG-02 kết luận "Chưa được phép" (xem [`docs/legal/music-preview-licensing.md`](../legal/music-preview-licensing.md) Mục 6.1).
 
 **Duyệt cuối của Product Owner**
 

@@ -39,7 +39,7 @@ Người tổ chức (lớp trưởng, giáo viên, HR, streamer) dùng phòng r
 ### 2.2 Ràng buộc
 - Chỉ dùng đoạn preview 30 giây từ API âm nhạc hợp lệ; không phát cả bài. Sau mỗi vòng hiện link nghe đầy đủ trên nền tảng gốc (BR-29).
 - Nguồn nhạc chính dự kiến là Deezer; iTunes là dự phòng kỹ thuật, tắt mặc định (đề xuất ở ADR-003, đang ở trạng thái Đề xuất; SPK-01 đo ngày 21/10/2026). Spotify bị loại vì đã cắt preview với app mới từ 27/11/2024.
-- Beta công khai chỉ dùng preview của nhà cung cấp khi LEG-02 (MEL-120) xác nhận quyền sử dụng.
+- Beta công khai chỉ dùng preview của nhà cung cấp khi LEG-02 (MEL-120) xác nhận quyền sử dụng. **Ngoại lệ 2026-10-28:** Thái (PO) quyết định vẫn dùng Deezer cho beta và tự chấp nhận rủi ro; LEG-02 kết luận "Chưa được phép" (xem [`docs/legal/music-preview-licensing.md`](../legal/music-preview-licensing.md) Mục 6.1).
 - Backend không lưu lâu dài URL preview của Deezer (URL có chữ ký, hết hạn sau khoảng 15 phút) và không lưu file audio.
 - Server là trọng tài: đáp án, điểm và đồng hồ do server quyết, client chỉ hiển thị.
 - Đoạn nhạc cấp qua token mờ, chỉ đúng mức đã mở.
@@ -152,7 +152,7 @@ Bảng truy vết use case ↔ FR (UC-xx ↔ FR-01 → FR-19) nằm ở [`usecas
 
 ## 6. Còn mở
 
-- **Quyền dùng preview cho beta công khai:** chờ LEG-02 (MEL-120). Nguồn nhạc kỹ thuật được đề xuất ở ADR-003 (Deezer chính, iTunes dự phòng); ADR-003 chỉ chuyển sang Chấp nhận khi LEG-02 kết luận "Được phép" hoặc "Được phép có điều kiện"; nếu không được phép thì phải chọn nguồn audio khác.
+- **Quyền dùng preview cho beta công khai:** LEG-02 (MEL-120) đã có kết luận "Chưa được phép". Nguồn nhạc kỹ thuật được đề xuất ở ADR-003 (Deezer chính, iTunes dự phòng); ADR-003 chỉ chuyển sang Chấp nhận khi LEG-02 kết luận "Được phép" hoặc "Được phép có điều kiện"; nếu không được phép thì phải chọn nguồn audio khác. **Ngoại lệ 2026-10-28:** Thái (PO) quyết định vẫn dùng Deezer cho beta và tự chấp nhận rủi ro; LEG-02 kết luận "Chưa được phép", Deezer chưa xác nhận cách dùng của Meloo (xem [`docs/legal/music-preview-licensing.md`](../legal/music-preview-licensing.md) Mục 6.1).
 - **Module sở hữu lịch sử trận** (Match, Round, Guess) và phục vụ `/me/matches`: chốt ở DES-01 vì là quyết định kiến trúc. Đề xuất: progression ghi lịch sử khi nhận sự kiện `MatchFinished`, game chỉ giữ engine. Ảnh hưởng FR-13.
 
 ## 7. Câu hỏi bảo vệ
@@ -160,5 +160,5 @@ Bảng truy vết use case ↔ FR (UC-xx ↔ FR-01 → FR-19) nằm ở [`usecas
 1. **FR khác BR thế nào?** FR nói hệ thống làm được gì; BR là luật của bài toán mà chức năng phải tuân theo. Một FR có thể dựa trên nhiều BR, ví dụ FR-07 (chơi đơn) dựa trên BR-01 → BR-09, BR-27, BR-29.
 2. **NFR-10 (người mới vào chơi ≤ 30 giây) đo thế nào?** Trong beta, cho ít nhất 5 người chưa từng dùng Meloo mở web và bấm giờ đến khi nghe đoạn nhạc đầu tiên. Khách chơi được ngay mà không cần đăng ký nên mục tiêu này khả thi.
 3. **Vì sao chỉ cam kết 20 phòng × 5 người?** Hệ thống chạy trên một EC2 free tier 1 GB RAM và giữ trạng thái phòng trong bộ nhớ (ADR-007). QA-03 đo ngưỡng này bằng k6; muốn vượt ngưỡng cần Redis và nhiều instance (P2-06).
-4. **Vì sao chọn Deezer mà không chọn iTunes, dù iTunes có preview 70/70 bài?** Điều khoản iTunes cấm dùng preview làm giá trị giải trí độc lập, mà đó chính là cách game đoán nhạc dùng preview. Deezer đủ bài V-pop, tốn khoảng nửa băng thông và có API nhập hàng loạt (đề xuất ở ADR-003). Quyền dùng cho beta công khai vẫn phải được xác nhận ở LEG-02.
+4. **Vì sao chọn Deezer mà không chọn iTunes, dù iTunes có preview 70/70 bài?** Điều khoản iTunes cấm dùng preview làm giá trị giải trí độc lập, mà đó chính là cách game đoán nhạc dùng preview. Deezer đủ bài V-pop, tốn khoảng nửa băng thông và có API nhập hàng loạt (đề xuất ở ADR-003). Quyền dùng cho beta công khai đã được xem xét ở LEG-02 với kết luận "Chưa được phép"; Thái (PO) vẫn quyết định dùng Deezer và tự chấp nhận rủi ro (ngoại lệ 2026-10-28, mục "Quyền dùng preview cho beta công khai").
 5. **Server khởi động lại giữa trận thì sao?** Trận đang chạy bị hủy vì trạng thái phòng nằm trong bộ nhớ (ADR-007); lịch sử các trận đã xong nằm trong cơ sở dữ liệu nên không mất. Mốc mất tối đa 24 giờ dữ liệu (RPO, NFR-15) chỉ áp dụng khi chính cơ sở dữ liệu hỏng và phải khôi phục từ bản sao lưu hằng ngày.

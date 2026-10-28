@@ -175,7 +175,7 @@ Product Owner: Trần Văn Thái. Ngày 22/10/2026, Thái giao Claude chốt cá
 **BR cần theo dõi sau khi duyệt** (đánh dấu để hỏi lại, theo AC của MEL-28):
 
 - **BR-01:** preview không công bố vị trí đoạn trích trong bài (SPK-01), nên độ khó mức 2 giây có thể chênh giữa các bài. Xem lại sau playtest.
-- **BR-27 và mục 5:** chỉ dùng preview Deezer cho beta công khai khi LEG-02 (MEL-120) kết luận "Được phép" hoặc "Được phép có điều kiện".
+- **BR-27 và mục 5:** chỉ dùng preview Deezer cho beta công khai khi LEG-02 (MEL-120) kết luận "Được phép" hoặc "Được phép có điều kiện". Ngoại lệ 2026-10-28: Thái (PO) quyết định vẫn dùng Deezer cho beta và tự chấp nhận rủi ro (LEG-02, Mục 6.1).
 
 **Duyệt cuối của Product Owner**
 

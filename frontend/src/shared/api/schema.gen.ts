@@ -37,8 +37,11 @@ export interface paths {
         /**
          * Rotate the refresh token and get a new access token
          * @description Public (no bearer token). Reads the refresh cookie, issues a new one and revokes the old one. Reusing an
-         *     old cookie revokes the whole token family (ADR-005). The `Origin` header is checked (CSRF). Called on page
-         *     load because the access token lives in memory only.
+         *     old cookie revokes the whole token family (ADR-005). If two refresh requests race within the rotation
+         *     grace window (10 seconds), the loser receives 401 `REFRESH_RACE` without revoking the token family; the
+         *     client must not treat this as an expired session, but instead reuse the current cookie set by the winning
+         *     request and retry once. The `Origin` header is checked (CSRF). Called on page load because the access token
+         *     lives in memory only.
          */
         post: operations["refreshSession"];
         delete?: never;
@@ -777,7 +780,15 @@ export interface operations {
                     "application/json": components["schemas"]["AuthSession"];
                 };
             };
-            401: components["responses"]["Unauthorized"];
+            /** @description Missing, expired or invalid credentials (`UNAUTHORIZED`), or concurrent refresh race (`REFRESH_RACE`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             403: components["responses"]["Forbidden"];
         };
     };

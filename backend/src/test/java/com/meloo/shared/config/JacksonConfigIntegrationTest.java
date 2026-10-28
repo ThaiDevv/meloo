@@ -100,7 +100,8 @@ class JacksonConfigIntegrationTest extends IntegrationTest {
                 .content(jsonWithUnknownProperty))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.status").value(400))
-        .andExpect(jsonPath("$.errorCode").value("HTTP_400"))
+        .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+        .andExpect(jsonPath("$.errorCode").doesNotExist())
         .andExpect(jsonPath("$.title").value("Invalid request"));
   }
 
@@ -142,7 +143,8 @@ class JacksonConfigIntegrationTest extends IntegrationTest {
                 .content(jsonWithUnknownProperty))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.status").value(400))
-        .andExpect(jsonPath("$.errorCode").value("HTTP_400"))
+        .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+        .andExpect(jsonPath("$.errorCode").doesNotExist())
         .andExpect(jsonPath("$.title").value("Invalid request"));
   }
 }

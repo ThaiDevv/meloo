@@ -7,6 +7,8 @@ import com.meloo.shared.api.ModuleSecurityRules.StompDestinationType;
 import com.meloo.shared.api.ModuleSecurityRules.StompFrameRule;
 import com.meloo.shared.api.ModuleSecurityRules.StompFrameType;
 import com.meloo.shared.api.ModuleSecurityRules.StompRule;
+import com.meloo.shared.web.ProblemAccessDeniedHandler;
+import com.meloo.shared.web.ProblemAuthenticationEntryPoint;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.messaging.Message;
@@ -18,12 +20,23 @@ import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.authorization.AuthorizationManager;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
+import tools.jackson.databind.ObjectMapper;
 
 class SecurityConfigTest {
 
+  private final ObjectMapper objectMapper = new ObjectMapper();
+  private final ProblemAuthenticationEntryPoint authenticationEntryPoint =
+      new ProblemAuthenticationEntryPoint(objectMapper);
+  private final ProblemAccessDeniedHandler accessDeniedHandler =
+      new ProblemAccessDeniedHandler(objectMapper);
+
+  private SecurityConfig createConfig(List<ModuleSecurityRules> rules) {
+    return new SecurityConfig(rules, authenticationEntryPoint, accessDeniedHandler);
+  }
+
   @Test
   void corsUsesConfiguredAllowedOrigins() {
-    SecurityConfig securityConfig = new SecurityConfig(List.of());
+    SecurityConfig securityConfig = createConfig(List.of());
     CorsConfigurationSource source =
         securityConfig.corsConfigurationSource(
             new CorsProperties(List.of("https://app.meloo.example")));
@@ -54,7 +67,7 @@ class SecurityConfigTest {
           }
         };
     AuthorizationManager<Message<?>> manager =
-        new SecurityConfig(List.of()).messageAuthorizationManager(List.of(publicTopicRules));
+        createConfig(List.of()).messageAuthorizationManager(List.of(publicTopicRules));
 
     assertThat(
             manager.authorize(() -> null, stompMessage(SimpMessageType.SUBSCRIBE, "/topic/public")))

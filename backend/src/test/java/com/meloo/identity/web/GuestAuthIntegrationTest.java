@@ -245,9 +245,20 @@ class GuestAuthIntegrationTest extends IntegrationTest {
   }
 
   @Test
-  @DisplayName("Unauthenticated request to /api/v1/me returns 401")
+  @DisplayName("Unauthenticated request to /api/v1/me returns 401 with code: UNAUTHORIZED")
   void unauthenticatedMeReturns401() throws Exception {
-    mockMvc.perform(get("/api/v1/me")).andExpect(status().isUnauthorized());
+    mockMvc
+        .perform(get("/api/v1/me"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(
+            header()
+                .string(HttpHeaders.WWW_AUTHENTICATE, org.hamcrest.Matchers.startsWith("Bearer")))
+        .andExpect(jsonPath("$.type").value("about:blank"))
+        .andExpect(jsonPath("$.title").value("Unauthorized"))
+        .andExpect(jsonPath("$.status").value(401))
+        .andExpect(jsonPath("$.code").value("UNAUTHORIZED"))
+        .andExpect(jsonPath("$.errorCode").doesNotExist())
+        .andExpect(jsonPath("$.instance").value("/api/v1/me"));
   }
 
   @Test
@@ -399,7 +410,8 @@ class GuestAuthIntegrationTest extends IntegrationTest {
     MvcResult successResult = status1 == 200 ? result1 : result2;
     MvcResult raceResult = status1 == 401 ? result1 : result2;
 
-    assertThat(raceResult.getResponse().getContentAsString()).contains("REFRESH_RACE");
+    assertThat(raceResult.getResponse().getContentAsString()).contains("\"code\":\"REFRESH_RACE\"");
+    assertThat(raceResult.getResponse().getContentAsString()).doesNotContain("errorCode");
 
     Cookie newCookie = successResult.getResponse().getCookie("meloo_refresh");
     assertThat(newCookie).isNotNull();
@@ -456,7 +468,8 @@ class GuestAuthIntegrationTest extends IntegrationTest {
                 .cookie(oldCookie)
                 .header(HttpHeaders.ORIGIN, "http://localhost:5173"))
         .andExpect(status().isUnauthorized())
-        .andExpect(jsonPath("$.errorCode").value("UNAUTHORIZED"))
+        .andExpect(jsonPath("$.code").value("UNAUTHORIZED"))
+        .andExpect(jsonPath("$.errorCode").doesNotExist())
         .andExpect(jsonPath("$.detail").value("Refresh token reuse detected"));
 
     // Verify the new token is also now revoked because whole family was revoked

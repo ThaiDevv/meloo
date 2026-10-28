@@ -18,13 +18,13 @@ Spike SPK-01 đo cùng 70 bài trên mạng tại Việt Nam ngày 2026-10-21. i
 
 ## Quyết định
 
-Đề xuất **Deezer làm nguồn chính có điều kiện** cho adapter catalog. Đề xuất **iTunes làm dự phòng kỹ thuật nhưng tắt mặc định**. Quyết định vận hành chờ hoàn tất xác nhận quyền sử dụng trước beta.
+Đề xuất **Deezer làm nguồn chính có điều kiện** cho adapter catalog. Đề xuất **iTunes làm dự phòng kỹ thuật, tắt mặc định (LEG-02 kết luận không kích hoạt nếu không có hợp đồng thương mại riêng với Apple)**. Quyết định vận hành chờ hoàn tất xác nhận quyền sử dụng trước beta.
 
 Lý do ưu tiên Deezer là băng thông thấp hơn, URL có chữ ký hết hạn và có endpoint chart/playlist/artist để nhập hàng loạt. Độ phủ tổng 94,3% đủ để tạo bộ đề ban đầu; bốn khoảng trống K-pop có thể loại khỏi catalog hoặc nhập từ nguồn đã cấp phép khác. Không tự chuyển sang bản cover chỉ vì trùng tên bài.
 
 iTunes Search tự nó không có chart endpoint. Apple RSS Builder có feed top songs và top playlists; feed VN đã trả HTTP 200 trong lần kiểm tra ngày 2026-10-21. Có thể lấy preview bằng iTunes lookup theo track ID trong feed. Độ bền, rate limit và điều kiện dùng feed cho mục đích của Meloo chưa được xác nhận, nên không dùng điều này làm lý do pháp lý để chọn provider.
 
-Điều kiện phát hành: phải có xác nhận bằng văn bản hoặc giấy phép cho phép dùng preview Deezer trong beta game nhiều người, gồm proxy và giới hạn stream. iTunes chỉ được bật khi có quyền riêng cho mục đích game; attribution và badge không thay thế quyền này. Cổng này phải hoàn tất trước beta công khai. Nếu cả hai provider không cấp quyền, Thái chọn nguồn audio được cấp phép riêng trước beta; agent không tự chọn nhà cung cấp thay thế.
+Điều kiện phát hành: phải có xác nhận bằng văn bản hoặc giấy phép cho phép dùng preview Deezer trong beta game nhiều người, gồm proxy và giới hạn stream. iTunes tắt mặc định; chỉ được bật khi có hợp đồng cấp phép riêng cho mục đích game; attribution và badge không thay thế quyền này. Thẩm định pháp lý LEG-02 (MEL-120) đã hoàn tất rà soát ToS và ghi nhận việc gửi thư tới Deezer ngày 2026-10-28 (xem `docs/legal/music-preview-licensing.md`). Nếu Deezer phản hồi chấp thuận trước S4, Deezer được dùng cho Public Beta theo các điều kiện xác nhận (tuân thủ attribution và in-memory cache URL ký < 15 phút). Nếu đến hết S4 chưa có phản hồi, Thái quyết định chọn nguồn audio được cấp phép riêng trước beta (như kho nhạc Creative Commons CC-BY/CC0 tự host); agent không tự chọn nhà cung cấp thay thế.
 
 Adapter lưu provider track ID và metadata, không persist URL preview hoặc audio. Có thể giữ URL ký Deezer trong memory của tiến trình cho request/vòng hiện tại, tối đa tới khi vòng kết thúc và không quá thời hạn URL (đo khoảng 15 phút); không dùng URL sau hạn hoặc qua phiên. Đây là cách triển khai đề xuất cần được xác nhận trong cổng pháp lý. Lỗi provider phải được xử lý như nguồn tạm thời không sẵn sàng.
 
@@ -49,6 +49,7 @@ Adapter lưu provider track ID và metadata, không persist URL preview hoặc a
 
 ## Nguồn
 
+- [LEG-02: Thẩm định quyền sử dụng preview nhạc cho Meloo](../../legal/music-preview-licensing.md), 2026-10-28.
 - [Kết quả và phương pháp SPK-01](../../../spikes/music-provider/README.md), đo 2026-10-21.
 - [Deezer for Developers Terms of Use](https://developers.deezer.com/termsofuse), truy cập 2026-10-21.
 - [iTunes Search API và Legal](https://performance-partners.apple.com/search-api), truy cập 2026-10-21.

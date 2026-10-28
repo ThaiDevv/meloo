@@ -352,14 +352,14 @@ Tại repository GitHub, vào **Settings** → **Secrets and variables** → **A
      -H "Content-Type: application/json" \
      -d '{"nickname":"Tester"}'
    ```
-2. Trên máy chủ EC2, kiểm tra log container backend (Tomcat access log đã được bật ra stdout qua Compose với pattern `%{X-Forwarded-For}i %h %t "%r" %s`):
+2. Trên máy chủ EC2, kiểm tra log container backend (Tomcat access log đã được bật ra stdout qua Compose với pattern `%{X-Forwarded-For}i %h %t "%m" %s`, dùng `%m` thay cho `%r` để tuân thủ `contracts/openapi.yaml:554` không lộ raw audio bearer token):
    ```bash
    cd /opt/meloo
    docker compose logs --tail=20 backend
    ```
 3. **Kết quả mong đợi:** Dòng access log của backend hiển thị rõ ràng:
    ```text
-   <IP_THAT_CUA_BAN> <IP_NOI_BO_CADDY> [28/Oct/2026:...] "POST /api/v1/auth/guest HTTP/1.1" 201
+   <IP_THAT_CUA_BAN> <IP_NOI_BO_CADDY> [28/Oct/2026:...] "POST" 201
    ```
    Trường đầu tiên trong access log là `%{X-Forwarded-For}i` do Caddy chuyển sang. Giá trị này là IP socket công cộng thực tế của máy bạn, **tuyệt đối không phải 1.2.3.4**, chứng minh Caddy đã ghi đè header `X-Forwarded-For` bằng `{remote_host}` thành công.
    *(Có thể đối chiếu chéo thêm log của Caddy bằng lệnh `docker compose logs --tail=20 caddy`)*.

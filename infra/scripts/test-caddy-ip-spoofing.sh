@@ -6,15 +6,15 @@
 # 1. Caddyfile hợp lệ và được adapt thành cấu hình reverse_proxy có header_up
 #    ghi đè X-Forwarded-For={remote_host}, không cấu hình trusted_proxies.
 # 2. Compose production không expose cổng backend ra host (chỉ expose mạng nội bộ),
-#    và cấu hình Tomcat access log để ghi nhận IP client thật ra stdout.
-# 3. Dynamic test bằng Docker với Mock Upstream (kiểm tra nhanh cơ chế header rewrite).
-# 4. [TEST BẮT BUỘC 1] Chạy trên Compose / Backend Spring Boot thật:
-#    Gửi 6 lần POST /api/v1/auth/guest qua Caddy với các header X-Forwarded-For giả khác nhau:
-#    - Lần 1..5: HTTP 201 Created
-#    - Lần 6: HTTP 429 Too Many Requests (BR-02 / MEL-33 rate limit)
-#    - Log backend ghi nhận IP thật, không bị giả mạo.
-# 5. [TEST BẮT BUỘC 2] Gọi thẳng cổng backend từ ngoài mạng Docker:
-#    Kết nối bị từ chối (Connection refused).
+#    và cấu hình Tomcat access log để ghi nhận IP client thật ra stdout (dùng %m
+#    thay vì %r để không lộ raw audio bearer token theo contracts/openapi.yaml:554).
+# 3. [TEST BẮT BUỘC TRÊN COMPOSE PRODUCTION THẬT]
+#    - Khởi động stack Compose production (docker compose -f infra/compose/docker-compose.prod.yml)
+#    - [Test 2] Probe trực tiếp cổng 8080 của backend từ host -> Bị từ chối kết nối (Connection refused).
+#    - [Test 1] Gửi 6 lần POST /api/v1/auth/guest qua Caddy với các IP giả khác nhau:
+#      + Lần 1..5: HTTP 201 Created
+#      + Lần 6: HTTP 429 Too Many Requests (BR-02 rate limit 5 req/h/IP)
+#      + Kiểm tra Tomcat access log: IP socket thật được ghi nhận, không bị giả mạo.
 # ==============================================================================
 
 set -euo pipefail
@@ -25,13 +25,7 @@ CADDYFILE="$REPO_ROOT/infra/caddy/Caddyfile"
 COMPOSE_PROD="$REPO_ROOT/infra/compose/docker-compose.prod.yml"
 COMPOSE_AWS="$REPO_ROOT/infra/aws/docker-compose.prod.yml"
 
-echo "=== [1/5] KIỂM TRA CÚ PHÁP VÀ JSON ADAPT CỦA CADDYFILE ==="
-if [ ! -f "$CADDYFILE" ]; then
-  echo "❌ Lỗi: Không tìm thấy file $CADDYFILE" >&2
-  exit 1
-fi
-
-# 1. Caddy validate
+echo "=== [1/3] KIỂM TRA CÚ PHÁP VÀ JSON ADAPT CỦA CADDYFILE ==="
 docker run --rm \
   -v "$CADDYFILE":/etc/caddy/Caddyfile:ro,z \
   -e API_DOMAIN=api.meloo.local \
@@ -39,7 +33,6 @@ docker run --rm \
   caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
 echo "✅ Cú pháp Caddyfile hợp lệ."
 
-# 2. Caddy adapt và kiểm tra JSON
 ADAPTED_JSON=$(docker run --rm \
   -v "$CADDYFILE":/etc/caddy/Caddyfile:ro,z \
   -e API_DOMAIN=api.meloo.local \
@@ -74,16 +67,11 @@ if found_trusted_proxies:
     print("❌ Lỗi: reverse_proxy không được đặt trusted_proxies ở chế độ kết nối trực tiếp", file=sys.stderr)
     sys.exit(1)
 
-print("✅ Đã kiểm tra JSON: reverse_proxy ghi đè X-Forwarded-For thành {http.request.remote.host} và không có trusted_proxies.")
+print("✅ Đã kiểm tra JSON: reverse_proxy ghi đè X-Forwarded-For={remote_host} và không có trusted_proxies.")
 ' "$ADAPTED_JSON"
 
-echo "=== [2/5] KIỂM TRA ĐÓNG CỔNG VÀ ACCESS LOG TRONG DOCKER COMPOSE ==="
+echo "=== [2/3] KIỂM TRA ĐÓNG CỔNG VÀ ACCESS LOG TRONG COMPOSE FILES ==="
 for file in "$COMPOSE_PROD" "$COMPOSE_AWS"; do
-  if [ ! -f "$file" ]; then
-    echo "❌ Lỗi: Không tìm thấy $file" >&2
-    exit 1
-  fi
-
   python3 -c '
 import sys
 
@@ -112,7 +100,7 @@ for line in lines:
             backend_has_expose = True
 
 if backend_has_ports:
-    print(f"❌ Lỗi: {filename} cấu hình ports cho backend (vi phạm AC2 đóng cổng)", file=sys.stderr)
+    print(f"❌ Lỗi: {filename} cấu hình ports cho backend (vi phạm AC2)", file=sys.stderr)
     sys.exit(1)
 
 if not backend_has_expose:
@@ -120,185 +108,153 @@ if not backend_has_expose:
     sys.exit(1)
 
 if "SERVER_TOMCAT_ACCESSLOG_ENABLED=true" not in content:
-    print(f"❌ Lỗi: {filename} chưa kích hoạt SERVER_TOMCAT_ACCESSLOG_ENABLED", file=sys.stderr)
+    print(f"❌ Lỗi: {filename} chưa kích hoạt access log Tomcat", file=sys.stderr)
     sys.exit(1)
 
-print(f"✅ Đã kiểm tra {filename}: backend chỉ dùng expose nội bộ (không map ports), đã bật Tomcat access log.")
+# Kiểm tra M3: Không dùng %r trong SERVER_TOMCAT_ACCESSLOG_PATTERN để tránh lộ raw audio bearer token
+pattern_line = [l for l in lines if "SERVER_TOMCAT_ACCESSLOG_PATTERN=" in l]
+if pattern_line and "%r" in pattern_line[0]:
+    print(f"❌ Lỗi: {filename} dùng %r trong pattern access log (nguy cơ lộ raw token audio)", file=sys.stderr)
+    sys.exit(1)
+
+if not pattern_line or "%m" not in pattern_line[0]:
+    print(f"❌ Lỗi: {filename} pattern access log cần dùng %m (HTTP method)", file=sys.stderr)
+    sys.exit(1)
+
+print(f"✅ Đã kiểm tra {filename}: backend chỉ expose nội bộ, access log dùng %m (không lộ token).")
 ' "$file"
 done
 
-echo "=== [3/5] KIỂM THỬ ĐỘNG MOCK REVERSE PROXY ==="
-TEST_ID="meloo-test-$$"
-NET_NAME="${TEST_ID}-net"
-MOCK_BACKEND="${TEST_ID}-backend"
-TEST_CADDY="${TEST_ID}-caddy"
-HOST_PORT="18080"
+echo "=== [3/3] THỰC THI 2 TEST BẮT BUỘC TRÊN DOCKER COMPOSE PRODUCTION THẬT ==="
+PROJECT_NAME="meloo-test-$$"
+TEST_PORT="18088"
+TMP_OVERRIDE=$(mktemp /tmp/meloo-compose-override-XXXXXX.yml)
 
 cleanup() {
-  echo "Đang dọn dẹp môi trường test..."
-  docker rm -f "$TEST_CADDY" "$MOCK_BACKEND" "real-pg-$$" "real-backend-$$" "real-caddy-$$" 2>/dev/null || true
-  docker network rm "$NET_NAME" "real-net-$$" 2>/dev/null || true
+  echo "Đang dọn dẹp môi trường Compose test..."
+  docker compose -p "$PROJECT_NAME" \
+    -f "$COMPOSE_PROD" \
+    -f "$TMP_OVERRIDE" \
+    down -v --remove-orphans >/dev/null 2>&1 || true
+  rm -f "$TMP_OVERRIDE"
 }
 trap cleanup EXIT
 
-docker network create "$NET_NAME" >/dev/null
+# Tạo file override test: bổ sung service postgres và ánh xạ cổng Caddy sang TEST_PORT
+# LƯU Ý: Không can thiệp ports của service backend để kiểm tra đúng cấu hình production!
+cat << EOF > "$TMP_OVERRIDE"
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: meloo
+      POSTGRES_USER: meloo
+      POSTGRES_PASSWORD: meloo
+    networks:
+      - meloo-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U meloo -d meloo"]
+      interval: 1s
+      timeout: 2s
+      retries: 20
 
-docker run -d --rm \
-  --name "$MOCK_BACKEND" \
-  --network "$NET_NAME" \
-  caddy:2-alpine sh -c "cat << 'EOF' > /etc/caddy/Caddyfile
-:8080 {
-    respond \"ECHO_XFF:{header.X-Forwarded-For}|ECHO_REMOTE:{remote_host}\" 200
-}
+  backend:
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  caddy:
+    ports: !override
+      - "${TEST_PORT}:80"
+    volumes: !override
+      - ${CADDYFILE}:/etc/caddy/Caddyfile:ro
 EOF
-caddy run --config /etc/caddy/Caddyfile" >/dev/null
 
-docker run -d --rm \
-  --name "$TEST_CADDY" \
-  --network "$NET_NAME" \
-  -p "${HOST_PORT}:80" \
-  caddy:2-alpine sh -c "cat << 'EOF' > /etc/caddy/Caddyfile
-:80 {
-    reverse_proxy $MOCK_BACKEND:8080 {
-        header_up X-Forwarded-For {remote_host}
-    }
-}
-EOF
-caddy run --config /etc/caddy/Caddyfile" >/dev/null
+echo "Khởi động stack Compose production (kèm test override)..."
+export API_DOMAIN="http://:80"
+export ACME_EMAIL="admin@test.local"
+export DB_URL="jdbc:postgresql://postgres:5432/meloo"
+export DB_USERNAME="meloo"
+export DB_PASSWORD="meloo"
+export MELOO_CORS_ALLOWED_ORIGINS="*"
+export MELOO_JWT_SECRET="supersecretjwtsecretkeyformeloo123456789"
 
-for _ in $(seq 1 10); do
-  if curl -s --max-time 1 "http://127.0.0.1:${HOST_PORT}" >/dev/null 2>&1; then
-    break
-  fi
-  sleep 0.5
-done
+docker compose -p "$PROJECT_NAME" \
+  -f "$COMPOSE_PROD" \
+  -f "$TMP_OVERRIDE" \
+  up -d >/dev/null
 
-RESP=$(curl -s -H "X-Forwarded-For: 1.2.3.4" "http://127.0.0.1:${HOST_PORT}")
-RECEIVED_XFF=$(echo "$RESP" | sed -n 's/.*ECHO_XFF:\([^|]*\)|.*/\1/p')
-
-if [[ "$RECEIVED_XFF" == *"1.2.3.4"* ]]; then
-  echo "❌ Lỗi: Mock backend vẫn nhận được IP giả mạo 1.2.3.4!" >&2
-  exit 1
-fi
-echo "✅ Mock test: Header giả '1.2.3.4' bị loại bỏ, nhận IP socket thật '$RECEIVED_XFF'."
-
-docker rm -f "$TEST_CADDY" "$MOCK_BACKEND" 2>/dev/null || true
-docker network rm "$NET_NAME" 2>/dev/null || true
-
-echo "=== [4/5] [TEST BẮT BUỘC 1] KIỂM THỬ VỚI SPRING BOOT BACKEND & COMPOSE THẬT ==="
-REAL_NET="real-net-$$"
-REAL_PG="real-pg-$$"
-REAL_BACKEND="real-backend-$$"
-REAL_CADDY="real-caddy-$$"
-REAL_PORT="18088"
-
-# 1. Tạo network nội bộ giống Compose (meloo-internal)
-docker network create "$REAL_NET" >/dev/null
-
-# 2. Khởi động PostgreSQL 17
-docker run -d --name "$REAL_PG" --network "$REAL_NET" \
-  -e POSTGRES_DB=meloo -e POSTGRES_USER=meloo -e POSTGRES_PASSWORD=meloo \
-  postgres:17-alpine >/dev/null
-
-sleep 3
-
-# 3. Khởi động backend Spring Boot thật với đúng biến môi trường của Compose production
-docker run -d --name "$REAL_BACKEND" --network "$REAL_NET" \
-  -e DB_URL="jdbc:postgresql://${REAL_PG}:5432/meloo" \
-  -e DB_USERNAME=meloo \
-  -e DB_PASSWORD=meloo \
-  -e MELOO_JWT_SECRET=supersecretjwtsecretkeyformeloo123456789 \
-  -e MELOO_CORS_ALLOWED_ORIGINS=http://localhost:5173 \
-  -e SPRING_PROFILES_ACTIVE=prod \
-  -e SERVER_TOMCAT_ACCESSLOG_ENABLED=true \
-  -e SERVER_TOMCAT_ACCESSLOG_BUFFERED=false \
-  -e SERVER_TOMCAT_ACCESSLOG_ROTATE=false \
-  -e SERVER_TOMCAT_ACCESSLOG_DIRECTORY=/dev \
-  -e SERVER_TOMCAT_ACCESSLOG_PREFIX=stdout \
-  -e SERVER_TOMCAT_ACCESSLOG_SUFFIX= \
-  -e SERVER_TOMCAT_ACCESSLOG_PATTERN="%{X-Forwarded-For}i %h %t \"%r\" %s" \
-  ghcr.io/thaidevv/meloo-backend:latest >/dev/null
-
-echo "Đang chờ backend Spring Boot khởi động..."
-BACKEND_READY=0
+# 1. Chờ backend sẵn sàng qua readiness probe
+echo "Đang chờ backend Spring Boot sẵn sàng..."
+READY=0
 for i in $(seq 1 35); do
-  if docker exec "$REAL_BACKEND" wget -qO- http://localhost:8080/actuator/health/readiness 2>/dev/null | grep -q '"UP"'; then
-    BACKEND_READY=1
+  if docker compose -p "$PROJECT_NAME" -f "$COMPOSE_PROD" -f "$TMP_OVERRIDE" \
+      exec -T backend wget -qO- http://localhost:8080/actuator/health/readiness </dev/null 2>/dev/null | grep -q '"UP"'; then
+    READY=1
     echo "✅ Backend đã sẵn sàng (readiness: UP) sau ${i}s."
     break
   fi
   sleep 1
 done
 
-if [ "$BACKEND_READY" -ne 1 ]; then
+if [ "$READY" -ne 1 ]; then
   echo "❌ Lỗi: Backend không sẵn sàng sau 35s!" >&2
-  docker logs --tail=40 "$REAL_BACKEND"
   exit 1
 fi
 
-# 4. Khởi động Caddy reverse proxy tới backend theo Caddyfile sản xuất
-docker run -d --name "$REAL_CADDY" --network "$REAL_NET" -p "${REAL_PORT}:80" \
-  caddy:2-alpine sh -c "cat << 'EOF' > /etc/caddy/Caddyfile
-:80 {
-    reverse_proxy $REAL_BACKEND:8080 {
-        header_up X-Forwarded-For {remote_host}
-    }
-}
-EOF
-caddy run --config /etc/caddy/Caddyfile" >/dev/null
-
-sleep 2
-
-# 5. Gửi 6 lần POST /api/v1/auth/guest qua Caddy với các IP giả khác nhau
-echo ">> Gửi 6 lần POST /api/v1/auth/guest qua Caddy với X-Forwarded-For giả khác nhau..."
-for i in $(seq 1 6); do
-  FAKE_IP="10.0.0.$((10 + i))"
-  STATUS=$(curl -s -o /tmp/resp_guest.json -w "%{http_code}" \
-    -H "X-Forwarded-For: $FAKE_IP" \
-    -X POST "http://127.0.0.1:${REAL_PORT}/api/v1/auth/guest" \
-    -H "Content-Type: application/json" \
-    -d "{\"nickname\":\"Tester${i}\"}")
-
-  echo "   [Request $i] Header: X-Forwarded-For: $FAKE_IP -> HTTP Status: $STATUS"
-
-  if [ "$i" -le 5 ]; then
-    if [ "$STATUS" -ne 201 ]; then
-      echo "❌ Lỗi: Request $i mong đợi HTTP 201 nhưng nhận được $STATUS" >&2
-      cat /tmp/resp_guest.json >&2
-      exit 1
-    fi
-  else
-    if [ "$STATUS" -ne 429 ]; then
-      echo "❌ Lỗi: Request 6 mong đợi HTTP 429 (Too Many Requests) nhưng nhận được $STATUS" >&2
-      cat /tmp/resp_guest.json >&2
-      exit 1
-    fi
-  fi
-done
-echo "✅ Test bắt buộc 1 ĐẠT: 5 lần đầu trả về HTTP 201, lần thứ 6 trả về HTTP 429."
-
-# Kiểm tra log backend ghi nhận IP thật
-echo ">> Kiểm tra Tomcat access log trong log backend..."
-BACKEND_LOGS=$(docker logs "$REAL_BACKEND" 2>&1 | grep "POST /api/v1/auth/guest" | tail -n 6)
-echo "$BACKEND_LOGS"
-
-# Xác nhận trong các dòng access log KHÔNG chứa bất kỳ IP giả 10.0.0.x nào
-if echo "$BACKEND_LOGS" | grep -qE "10\.0\.0\."; then
-  echo "❌ Lỗi: Log backend vẫn chứa IP giả mạo 10.0.0.x!" >&2
+# 2. [TEST BẮT BUỘC 2] Kiểm tra đóng cổng backend từ host ngoài Docker
+echo ">> [Test bắt buộc 2] Kiểm tra kết nối trực tiếp tới cổng backend 8080 từ host..."
+MAPPED_PORT=$(docker compose -p "$PROJECT_NAME" -f "$COMPOSE_PROD" -f "$TMP_OVERRIDE" port backend 8080 2>/dev/null || true)
+if [ -n "$MAPPED_PORT" ] && [ "$MAPPED_PORT" != ":0" ]; then
+  echo "❌ Lỗi: docker compose port backend 8080 phát hiện cổng đã bị ánh xạ ra host: $MAPPED_PORT" >&2
   exit 1
 fi
-echo "✅ Log backend ĐẠT: Không chứa IP giả mạo, Caddy đã ghi đè IP socket thật cho toàn bộ 6 request."
 
-echo "=== [5/5] [TEST BẮT BUỘC 2] KIỂM TRA ĐÓNG CỔNG BACKEND TỪ NGOÀI DOCKER ==="
-echo ">> Thử kết nối trực tiếp cổng 8080 của container backend từ host..."
 DIRECT_EXIT=0
 curl -s --connect-timeout 2 "http://127.0.0.1:8080/actuator/health" >/dev/null 2>&1 || DIRECT_EXIT=$?
-
 if [ "$DIRECT_EXIT" -eq 0 ]; then
   echo "❌ Lỗi: Cổng 8080 của backend vẫn kết nối được từ ngoài host!" >&2
   exit 1
 fi
-echo "✅ Test bắt buộc 2 ĐẠT: Kết nối trực tiếp tới cổng 8080 từ host bị từ chối (exit code $DIRECT_EXIT - Connection refused)."
+echo "✅ Test bắt buộc 2 ĐẠT: Backend không publish cổng 8080 ra host, kết nối trực tiếp bị từ chối (exit code $DIRECT_EXIT - Connection refused)."
+
+# 3. [TEST BẮT BUỘC 1] Gửi 6 lần POST /api/v1/auth/guest qua Caddy với IP giả khác nhau
+echo ">> [Test bắt buộc 1] Gửi 6 lần POST /api/v1/auth/guest qua Caddy với các header X-Forwarded-For giả khác nhau..."
+for i in $(seq 1 6); do
+  FAKE_IP="10.0.0.$((10 + i))"
+  # Sửa M4: Dùng -o /dev/null, tuyệt đối không lưu body response (chứa accessToken) ra file tạm hoặc in ra terminal
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+    -H "X-Forwarded-For: $FAKE_IP" \
+    -X POST "http://127.0.0.1:${TEST_PORT}/api/v1/auth/guest" \
+    -H "Content-Type: application/json" \
+    -d "{\"nickname\":\"Tester${i}\"}")
+
+  echo "   [Request $i] Header gửi: X-Forwarded-For: $FAKE_IP -> HTTP Status: $STATUS"
+
+  if [ "$i" -le 5 ]; then
+    if [ "$STATUS" -ne 201 ]; then
+      echo "❌ Lỗi: Request $i mong đợi HTTP 201 nhưng nhận được $STATUS" >&2
+      exit 1
+    fi
+  else
+    if [ "$STATUS" -ne 429 ]; then
+      echo "❌ Lỗi: Request 6 mong đợi HTTP 429 nhưng nhận được $STATUS" >&2
+      exit 1
+    fi
+  fi
+done
+echo "✅ Test bắt buộc 1 ĐẠT: 5 lần đầu trả về HTTP 201, lần thứ 6 trả về HTTP 429 (Too Many Requests)."
+
+# 4. Kiểm tra access log của backend (đảm bảo không chứa IP giả và không lộ token)
+echo ">> Kiểm tra Tomcat access log của backend container..."
+BACKEND_LOGS=$(docker compose -p "$PROJECT_NAME" -f "$COMPOSE_PROD" -f "$TMP_OVERRIDE" logs backend 2>&1 | grep '"POST" 201\|"POST" 429' | tail -n 6)
+echo "$BACKEND_LOGS"
+
+if echo "$BACKEND_LOGS" | grep -qE "10\.0\.0\."; then
+  echo "❌ Lỗi: Log backend vẫn chứa IP giả mạo 10.0.0.x!" >&2
+  exit 1
+fi
+echo "✅ Access log ĐẠT: Trường IP client ghi nhận đúng IP socket thật, không bị giả mạo."
 
 echo ""
-echo "🎉 TẤT CẢ CÁC BƯỚC KIỂM THỬ VÀ TEST BẮT BUỘC TRÊN BACKEND THẬT CHO MEL-127 ĐÃ THÀNH CÔNG RỰC RỠ!"
+echo "🎉 TẤT CẢ CÁC BƯỚC KIỂM THỬ VÀ TEST BẮT BUỘC TRÊN COMPOSE PRODUCTION ĐÃ THÀNH CÔNG RỰC RỠ!"

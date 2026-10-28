@@ -14,14 +14,14 @@ services:
       - MELOO_JWT_SECRET=${MELOO_JWT_SECRET}
       # EC2 t3.micro chỉ có 1 GB RAM: JVM dùng tối đa 60% RAM, thoát an toàn khi OOM
       - JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=60 -XX:+ExitOnOutOfMemoryError
-      # Bật access log Tomcat ra stdout (MEL-127) để kiểm tra X-Forwarded-For mà backend nhận được
+      # Bật access log Tomcat ra stdout (MEL-127). Dùng %m thay vì %r để không lộ raw audio token (contracts/openapi.yaml:554)
       - SERVER_TOMCAT_ACCESSLOG_ENABLED=true
       - SERVER_TOMCAT_ACCESSLOG_BUFFERED=false
       - SERVER_TOMCAT_ACCESSLOG_ROTATE=false
       - SERVER_TOMCAT_ACCESSLOG_DIRECTORY=/dev
       - SERVER_TOMCAT_ACCESSLOG_PREFIX=stdout
       - SERVER_TOMCAT_ACCESSLOG_SUFFIX=
-      - SERVER_TOMCAT_ACCESSLOG_PATTERN=%{X-Forwarded-For}i %h %t "%r" %s
+      - SERVER_TOMCAT_ACCESSLOG_PATTERN=%{X-Forwarded-For}i %h %t "%m" %s
     networks:
       - meloo-internal
     # Đóng kín cổng backend (MEL-127): chỉ expose trong mạng docker nội bộ meloo-internal,

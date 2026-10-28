@@ -18,5 +18,8 @@ public final class ProblemConstants {
   public static final String CODE_UNSUPPORTED_MEDIA_TYPE = "UNSUPPORTED_MEDIA_TYPE";
   public static final String CODE_INTERNAL_ERROR = "INTERNAL_ERROR";
 
+  public static final String TITLE_VALIDATION_FAILED = "Validation failed";
+  public static final String DETAIL_VALIDATION_FAILED = "One or more fields are invalid.";
+
   private ProblemConstants() {}
 }

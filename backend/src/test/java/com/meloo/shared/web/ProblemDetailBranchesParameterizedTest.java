@@ -13,6 +13,7 @@ import com.meloo.shared.api.ProblemConstants;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -46,7 +47,15 @@ class ProblemDetailBranchesParameterizedTest extends IntegrationTest {
     return Stream.of(
         // 1. Business error (ApiException)
         Arguments.of(
-            "GET", "/test/branches/business", null, null, null, 409, "STATE_CONFLICT", "Conflict"),
+            "GET",
+            "/test/branches/business",
+            null,
+            null,
+            null,
+            Map.of(),
+            409,
+            "STATE_CONFLICT",
+            "Conflict"),
         // 2. Spring built-in: validation 400
         Arguments.of(
             "POST",
@@ -54,9 +63,10 @@ class ProblemDetailBranchesParameterizedTest extends IntegrationTest {
             "{\"name\":\"\"}",
             MediaType.APPLICATION_JSON_VALUE,
             null,
+            Map.of(),
             400,
             ProblemConstants.CODE_VALIDATION_FAILED,
-            "Validation failed"),
+            ProblemConstants.TITLE_VALIDATION_FAILED),
         // 3. Spring built-in: malformed JSON body 400
         Arguments.of(
             "POST",
@@ -64,6 +74,7 @@ class ProblemDetailBranchesParameterizedTest extends IntegrationTest {
             "{\"name\":",
             MediaType.APPLICATION_JSON_VALUE,
             null,
+            Map.of(),
             400,
             ProblemConstants.CODE_VALIDATION_FAILED,
             "Invalid request"),
@@ -74,6 +85,7 @@ class ProblemDetailBranchesParameterizedTest extends IntegrationTest {
             null,
             null,
             null,
+            Map.of(),
             404,
             ProblemConstants.CODE_NOT_FOUND,
             "Resource not found"),
@@ -84,42 +96,83 @@ class ProblemDetailBranchesParameterizedTest extends IntegrationTest {
             null,
             null,
             null,
+            Map.of(),
             405,
             ProblemConstants.CODE_METHOD_NOT_ALLOWED,
             "Method not allowed"),
-        // 6. Security filter chain: 401 unauthenticated
+        // 6. Security filter chain: 401 unauthenticated (missing token)
         Arguments.of(
             "GET",
             "/test/branches/secured",
             null,
             null,
             null,
+            Map.of(),
             401,
             ProblemConstants.CODE_UNAUTHORIZED,
             "Unauthorized"),
-        // 7. Security filter chain: 403 access denied
+        // 7. Security filter chain: 401 invalid bearer token
+        Arguments.of(
+            "GET",
+            "/test/branches/secured",
+            null,
+            null,
+            null,
+            Map.of(HttpHeaders.AUTHORIZATION, "Bearer invalid-garbage-token"),
+            401,
+            ProblemConstants.CODE_UNAUTHORIZED,
+            "Unauthorized"),
+        // 8. Security filter chain: 403 access denied
         Arguments.of(
             "GET",
             "/test/branches/admin-only",
             null,
             null,
             "USER",
+            Map.of(),
             403,
             ProblemConstants.CODE_FORBIDDEN,
             "Forbidden"),
-        // 8. Unexpected 500 error
+        // 9. CORS rejection: unauthorized origin
+        Arguments.of(
+            "GET",
+            "/test/branches/business",
+            null,
+            null,
+            null,
+            Map.of(HttpHeaders.ORIGIN, "https://unauthorized-origin.example"),
+            403,
+            ProblemConstants.CODE_FORBIDDEN,
+            "Forbidden"),
+        // 10. CORS rejection: preflight with unauthorized origin
+        Arguments.of(
+            "OPTIONS",
+            "/test/branches/business",
+            null,
+            null,
+            null,
+            Map.of(
+                HttpHeaders.ORIGIN,
+                "https://unauthorized-origin.example",
+                HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD,
+                "GET"),
+            403,
+            ProblemConstants.CODE_FORBIDDEN,
+            "Forbidden"),
+        // 11. Unexpected 500 error
         Arguments.of(
             "GET",
             "/test/branches/unexpected",
             null,
             null,
             null,
+            Map.of(),
             500,
             ProblemConstants.CODE_INTERNAL_ERROR,
             "Internal server error"));
   }
 
-  @ParameterizedTest(name = "{index}: {0} {1} -> status {5}, code {6}")
+  @ParameterizedTest(name = "{index}: {0} {1} -> status {6}, code {7}")
   @MethodSource("branchCases")
   @DisplayName(
       "All REST error response branches produce RFC 9457 ProblemDetail with 4 required fields")
@@ -129,6 +182,7 @@ class ProblemDetailBranchesParameterizedTest extends IntegrationTest {
       String requestBody,
       String contentType,
       String userRole,
+      Map<String, String> headers,
       int expectedStatus,
       String expectedCode,
       String expectedTitle)
@@ -140,6 +194,7 @@ class ProblemDetailBranchesParameterizedTest extends IntegrationTest {
     if (contentType != null) {
       requestBuilder.contentType(contentType);
     }
+    headers.forEach(requestBuilder::header);
     if ("ADMIN".equals(userRole)) {
       requestBuilder.with(SecurityMockMvcRequestPostProcessors.user("admin").roles("ADMIN"));
     } else if ("USER".equals(userRole)) {

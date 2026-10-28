@@ -69,9 +69,9 @@ public final class GlobalExceptionHandler extends ResponseEntityExceptionHandler
       HttpStatusCode status,
       WebRequest request) {
     ProblemDetail problem =
-        ProblemDetail.forStatusAndDetail(status, "One or more fields are invalid.");
+        ProblemDetail.forStatusAndDetail(status, ProblemConstants.DETAIL_VALIDATION_FAILED);
     problem.setType(URI.create("about:blank"));
-    problem.setTitle("Validation failed");
+    problem.setTitle(ProblemConstants.TITLE_VALIDATION_FAILED);
     List<Map<String, String>> fieldErrors =
         ex.getBindingResult().getFieldErrors().stream()
             .map(
@@ -94,9 +94,9 @@ public final class GlobalExceptionHandler extends ResponseEntityExceptionHandler
       HttpStatusCode status,
       WebRequest request) {
     ProblemDetail problem =
-        ProblemDetail.forStatusAndDetail(status, "One or more fields are invalid.");
+        ProblemDetail.forStatusAndDetail(status, ProblemConstants.DETAIL_VALIDATION_FAILED);
     problem.setType(URI.create("about:blank"));
-    problem.setTitle("Validation failed");
+    problem.setTitle(ProblemConstants.TITLE_VALIDATION_FAILED);
     problem.setProperty(ProblemConstants.PROPERTY_CODE, ProblemConstants.CODE_VALIDATION_FAILED);
     return createResponseEntity(problem, headers, status, request);
   }
@@ -108,10 +108,10 @@ public final class GlobalExceptionHandler extends ResponseEntityExceptionHandler
         body instanceof ProblemDetail problem
             ? problem
             : ProblemDetail.forStatusAndDetail(statusCode, safeDetail(statusCode));
-    if (!"Validation failed".equals(detail.getTitle())) {
+    if (!ProblemConstants.TITLE_VALIDATION_FAILED.equals(detail.getTitle())) {
       detail.setTitle(safeTitle(statusCode));
     }
-    if (!"One or more fields are invalid.".equals(detail.getDetail())) {
+    if (!ProblemConstants.DETAIL_VALIDATION_FAILED.equals(detail.getDetail())) {
       detail.setDetail(safeDetail(statusCode));
     }
     if (detail.getType() == null) {

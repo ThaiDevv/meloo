@@ -331,7 +331,7 @@ Ghi chú cách đọc: cột "Trạng thái" cho biết dòng đó là **quyết
 | **Mọi môi trường** | Apple / iTunes | **NO-GO** | Kết luận từ căn cứ | Điều khoản Apple cấm giá trị giải trí độc lập; chỉ bật nếu có hợp đồng thương mại riêng với Apple (khớp AC 3). |
 
 ### 6.1. Ghi nhận ngoại lệ
-Quyết định dùng Deezer cho Closed Beta và Public Beta khác với: (a) kết luận ở Mục 3.5; (b) AC 6 của ticket MEL-120 ("không dùng preview từ provider để phát beta công khai trước khi có kết luận Được phép hoặc Được phép có điều kiện"); (c) ghi chú "BR-27 và mục 5" trong `docs/srs/02-business-rules.md`. Tài liệu ghi nhận đây là ngoại lệ do Thái quyết định, **chưa** sửa SRS vì nằm ngoài phạm vi ticket. Kết luận LEG-02 vì vậy là "Chưa được phép", không phải "Được phép có điều kiện".
+Quyết định dùng Deezer cho Closed Beta và Public Beta khác với: (a) kết luận ở Mục 3.5; (b) AC 6 của ticket MEL-120 ("không dùng preview từ provider để phát beta công khai trước khi có kết luận Được phép hoặc Được phép có điều kiện"); (c) ghi chú "BR-27 và mục 5" trong `docs/srs/02-business-rules.md`. Tài liệu ghi nhận đây là ngoại lệ do Thái (PO) quyết định, và Thái xác nhận lại ngày 2026-10-28 trong vòng review 1 của PR #42 rằng vẫn giữ quyết định này. Thái sẽ cập nhật AC 6 trên Jira và ghi chú SRS qua quy trình riêng; PR này **chưa** sửa SRS vì nằm ngoài phạm vi ticket. Kết luận LEG-02 vì vậy là "Chưa được phép", không phải "Được phép có điều kiện".
 
 ---
 

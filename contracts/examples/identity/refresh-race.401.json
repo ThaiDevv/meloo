@@ -3,6 +3,7 @@
   "title": "Unauthorized",
   "status": 401,
   "code": "REFRESH_RACE",
+  "errorCode": "REFRESH_RACE",
   "detail": "Concurrent refresh detected, please use the new token",
   "instance": "/api/v1/auth/refresh"
 }

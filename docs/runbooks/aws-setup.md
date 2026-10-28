@@ -238,7 +238,13 @@ nc -zv <RDS_ENDPOINT> 5432
 > **Lưu ý về DNS only và SSL:**
 > - **Frontend (`@`):** Vercel khuyến nghị để **DNS only (Đám mây xám)** khi dùng Cloudflare DNS để Vercel tự động cấp và gia hạn chứng chỉ SSL sạch sẽ, tránh xung đột proxy.
 > - **Backend (`api`):** Ban đầu bắt buộc để **DNS only (Đám mây xám)** để Caddy trực tiếp nhận kết nối ACME challenge (HTTP-01) từ Let's Encrypt / ZeroSSL qua port 80.
-> - **Chưa bật Cloudflare Proxy (Đám mây cam) cho `api`:** Cần giữ `api` ở chế độ DNS only cho tới khi có ticket chính thức (MEL-127) thiết lập cấu hình trusted proxy nhận diện IP client. Nếu bật proxy sớm, Caddy sẽ thấy IP của Cloudflare edge khiến rate-limit khách (`guest-create-per-hour`) trong backend bị chia sẻ chung một bucket.
+> - **Cấu hình DNS only và bảo vệ IP client (MEL-127):**
+>   - Hiện tại tên miền `api` giữ ở chế độ **DNS only (Đám mây xám)** để Caddy nhận diện trực tiếp IP kết nối thực tế của client.
+>   - `infra/caddy/Caddyfile` đã cấu hình `header_up X-Forwarded-For {remote_host}` và **không** đặt `trusted_proxies`. Nhờ đó Caddy luôn ghi đè header `X-Forwarded-For` bằng IP socket kết nối thực tế, ngăn ngừa triệt để nguy cơ bypass rate-limit khách 5 lần/giờ/IP (BR-02 / MEL-33) bằng header giả mạo.
+>   - Đồng thời, service `backend` trong Compose chỉ `expose: ["8080"]` trong mạng Docker nội bộ `meloo-internal`, không mở cổng ra host; Security Group `meloo-ec2-sg` tuyệt đối không mở cổng 8080.
+>   - **Điều kiện đánh giá lại:** Nếu sau này bật Cloudflare Proxy (Đám mây cam) hoặc đặt AWS ALB phía trước Caddy:
+>     1. Trong `infra/caddy/Caddyfile`, phải bổ sung khối `trusted_proxies` với danh sách dải IP chính thức của Cloudflare (hoặc CIDR VPC của ALB) để Caddy tin tưởng IP do Cloudflare chuyển tiếp qua `CF-Connecting-IP` / `X-Forwarded-For`.
+>     2. Trong backend Spring Boot, cần chuyển sang `server.forward-headers-strategy=framework` (hoặc `native`) và cấu hình `server.tomcat.remoteip.internal-proxies` trong `backend/src/main/resources/application.yml` (yêu cầu giữ nhãn `hot-shared` theo quy ước repo).
 
 3. Kiểm tra phân giải tên miền từ máy local:
    ```bash
@@ -332,6 +338,66 @@ Tại repository GitHub, vào **Settings** → **Secrets and variables** → **A
 | **Cloudflare DNS** | Trỏ đúng Vercel và EC2 | `dig +short api.<domain>` | Trả về đúng Elastic IP |
 | **Bảo mật `.env`** | Quyền chmod 600, không lộ | Trên EC2: `stat -c "%a" /opt/meloo/.env` | Trả về đúng `600` |
 | **Caddy HTTPS** | Tự cấp SSL cho `api.<domain>` | `curl -I https://api.<domain>` | Trả về header SSL hợp lệ (HTTP/2 502 Bad Gateway vì backend chưa bật, nhưng SSL handshake thành công) |
+| **Ghi đè X-Forwarded-For (MEL-127)** | Caddy ghi đè IP thật, không tin header giả | `curl -i -H "X-Forwarded-For: 1.2.3.4" -X POST https://api.<domain>/api/v1/auth/guest -H "Content-Type: application/json" -d '{"nickname":"Tester"}'` && `docker compose logs --tail=20 backend` | Log backend thấy IP socket thật của client, không phải `1.2.3.4` |
+| **Đóng kín cổng backend (MEL-127)** | Cổng 8080 backend không thể gọi từ ngoài host | Máy local: `curl -m 3 http://<ELASTIC_IP>:8080/actuator/health` | Kết nối bị từ chối (`Connection refused` hoặc timeout) |
+| **Rate limit khách (MEL-127/33)** | Gửi header giả không vượt được 5 req/giờ/IP | Gửi 6 lần `POST /api/v1/auth/guest` qua Caddy với các header `X-Forwarded-For` giả khác nhau | 5 lần đầu HTTP 200/201, lần thứ 6 trả về HTTP 429 Too Many Requests |
+
+### 4.1 Chi tiết kiểm tra ghi đè IP & đóng cổng backend (MEL-127)
+
+#### A. Kiểm tra Caddy ghi đè `X-Forwarded-For` với IP thật
+1. Từ máy local, gửi một request mang header giả mạo `X-Forwarded-For: 1.2.3.4`:
+   ```bash
+   curl -i -H "X-Forwarded-For: 1.2.3.4" \
+     -X POST https://api.<tên-miền>/api/v1/auth/guest \
+     -H "Content-Type: application/json" \
+     -d '{"nickname":"Tester"}'
+   ```
+2. Trên máy chủ EC2, kiểm tra log container backend:
+   ```bash
+   cd /opt/meloo
+   docker compose logs --tail=50 backend
+   ```
+3. **Kết quả mong đợi:** IP client mà backend nhận diện qua `IdentityController.resolveClientIp` là IP socket công cộng thực tế của máy bạn, **tuyệt đối không phải 1.2.3.4**. Caddy đã ghi đè header `X-Forwarded-For` bằng `{remote_host}`.
+
+#### B. Kiểm tra đóng kín cổng backend 8080 từ bên ngoài
+1. Từ máy ngoài mạng Docker (ví dụ máy local của bạn):
+   ```bash
+   curl -m 3 http://<ELASTIC_IP>:8080/actuator/health
+   ```
+2. **Kết quả mong đợi:** Kết nối thất bại ngay lập tức:
+   ```text
+   curl: (7) Failed to connect to <ELASTIC_IP> port 8080: Connection refused (hoặc Operation timed out)
+   ```
+3. **Cơ chế đảm bảo:**
+   - Security Group EC2 (`meloo-ec2-sg`) chỉ mở cổng 80, 443 và cổng SSH 22 (từ IP quản trị), không mở cổng 8080.
+   - File Compose (`docker-compose.yml`) chỉ khai báo `expose: ["8080"]` trong mạng bridge nội bộ `meloo-internal`, không ánh xạ `ports:` ra host interface.
+
+#### C. Kiểm tra chống vượt giới hạn tạo khách (BR-02 / Test bắt buộc)
+1. Chạy vòng lặp gửi 6 request tạo tài khoản khách liên tiếp qua Caddy, mỗi lần truyền một header `X-Forwarded-For` giả khác nhau:
+   ```bash
+   for i in {1..6}; do
+     echo "--- Request $i (với IP giả 10.0.0.$i) ---"
+     curl -s -o /dev/null -w "Status: %{http_code}\n" \
+       -H "X-Forwarded-For: 10.0.0.$i" \
+       -X POST https://api.<tên-miền>/api/v1/auth/guest \
+       -H "Content-Type: application/json" \
+       -d "{\"nickname\":\"Guest$i\"}"
+   done
+   ```
+2. **Kết quả mong đợi:**
+   - Lần 1 đến 5: `Status: 200` (hoặc `201`).
+   - Lần thứ 6: `Status: 429` (Too Many Requests, kèm header `Retry-After`).
+   - Kẻ tấn công dù liên tục thay đổi header `X-Forwarded-For` vẫn bị bucket rate limit 5 req/giờ/IP chặn đứng vì Caddy luôn ép IP thật.
+
+#### D. Điều kiện đánh giá lại kiến trúc (Re-evaluation Criteria)
+- **Bối cảnh hiện tại:** Tên miền `api` ở chế độ **DNS only** (kết nối trực tiếp tới Caddy trên EC2). Caddyfile dùng `{remote_host}` và không cấu hình `trusted_proxies` là giải pháp an toàn và tinh gọn nhất.
+- **Khi nào cần đánh giá lại:** Nếu sau này bật Cloudflare Proxy (Đám mây cam) để chống DDoS hoặc đặt AWS Application Load Balancer (ALB) phía trước Caddy:
+  1. Socket kết nối tới Caddy sẽ mang IP của Cloudflare Edge hoặc ALB thay vì IP người dùng cuối.
+  2. Nếu không đổi cấu hình, toàn bộ người dùng sẽ bị xem là cùng một IP của proxy edge, dẫn đến nghẽn rate limit dùng chung một bucket.
+  3. **Thủ tục chuyển đổi bắt buộc khi có proxy phía trước:**
+     - **Caddyfile:** Thêm khối `trusted_proxies` với danh sách dải CIDR IP chính thức của Cloudflare (https://www.cloudflare.com/ips/) hoặc VPC CIDR của ALB. Caddy sẽ chỉ tin tưởng header `X-Forwarded-For` / `CF-Connecting-IP` khi request đến từ dải IP này.
+     - **Backend:** Cấu hình `server.forward-headers-strategy=framework` (hoặc `native`) và thiết lập `server.tomcat.remoteip.internal-proxies` trong `backend/src/main/resources/application.yml` để Spring Boot tin tưởng proxy nội bộ. Việc sửa `application.yml` cần tuân thủ quy trình giữ nhãn `hot-shared`.
+
 
 ---
 

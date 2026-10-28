@@ -16,6 +16,9 @@
 	}
 
 	# Reverse proxy tới Spring Boot backend
-	# Caddy tự động hỗ trợ WebSocket upgrade (STOMP over WebSocket) và gắn X-Forwarded-* mặc định
-	reverse_proxy backend:8080
+	# Caddy tự động hỗ trợ WebSocket upgrade (STOMP over WebSocket)
+	# Không đặt trusted_proxies; ghi đè X-Forwarded-For bằng {remote_host} để backend luôn nhận IP kết nối thật (MEL-127)
+	reverse_proxy backend:8080 {
+		header_up X-Forwarded-For {remote_host}
+	}
 }

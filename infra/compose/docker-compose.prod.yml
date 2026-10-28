@@ -16,6 +16,8 @@ services:
       - JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=60 -XX:+ExitOnOutOfMemoryError
     networks:
       - meloo-internal
+    # Đóng kín cổng backend (MEL-127): chỉ expose trong mạng docker nội bộ meloo-internal,
+    # tuyệt đối không dùng 'ports:' ra host để ngăn bypass reverse proxy và giả mạo IP.
     expose:
       - "8080"
     healthcheck:

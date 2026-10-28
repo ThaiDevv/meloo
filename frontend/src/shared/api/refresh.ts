@@ -25,8 +25,6 @@ const ACCOUNT_LOCKED = 'ACCOUNT_LOCKED'
 function problemCode(error: unknown): string | undefined {
   if (typeof error !== 'object' || error === null) return undefined
   if ('code' in error && typeof error.code === 'string') return error.code
-  // The current backend serializes ProblemDetail's stable code as `errorCode`.
-  if ('errorCode' in error && typeof error.errorCode === 'string') return error.errorCode
   return undefined
 }
 

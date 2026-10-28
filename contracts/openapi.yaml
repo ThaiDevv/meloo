@@ -28,6 +28,8 @@ tags:
     description: Track search, playlists and filter values.
   - name: game
     description: Single-player matches (ranked and practice).
+  - name: audio
+    description: Stream audio preview clips using opaque HMAC tokens (ADR-008).
 security:
   - bearerAuth: []
 paths:
@@ -261,6 +263,8 @@ paths:
               examples:
                 default:
                   externalValue: ./examples/game/create-solo-match.422.json
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /api/v1/solo/matches/active:
     get:
       tags: [game]
@@ -287,6 +291,8 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /api/v1/solo/matches/{matchId}/rounds/current:
     get:
       tags: [game]
@@ -317,6 +323,8 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /api/v1/solo/matches/{matchId}/rounds/{roundNo}/listen-more:
     post:
       tags: [game]
@@ -350,6 +358,8 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /api/v1/solo/matches/{matchId}/rounds/{roundNo}/skip:
     post:
       tags: [game]
@@ -528,6 +538,150 @@ paths:
               examples:
                 default:
                   externalValue: ./examples/game/abandon-solo-match.409.json
+  /api/v1/audio/{token}:
+    get:
+      tags: [audio]
+      operationId: getAudioClip
+      summary: Stream preview audio clip
+      description: |
+        Streams an audio preview clip (MP3) for the requested listening level (ADR-008).
+        Public endpoint without Authorization header: authenticated solely by the HMAC token in the path,
+        since HTML5 `<audio>` elements cannot send custom Authorization headers.
+        The token is an opaque token bound server-side to round, player, level and expiry (ADR-008). Clients must not parse it.
+        Expiry (<= 2 minutes) is checked on every request, including subsequent Range requests.
+        Supports HTTP Range requests (206 Partial Content) for browser buffering and seek.
+        Responses are marked `Cache-Control: no-store` to prevent client-side disk caching of clips.
+        Implementations must not echo raw token values in error instance URIs or logs.
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          description: |
+            Opaque token bound server-side to round, player, level and expiry (ADR-008).
+            Malformed syntax or exceeding length triggers 400 (`AUDIO_TOKEN_INVALID`).
+            Valid syntax with invalid signature or HMAC mismatch triggers 401 (`AUDIO_TOKEN_INVALID`).
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9_-]+$'
+            minLength: 16
+            maxLength: 256
+            example: Hq3TnV8wYb5RsLd2PzXe9KcMu6AfJg1oWiNtB7yEx0Q
+        - name: Range
+          in: header
+          required: false
+          description: Standard HTTP Range header (e.g. `bytes=0-`).
+          schema:
+            type: string
+            example: bytes=0-
+      responses:
+        '200':
+          description: Full audio clip stream.
+          headers:
+            Cache-Control:
+              description: Preview clips must not be cached by client or proxy (ADR-008).
+              schema:
+                type: string
+                example: no-store
+            Accept-Ranges:
+              description: Indicates support for byte range requests.
+              schema:
+                type: string
+                example: bytes
+            Content-Length:
+              description: Length of the response body in bytes.
+              schema:
+                type: integer
+          content:
+            audio/mpeg:
+              schema:
+                type: string
+                format: binary
+        '206':
+          description: Partial audio clip stream for byte-range requests.
+          headers:
+            Cache-Control:
+              description: Preview clips must not be cached by client or proxy (ADR-008).
+              schema:
+                type: string
+                example: no-store
+            Accept-Ranges:
+              description: Indicates support for byte range requests.
+              schema:
+                type: string
+                example: bytes
+            Content-Range:
+              description: Byte range of this response chunk (e.g. `bytes 0-32767/65536`).
+              schema:
+                type: string
+                example: bytes 0-32767/65536
+            Content-Length:
+              description: Length of this range chunk in bytes.
+              schema:
+                type: integer
+          content:
+            audio/mpeg:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Token format is malformed or exceeds maximum length (`AUDIO_TOKEN_INVALID`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                tokenMalformed:
+                  externalValue: ./examples/audio/problem.token-malformed.400.json
+        '401':
+          description: Token signature verification failed or token has expired (`AUDIO_TOKEN_EXPIRED`, `AUDIO_TOKEN_INVALID`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                tokenExpired:
+                  externalValue: ./examples/audio/problem.token-expired.401.json
+                tokenInvalid:
+                  externalValue: ./examples/audio/problem.token-invalid.401.json
+        '403':
+          description: The account associated with the session is locked (`ACCOUNT_LOCKED`, BR-28) or origin is refused.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                accountLocked:
+                  externalValue: ./examples/audio/problem.forbidden.403.json
+        '416':
+          description: The requested byte range is invalid or exceeds the clip size (`RANGE_NOT_SATISFIABLE`).
+          headers:
+            Content-Range:
+              description: Unsatisfiable range indication (e.g. `bytes */65536`).
+              schema:
+                type: string
+                example: bytes */65536
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                rangeNotSatisfiable:
+                  externalValue: ./examples/audio/problem.range-not-satisfiable.416.json
+        '429':
+          description: Rate limit hit (`RATE_LIMITED`). Excessive stream or chunk requests for this token.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                rateLimited:
+                  externalValue: ./examples/audio/problem.rate-limited.429.json
 components:
   securitySchemes:
     bearerAuth:

@@ -341,6 +341,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audio/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stream preview audio clip
+         * @description Streams an audio preview clip (MP3) for the requested listening level (ADR-008).
+         *     Public endpoint without Authorization header: authenticated solely by the HMAC token in the path,
+         *     since HTML5 `<audio>` elements cannot send custom Authorization headers.
+         *     The token is an opaque token bound server-side to round, player, level and expiry (ADR-008). Clients must not parse it.
+         *     Expiry (<= 2 minutes) is checked on every request, including subsequent Range requests.
+         *     Supports HTTP Range requests (206 Partial Content) for browser buffering and seek.
+         *     Responses are marked `Cache-Control: no-store` to prevent client-side disk caching of clips.
+         *     Implementations must not echo raw token values in error instance URIs or logs.
+         */
+        get: operations["getAudioClip"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -917,6 +944,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["NotEnoughTracksProblem"];
                 };
             };
+            429: components["responses"]["TooManyRequests"];
         };
     };
     getActiveSoloMatch: {
@@ -947,6 +975,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            429: components["responses"]["TooManyRequests"];
         };
     };
     getCurrentRound: {
@@ -980,6 +1009,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            429: components["responses"]["TooManyRequests"];
         };
     };
     listenMore: {
@@ -1015,6 +1045,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            429: components["responses"]["TooManyRequests"];
         };
     };
     skipRound: {
@@ -1193,6 +1224,107 @@ export interface operations {
             /** @description `RANKED_MATCH_CANNOT_ABANDON` (ranked mode) or `MATCH_NOT_IN_PROGRESS`. */
             409: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getAudioClip: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Standard HTTP Range header (e.g. `bytes=0-`). */
+                Range?: string;
+            };
+            path: {
+                /**
+                 * @description Opaque token bound server-side to round, player, level and expiry (ADR-008).
+                 *     Malformed syntax or exceeding length triggers 400 (`AUDIO_TOKEN_INVALID`).
+                 *     Valid syntax with invalid signature or HMAC mismatch triggers 401 (`AUDIO_TOKEN_INVALID`).
+                 */
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Full audio clip stream. */
+            200: {
+                headers: {
+                    /** @description Preview clips must not be cached by client or proxy (ADR-008). */
+                    "Cache-Control"?: string;
+                    /** @description Indicates support for byte range requests. */
+                    "Accept-Ranges"?: string;
+                    /** @description Length of the response body in bytes. */
+                    "Content-Length"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "audio/mpeg": string;
+                };
+            };
+            /** @description Partial audio clip stream for byte-range requests. */
+            206: {
+                headers: {
+                    /** @description Preview clips must not be cached by client or proxy (ADR-008). */
+                    "Cache-Control"?: string;
+                    /** @description Indicates support for byte range requests. */
+                    "Accept-Ranges"?: string;
+                    /** @description Byte range of this response chunk (e.g. `bytes 0-32767/65536`). */
+                    "Content-Range"?: string;
+                    /** @description Length of this range chunk in bytes. */
+                    "Content-Length"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "audio/mpeg": string;
+                };
+            };
+            /** @description Token format is malformed or exceeds maximum length (`AUDIO_TOKEN_INVALID`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Token signature verification failed or token has expired (`AUDIO_TOKEN_EXPIRED`, `AUDIO_TOKEN_INVALID`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The account associated with the session is locked (`ACCOUNT_LOCKED`, BR-28) or origin is refused. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The requested byte range is invalid or exceeds the clip size (`RANGE_NOT_SATISFIABLE`). */
+            416: {
+                headers: {
+                    /** @description Unsatisfiable range indication (e.g. `bytes *\/65536`). */
+                    "Content-Range"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Rate limit hit (`RATE_LIMITED`). Excessive stream or chunk requests for this token. */
+            429: {
+                headers: {
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {

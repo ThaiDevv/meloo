@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Too Many Requests",
+  "status": 429,
+  "code": "RATE_LIMITED",
+  "detail": "Too many audio stream requests for this token. Please wait before retrying.",
+  "instance": "/api/v1/audio/{token}"
+}

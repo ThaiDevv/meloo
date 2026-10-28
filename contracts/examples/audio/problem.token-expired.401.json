@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Audio token expired",
+  "status": 401,
+  "code": "AUDIO_TOKEN_EXPIRED",
+  "detail": "The audio preview token has expired. Request a fresh round state to get a new token.",
+  "instance": "/api/v1/audio/{token}"
+}

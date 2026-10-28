@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Range Not Satisfiable",
+  "status": 416,
+  "code": "RANGE_NOT_SATISFIABLE",
+  "detail": "The requested byte range is invalid or extends beyond the audio clip length.",
+  "instance": "/api/v1/audio/{token}"
+}

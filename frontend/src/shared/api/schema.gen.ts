@@ -373,6 +373,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rooms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a multiplayer room
+         * @description Creates a new room (either private or public, BR-11, BR-12). The creator becomes the room host.
+         *     Private rooms are joinable via 6-character code or link; public rooms appear in the public lobby list.
+         */
+        post: operations["createRoom"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rooms/join": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Join an existing room by code
+         * @description Joins an existing room using its 6-character code (BR-11, BR-12, BR-15).
+         *     If the match is already in progress, the player waits in the lobby for the next match (BR-15).
+         *     Players previously kicked by the host cannot re-enter (BR-12).
+         */
+        post: operations["joinRoomByCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rooms/public": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List public rooms
+         * @description Returns a paginated list of public rooms waiting in lobby or playing (BR-11, BR-15).
+         *     Private and quick-match rooms are not listed.
+         */
+        get: operations["listPublicRooms"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rooms/quick-match": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Matchmake or create a quick match room
+         * @description Finds a pending quick match room matching filters or creates a new one (BR-13).
+         *     Quick match rooms have no host (`hostId: null`), no join code, and automatically start after countdown.
+         */
+        post: operations["quickMatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -382,7 +467,7 @@ export interface components {
          *     Bao gồm các mã lỗi mặc định HTTP và mã lỗi nghiệp vụ của các module.
          * @enum {string}
          */
-        ErrorCode: "VALIDATION_FAILED" | "UNAUTHORIZED" | "FORBIDDEN" | "NOT_FOUND" | "METHOD_NOT_ALLOWED" | "UNSUPPORTED_MEDIA_TYPE" | "NOT_ACCEPTABLE" | "CONFLICT" | "RATE_LIMITED" | "INTERNAL_ERROR" | "REFRESH_RACE" | "ACCOUNT_LOCKED" | "TRACK_NOT_FOUND" | "PLAYLIST_NOT_FOUND" | "SOLO_MATCH_IN_PROGRESS" | "NO_ACTIVE_MATCH" | "MATCH_NOT_IN_PROGRESS" | "MATCH_NOT_FOUND" | "MATCH_NOT_FINISHED" | "RANKED_MATCH_CANNOT_ABANDON" | "NOT_ENOUGH_TRACKS" | "ROUND_NOT_ACTIVE" | "ROUND_NOT_FOUND" | "ROUND_NOT_FINISHED" | "LISTEN_LEVEL_MAX" | "LISTEN_LEVEL_MISMATCH" | "SKIP_NOT_ALLOWED" | "AUDIO_TOKEN_INVALID" | "AUDIO_TOKEN_EXPIRED" | "RANGE_NOT_SATISFIABLE";
+        ErrorCode: "VALIDATION_FAILED" | "UNAUTHORIZED" | "FORBIDDEN" | "NOT_FOUND" | "METHOD_NOT_ALLOWED" | "UNSUPPORTED_MEDIA_TYPE" | "NOT_ACCEPTABLE" | "CONFLICT" | "RATE_LIMITED" | "INTERNAL_ERROR" | "REFRESH_RACE" | "ACCOUNT_LOCKED" | "TRACK_NOT_FOUND" | "PLAYLIST_NOT_FOUND" | "SOLO_MATCH_IN_PROGRESS" | "NO_ACTIVE_MATCH" | "MATCH_NOT_IN_PROGRESS" | "MATCH_NOT_FOUND" | "MATCH_NOT_FINISHED" | "RANKED_MATCH_CANNOT_ABANDON" | "NOT_ENOUGH_TRACKS" | "ROUND_NOT_ACTIVE" | "ROUND_NOT_FOUND" | "ROUND_NOT_FINISHED" | "LISTEN_LEVEL_MAX" | "LISTEN_LEVEL_MISMATCH" | "SKIP_NOT_ALLOWED" | "AUDIO_TOKEN_INVALID" | "AUDIO_TOKEN_EXPIRED" | "RANGE_NOT_SATISFIABLE" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_KICKED" | "NOT_ROOM_HOST" | "ROOM_NOT_LOBBY" | "ROOM_CANNOT_START";
         /** @description RFC 9457 problem details with a stable `code`. */
         Problem: {
             /**
@@ -675,6 +760,83 @@ export interface components {
             startedAt: string;
             /** Format: date-time */
             endedAt: string;
+        };
+        /** @enum {string} */
+        RoomType: "PRIVATE_ROOM" | "PUBLIC_ROOM" | "QUICK_MATCH";
+        /** @enum {string} */
+        RoomStatus: "LOBBY" | "PLAYING" | "FINISHED" | "CLOSED";
+        RoomPlayerSummary: {
+            /** Format: uuid */
+            userId: string;
+            nickname: string;
+            avatarUrl?: string | null;
+            isHost: boolean;
+            isReady: boolean;
+            isGuest: boolean;
+            score: number;
+        };
+        RoomResponse: {
+            /** Format: uuid */
+            roomId: string;
+            /** @description 6-character room code; null for quick match rooms (BR-13). */
+            code?: string | null;
+            roomType: components["schemas"]["RoomType"];
+            /**
+             * Format: uuid
+             * @description Current host user ID; null for quick match rooms (BR-13).
+             */
+            hostId?: string | null;
+            status: components["schemas"]["RoomStatus"];
+            /** @enum {integer} */
+            roundCount: 5 | 10 | 15;
+            maxPlayers: number;
+            currentRound: number;
+            playerCount: number;
+            players: components["schemas"]["RoomPlayerSummary"][];
+            /** Format: uuid */
+            playlistId?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CreateRoomRequest: {
+            /** @enum {string} */
+            roomType: "PRIVATE_ROOM" | "PUBLIC_ROOM";
+            /** Format: uuid */
+            playlistId?: string | null;
+            /**
+             * @default 10
+             * @enum {integer}
+             */
+            roundCount: 5 | 10 | 15;
+            /** @default 5 */
+            maxPlayers: number;
+        };
+        JoinRoomRequest: {
+            /** @description 6 uppercase alphanumeric characters excluding 0, O, 1, I, L (BR-11). */
+            code: string;
+        };
+        QuickMatchRequest: {
+            /** Format: uuid */
+            playlistId?: string | null;
+            genreCodes?: string[];
+            decades?: number[];
+        };
+        PublicRoomItem: {
+            /** Format: uuid */
+            roomId: string;
+            code: string;
+            hostNickname: string;
+            playerCount: number;
+            maxPlayers: number;
+            /** @enum {integer} */
+            roundCount: 5 | 10 | 15;
+            status: components["schemas"]["RoomStatus"];
+            playlistName?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        PublicRoomPage: components["schemas"]["Page"] & {
+            items: components["schemas"]["PublicRoomItem"][];
         };
     };
     responses: {
@@ -1366,6 +1528,144 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+        };
+    };
+    createRoom: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRoomRequest"];
+            };
+        };
+        responses: {
+            /** @description Room created successfully. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomResponse"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    joinRoomByCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JoinRoomRequest"];
+            };
+        };
+        responses: {
+            /** @description Successfully joined the room. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomResponse"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            /** @description Forbidden because account is locked or player was kicked from this room (BR-12, BR-28). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Room not found or already closed (`ROOM_NOT_FOUND`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Room is already full (`ROOM_FULL`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    listPublicRooms: {
+        parameters: {
+            query?: {
+                /** @description Zero-based page index. */
+                page?: components["parameters"]["Page"];
+                /** @description Page size. */
+                size?: components["parameters"]["Size"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated public rooms. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicRoomPage"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    quickMatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["QuickMatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Matched or created quick match room. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomResponse"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
         };
     };
 }

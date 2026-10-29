@@ -10,7 +10,6 @@ import com.meloo.game.domain.Round;
 import com.meloo.game.domain.RoundOutcome;
 import com.meloo.game.domain.RoundStatus;
 import com.meloo.game.domain.TargetTrack;
-import com.meloo.game.domain.TitleNormalizer;
 import com.meloo.game.events.MatchFinished;
 import com.meloo.game.events.MatchStarted;
 import com.meloo.game.events.MatchType;
@@ -445,11 +444,7 @@ public class SoloGameService {
                     guessTrack.title(), guessTrack.artistName(), now, match.comboTracker());
         match.touch(now);
 
-        boolean rightArtist =
-            eval.rightArtist()
-                || (eval.correct()
-                    && TitleNormalizer.matchesArtist(
-                        guessTrack.artistName(), current.track().artistName()));
+        boolean rightArtist = eval.rightArtist();
 
         if (eval.roundEnded()) {
           current.setComboStreakAfterRound(match.comboTracker().currentStreak());
@@ -476,13 +471,7 @@ public class SoloGameService {
 
     GuessResponseDto response = new GuessResponseDto();
     response.setCorrect(eval.correct());
-    response.setRightArtist(
-        alreadyEnded
-            ? eval.rightArtist()
-            : (eval.rightArtist()
-                || (eval.correct()
-                    && TitleNormalizer.matchesArtist(
-                        guessTrack.artistName(), current.track().artistName()))));
+    response.setRightArtist(eval.rightArtist());
 
     if (!eval.roundEnded()) {
       response.setRoundEnded(false);
@@ -725,86 +714,93 @@ public class SoloGameService {
 
   private void publishMatchFinishedEvent(SoloMatch match) {
     synchronized (match) {
-      if (match.isMatchFinishedPublished()) {
+      if (!match.tryClaimMatchFinishedPublishing()) {
         return;
       }
     }
 
-    List<RoundSummary> roundSummaries = new ArrayList<>();
-    List<RoundPlayerResult> playerResults = new ArrayList<>();
-    long totalCorrectTimeMs = 0L;
+    try {
+      List<RoundSummary> roundSummaries = new ArrayList<>();
+      List<RoundPlayerResult> playerResults = new ArrayList<>();
+      long totalCorrectTimeMs = 0L;
 
-    // Chỉ đưa các vòng đã xong vào rounds (BR-23)
-    for (SoloRoundData data : match.getCompletedRounds()) {
-      TrackInfo track = data.track();
-      roundSummaries.add(
-          new RoundSummary(
-              data.roundNo(),
-              track.id(),
-              track.title(),
-              track.artistName(),
-              track.provider(),
-              track.providerTrackId()));
+      // Chỉ đưa các vòng đã xong vào rounds (BR-23)
+      for (SoloRoundData data : match.getCompletedRounds()) {
+        TrackInfo track = data.track();
+        roundSummaries.add(
+            new RoundSummary(
+                data.roundNo(),
+                track.id(),
+                track.title(),
+                track.artistName(),
+                track.provider(),
+                track.providerTrackId()));
 
-      Round r = data.round();
-      RoundOutcome outcome = r.outcome() != null ? r.outcome() : RoundOutcome.GAVE_UP;
-      Integer correctLevel = (outcome == RoundOutcome.CORRECT) ? r.currentLevel() : null;
-      int baseScore = r.scoreDetail().baseScore();
-      int comboPercent = r.scoreDetail().comboPercent();
-      int speedBonus = r.scoreDetail().speedBonus();
-      int roundScore = r.scoreDetail().roundScore();
-      int wrongCount = r.wrongCount();
+        Round r = data.round();
+        RoundOutcome outcome = r.outcome() != null ? r.outcome() : RoundOutcome.GAVE_UP;
+        Integer correctLevel = (outcome == RoundOutcome.CORRECT) ? r.currentLevel() : null;
+        int baseScore = r.scoreDetail().baseScore();
+        int comboPercent = r.scoreDetail().comboPercent();
+        int speedBonus = r.scoreDetail().speedBonus();
+        int roundScore = r.scoreDetail().roundScore();
+        int wrongCount = r.wrongCount();
 
-      Long answerTimeMs = null;
-      if (r.startedAt() != null && r.endedAt() != null && outcome == RoundOutcome.CORRECT) {
-        answerTimeMs = Duration.between(r.startedAt(), r.endedAt()).toMillis();
-        totalCorrectTimeMs += answerTimeMs;
+        Long answerTimeMs = null;
+        if (r.startedAt() != null && r.endedAt() != null && outcome == RoundOutcome.CORRECT) {
+          answerTimeMs = Duration.between(r.startedAt(), r.endedAt()).toMillis();
+          totalCorrectTimeMs += answerTimeMs;
+        }
+
+        playerResults.add(
+            new RoundPlayerResult(
+                data.roundNo(),
+                outcome,
+                correctLevel,
+                baseScore,
+                comboPercent,
+                speedBonus,
+                roundScore,
+                wrongCount,
+                answerTimeMs));
       }
 
-      playerResults.add(
-          new RoundPlayerResult(
-              data.roundNo(),
-              outcome,
-              correctLevel,
-              baseScore,
-              comboPercent,
-              speedBonus,
-              roundScore,
-              wrongCount,
-              answerTimeMs));
-    }
+      PlayerSummary playerSummary =
+          new PlayerSummary(
+              match.userId(),
+              match.nickname(),
+              match.isGuest(),
+              match.calculateTotalScore(),
+              1, // solo: rank 1
+              match.calculateCorrectCount(),
+              totalCorrectTimeMs,
+              playerResults);
 
-    PlayerSummary playerSummary =
-        new PlayerSummary(
-            match.userId(),
-            match.nickname(),
-            match.isGuest(),
-            match.calculateTotalScore(),
-            1, // solo: rank 1
-            match.calculateCorrectCount(),
-            totalCorrectTimeMs,
-            playerResults);
+      MatchFinished event =
+          new MatchFinished(
+              UUID.randomUUID(),
+              match.matchId(),
+              MatchType.SOLO,
+              match.mode().getValue(),
+              match.isRanked(),
+              match.toMatchEndStatus(),
+              match.roundCount(),
+              match.playlistId(),
+              serializeFilter(match.filterDto()),
+              match.startedAt(),
+              match.endedAt() != null ? match.endedAt() : clock.instant(),
+              roundSummaries,
+              List.of(playerSummary));
 
-    MatchFinished event =
-        new MatchFinished(
-            UUID.randomUUID(),
-            match.matchId(),
-            MatchType.SOLO,
-            match.mode().getValue(),
-            match.isRanked(),
-            match.toMatchEndStatus(),
-            match.roundCount(),
-            match.playlistId(),
-            serializeFilter(match.filterDto()),
-            match.startedAt(),
-            match.endedAt() != null ? match.endedAt() : clock.instant(),
-            roundSummaries,
-            List.of(playerSummary));
+      transactionTemplate.executeWithoutResult(status -> eventPublisher.publishEvent(event));
 
-    transactionTemplate.executeWithoutResult(status -> eventPublisher.publishEvent(event));
-
-    synchronized (match) {
-      match.markMatchFinishedPublished();
+      synchronized (match) {
+        match.markMatchFinishedPublished();
+      }
+    } catch (Throwable t) {
+      synchronized (match) {
+        match.releaseMatchFinishedPublishing();
+      }
+      throw t;
     }
   }
 
@@ -881,7 +877,12 @@ public class SoloGameService {
   }
 
   private RoundStateDto toRoundStateDto(SoloRoundData roundData, SoloMatch match, UUID userId) {
-    if (!audioService.isRoundPlayable(roundData.roundId())) {
+    boolean inProgress;
+    synchronized (match) {
+      inProgress = roundData.round().status() == RoundStatus.IN_PROGRESS;
+    }
+
+    if (inProgress && !audioService.isRoundPlayable(roundData.roundId())) {
       TrackInfo track = roundData.track();
       AudioPreparationResult prep =
           audioService.prepareRoundAudio(
@@ -917,14 +918,19 @@ public class SoloGameService {
 
       if (track != roundData.track()) {
         synchronized (match) {
-          int currentLevel = roundData.round().currentLevel();
-          TargetTrack targetTrack = new TargetTrack(track.id(), track.title(), track.artistName());
-          Round newRound = Round.standardRound(roundData.roundNo(), targetTrack, false);
-          newRound.start(clock.instant());
-          for (int lvl = 1; lvl < currentLevel; lvl++) {
-            newRound.listenMore();
+          if (roundData.round().status() == RoundStatus.IN_PROGRESS) {
+            int currentLevel = roundData.round().currentLevel();
+            TargetTrack targetTrack =
+                new TargetTrack(track.id(), track.title(), track.artistName());
+            Round newRound = Round.standardRound(roundData.roundNo(), targetTrack, false);
+            newRound.start(clock.instant());
+            for (int lvl = 1; lvl < currentLevel; lvl++) {
+              newRound.listenMore();
+            }
+            roundData.replaceTrackAndRound(track, newRound);
+          } else {
+            audioService.releaseRoundAudio(roundData.roundId());
           }
-          roundData.replaceTrackAndRound(track, newRound);
         }
       }
     }

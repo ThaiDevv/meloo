@@ -40,6 +40,7 @@ public class SoloMatch {
   private @Nullable Instant endedAt;
   private SoloMatchStatus status;
   private boolean matchFinishedEventPublished = false;
+  private boolean publishingMatchFinished = false;
 
   private final List<SoloRoundData> roundDataList = new ArrayList<>();
   private final List<TrackInfo> candidateTracks = new ArrayList<>();
@@ -266,11 +267,24 @@ public class SoloMatch {
     return true;
   }
 
+  public synchronized boolean tryClaimMatchFinishedPublishing() {
+    if (matchFinishedEventPublished || publishingMatchFinished) {
+      return false;
+    }
+    publishingMatchFinished = true;
+    return true;
+  }
+
+  public synchronized void releaseMatchFinishedPublishing() {
+    this.publishingMatchFinished = false;
+  }
+
   public synchronized boolean isMatchFinishedPublished() {
     return matchFinishedEventPublished;
   }
 
   public synchronized void markMatchFinishedPublished() {
     this.matchFinishedEventPublished = true;
+    this.publishingMatchFinished = false;
   }
 }

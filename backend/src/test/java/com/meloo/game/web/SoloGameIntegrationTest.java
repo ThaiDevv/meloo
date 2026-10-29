@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -1520,6 +1521,16 @@ class SoloGameIntegrationTest extends IntegrationTest {
     List<Integer> roundNos = match.roundDataList().stream().map(SoloRoundData::roundNo).toList();
     assertThat(roundNos).containsExactly(1, 2);
 
+    // Kiểm tra audio của bản thua được giải phóng qua audioService.releaseRoundAudio (m20)
+    org.mockito.ArgumentCaptor<UUID> releasedCaptor =
+        org.mockito.ArgumentCaptor.forClass(UUID.class);
+    verify(audioService, atLeast(2)).releaseRoundAudio(releasedCaptor.capture());
+    UUID round1Id = match.roundDataList().get(0).roundId();
+    UUID round2WinnerId = match.roundDataList().get(1).roundId();
+    assertThat(releasedCaptor.getAllValues()).contains(round1Id);
+    assertThat(releasedCaptor.getAllValues())
+        .anyMatch(id -> !id.equals(round1Id) && !id.equals(round2WinnerId));
+
     // Chơi tiếp các vòng 2, 3, 4, 5 để đảm bảo thứ tự hoàn tất sạch sẽ
     for (int r = 2; r <= 5; r++) {
       TrackInfo currentTrack = match.getCurrentRoundData().track();
@@ -1573,9 +1584,6 @@ class SoloGameIntegrationTest extends IntegrationTest {
 
     java.util.concurrent.CountDownLatch inRound2Audio = new java.util.concurrent.CountDownLatch(1);
     java.util.concurrent.CountDownLatch releaseAudio = new java.util.concurrent.CountDownLatch(1);
-
-    java.util.concurrent.atomic.AtomicBoolean firstCall =
-        new java.util.concurrent.atomic.AtomicBoolean(true);
 
     java.util.concurrent.atomic.AtomicInteger callCount =
         new java.util.concurrent.atomic.AtomicInteger(0);
@@ -1631,6 +1639,16 @@ class SoloGameIntegrationTest extends IntegrationTest {
     assertThat(match.currentRoundIndex()).isEqualTo(1);
     List<Integer> roundNos = match.roundDataList().stream().map(SoloRoundData::roundNo).toList();
     assertThat(roundNos).containsExactly(1, 2);
+
+    // Kiểm tra audio của bản thua được giải phóng qua audioService.releaseRoundAudio (m20)
+    org.mockito.ArgumentCaptor<UUID> releasedCaptor =
+        org.mockito.ArgumentCaptor.forClass(UUID.class);
+    verify(audioService, atLeast(2)).releaseRoundAudio(releasedCaptor.capture());
+    UUID round1Id = match.roundDataList().get(0).roundId();
+    UUID round2WinnerId = match.roundDataList().get(1).roundId();
+    assertThat(releasedCaptor.getAllValues()).contains(round1Id);
+    assertThat(releasedCaptor.getAllValues())
+        .anyMatch(id -> !id.equals(round1Id) && !id.equals(round2WinnerId));
   }
 
   @Test
@@ -1712,7 +1730,7 @@ class SoloGameIntegrationTest extends IntegrationTest {
 
   @Test
   @DisplayName(
-      "Phát lại lượt đoán đúng cả bài lẫn ca sĩ trên vòng đã kết thúc giữ đúng rightArtist = true (m15)")
+      "Phát lại lượt đoán đúng trên vòng đã kết thúc giữ đúng rightArtist = false theo BR-06 (m17)")
   void testReplayedGuessPreservesRightArtist() throws Exception {
     UUID userId = UUID.randomUUID();
 
@@ -1755,7 +1773,7 @@ class SoloGameIntegrationTest extends IntegrationTest {
     when(audioService.prepareRoundAudio(any(), any(), any(), any()))
         .thenReturn(AudioPreparationResult.success());
 
-    // Phát lại lượt đoán trên vòng 1 đã kết thúc -> rightArtist vẫn là true (m15)
+    // Phát lại lượt đoán trên vòng 1 đã kết thúc -> rightArtist vẫn là false theo BR-06 (m17)
     mockMvc
         .perform(
             post("/api/v1/solo/matches/{matchId}/rounds/1/guesses", matchId)
@@ -1764,6 +1782,6 @@ class SoloGameIntegrationTest extends IntegrationTest {
                 .content(objectMapper.writeValueAsString(guessReq)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.correct").value(true))
-        .andExpect(jsonPath("$.rightArtist").value(true));
+        .andExpect(jsonPath("$.rightArtist").value(false));
   }
 }

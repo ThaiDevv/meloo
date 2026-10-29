@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Round not active",
+  "status": 409,
+  "code": "ROUND_NOT_ACTIVE",
+  "detail": "The round has already ended or is not currently open.",
+  "instance": "/api/v1/solo/matches/0f6e1b92-5a3c-4d77-8e21-9b4a7c3d5e60/rounds/1/guesses"
+}

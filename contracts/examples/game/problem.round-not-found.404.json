@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Round not found",
+  "status": 404,
+  "code": "ROUND_NOT_FOUND",
+  "detail": "The round number does not exist for this match.",
+  "instance": "/api/v1/solo/matches/0f6e1b92-5a3c-4d77-8e21-9b4a7c3d5e60/rounds/99"
+}

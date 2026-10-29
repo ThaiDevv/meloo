@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Track not found",
+  "status": 404,
+  "code": "TRACK_NOT_FOUND",
+  "detail": "The selected track does not exist in the catalog.",
+  "instance": "/api/v1/solo/matches/0f6e1b92-5a3c-4d77-8e21-9b4a7c3d5e60/rounds/1/guesses"
+}

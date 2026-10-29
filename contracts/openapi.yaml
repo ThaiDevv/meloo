@@ -295,6 +295,8 @@ paths:
               examples:
                 default:
                   externalValue: ./examples/game/get-active-solo-match.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -325,6 +327,8 @@ paths:
               examples:
                 default:
                   externalValue: ./examples/game/get-current-round.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -349,6 +353,15 @@ paths:
       parameters:
         - $ref: '#/components/parameters/MatchId'
         - $ref: '#/components/parameters/RoundNo'
+        - name: expectedLevel
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 2
+            maximum: 5
+          description: |
+            Optional expected level to unlock (2 to 5). Guards against double-clicks or retries after timeout so the player does not inadvertently unlock two levels and lose 200 points. If provided and does not match the round's next level, returns 409 `LISTEN_LEVEL_MISMATCH`.
       responses:
         '200':
           description: The round with the new level and its audio.
@@ -359,17 +372,26 @@ paths:
               examples:
                 default:
                   externalValue: ./examples/game/listen-more.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
           description: |
-            `LISTEN_LEVEL_MAX` (already at 30 seconds), `ROUND_NOT_ACTIVE` (that round is over or is not the open one).
+            `LISTEN_LEVEL_MAX` (already at 30 seconds), `LISTEN_LEVEL_MISMATCH` (expectedLevel does not match next level), `ROUND_NOT_ACTIVE` (that round is over or is not the open one).
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+              examples:
+                levelMax:
+                  summary: Already at 30 seconds (level 5).
+                  externalValue: ./examples/game/listen-more.409.level-max.json
+                levelMismatch:
+                  summary: Expected level does not match next level.
+                  externalValue: ./examples/game/listen-more.409.level-mismatch.json
         '429':
           $ref: '#/components/responses/TooManyRequests'
   /api/v1/solo/matches/{matchId}/rounds/{roundNo}/skip:
@@ -393,6 +415,8 @@ paths:
               examples:
                 default:
                   externalValue: ./examples/game/skip-round.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -403,6 +427,12 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+              examples:
+                skipNotAllowed:
+                  summary: Not at 30 seconds yet.
+                  externalValue: ./examples/game/skip-round.409.json
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /api/v1/solo/matches/{matchId}/rounds/{roundNo}/guesses:
     post:
       tags: [game]
@@ -435,6 +465,9 @@ paths:
                 wrong:
                   summary: Wrong guess, next level opened.
                   externalValue: ./examples/game/submit-guess.200.wrong.json
+                wrongOut:
+                  summary: Wrong guess at 30 seconds, round over (WRONG_OUT).
+                  externalValue: ./examples/game/submit-guess.200.wrong-out.json
                 correct:
                   summary: Correct guess, round over, next round open.
                   externalValue: ./examples/game/submit-guess.200.correct.json
@@ -451,12 +484,25 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+              examples:
+                trackNotFound:
+                  summary: Track not found in catalog.
+                  externalValue: ./examples/game/problem.track-not-found.404.json
+                matchNotFound:
+                  summary: Match not found.
+                  externalValue: ./examples/game/problem.match-not-found.404.json
         '409':
           description: '`ROUND_NOT_ACTIVE` (that round is over or is not the open one).'
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+              examples:
+                roundNotActive:
+                  summary: Round already finished or not active.
+                  externalValue: ./examples/game/submit-guess.409.round-not-active.json
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /api/v1/solo/matches/{matchId}/rounds/{roundNo}/result:
     get:
       tags: [game]
@@ -478,6 +524,8 @@ paths:
               examples:
                 default:
                   externalValue: ./examples/game/get-round-result.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -488,6 +536,12 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+              examples:
+                roundNotFinished:
+                  summary: Round is still open.
+                  externalValue: ./examples/game/get-round-result.409.json
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /api/v1/solo/matches/{matchId}/result:
     get:
       tags: [game]
@@ -506,6 +560,8 @@ paths:
               examples:
                 default:
                   externalValue: ./examples/game/get-match-result.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -516,6 +572,12 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+              examples:
+                matchNotFinished:
+                  summary: Match is still in progress.
+                  externalValue: ./examples/game/get-match-result.409.json
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /api/v1/solo/matches/{matchId}/abandon:
     post:
       tags: [game]
@@ -537,6 +599,8 @@ paths:
               examples:
                 default:
                   externalValue: ./examples/game/abandon-solo-match.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -550,6 +614,8 @@ paths:
               examples:
                 default:
                   externalValue: ./examples/game/abandon-solo-match.409.json
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /api/v1/audio/{token}:
     get:
       tags: [audio]
@@ -776,6 +842,16 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+          examples:
+            generalNotFound:
+              summary: Resource not found.
+              externalValue: ./examples/common/problem.not-found.404.json
+            matchNotFound:
+              summary: Match not found.
+              externalValue: ./examples/game/problem.match-not-found.404.json
+            roundNotFound:
+              summary: Round not found.
+              externalValue: ./examples/game/problem.round-not-found.404.json
     TooManyRequests:
       description: Rate limit hit (`RATE_LIMITED`); retry after the `Retry-After` seconds.
       headers:
@@ -788,6 +864,42 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
   schemas:
+    ErrorCode:
+      type: string
+      description: |
+        Bảng mã lỗi `code` dùng chung cho toàn bộ hệ thống Meloo (RFC 9457 `code`).
+        Bao gồm các mã lỗi mặc định HTTP và mã lỗi nghiệp vụ của các module.
+      enum:
+        - VALIDATION_FAILED
+        - UNAUTHORIZED
+        - FORBIDDEN
+        - NOT_FOUND
+        - METHOD_NOT_ALLOWED
+        - UNSUPPORTED_MEDIA_TYPE
+        - NOT_ACCEPTABLE
+        - CONFLICT
+        - RATE_LIMITED
+        - INTERNAL_ERROR
+        - REFRESH_RACE
+        - ACCOUNT_LOCKED
+        - TRACK_NOT_FOUND
+        - PLAYLIST_NOT_FOUND
+        - SOLO_MATCH_IN_PROGRESS
+        - NO_ACTIVE_MATCH
+        - MATCH_NOT_IN_PROGRESS
+        - MATCH_NOT_FOUND
+        - MATCH_NOT_FINISHED
+        - RANKED_MATCH_CANNOT_ABANDON
+        - NOT_ENOUGH_TRACKS
+        - ROUND_NOT_ACTIVE
+        - ROUND_NOT_FOUND
+        - ROUND_NOT_FINISHED
+        - LISTEN_LEVEL_MAX
+        - LISTEN_LEVEL_MISMATCH
+        - SKIP_NOT_ALLOWED
+        - AUDIO_TOKEN_INVALID
+        - AUDIO_TOKEN_EXPIRED
+        - RANGE_NOT_SATISFIABLE
     Problem:
       type: object
       description: RFC 9457 problem details with a stable `code`.
@@ -809,12 +921,10 @@ components:
           type: string
           format: uri-reference
         code:
-          type: string
-          pattern: '^[A-Z][A-Z0-9_]*$'
-          examples: [VALIDATION_FAILED]
+          $ref: '#/components/schemas/ErrorCode'
         errors:
           type: array
-          description: Field errors, present for `VALIDATION_FAILED`.
+          description: Field errors, present when field-level validation details are available (e.g. for `VALIDATION_FAILED`).
           items:
             $ref: '#/components/schemas/FieldError'
     FieldError:
@@ -1156,6 +1266,11 @@ components:
           type: string
           format: uri
           description: Full-listen link on the source platform (BR-29).
+        coverUrl:
+          type: string
+          format: uri
+          description: |
+            Optional cover art URL of the track (e.g. from Deezer album artwork) for the reveal screen. May be empty or omitted.
     RoundResult:
       type: object
       required: [roundNo, outcome, baseScore, comboPercent, speedBonus, roundScore, wrongCount, comboStreak, totalScore, answer]

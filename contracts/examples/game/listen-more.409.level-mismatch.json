@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Listening level mismatch",
+  "status": 409,
+  "code": "LISTEN_LEVEL_MISMATCH",
+  "detail": "Expected next level does not match the round's current progression.",
+  "instance": "/api/v1/solo/matches/0f6e1b92-5a3c-4d77-8e21-9b4a7c3d5e60/rounds/1/listen-more"
+}

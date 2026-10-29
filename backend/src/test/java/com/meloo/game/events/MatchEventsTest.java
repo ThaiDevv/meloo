@@ -50,7 +50,7 @@ class MatchEventsTest {
     Instant end = Instant.parse("2026-10-26T12:10:00Z");
 
     RoundSummary roundSummary =
-        new RoundSummary(1, trackId, "Chúng Ta Của Tương Lai", "Sơn Tùng M-TP");
+        new RoundSummary(1, trackId, "Chúng Ta Của Tương Lai", "Sơn Tùng M-TP", "DEEZER", "12345");
 
     RoundPlayerResult roundResult =
         new RoundPlayerResult(1, RoundOutcome.CORRECT, 2, 800, 10, 133, 1013, 1, 15_000L);
@@ -63,6 +63,7 @@ class MatchEventsTest {
             eventId,
             matchId,
             MatchType.SOLO,
+            "RANKED",
             true,
             MatchEndStatus.FINISHED,
             10,
@@ -76,6 +77,7 @@ class MatchEventsTest {
     assertThat(event.eventId()).isEqualTo(eventId);
     assertThat(event.matchId()).isEqualTo(matchId);
     assertThat(event.type()).isEqualTo(MatchType.SOLO);
+    assertThat(event.mode()).isEqualTo("RANKED");
     assertThat(event.ranked()).isTrue();
     assertThat(event.status()).isEqualTo(MatchEndStatus.FINISHED);
     assertThat(event.roundCount()).isEqualTo(10);
@@ -86,6 +88,8 @@ class MatchEventsTest {
 
     assertThat(event.rounds()).hasSize(1);
     assertThat(event.rounds().get(0).trackTitle()).isEqualTo("Chúng Ta Của Tương Lai");
+    assertThat(event.rounds().get(0).provider()).isEqualTo("DEEZER");
+    assertThat(event.rounds().get(0).providerTrackId()).isEqualTo("12345");
 
     assertThat(event.players()).hasSize(1);
     PlayerSummary player = event.players().get(0);

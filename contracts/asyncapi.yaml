@@ -14,6 +14,21 @@ info:
     - In-progress round events never reveal track title, artist name, or track ID.
     - The correct answer is only revealed in `ROUND_END` after the round has concluded.
     - Chat messages containing the secret answer during an active round (BR-16) or prohibited words (BR-17) are blocked and warned privately to the sender.
+    - Audio clips are strictly delivered to players individually over private queues (`/user/queue/private`), never over room broadcast channels.
+
+    **Command → Broadcast & Private Responses Mapping**
+    | Client Command | Server Broadcast Event | Private Sender Response |
+    |---|---|---|
+    | `/ready` | `PLAYER_READY_CHANGED` | (none) |
+    | `/settings` | `ROOM_SETTINGS_CHANGED` | (none) |
+    | `/start` | `MATCH_STARTING`, `MATCH_COUNTDOWN` | (none) |
+    | `/prepared` | `ROUND_START` (when all ready or timeout) | (none) |
+    | `/listen-more` | `LISTEN_MORE_OPENED` | `LISTEN_MORE_RESPONSE` (contains private `AudioClip`) |
+    | `/guess` | `PLAYER_GUESSED` (only if correct) | `GUESS_RESULT_PRIVATE` (score breakdown, nextLevel & nextAudioClip if wrong) |
+    | `/give-up` | `PLAYER_GAVE_UP` | (none) |
+    | `/resync` | (none) | `RESYNC_STATE` |
+    | `/chat` | `CHAT_MESSAGE` | `ERROR` (if violating answer leak or prohibited words) |
+    | `/rtc` | `RTC_SIGNAL` | (none) |
   contact:
     name: Meloo Team
     email: contact@meloo.local
@@ -131,6 +146,15 @@ channels:
       resyncCommand:
         $ref: '#/components/messages/ResyncCommand'
 
+  rtcCommand:
+    address: /app/rooms/{roomId}/rtc
+    parameters:
+      roomId:
+        $ref: '#/components/parameters/RoomId'
+    messages:
+      rtcCommand:
+        $ref: '#/components/messages/RtcCommand'
+
   lobbyTopic:
     address: /topic/rooms/{roomId}/lobby
     parameters:
@@ -141,6 +165,8 @@ channels:
         $ref: '#/components/messages/PlayerJoinedEvent'
       playerLeft:
         $ref: '#/components/messages/PlayerLeftEvent'
+      playerConnectionChanged:
+        $ref: '#/components/messages/PlayerConnectionChangedEvent'
       playerReadyChanged:
         $ref: '#/components/messages/PlayerReadyChangedEvent'
       playerKicked:
@@ -227,6 +253,8 @@ channels:
         $ref: '#/components/messages/ListenMoreResponseMessage'
       guessResultMessage:
         $ref: '#/components/messages/GuessResultMessage'
+      roundAudioClip:
+        $ref: '#/components/messages/RoundAudioClipMessage'
 
 operations:
   sendReady:
@@ -235,77 +263,95 @@ operations:
     channel:
       $ref: '#/channels/readyCommand'
     messages:
-      - $ref: '#/components/messages/ReadyCommand'
+      - $ref: '#/channels/readyCommand/messages/readyCommand'
+
   sendSettings:
     action: send
     description: Send updated room settings (host only).
     channel:
       $ref: '#/channels/settingsCommand'
     messages:
-      - $ref: '#/components/messages/SettingsCommand'
+      - $ref: '#/channels/settingsCommand/messages/settingsCommand'
+
   sendKick:
     action: send
     description: Kick a player from the room (host only).
     channel:
       $ref: '#/channels/kickCommand'
     messages:
-      - $ref: '#/components/messages/KickCommand'
+      - $ref: '#/channels/kickCommand/messages/kickCommand'
+
   sendLeave:
     action: send
     description: Leave the current room.
     channel:
       $ref: '#/channels/leaveCommand'
     messages:
-      - $ref: '#/components/messages/LeaveCommand'
+      - $ref: '#/channels/leaveCommand/messages/leaveCommand'
+
   sendStart:
     action: send
     description: Start the match (host only).
     channel:
       $ref: '#/channels/startCommand'
     messages:
-      - $ref: '#/components/messages/StartCommand'
+      - $ref: '#/channels/startCommand/messages/startCommand'
+
   sendPrepared:
     action: send
     description: Confirm audio preload is complete.
     channel:
       $ref: '#/channels/preparedCommand'
     messages:
-      - $ref: '#/components/messages/PreparedCommand'
+      - $ref: '#/channels/preparedCommand/messages/preparedCommand'
+
   sendListenMore:
     action: send
     description: Request next listening duration level.
     channel:
       $ref: '#/channels/listenMoreCommand'
     messages:
-      - $ref: '#/components/messages/ListenMoreCommand'
+      - $ref: '#/channels/listenMoreCommand/messages/listenMoreCommand'
+
   sendGiveUp:
     action: send
     description: Give up and skip the round at 30s.
     channel:
       $ref: '#/channels/giveUpCommand'
     messages:
-      - $ref: '#/components/messages/GiveUpCommand'
+      - $ref: '#/channels/giveUpCommand/messages/giveUpCommand'
+
   sendGuess:
     action: send
     description: Submit track guess.
     channel:
       $ref: '#/channels/guessCommand'
     messages:
-      - $ref: '#/components/messages/GuessCommand'
+      - $ref: '#/channels/guessCommand/messages/guessCommand'
+
   sendChat:
     action: send
     description: Send in-room chat message.
     channel:
       $ref: '#/channels/chatCommand'
     messages:
-      - $ref: '#/components/messages/ChatCommand'
+      - $ref: '#/channels/chatCommand/messages/chatCommand'
+
   sendResync:
     action: send
     description: Request current room and round state.
     channel:
       $ref: '#/channels/resyncCommand'
     messages:
-      - $ref: '#/components/messages/ResyncCommand'
+      - $ref: '#/channels/resyncCommand/messages/resyncCommand'
+
+  sendRtc:
+    action: send
+    description: Send WebRTC voice signaling to room or target peer.
+    channel:
+      $ref: '#/channels/rtcCommand'
+    messages:
+      - $ref: '#/channels/rtcCommand/messages/rtcCommand'
 
   receiveLobbyEvents:
     action: receive
@@ -313,17 +359,18 @@ operations:
     channel:
       $ref: '#/channels/lobbyTopic'
     messages:
-      - $ref: '#/components/messages/PlayerJoinedEvent'
-      - $ref: '#/components/messages/PlayerLeftEvent'
-      - $ref: '#/components/messages/PlayerReadyChangedEvent'
-      - $ref: '#/components/messages/PlayerKickedEvent'
-      - $ref: '#/components/messages/RoomSettingsChangedEvent'
-      - $ref: '#/components/messages/MatchStartingEvent'
-      - $ref: '#/components/messages/MatchCountdownEvent'
-      - $ref: '#/components/messages/MatchCountdownStoppedEvent'
-      - $ref: '#/components/messages/MatchSoloSuggestionEvent'
-      - $ref: '#/components/messages/WaitingListChangedEvent'
-      - $ref: '#/components/messages/ReturnToLobbyEvent'
+      - $ref: '#/channels/lobbyTopic/messages/playerJoined'
+      - $ref: '#/channels/lobbyTopic/messages/playerLeft'
+      - $ref: '#/channels/lobbyTopic/messages/playerConnectionChanged'
+      - $ref: '#/channels/lobbyTopic/messages/playerReadyChanged'
+      - $ref: '#/channels/lobbyTopic/messages/playerKicked'
+      - $ref: '#/channels/lobbyTopic/messages/roomSettingsChanged'
+      - $ref: '#/channels/lobbyTopic/messages/matchStarting'
+      - $ref: '#/channels/lobbyTopic/messages/matchCountdown'
+      - $ref: '#/channels/lobbyTopic/messages/matchCountdownStopped'
+      - $ref: '#/channels/lobbyTopic/messages/matchSoloSuggestion'
+      - $ref: '#/channels/lobbyTopic/messages/waitingListChanged'
+      - $ref: '#/channels/lobbyTopic/messages/returnToLobby'
 
   receiveRoundEvents:
     action: receive
@@ -331,14 +378,14 @@ operations:
     channel:
       $ref: '#/channels/roundTopic'
     messages:
-      - $ref: '#/components/messages/RoundPrepareEvent'
-      - $ref: '#/components/messages/RoundStartEvent'
-      - $ref: '#/components/messages/ListenMoreOpenedEvent'
-      - $ref: '#/components/messages/PlayerGaveUpEvent'
-      - $ref: '#/components/messages/PlayerGuessedEvent'
-      - $ref: '#/components/messages/RoundTrackReplacedEvent'
-      - $ref: '#/components/messages/RoundEndEvent'
-      - $ref: '#/components/messages/MatchEarlyEndedEvent'
+      - $ref: '#/channels/roundTopic/messages/roundPrepare'
+      - $ref: '#/channels/roundTopic/messages/roundStart'
+      - $ref: '#/channels/roundTopic/messages/listenMoreOpened'
+      - $ref: '#/channels/roundTopic/messages/playerGaveUp'
+      - $ref: '#/channels/roundTopic/messages/playerGuessed'
+      - $ref: '#/channels/roundTopic/messages/roundTrackReplaced'
+      - $ref: '#/channels/roundTopic/messages/roundEnd'
+      - $ref: '#/channels/roundTopic/messages/matchEarlyEnded'
 
   receiveScoreboardEvents:
     action: receive
@@ -346,8 +393,8 @@ operations:
     channel:
       $ref: '#/channels/scoreboardTopic'
     messages:
-      - $ref: '#/components/messages/ScoreboardUpdateEvent'
-      - $ref: '#/components/messages/MatchFinishedEvent'
+      - $ref: '#/channels/scoreboardTopic/messages/scoreboardUpdate'
+      - $ref: '#/channels/scoreboardTopic/messages/matchFinished'
 
   receiveChatEvents:
     action: receive
@@ -355,7 +402,7 @@ operations:
     channel:
       $ref: '#/channels/chatTopic'
     messages:
-      - $ref: '#/components/messages/ChatMessageEvent'
+      - $ref: '#/channels/chatTopic/messages/chatMessage'
 
   receiveRtcEvents:
     action: receive
@@ -363,7 +410,7 @@ operations:
     channel:
       $ref: '#/channels/rtcTopic'
     messages:
-      - $ref: '#/components/messages/RtcSignalEvent'
+      - $ref: '#/channels/rtcTopic/messages/rtcSignal'
 
   receiveErrors:
     action: receive
@@ -371,7 +418,7 @@ operations:
     channel:
       $ref: '#/channels/errorQueue'
     messages:
-      - $ref: '#/components/messages/ErrorMessage'
+      - $ref: '#/channels/errorQueue/messages/errorMessage'
 
   receivePrivateMessages:
     action: receive
@@ -379,9 +426,10 @@ operations:
     channel:
       $ref: '#/channels/privateQueue'
     messages:
-      - $ref: '#/components/messages/ResyncStateMessage'
-      - $ref: '#/components/messages/ListenMoreResponseMessage'
-      - $ref: '#/components/messages/GuessResultMessage'
+      - $ref: '#/channels/privateQueue/messages/resyncState'
+      - $ref: '#/channels/privateQueue/messages/listenMoreResponse'
+      - $ref: '#/channels/privateQueue/messages/guessResultMessage'
+      - $ref: '#/channels/privateQueue/messages/roundAudioClip'
 
 components:
   parameters:
@@ -413,9 +461,8 @@ components:
             minimum: 2
             maximum: 5
           playlistId:
-            type: string
+            type: [string, 'null']
             format: uuid
-            nullable: true
         examples:
           - $ref: './examples/room/command.settings.json'
 
@@ -526,6 +573,24 @@ components:
         examples:
           - $ref: './examples/room/command.resync.json'
 
+    RtcCommand:
+      summary: Client-to-server WebRTC voice signaling (S5)
+      payload:
+        type: object
+        required: [signalType, payload]
+        properties:
+          targetUserId:
+            type: [string, 'null']
+            format: uuid
+          signalType:
+            type: string
+            enum: [offer, answer, ice-candidate]
+          payload:
+            type: string
+            maxLength: 4096
+        examples:
+          - $ref: './examples/room/command.rtc.json'
+
     PlayerJoinedEvent:
       summary: Broadcast when a new player joins the room
       payload:
@@ -556,16 +621,36 @@ components:
             type: string
             format: uuid
           newHostId:
-            type: string
+            type: [string, 'null']
             format: uuid
-            nullable: true
           reason:
             type: string
+            enum: [VOLUNTARY, DISCONNECTED, TIMEOUT]
           serverTime:
             type: string
             format: date-time
         examples:
           - $ref: './examples/room/event.lobby.player-left.json'
+
+    PlayerConnectionChangedEvent:
+      summary: Broadcast when a player disconnects temporarily or reconnects within 30s (BR-14)
+      payload:
+        type: object
+        required: [type, userId, isConnected, serverTime]
+        properties:
+          type:
+            type: string
+            const: PLAYER_CONNECTION_CHANGED
+          userId:
+            type: string
+            format: uuid
+          isConnected:
+            type: boolean
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/event.lobby.player-connection-changed.json'
 
     PlayerReadyChangedEvent:
       summary: Broadcast when a player changes ready status
@@ -622,9 +707,8 @@ components:
             minimum: 2
             maximum: 5
           playlistId:
-            type: string
+            type: [string, 'null']
             format: uuid
-            nullable: true
           serverTime:
             type: string
             format: date-time
@@ -676,6 +760,7 @@ components:
             const: MATCH_COUNTDOWN_STOPPED
           reason:
             type: string
+            enum: [PLAYER_LEFT, NOT_ENOUGH_PLAYERS]
           serverTime:
             type: string
             format: date-time
@@ -734,10 +819,10 @@ components:
           - $ref: './examples/room/event.lobby.return-to-lobby.json'
 
     RoundPrepareEvent:
-      summary: Prepare phase with audio clip preload (audio token without metadata, BR-08, ADR-008)
+      summary: Prepare phase with audio clip preload timing (audio tokens delivered privately, BR-08, ADR-008)
       payload:
         type: object
-        required: [type, roundNo, totalRounds, audioClip, timeoutMs, serverTime]
+        required: [type, roundNo, totalRounds, timeoutMs, serverTime]
         properties:
           type:
             type: string
@@ -749,8 +834,6 @@ components:
           totalRounds:
             type: integer
             enum: [5, 10, 15]
-          audioClip:
-            $ref: '#/components/schemas/AudioClip'
           timeoutMs:
             type: integer
             description: Maximum time allowed for preloading (ms).
@@ -783,10 +866,10 @@ components:
           - $ref: './examples/room/event.round.start.json'
 
     ListenMoreOpenedEvent:
-      summary: A player unlocked the next listening level (audio token with extended duration)
+      summary: A player unlocked the next listening level (audio token delivered privately to that player)
       payload:
         type: object
-        required: [type, userId, level, audioClip, serverTime]
+        required: [type, userId, level, serverTime]
         properties:
           type:
             type: string
@@ -797,8 +880,6 @@ components:
           level:
             type: integer
             enum: [2, 5, 10, 20, 30]
-          audioClip:
-            $ref: '#/components/schemas/AudioClip'
           serverTime:
             type: string
             format: date-time
@@ -846,6 +927,7 @@ components:
             enum: [2, 5, 10, 20, 30]
           isCorrect:
             type: boolean
+            const: true
           serverTime:
             type: string
             format: date-time
@@ -856,7 +938,7 @@ components:
       summary: Track replaced mid-match due to audio source failure (BR-27)
       payload:
         type: object
-        required: [type, roundNo, audioClip, reason, serverTime]
+        required: [type, roundNo, reason, serverTime]
         properties:
           type:
             type: string
@@ -865,8 +947,6 @@ components:
             type: integer
             minimum: 1
             maximum: 15
-          audioClip:
-            $ref: '#/components/schemas/AudioClip'
           reason:
             type: string
           serverTime:
@@ -895,9 +975,8 @@ components:
             items:
               $ref: '#/components/schemas/PlayerRoundResult'
           nextRoundAt:
-            type: string
+            type: [string, 'null']
             format: date-time
-            nullable: true
           serverTime:
             type: string
             format: date-time
@@ -915,6 +994,7 @@ components:
             const: MATCH_EARLY_ENDED
           reason:
             type: string
+            enum: [ONLY_ONE_PLAYER_REMAINED, HOST_ABANDONED]
           remainingUserId:
             type: string
             format: uuid
@@ -1007,14 +1087,14 @@ components:
             type: string
             format: uuid
           targetUserId:
-            type: string
+            type: [string, 'null']
             format: uuid
-            nullable: true
           signalType:
             type: string
             enum: [offer, answer, ice-candidate]
           payload:
             type: string
+            maxLength: 4096
           serverTime:
             type: string
             format: date-time
@@ -1032,11 +1112,11 @@ components:
             const: ERROR
           code:
             type: string
+            enum: [ROOM_NOT_FOUND, ROOM_FULL, NOT_IN_ROOM, NOT_HOST, INVALID_STATE, ALREADY_READY, INVALID_ROUND_NO, INVALID_LEVEL, INVALID_TRACK, CHAT_ANSWER_LEAK, CHAT_PROHIBITED_WORD, RATE_LIMITED, INTERNAL_ERROR]
           message:
             type: string
           detail:
-            type: string
-            nullable: true
+            type: [string, 'null']
           serverTime:
             type: string
             format: date-time
@@ -1058,11 +1138,21 @@ components:
             type: string
             enum: [LOBBY, COUNTDOWN, ROUND_PREPARE, ROUND_IN_PROGRESS, ROUND_REVEAL, FINISHED]
           currentRound:
-            $ref: '#/components/schemas/ActiveRoundState'
+            oneOf:
+              - $ref: '#/components/schemas/ActiveRoundState'
+              - type: 'null'
           scores:
             type: array
             items:
               $ref: '#/components/schemas/PlayerScoreSummary'
+          lastRoundAnswer:
+            oneOf:
+              - $ref: '#/components/schemas/RoundAnswer'
+              - type: 'null'
+          lastRoundResults:
+            type: [array, 'null']
+            items:
+              $ref: '#/components/schemas/PlayerRoundResult'
           serverTime:
             type: string
             format: date-time
@@ -1090,6 +1180,8 @@ components:
           serverTime:
             type: string
             format: date-time
+        examples:
+          - $ref: './examples/room/queue.listen-more-response.json'
 
     GuessResultMessage:
       summary: Private result of a player's guess attempt (BR-05, BR-06, BR-07)
@@ -1112,12 +1204,46 @@ components:
           isCorrectArtist:
             type: boolean
           scoreDetail:
-            $ref: '#/components/schemas/RoundScoreDetail'
+            oneOf:
+              - $ref: '#/components/schemas/RoundScoreDetail'
+              - type: 'null'
+          nextLevel:
+            type: [integer, 'null']
+            enum: [5, 10, 20, 30, null]
+          nextAudioClip:
+            oneOf:
+              - $ref: '#/components/schemas/AudioClip'
+              - type: 'null'
           serverTime:
             type: string
             format: date-time
         examples:
           - $ref: './examples/room/queue.guess-result.json'
+          - $ref: './examples/room/queue.guess-result.wrong.json'
+
+    RoundAudioClipMessage:
+      summary: Private delivery of player's initial or replaced audio clip token for a round (ADR-008)
+      payload:
+        type: object
+        required: [type, roundNo, level, audioClip, serverTime]
+        properties:
+          type:
+            type: string
+            const: ROUND_AUDIO_CLIP
+          roundNo:
+            type: integer
+            minimum: 1
+            maximum: 15
+          level:
+            type: integer
+            enum: [2, 5, 10, 20, 30]
+          audioClip:
+            $ref: '#/components/schemas/AudioClip'
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/queue.round-audio-clip.json'
 
   schemas:
     AudioClip:
@@ -1148,11 +1274,9 @@ components:
         artistName:
           type: string
         albumTitle:
-          type: string
-          nullable: true
+          type: [string, 'null']
         coverUrl:
-          type: string
-          nullable: true
+          type: [string, 'null']
         previewFullUrl:
           type: string
           description: Full track link on original platform (Deezer, BR-29).
@@ -1189,9 +1313,8 @@ components:
           type: string
           enum: [CORRECT, WRONG_OUT, TIMEOUT, GAVE_UP]
         correctLevel:
-          type: integer
-          enum: [2, 5, 10, 20, 30]
-          nullable: true
+          type: [integer, 'null']
+          enum: [2, 5, 10, 20, 30, null]
         baseScore:
           type: integer
           minimum: 0
@@ -1208,9 +1331,8 @@ components:
           type: integer
           minimum: 0
         answerTimeMs:
-          type: integer
+          type: [integer, 'null']
           minimum: 0
-          nullable: true
 
     PlayerScoreSummary:
       type: object
@@ -1281,7 +1403,7 @@ components:
 
     RoomPlayerSummary:
       type: object
-      required: [userId, nickname, isHost, isReady, isGuest, score]
+      required: [userId, nickname, isHost, isReady, isGuest, isConnected, score]
       properties:
         userId:
           type: string
@@ -1291,14 +1413,16 @@ components:
           minLength: 3
           maxLength: 20
         avatarUrl:
-          type: string
-          nullable: true
+          type: [string, 'null']
         isHost:
           type: boolean
         isReady:
           type: boolean
         isGuest:
           type: boolean
+        isConnected:
+          type: boolean
+          description: Whether player WebSocket connection is currently active (BR-14 30s retention).
         score:
           type: integer
           minimum: 0
@@ -1311,16 +1435,14 @@ components:
           type: string
           format: uuid
         code:
-          type: string
-          nullable: true
+          type: [string, 'null']
           description: 6-character room code; null for quick match rooms (BR-13).
         roomType:
           type: string
           enum: [PRIVATE_ROOM, PUBLIC_ROOM, QUICK_MATCH]
         hostId:
-          type: string
+          type: [string, 'null']
           format: uuid
-          nullable: true
           description: Host user id; null for quick match rooms (BR-13).
         status:
           type: string
@@ -1345,9 +1467,8 @@ components:
           items:
             $ref: '#/components/schemas/RoomPlayerSummary'
         playlistId:
-          type: string
+          type: [string, 'null']
           format: uuid
-          nullable: true
         createdAt:
           type: string
           format: date-time

@@ -10,5 +10,7 @@
     "speedBonus": 133,
     "roundScore": 1013
   },
+  "nextLevel": null,
+  "nextAudioClip": null,
   "serverTime": "2026-10-29T10:02:20Z"
 }

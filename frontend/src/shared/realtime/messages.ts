@@ -63,6 +63,7 @@ export interface RoomPlayerSummary {
   isHost: boolean
   isReady: boolean
   isGuest: boolean
+  isConnected: boolean
   score: number
 }
 
@@ -133,6 +134,12 @@ export interface ChatCommand {
 
 export type ResyncCommand = Record<string, never>
 
+export interface RtcCommand {
+  targetUserId?: string | null
+  signalType: 'offer' | 'answer' | 'ice-candidate'
+  payload: string
+}
+
 // --- Server Events (/topic/rooms/{roomId}/...) ---
 
 // Lobby Topic
@@ -146,7 +153,14 @@ export interface PlayerLeftEvent {
   type: 'PLAYER_LEFT'
   userId: string
   newHostId: string | null
-  reason: string
+  reason: 'VOLUNTARY' | 'DISCONNECTED' | 'TIMEOUT'
+  serverTime: string
+}
+
+export interface PlayerConnectionChangedEvent {
+  type: 'PLAYER_CONNECTION_CHANGED'
+  userId: string
+  isConnected: boolean
   serverTime: string
 }
 
@@ -185,7 +199,7 @@ export interface MatchCountdownEvent {
 
 export interface MatchCountdownStoppedEvent {
   type: 'MATCH_COUNTDOWN_STOPPED'
-  reason: string
+  reason: 'PLAYER_LEFT' | 'NOT_ENOUGH_PLAYERS'
   serverTime: string
 }
 
@@ -209,6 +223,7 @@ export interface ReturnToLobbyEvent {
 export type LobbyEvent =
   | PlayerJoinedEvent
   | PlayerLeftEvent
+  | PlayerConnectionChangedEvent
   | PlayerReadyChangedEvent
   | PlayerKickedEvent
   | RoomSettingsChangedEvent
@@ -224,7 +239,6 @@ export interface RoundPrepareEvent {
   type: 'ROUND_PREPARE'
   roundNo: number
   totalRounds: 5 | 10 | 15
-  audioClip: AudioClip
   timeoutMs: number
   serverTime: string
 }
@@ -240,7 +254,6 @@ export interface ListenMoreOpenedEvent {
   type: 'LISTEN_MORE_OPENED'
   userId: string
   level: 2 | 5 | 10 | 20 | 30
-  audioClip: AudioClip
   serverTime: string
 }
 
@@ -256,14 +269,13 @@ export interface PlayerGuessedEvent {
   userId: string
   nickname: string
   level: 2 | 5 | 10 | 20 | 30
-  isCorrect: boolean
+  isCorrect: true
   serverTime: string
 }
 
 export interface RoundTrackReplacedEvent {
   type: 'ROUND_TRACK_REPLACED'
   roundNo: number
-  audioClip: AudioClip
   reason: string
   serverTime: string
 }
@@ -279,7 +291,7 @@ export interface RoundEndEvent {
 
 export interface MatchEarlyEndedEvent {
   type: 'MATCH_EARLY_ENDED'
-  reason: string
+  reason: 'ONLY_ONE_PLAYER_REMAINED' | 'HOST_ABANDONED'
   remainingUserId: string
   serverTime: string
 }
@@ -335,7 +347,20 @@ export interface RtcSignalEvent {
 
 export interface ErrorMessage {
   type: 'ERROR'
-  code: string
+  code:
+    | 'ROOM_NOT_FOUND'
+    | 'ROOM_FULL'
+    | 'NOT_IN_ROOM'
+    | 'NOT_HOST'
+    | 'INVALID_STATE'
+    | 'ALREADY_READY'
+    | 'INVALID_ROUND_NO'
+    | 'INVALID_LEVEL'
+    | 'INVALID_TRACK'
+    | 'CHAT_ANSWER_LEAK'
+    | 'CHAT_PROHIBITED_WORD'
+    | 'RATE_LIMITED'
+    | 'INTERNAL_ERROR'
   message: string
   detail: string | null
   serverTime: string
@@ -348,6 +373,8 @@ export interface ResyncStateMessage {
     'LOBBY' | 'COUNTDOWN' | 'ROUND_PREPARE' | 'ROUND_IN_PROGRESS' | 'ROUND_REVEAL' | 'FINISHED'
   currentRound: ActiveRoundState | null
   scores: PlayerScoreSummary[]
+  lastRoundAnswer: RoundAnswer | null
+  lastRoundResults: PlayerRoundResult[] | null
   serverTime: string
 }
 
@@ -366,11 +393,25 @@ export interface GuessResultMessage {
   isCorrect: boolean
   isCorrectArtist: boolean
   scoreDetail: RoundScoreDetail | null
+  nextLevel: number | null
+  nextAudioClip: AudioClip | null
+  serverTime: string
+}
+
+export interface RoundAudioClipMessage {
+  type: 'ROUND_AUDIO_CLIP'
+  roundNo: number
+  level: 2 | 5 | 10 | 20 | 30
+  audioClip: AudioClip
   serverTime: string
 }
 
 export type PrivateQueueMessage =
-  ErrorMessage | ResyncStateMessage | ListenMoreResponseMessage | GuessResultMessage
+  | ErrorMessage
+  | ResyncStateMessage
+  | ListenMoreResponseMessage
+  | GuessResultMessage
+  | RoundAudioClipMessage
 
 // --- Top-level Union of all Server-to-Client Messages ---
 

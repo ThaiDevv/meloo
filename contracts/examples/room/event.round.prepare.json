@@ -2,11 +2,6 @@
   "type": "ROUND_PREPARE",
   "roundNo": 1,
   "totalRounds": 10,
-  "audioClip": {
-    "url": "/api/v1/audio/clips/eyJhbGciOiJIUzI1NiJ9.eyJyIjoxLCJsIjoyfQ.signature",
-    "level": 2,
-    "expiresAt": "2026-10-29T10:05:00Z"
-  },
   "timeoutMs": 5000,
   "serverTime": "2026-10-29T10:02:05Z"
 }

@@ -799,6 +799,18 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          description: The playlist was not found (`PLAYLIST_NOT_FOUND`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: The playlist has too few valid tracks for the chosen round count (`NOT_ENOUGH_TRACKS`, BR-09).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/NotEnoughTracksProblem'
         '429':
           $ref: '#/components/responses/TooManyRequests'
   /api/v1/rooms/join:
@@ -928,6 +940,18 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          description: The playlist was not found (`PLAYLIST_NOT_FOUND`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: The playlist has too few valid tracks for the chosen round count (`NOT_ENOUGH_TRACKS`, BR-09).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/NotEnoughTracksProblem'
         '429':
           $ref: '#/components/responses/TooManyRequests'
 components:
@@ -1598,7 +1622,7 @@ components:
       enum: [LOBBY, PLAYING, FINISHED, CLOSED]
     RoomPlayerSummary:
       type: object
-      required: [userId, nickname, isHost, isReady, isGuest, score]
+      required: [userId, nickname, isHost, isReady, isGuest, isConnected, score]
       properties:
         userId:
           type: string
@@ -1608,14 +1632,16 @@ components:
           minLength: 3
           maxLength: 20
         avatarUrl:
-          type: string
-          nullable: true
+          type: [string, 'null']
         isHost:
           type: boolean
         isReady:
           type: boolean
         isGuest:
           type: boolean
+        isConnected:
+          type: boolean
+          description: Whether player is currently connected via WebSocket (BR-13, BR-14).
         score:
           type: integer
           minimum: 0
@@ -1627,15 +1653,13 @@ components:
           type: string
           format: uuid
         code:
-          type: string
-          nullable: true
+          type: [string, 'null']
           description: 6-character room code; null for quick match rooms (BR-13).
         roomType:
           $ref: '#/components/schemas/RoomType'
         hostId:
-          type: string
+          type: [string, 'null']
           format: uuid
-          nullable: true
           description: Current host user ID; null for quick match rooms (BR-13).
         status:
           $ref: '#/components/schemas/RoomStatus'
@@ -1659,9 +1683,8 @@ components:
           items:
             $ref: '#/components/schemas/RoomPlayerSummary'
         playlistId:
-          type: string
+          type: [string, 'null']
           format: uuid
-          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -1673,9 +1696,8 @@ components:
           type: string
           enum: [PRIVATE_ROOM, PUBLIC_ROOM]
         playlistId:
-          type: string
+          type: [string, 'null']
           format: uuid
-          nullable: true
         roundCount:
           type: integer
           enum: [5, 10, 15]
@@ -1695,19 +1717,14 @@ components:
           description: 6 uppercase alphanumeric characters excluding 0, O, 1, I, L (BR-11).
     QuickMatchRequest:
       type: object
+      additionalProperties: false
+      description: Matchmaking preferences. Matches existing quick room with compatible filter (BR-13).
       properties:
         playlistId:
-          type: string
+          type: [string, 'null']
           format: uuid
-          nullable: true
-        genreCodes:
-          type: array
-          items:
-            type: string
-        decades:
-          type: array
-          items:
-            type: integer
+        filter:
+          $ref: '#/components/schemas/SoloFilter'
     PublicRoomItem:
       type: object
       required: [roomId, code, hostNickname, playerCount, maxPlayers, roundCount, status, createdAt]
@@ -1733,8 +1750,7 @@ components:
         status:
           $ref: '#/components/schemas/RoomStatus'
         playlistName:
-          type: string
-          nullable: true
+          type: [string, 'null']
         createdAt:
           type: string
           format: date-time

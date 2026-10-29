@@ -1,4 +1,6 @@
 {
-  "genreCodes": ["POP", "BALLAD"],
-  "decades": [2020]
+  "filter": {
+    "genreCodes": ["POP", "BALLAD"],
+    "decades": [2020]
+  }
 }

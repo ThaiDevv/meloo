@@ -773,6 +773,8 @@ export interface components {
             isHost: boolean;
             isReady: boolean;
             isGuest: boolean;
+            /** @description Whether player is currently connected via WebSocket (BR-13, BR-14). */
+            isConnected: boolean;
             score: number;
         };
         RoomResponse: {
@@ -815,11 +817,11 @@ export interface components {
             /** @description 6 uppercase alphanumeric characters excluding 0, O, 1, I, L (BR-11). */
             code: string;
         };
+        /** @description Matchmaking preferences. Matches existing quick room with compatible filter (BR-13). */
         QuickMatchRequest: {
             /** Format: uuid */
             playlistId?: string | null;
-            genreCodes?: string[];
-            decades?: number[];
+            filter?: components["schemas"]["SoloFilter"];
         };
         PublicRoomItem: {
             /** Format: uuid */
@@ -1555,6 +1557,24 @@ export interface operations {
             400: components["responses"]["ValidationFailed"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description The playlist was not found (`PLAYLIST_NOT_FOUND`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The playlist has too few valid tracks for the chosen round count (`NOT_ENOUGH_TRACKS`, BR-09). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["NotEnoughTracksProblem"];
+                };
+            };
             429: components["responses"]["TooManyRequests"];
         };
     };
@@ -1665,6 +1685,24 @@ export interface operations {
             400: components["responses"]["ValidationFailed"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description The playlist was not found (`PLAYLIST_NOT_FOUND`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The playlist has too few valid tracks for the chosen round count (`NOT_ENOUGH_TRACKS`, BR-09). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["NotEnoughTracksProblem"];
+                };
+            };
             429: components["responses"]["TooManyRequests"];
         };
     };

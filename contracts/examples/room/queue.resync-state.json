@@ -18,6 +18,7 @@
         "isHost": true,
         "isReady": true,
         "isGuest": false,
+        "isConnected": true,
         "score": 1013
       },
       {
@@ -27,6 +28,7 @@
         "isHost": false,
         "isReady": true,
         "isGuest": true,
+        "isConnected": true,
         "score": 0
       }
     ],
@@ -62,5 +64,7 @@
       "rank": 2
     }
   ],
+  "lastRoundAnswer": null,
+  "lastRoundResults": null,
   "serverTime": "2026-10-29T10:03:20Z"
 }

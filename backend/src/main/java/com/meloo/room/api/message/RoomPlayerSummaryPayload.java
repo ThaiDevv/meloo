@@ -11,4 +11,5 @@ public record RoomPlayerSummaryPayload(
     boolean isHost,
     boolean isReady,
     boolean isGuest,
+    boolean isConnected,
     int score) {}

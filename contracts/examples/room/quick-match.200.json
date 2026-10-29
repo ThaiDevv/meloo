@@ -16,6 +16,7 @@
       "isHost": false,
       "isReady": true,
       "isGuest": false,
+      "isConnected": true,
       "score": 0
     }
   ],

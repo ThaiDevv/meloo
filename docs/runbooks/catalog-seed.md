@@ -93,6 +93,7 @@ docker run --rm \
   -e DB_USERNAME="${RDS_USERNAME}" \
   -e DB_PASSWORD="${RDS_PASSWORD}" \
   -e MELOO_JWT_SECRET="${MELOO_JWT_SECRET}" \
+  -e MELOO_AUDIO_HMAC_SECRET="${MELOO_AUDIO_HMAC_SECRET}" \
   ghcr.io/thaidevv/meloo-backend:latest \
   --meloo.catalog.seed.enabled=true \
   --meloo.catalog.seed.exit-after-seed=true \

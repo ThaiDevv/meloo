@@ -1,0 +1,14 @@
+{
+  "type": "PLAYER_JOINED",
+  "user": {
+    "userId": "22222222-3333-4444-5555-666666666666",
+    "nickname": "PlayerTwo",
+    "avatarUrl": null,
+    "isHost": false,
+    "isReady": false,
+    "isGuest": true,
+    "isConnected": true,
+    "score": 0
+  },
+  "serverTime": "2026-10-29T10:00:05Z"
+}

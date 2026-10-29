@@ -1,0 +1,6 @@
+{
+  "type": "PLAYER_CONNECTION_CHANGED",
+  "userId": "11111111-1111-1111-1111-111111111111",
+  "isConnected": false,
+  "serverTime": "2026-10-29T10:00:00Z"
+}

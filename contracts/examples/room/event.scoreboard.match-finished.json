@@ -1,0 +1,23 @@
+{
+  "type": "MATCH_FINISHED",
+  "matchId": "55555555-6666-7777-8888-999999999999",
+  "rankings": [
+    {
+      "rank": 1,
+      "userId": "11111111-2222-3333-4444-555555555555",
+      "nickname": "ThaiPO",
+      "totalScore": 8450,
+      "correctCount": 9,
+      "totalCorrectTimeMs": 62450
+    },
+    {
+      "rank": 2,
+      "userId": "22222222-3333-4444-5555-666666666666",
+      "nickname": "PlayerTwo",
+      "totalScore": 3200,
+      "correctCount": 4,
+      "totalCorrectTimeMs": 115200
+    }
+  ],
+  "serverTime": "2026-10-29T10:14:50Z"
+}

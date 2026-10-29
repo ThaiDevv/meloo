@@ -1,0 +1,15 @@
+{
+  "type": "GUESS_RESULT_PRIVATE",
+  "roundNo": 1,
+  "result": "WRONG_ARTIST",
+  "isCorrect": false,
+  "isCorrectArtist": true,
+  "scoreDetail": null,
+  "nextLevel": 5,
+  "nextAudioClip": {
+    "url": "/api/v1/audio/eyJhbGciOiJIUzI1NiJ9.eyJyIjoxLCJsIjo1fQ.signature",
+    "level": 5,
+    "expiresAt": "2026-10-29T10:05:00Z"
+  },
+  "serverTime": "2026-10-29T10:02:18Z"
+}

@@ -1,0 +1,25 @@
+{
+  "roomId": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+  "code": "MEL889",
+  "roomType": "PRIVATE_ROOM",
+  "hostId": "11111111-2222-3333-4444-555555555555",
+  "status": "LOBBY",
+  "roundCount": 10,
+  "maxPlayers": 5,
+  "currentRound": 0,
+  "playerCount": 1,
+  "players": [
+    {
+      "userId": "11111111-2222-3333-4444-555555555555",
+      "nickname": "ThaiPO",
+      "avatarUrl": "https://avatar.iran.liara.run/public/1",
+      "isHost": true,
+      "isReady": true,
+      "isGuest": false,
+      "isConnected": true,
+      "score": 0
+    }
+  ],
+  "playlistId": "4a7c1b23-5e89-4d66-a3f1-0c9b8a7d6e54",
+  "createdAt": "2026-10-29T10:00:00Z"
+}

@@ -1,0 +1,7 @@
+{
+  "type": "ROUND_PREPARE",
+  "roundNo": 1,
+  "totalRounds": 10,
+  "timeoutMs": 5000,
+  "serverTime": "2026-10-29T10:02:05Z"
+}

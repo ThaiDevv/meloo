@@ -1,0 +1,20 @@
+{
+  "type": "SCOREBOARD_UPDATE",
+  "scores": [
+    {
+      "userId": "11111111-2222-3333-4444-555555555555",
+      "nickname": "ThaiPO",
+      "totalScore": 1013,
+      "comboStreak": 2,
+      "rank": 1
+    },
+    {
+      "userId": "22222222-3333-4444-5555-666666666666",
+      "nickname": "PlayerTwo",
+      "totalScore": 0,
+      "comboStreak": 0,
+      "rank": 2
+    }
+  ],
+  "serverTime": "2026-10-29T10:02:56Z"
+}

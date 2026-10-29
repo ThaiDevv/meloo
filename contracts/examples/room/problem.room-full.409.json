@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Room is full",
+  "status": 409,
+  "code": "ROOM_FULL",
+  "detail": "The room has reached its maximum capacity of players.",
+  "instance": "/api/v1/rooms/join"
+}

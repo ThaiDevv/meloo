@@ -1,0 +1,19 @@
+{
+  "page": 0,
+  "size": 10,
+  "totalItems": 1,
+  "totalPages": 1,
+  "items": [
+    {
+      "roomId": "b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e",
+      "code": "PUB234",
+      "hostNickname": "MusicLover",
+      "playerCount": 3,
+      "maxPlayers": 5,
+      "roundCount": 10,
+      "status": "LOBBY",
+      "playlistName": "V-Pop Hits 2026",
+      "createdAt": "2026-10-29T10:05:00Z"
+    }
+  ]
+}

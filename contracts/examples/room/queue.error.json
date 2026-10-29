@@ -1,0 +1,7 @@
+{
+  "type": "ERROR",
+  "code": "CHAT_ANSWER_LEAK",
+  "message": "Tin nhắn chứa từ khóa vi phạm quy tắc phòng (BR-16).",
+  "detail": "Tin nhắn bị chặn do chứa tên bài hát trong lúc vòng đang diễn ra.",
+  "serverTime": "2026-10-29T10:02:31Z"
+}

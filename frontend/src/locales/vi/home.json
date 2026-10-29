@@ -9,7 +9,8 @@
     "label": "Năm mốc nghe trong một vòng",
     "step": "{{seconds}} giây",
     "pointsUnit": "điểm",
-    "caption": "Điểm cơ bản khi đoán đúng ở từng mốc. Mốc càng ngắn, điểm càng cao."
+    "caption": "Thanh nhạc chia theo năm mốc nghe. Mốc càng ngắn, điểm càng cao.",
+    "marker": "{{seconds}}s"
   },
   "modes": {
     "heading": "Chọn cách chơi",

@@ -16,9 +16,18 @@ const LEVELS = [
 ] as const
 const LONGEST = 30
 
+/** Share of the clip that each level adds: 2, then 3 more, 5 more, 10 more and 10 more seconds. */
+function shareOf(index: number): number {
+  const level = LEVELS[index]
+  if (!level) return 0
+  const previous = LEVELS[index - 1]?.seconds ?? 0
+  return ((level.seconds - previous) / LONGEST) * 100
+}
+
 /**
- * Five flat bars that grow from 2 to 30 seconds and light up one after another, in step with the
- * grooves of the disc next to them. The shortest bar is the only one in the accent colour, because
+ * One music bar cut into five parts, one per listening level, each as wide as the stretch of clip
+ * it opens, with the level above it. The parts light up one after another, in step with the
+ * grooves of the disc next to them; the first part is the only one in the accent colour, because
  * guessing there scores the most.
  */
 export function ListeningLadder({ className }: { className?: string }) {
@@ -26,35 +35,39 @@ export function ListeningLadder({ className }: { className?: string }) {
   const number = new Intl.NumberFormat(i18n.resolvedLanguage)
   return (
     <div className={className}>
-      <ol aria-label={t('ladder.label')} className="space-y-3">
+      <ol aria-label={t('ladder.label')} className="flex gap-[3px]">
         {LEVELS.map(({ seconds, points }, index) => (
           <li
             key={seconds}
-            className="grid grid-cols-[4.5rem_minmax(0,1fr)_3.5rem] items-center gap-3"
+            style={{ flexBasis: `${String(shareOf(index))}%` }}
+            className="min-w-0 flex-none"
           >
-            <span className="num text-sm text-muted-foreground">
-              {t('ladder.step', { seconds })}
+            <span
+              aria-hidden="true"
+              className="num mb-2 block text-center text-sm font-semibold text-muted-foreground"
+            >
+              {t('ladder.marker', { seconds })}
             </span>
-            <span aria-hidden="true" className="h-12 overflow-hidden rounded-full bg-raised">
+            <span className="sr-only">{t('ladder.step', { seconds })}</span>
+            <span
+              aria-hidden="true"
+              className={cn(
+                'animate-in fade-in slide-in-from-left-4 relative block h-12 overflow-hidden bg-foreground/15 duration-700 fill-mode-both motion-reduce:animate-none',
+                index === 0 && 'rounded-l-full',
+                index === LEVELS.length - 1 && 'rounded-r-full',
+              )}
+              style={{ animationDelay: `${String(index * 90)}ms` }}
+            >
               <span
-                className="animate-in fade-in slide-in-from-left-full block h-full duration-700 fill-mode-both motion-reduce:animate-none"
-                style={{
-                  width: `${String((seconds / LONGEST) * 100)}%`,
-                  animationDelay: `${String(index * 90)}ms`,
-                }}
-              >
-                <span
-                  className={cn(
-                    'mv-lit block h-full rounded-full',
-                    index === 0 ? 'bg-primary' : 'bg-foreground',
-                  )}
-                  style={{ animationDelay: levelDelay(index) }}
-                />
-              </span>
+                className={cn(
+                  'mv-lit absolute inset-0',
+                  index === 0 ? 'bg-primary' : 'bg-foreground',
+                )}
+                style={{ animationDelay: levelDelay(index) }}
+              />
             </span>
-            <span className="num text-right text-sm font-semibold">
-              {number.format(points)}
-              <span className="sr-only"> {t('ladder.pointsUnit')}</span>
+            <span className="sr-only">
+              {number.format(points)} {t('ladder.pointsUnit')}
             </span>
           </li>
         ))}

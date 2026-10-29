@@ -40,13 +40,18 @@ describe('HomePage', () => {
     renderPage()
 
     const levels = within(screen.getByRole('list', { name: 'Năm mốc nghe trong một vòng' }))
-    expect(levels.getAllByRole('listitem').map((li) => li.textContent)).toEqual([
-      '2 giây1.000 điểm',
-      '5 giây800 điểm',
-      '10 giây600 điểm',
-      '20 giây400 điểm',
-      '30 giây200 điểm',
-    ])
+    const items = levels.getAllByRole('listitem')
+    expect(items).toHaveLength(5)
+    const expected = [
+      [2, '1.000'],
+      [5, '800'],
+      [10, '600'],
+      [20, '400'],
+      [30, '200'],
+    ] as const
+    expected.forEach(([seconds, points], index) => {
+      expect(items[index]).toHaveTextContent(new RegExp(`${String(seconds)} giây.*${points} điểm`))
+    })
   })
 
   it('explains how a round works in four steps', () => {

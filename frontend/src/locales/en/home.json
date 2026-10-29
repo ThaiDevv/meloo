@@ -9,7 +9,8 @@
     "label": "The five listening levels of a round",
     "step": "{{seconds}} seconds",
     "pointsUnit": "points",
-    "caption": "Base score for guessing right at each level. The shorter the clip, the more you score."
+    "caption": "The music bar, cut into the five listening levels. The shorter the level, the more you score.",
+    "marker": "{{seconds}}s"
   },
   "modes": {
     "heading": "Pick how to play",

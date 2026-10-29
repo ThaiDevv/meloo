@@ -4,12 +4,11 @@ import { Link } from 'react-router-dom'
 import { Equalizer, VinylDisc } from '@/shared/music-picker'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
-import './home.css'
 import { ListeningLadder } from './ListeningLadder'
 import { HOME_MODES, type HomeMode } from './modes'
 import { Reveal } from './Reveal'
+import { WaveBand } from './WaveBand'
 
-const MARQUEE_WORDS = ['a', 'b', 'c', 'd'] as const
 const STEPS = ['listen', 'more', 'guess', 'score'] as const
 // The stairs go one column further right at every step; on a phone the indent is smaller.
 const STEP_PLACEMENT = [
@@ -25,34 +24,6 @@ function ModeText({ id }: { id: HomeMode['id'] }) {
     <div className="min-w-0 space-y-1">
       <p className="text-lg font-semibold">{t(`modes.${id}.title`)}</p>
       <p className="text-sm text-muted-foreground">{t(`modes.${id}.description`)}</p>
-    </div>
-  )
-}
-
-/** The one loud moment: the claim runs across the full width, with the accent as the separator. */
-function Marquee() {
-  const { t } = useTranslation('home')
-  const group = (
-    <span className="flex shrink-0 items-center">
-      {MARQUEE_WORDS.map((word) => (
-        <span key={word} className="flex items-center">
-          <span className="px-[0.35em]">{t(`marquee.${word}`)}</span>
-          <span className="size-[0.26em] rounded-full bg-primary" />
-        </span>
-      ))}
-    </span>
-  )
-  return (
-    <div
-      aria-hidden="true"
-      className="mh-marquee overflow-hidden bg-surface py-6 font-display text-[clamp(2.25rem,6.5vw,5rem)] leading-none font-extrabold tracking-[-0.03em] whitespace-nowrap select-none"
-    >
-      <div className="mh-marquee-track">
-        {group}
-        {group}
-        {group}
-        {group}
-      </div>
     </div>
   )
 }
@@ -95,7 +66,7 @@ export function HomePage() {
         </section>
       </div>
 
-      <Marquee />
+      <WaveBand />
 
       <div className="mx-auto w-full max-w-6xl px-4">
         <section aria-labelledby="modes-title" className="py-20 lg:py-32">

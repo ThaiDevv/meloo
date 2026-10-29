@@ -31,12 +31,6 @@
       "description": "We match you with other players, ranked."
     }
   },
-  "marquee": {
-    "a": "Hear less",
-    "b": "Guess faster",
-    "c": "2 · 5 · 10 · 20 · 30 seconds",
-    "d": "Base score from 1,000 to 200"
-  },
   "how": {
     "heading": "How a round works",
     "steps": {
@@ -58,5 +52,8 @@
       }
     },
     "figure": "base points for a right guess at the 2-second mark."
+  },
+  "wave": {
+    "marker": "{{seconds}}s"
   }
 }

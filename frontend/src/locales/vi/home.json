@@ -31,12 +31,6 @@
       "description": "Hệ thống ghép bạn với người chơi khác, tính xếp hạng."
     }
   },
-  "marquee": {
-    "a": "Nghe ít",
-    "b": "Đoán nhanh",
-    "c": "2 · 5 · 10 · 20 · 30 giây",
-    "d": "Điểm cơ bản từ 1.000 đến 200"
-  },
   "how": {
     "heading": "Một vòng chơi",
     "steps": {
@@ -58,5 +52,8 @@
       }
     },
     "figure": "điểm cơ bản khi đoán đúng ngay ở mốc 2 giây."
+  },
+  "wave": {
+    "marker": "{{seconds}}s"
   }
 }

@@ -1,23 +1,128 @@
 /*
- * The edge-to-edge band of the home page. The track holds four identical groups and moves by half
- * its width, so the loop is seamless at any screen width. Under prefers-reduced-motion it stands still.
+ * The wave band of the home page: a waveform that is unlocked in five steps, the same five
+ * listening levels as a round (2, 5, 10, 20 and 30 seconds out of 30). A "lit" copy of the wave
+ * is revealed from the left by two opposite translations, so only transform and opacity move.
+ * Under prefers-reduced-motion nothing moves and the whole wave is lit.
  */
-.mh-marquee-track {
-  display: flex;
-  width: max-content;
+.mh-bar {
+  transform-origin: bottom;
+}
+.mh-ripple {
+  opacity: 0;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .mh-marquee-track {
-    animation: mh-marquee 46s linear infinite;
+  .mh-reveal,
+  .mh-head {
+    animation: mh-reveal 12s cubic-bezier(0.3, 0.7, 0.2, 1) infinite;
   }
-  .mh-marquee:hover .mh-marquee-track {
+  .mh-reveal-inner {
+    animation: mh-reveal-inner 12s cubic-bezier(0.3, 0.7, 0.2, 1) infinite;
+  }
+  .mh-bar-live {
+    animation: mh-bar 1.1s ease-in-out infinite alternate;
+  }
+  .mh-ripple {
+    animation: mh-ripple 12s ease-out infinite;
+  }
+  .mh-wave:hover .mh-reveal,
+  .mh-wave:hover .mh-reveal-inner,
+  .mh-wave:hover .mh-head,
+  .mh-wave:hover .mh-ripple {
     animation-play-state: paused;
   }
 }
 
-@keyframes mh-marquee {
+/* Stops at 3, 15, 29, 50 and 74 percent are the five levels; 94 to 100 percent rewinds. */
+@keyframes mh-reveal {
+  0% {
+    transform: translateX(-100%);
+  }
+  3%,
+  12% {
+    transform: translateX(-93.3%);
+  }
+  15%,
+  26% {
+    transform: translateX(-83.3%);
+  }
+  29%,
+  44% {
+    transform: translateX(-66.7%);
+  }
+  50%,
+  66% {
+    transform: translateX(-33.3%);
+  }
+  74%,
+  94% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+@keyframes mh-reveal-inner {
+  0% {
+    transform: translateX(100%);
+  }
+  3%,
+  12% {
+    transform: translateX(93.3%);
+  }
+  15%,
+  26% {
+    transform: translateX(83.3%);
+  }
+  29%,
+  44% {
+    transform: translateX(66.7%);
+  }
+  50%,
+  66% {
+    transform: translateX(33.3%);
+  }
+  74%,
+  94% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+@keyframes mh-bar {
+  from {
+    transform: scaleY(1);
+  }
   to {
-    transform: translateX(-50%);
+    transform: scaleY(0.55);
+  }
+}
+/* One ring leaves the play head each time a new level opens. */
+@keyframes mh-ripple {
+  0%,
+  2.9%,
+  14.9%,
+  28.9%,
+  49.9%,
+  73.9% {
+    opacity: 0;
+    scale: 0.15;
+  }
+  3%,
+  15%,
+  29%,
+  50%,
+  74% {
+    opacity: 0.5;
+    scale: 0.15;
+  }
+  9%,
+  21%,
+  35%,
+  56%,
+  80% {
+    opacity: 0;
+    scale: 1;
   }
 }

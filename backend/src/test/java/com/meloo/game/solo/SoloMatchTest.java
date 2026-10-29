@@ -190,4 +190,138 @@ class SoloMatchTest {
     assertThat(match2.isRanked()).isFalse();
     assertThat(match2.endedAt()).isEqualTo(match2.getExpiresAt());
   }
+
+  @Test
+  @DisplayName("Cờ matchFinishedEventPublished hoạt động chính xác")
+  void testMatchFinishedPublishFlag() {
+    UUID matchId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+    Instant now = Instant.parse("2026-10-29T12:00:00Z");
+
+    SoloMatch match =
+        new SoloMatch(
+            matchId,
+            userId,
+            "Thái",
+            false,
+            SoloModeDto.PRACTICE,
+            false,
+            5,
+            null,
+            null,
+            null,
+            List.of(),
+            now);
+
+    assertThat(match.isMatchFinishedPublished()).isFalse();
+    match.markMatchFinishedPublished();
+    assertThat(match.isMatchFinishedPublished()).isTrue();
+  }
+
+  @Test
+  @DisplayName("purgeOldMatches chỉ dọn các trận đã kết thúc, đã publish event và trước cutoff")
+  void testPurgeOldMatches() {
+    SoloMatchManager manager = new SoloMatchManager();
+    Instant now = Instant.parse("2026-10-29T12:00:00Z");
+
+    // match1: ABANDONED 40 phút trước, đã publish -> phải bị xóa
+    UUID id1 = UUID.randomUUID();
+    SoloMatch match1 =
+        new SoloMatch(
+            id1,
+            UUID.randomUUID(),
+            "U1",
+            false,
+            SoloModeDto.PRACTICE,
+            false,
+            5,
+            null,
+            null,
+            null,
+            List.of(),
+            now.minus(Duration.ofMinutes(45)));
+    match1.abandon(now.minus(Duration.ofMinutes(40)));
+    match1.markMatchFinishedPublished();
+    manager.registerMatch(match1);
+
+    // match2: ABANDONED 10 phút trước, đã publish -> chưa quá 30p, giữ lại
+    UUID id2 = UUID.randomUUID();
+    SoloMatch match2 =
+        new SoloMatch(
+            id2,
+            UUID.randomUUID(),
+            "U2",
+            false,
+            SoloModeDto.PRACTICE,
+            false,
+            5,
+            null,
+            null,
+            null,
+            List.of(),
+            now.minus(Duration.ofMinutes(15)));
+    match2.abandon(now.minus(Duration.ofMinutes(10)));
+    match2.markMatchFinishedPublished();
+    manager.registerMatch(match2);
+
+    // match3: IN_PROGRESS -> không bao giờ xóa
+    UUID id3 = UUID.randomUUID();
+    SoloMatch match3 =
+        new SoloMatch(
+            id3,
+            UUID.randomUUID(),
+            "U3",
+            false,
+            SoloModeDto.PRACTICE,
+            false,
+            5,
+            null,
+            null,
+            null,
+            List.of(),
+            now.minus(Duration.ofMinutes(50)));
+    manager.registerMatch(match3);
+
+    // match4: ABANDONED 40 phút trước nhưng chưa publish -> giữ lại để retry
+    UUID id4 = UUID.randomUUID();
+    SoloMatch match4 =
+        new SoloMatch(
+            id4,
+            UUID.randomUUID(),
+            "U4",
+            false,
+            SoloModeDto.PRACTICE,
+            false,
+            5,
+            null,
+            null,
+            null,
+            List.of(),
+            now.minus(Duration.ofMinutes(45)));
+    match4.abandon(now.minus(Duration.ofMinutes(40)));
+    manager.registerMatch(match4);
+
+    manager.purgeOldMatches(now.minus(Duration.ofMinutes(30)));
+
+    assertThat(manager.getMatchById(id1)).isEmpty();
+    assertThat(manager.getMatchById(id2)).isPresent();
+    assertThat(manager.getMatchById(id3)).isPresent();
+    assertThat(manager.getMatchById(id4)).isPresent();
+  }
+
+  @Test
+  @DisplayName("getUserLock dùng striped lock cố định 256 khóa, không rò rỉ bộ nhớ")
+  void testStripedUserLocks() {
+    SoloMatchManager manager = new SoloMatchManager();
+    UUID userId = UUID.randomUUID();
+
+    Object lock1 = manager.getUserLock(userId);
+    Object lock2 = manager.getUserLock(userId);
+    assertThat(lock1).isNotNull();
+    assertThat(lock1).isSameAs(lock2);
+
+    for (int i = 0; i < 1000; i++) {
+      assertThat(manager.getUserLock(UUID.randomUUID())).isNotNull();
+    }
+  }
 }

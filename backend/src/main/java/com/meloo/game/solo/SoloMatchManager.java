@@ -15,10 +15,18 @@ public class SoloMatchManager {
 
   private final Map<UUID, SoloMatch> matchesById = new ConcurrentHashMap<>();
   private final Map<UUID, UUID> activeMatchIdByUserId = new ConcurrentHashMap<>();
-  private final Map<UUID, Object> userLocks = new ConcurrentHashMap<>();
+  private static final int STRIPE_COUNT = 256;
+  private final Object[] userLocks = new Object[STRIPE_COUNT];
+
+  public SoloMatchManager() {
+    for (int i = 0; i < STRIPE_COUNT; i++) {
+      userLocks[i] = new Object();
+    }
+  }
 
   public Object getUserLock(UUID userId) {
-    return userLocks.computeIfAbsent(userId, k -> new Object());
+    int index = Math.floorMod(userId.hashCode(), STRIPE_COUNT);
+    return userLocks[index];
   }
 
   public void registerMatch(SoloMatch match) {
@@ -58,6 +66,7 @@ public class SoloMatchManager {
             entry -> {
               SoloMatch m = entry.getValue();
               return m.status() != SoloMatchStatus.IN_PROGRESS
+                  && m.isMatchFinishedPublished()
                   && m.endedAt() != null
                   && m.endedAt().isBefore(cutoffTime);
             });

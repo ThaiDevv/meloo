@@ -65,11 +65,7 @@ public class SoloGameExceptionHandler {
     ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     problem.setTitle("Conflict");
     problem.setProperty("code", "ROUND_NOT_ACTIVE");
-
-    String correlationId = request.getHeader("X-Correlation-Id");
-    if (correlationId != null) {
-      problem.setProperty("correlationId", correlationId);
-    }
+    problem.setProperty("correlationId", correlationId(request));
 
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(MediaType.valueOf("application/problem+json"));
@@ -87,14 +83,22 @@ public class SoloGameExceptionHandler {
         ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
     problem.setTitle("Bad Request");
     problem.setProperty("code", "VALIDATION_FAILED");
-
-    String correlationId = request.getHeader("X-Correlation-Id");
-    if (correlationId != null) {
-      problem.setProperty("correlationId", correlationId);
-    }
+    problem.setProperty("correlationId", correlationId(request));
 
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(MediaType.valueOf("application/problem+json"));
     return new ResponseEntity<>(problem, headers, HttpStatus.BAD_REQUEST);
+  }
+
+  private static final String CORRELATION_ID_ATTRIBUTE =
+      "com.meloo.shared.web.CorrelationIdFilter.id";
+
+  private static String correlationId(HttpServletRequest request) {
+    Object value = request.getAttribute(CORRELATION_ID_ATTRIBUTE);
+    if (value != null) {
+      return value.toString();
+    }
+    String header = request.getHeader("X-Correlation-Id");
+    return header != null ? header : "unavailable";
   }
 }

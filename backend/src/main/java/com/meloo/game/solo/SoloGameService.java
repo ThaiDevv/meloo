@@ -1,6 +1,5 @@
 package com.meloo.game.solo;
 
-import com.meloo.audio.api.AccountLockChecker;
 import com.meloo.audio.api.AudioPreparationResult;
 import com.meloo.audio.api.AudioService;
 import com.meloo.catalog.api.CatalogService;
@@ -66,7 +65,6 @@ public class SoloGameService {
 
   private final CatalogService catalogService;
   private final AudioService audioService;
-  private final AccountLockChecker accountLockChecker;
   private final ApplicationEventPublisher eventPublisher;
   private final TransactionTemplate transactionTemplate;
   private final Clock clock;
@@ -83,15 +81,12 @@ public class SoloGameService {
   public SoloGameService(
       CatalogService catalogService,
       AudioService audioService,
-      AccountLockChecker accountLockChecker,
       ApplicationEventPublisher eventPublisher,
       PlatformTransactionManager transactionManager,
       ObjectProvider<Clock> clockProvider,
       SoloMatchManager matchManager) {
     this.catalogService = Objects.requireNonNull(catalogService, "catalogService must not be null");
     this.audioService = Objects.requireNonNull(audioService, "audioService must not be null");
-    this.accountLockChecker =
-        Objects.requireNonNull(accountLockChecker, "accountLockChecker must not be null");
     this.eventPublisher = Objects.requireNonNull(eventPublisher, "eventPublisher must not be null");
     this.transactionTemplate =
         new TransactionTemplate(
@@ -113,7 +108,6 @@ public class SoloGameService {
   public SoloMatchDto createSoloMatch(
       UUID userId, String nickname, boolean isGuest, CreateSoloMatchRequestDto request) {
     Instant now = clock.instant();
-    validateAccountNotLocked(userId);
 
     SoloModeDto mode = request.getMode() != null ? request.getMode() : SoloModeDto.PRACTICE;
     boolean ranked = (mode == SoloModeDto.RANKED);
@@ -200,7 +194,6 @@ public class SoloGameService {
 
   public SoloMatchDto getActiveSoloMatch(UUID userId) {
     Instant now = clock.instant();
-    validateAccountNotLocked(userId);
 
     Optional<SoloMatch> activeOpt = matchManager.getActiveMatchByUserId(userId);
     if (activeOpt.isEmpty()) {
@@ -213,6 +206,8 @@ public class SoloGameService {
       throw new ApiException(HttpStatus.NOT_FOUND, "NO_ACTIVE_MATCH", "No active match found");
     }
 
+    ensureNextRoundReady(match, now);
+
     match.touch(now);
     return toSoloMatchDto(match, userId);
   }
@@ -220,6 +215,8 @@ public class SoloGameService {
   public RoundStateDto getCurrentRound(UUID userId, UUID matchId) {
     Instant now = clock.instant();
     SoloMatch match = getAndValidateMatch(userId, matchId, now);
+
+    ensureNextRoundReady(match, now);
 
     synchronized (match) {
       if (match.status() != SoloMatchStatus.IN_PROGRESS) {
@@ -241,6 +238,8 @@ public class SoloGameService {
       UUID userId, UUID matchId, int roundNo, @Nullable Integer expectedLevel) {
     Instant now = clock.instant();
     SoloMatch match = getAndValidateMatch(userId, matchId, now);
+
+    ensureNextRoundReady(match, now);
 
     synchronized (match) {
       if (match.status() != SoloMatchStatus.IN_PROGRESS) {
@@ -283,8 +282,13 @@ public class SoloGameService {
     Instant now = clock.instant();
     SoloMatch match = getAndValidateMatch(userId, matchId, now);
 
+    if (roundNo > match.currentRoundIndex() + 1) {
+      ensureNextRoundReady(match, now);
+    }
+
     SoloRoundData current;
     boolean matchFinished;
+    boolean alreadyEnded = false;
 
     synchronized (match) {
       if (match.status() != SoloMatchStatus.IN_PROGRESS) {
@@ -297,23 +301,30 @@ public class SoloGameService {
       }
 
       current = match.getCurrentRoundData();
-      if (current.roundNo() != roundNo || current.round().status() != RoundStatus.IN_PROGRESS) {
-        throw new ApiException(HttpStatus.CONFLICT, "ROUND_NOT_ACTIVE", "Round is not active");
-      }
+      if (current.roundNo() == roundNo && current.round().status() != RoundStatus.IN_PROGRESS) {
+        if (roundNo >= match.roundCount()) {
+          throw new ApiException(HttpStatus.CONFLICT, "ROUND_NOT_ACTIVE", "Round is not active");
+        }
+        alreadyEnded = true;
+      } else {
+        if (current.roundNo() != roundNo || current.round().status() != RoundStatus.IN_PROGRESS) {
+          throw new ApiException(HttpStatus.CONFLICT, "ROUND_NOT_ACTIVE", "Round is not active");
+        }
 
-      // BR-04: Chỉ được bỏ qua khi đã ở mức 30s (level 5)
-      if (current.round().currentLevel() < 5) {
-        throw new ApiException(
-            HttpStatus.CONFLICT, "SKIP_NOT_ALLOWED", "Cannot skip round before 30-second level");
-      }
+        // BR-04: Chỉ được bỏ qua khi đã ở mức 30s (level 5)
+        if (current.round().currentLevel() < 5) {
+          throw new ApiException(
+              HttpStatus.CONFLICT, "SKIP_NOT_ALLOWED", "Cannot skip round before 30-second level");
+        }
 
-      current.round().skip(now, match.comboTracker());
-      current.setComboStreakAfterRound(match.comboTracker().currentStreak());
-      audioService.releaseRoundAudio(current.roundId());
-      match.touch(now);
+        current.round().skip(now, match.comboTracker());
+        current.setComboStreakAfterRound(match.comboTracker().currentStreak());
+        audioService.releaseRoundAudio(current.roundId());
+        match.touch(now);
+      }
 
       matchFinished = (roundNo >= match.roundCount());
-      if (matchFinished) {
+      if (matchFinished && !alreadyEnded) {
         if (match.finish(now)) {
           publishMatchFinishedEvent(match);
         }
@@ -322,14 +333,18 @@ public class SoloGameService {
 
     if (matchFinished) {
       try {
-        // finished
+        return SoloDtoMapper.toRoundEndDto(current, match, true, null);
       } finally {
         matchManager.clearActiveMatch(userId, matchId);
       }
-      return SoloDtoMapper.toRoundEndDto(current, match, true, null);
     } else {
       SoloRoundData nextRoundData = prepareNextRound(match, match.currentRoundIndex() + 1, now);
       synchronized (match) {
+        if (match.status() != SoloMatchStatus.IN_PROGRESS) {
+          audioService.releaseRoundAudio(nextRoundData.roundId());
+          throw new ApiException(
+              HttpStatus.CONFLICT, "MATCH_NOT_IN_PROGRESS", "Match is not in progress");
+        }
         match.addRoundData(nextRoundData);
         match.advanceRound();
       }
@@ -343,6 +358,10 @@ public class SoloGameService {
     Instant now = clock.instant();
     SoloMatch match = getAndValidateMatch(userId, matchId, now);
 
+    if (roundNo > match.currentRoundIndex() + 1) {
+      ensureNextRoundReady(match, now);
+    }
+
     Optional<TrackInfo> guessTrackOpt = catalogService.getTrackById(request.getTrackId());
     if (guessTrackOpt.isEmpty()) {
       throw new ApiException(
@@ -355,6 +374,7 @@ public class SoloGameService {
     SoloRoundData current;
     GuessEvaluation eval;
     boolean matchFinished = false;
+    boolean alreadyEnded = false;
 
     synchronized (match) {
       if (match.status() != SoloMatchStatus.IN_PROGRESS) {
@@ -367,24 +387,43 @@ public class SoloGameService {
       }
 
       current = match.getCurrentRoundData();
-      if (current.roundNo() != roundNo || current.round().status() != RoundStatus.IN_PROGRESS) {
-        throw new ApiException(HttpStatus.CONFLICT, "ROUND_NOT_ACTIVE", "Round is not active");
-      }
+      if (current.roundNo() == roundNo && current.round().status() != RoundStatus.IN_PROGRESS) {
+        if (roundNo >= match.roundCount()) {
+          throw new ApiException(HttpStatus.CONFLICT, "ROUND_NOT_ACTIVE", "Round is not active");
+        }
+        alreadyEnded = true;
+        boolean wasCorrect = current.round().outcome() == RoundOutcome.CORRECT;
+        eval =
+            new GuessEvaluation(
+                wasCorrect,
+                false,
+                true,
+                current.round().status(),
+                current.round().outcome(),
+                current.round().currentLevel(),
+                current.round().wrongCount(),
+                current.round().scoreDetail());
+      } else {
+        if (current.roundNo() != roundNo || current.round().status() != RoundStatus.IN_PROGRESS) {
+          throw new ApiException(HttpStatus.CONFLICT, "ROUND_NOT_ACTIVE", "Round is not active");
+        }
 
-      eval =
-          current
-              .round()
-              .submitGuess(guessTrack.title(), guessTrack.artistName(), now, match.comboTracker());
-      match.touch(now);
+        eval =
+            current
+                .round()
+                .submitGuess(
+                    guessTrack.title(), guessTrack.artistName(), now, match.comboTracker());
+        match.touch(now);
 
-      if (eval.roundEnded()) {
-        current.setComboStreakAfterRound(match.comboTracker().currentStreak());
-        audioService.releaseRoundAudio(current.roundId());
-        matchFinished = (roundNo >= match.roundCount());
+        if (eval.roundEnded()) {
+          current.setComboStreakAfterRound(match.comboTracker().currentStreak());
+          audioService.releaseRoundAudio(current.roundId());
+          matchFinished = (roundNo >= match.roundCount());
 
-        if (matchFinished) {
-          if (match.finish(now)) {
-            publishMatchFinishedEvent(match);
+          if (matchFinished) {
+            if (match.finish(now)) {
+              publishMatchFinishedEvent(match);
+            }
           }
         }
       }
@@ -398,29 +437,36 @@ public class SoloGameService {
       response.setRoundEnded(false);
       response.setRound(toRoundStateDto(current, match, userId));
       response.setEnd(null);
-    } else {
-      RoundStateDto nextRoundDto = null;
-      if (matchFinished) {
-        try {
-          // finished
-        } finally {
-          matchManager.clearActiveMatch(userId, matchId);
-        }
-      } else {
-        SoloRoundData nextRoundData = prepareNextRound(match, match.currentRoundIndex() + 1, now);
-        synchronized (match) {
-          match.addRoundData(nextRoundData);
-          match.advanceRound();
-        }
-        nextRoundDto = toRoundStateDto(nextRoundData, match, userId);
+      return response;
+    }
+
+    if (matchFinished) {
+      try {
+        response.setRoundEnded(true);
+        response.setRound(null);
+        response.setEnd(SoloDtoMapper.toRoundEndDto(current, match, true, null));
+        return response;
+      } finally {
+        matchManager.clearActiveMatch(userId, matchId);
       }
+    } else {
+      SoloRoundData nextRoundData = prepareNextRound(match, match.currentRoundIndex() + 1, now);
+      synchronized (match) {
+        if (match.status() != SoloMatchStatus.IN_PROGRESS) {
+          audioService.releaseRoundAudio(nextRoundData.roundId());
+          throw new ApiException(
+              HttpStatus.CONFLICT, "MATCH_NOT_IN_PROGRESS", "Match is not in progress");
+        }
+        match.addRoundData(nextRoundData);
+        match.advanceRound();
+      }
+      RoundStateDto nextRoundDto = toRoundStateDto(nextRoundData, match, userId);
 
       response.setRoundEnded(true);
       response.setRound(null);
-      response.setEnd(SoloDtoMapper.toRoundEndDto(current, match, matchFinished, nextRoundDto));
+      response.setEnd(SoloDtoMapper.toRoundEndDto(current, match, false, nextRoundDto));
+      return response;
     }
-
-    return response;
   }
 
   public RoundResultDto getRoundResult(UUID userId, UUID matchId, int roundNo) {
@@ -471,56 +517,70 @@ public class SoloGameService {
           HttpStatus.CONFLICT, "RANKED_MATCH_CANNOT_ABANDON", "Ranked matches cannot be abandoned");
     }
 
-    synchronized (match) {
-      if (match.status() != SoloMatchStatus.IN_PROGRESS) {
-        throw new ApiException(
-            HttpStatus.CONFLICT, "MATCH_NOT_IN_PROGRESS", "Match is not in progress");
-      }
-
-      if (match.currentRoundIndex() < match.roundDataList().size()) {
-        audioService.releaseRoundAudio(match.getCurrentRoundData().roundId());
-      }
-
-      boolean abandoned = match.abandon(now);
-      if (abandoned) {
-        publishMatchFinishedEvent(match);
-      }
-    }
-
     try {
-      // done
+      synchronized (match) {
+        if (match.status() != SoloMatchStatus.IN_PROGRESS) {
+          throw new ApiException(
+              HttpStatus.CONFLICT, "MATCH_NOT_IN_PROGRESS", "Match is not in progress");
+        }
+
+        if (match.currentRoundIndex() < match.roundDataList().size()) {
+          audioService.releaseRoundAudio(match.getCurrentRoundData().roundId());
+        }
+
+        boolean abandoned = match.abandon(now);
+        if (abandoned) {
+          publishMatchFinishedEvent(match);
+        }
+      }
+      return SoloDtoMapper.toMatchResultDto(match);
     } finally {
       matchManager.clearActiveMatch(userId, matchId);
     }
-
-    return SoloDtoMapper.toMatchResultDto(match);
   }
 
   public void expireInactiveMatches() {
-    Instant now = clock.instant();
-    for (SoloMatch match : matchManager.getAllMatches()) {
-      if (match.status() == SoloMatchStatus.IN_PROGRESS && match.isExpired(now)) {
-        expireMatch(match, now);
+    try {
+      Instant now = clock.instant();
+      for (SoloMatch match : matchManager.getAllMatches()) {
+        try {
+          if (match.status() == SoloMatchStatus.IN_PROGRESS && match.isExpired(now)) {
+            expireMatch(match, now);
+          } else if (match.status() == SoloMatchStatus.ABANDONED
+              && !match.isMatchFinishedPublished()) {
+            publishMatchFinishedEvent(match);
+          }
+        } catch (Exception e) {
+          LOGGER.error("Error expiring/publishing match {}", match.matchId(), e);
+        }
+      }
+    } catch (Throwable t) {
+      LOGGER.error("Unexpected error in expireInactiveMatches", t);
+    } finally {
+      try {
+        Instant now = clock.instant();
+        matchManager.purgeOldMatches(now.minus(Duration.ofMinutes(30)));
+      } catch (Throwable t) {
+        LOGGER.error("Unexpected error in purgeOldMatches", t);
       }
     }
-    matchManager.purgeOldMatches(now.minus(Duration.ofMinutes(30)));
   }
 
   private void expireMatch(SoloMatch match, Instant now) {
-    synchronized (match) {
-      if (match.status() != SoloMatchStatus.IN_PROGRESS) {
-        return;
+    try {
+      boolean expired;
+      synchronized (match) {
+        if (match.status() != SoloMatchStatus.IN_PROGRESS) {
+          return;
+        }
+        if (match.currentRoundIndex() < match.roundDataList().size()) {
+          audioService.releaseRoundAudio(match.getCurrentRoundData().roundId());
+        }
+        expired = match.expire(now);
       }
-      if (match.currentRoundIndex() < match.roundDataList().size()) {
-        audioService.releaseRoundAudio(match.getCurrentRoundData().roundId());
-      }
-      boolean expired = match.expire(now);
       if (expired) {
         publishMatchFinishedEvent(match);
       }
-    }
-    try {
-      // done
     } finally {
       matchManager.clearActiveMatch(match.userId(), match.matchId());
     }
@@ -609,6 +669,12 @@ public class SoloGameService {
   }
 
   private void publishMatchFinishedEvent(SoloMatch match) {
+    synchronized (match) {
+      if (match.isMatchFinishedPublished()) {
+        return;
+      }
+    }
+
     List<RoundSummary> roundSummaries = new ArrayList<>();
     List<RoundPlayerResult> playerResults = new ArrayList<>();
     long totalCorrectTimeMs = 0L;
@@ -681,6 +747,39 @@ public class SoloGameService {
             List.of(playerSummary));
 
     transactionTemplate.executeWithoutResult(status -> eventPublisher.publishEvent(event));
+
+    synchronized (match) {
+      match.markMatchFinishedPublished();
+    }
+  }
+
+  private void ensureNextRoundReady(SoloMatch match, Instant now) {
+    int nextIndex;
+    synchronized (match) {
+      if (match.status() != SoloMatchStatus.IN_PROGRESS) {
+        return;
+      }
+      SoloRoundData current = match.getCurrentRoundData();
+      if (current.round().status() == RoundStatus.IN_PROGRESS) {
+        return;
+      }
+      if (current.roundNo() >= match.roundCount()) {
+        return;
+      }
+      nextIndex = match.currentRoundIndex() + 1;
+    }
+
+    SoloRoundData nextRoundData = prepareNextRound(match, nextIndex, now);
+
+    synchronized (match) {
+      if (match.status() == SoloMatchStatus.IN_PROGRESS
+          && match.currentRoundIndex() + 1 == nextIndex) {
+        match.addRoundData(nextRoundData);
+        match.advanceRound();
+      } else {
+        audioService.releaseRoundAudio(nextRoundData.roundId());
+      }
+    }
   }
 
   private @Nullable String serializeFilter(@Nullable SoloFilterDto filterDto) {
@@ -690,6 +789,7 @@ public class SoloGameService {
     try {
       return OBJECT_MAPPER.writeValueAsString(filterDto);
     } catch (Exception e) {
+      LOGGER.warn("Failed to serialize SoloFilterDto for match", e);
       return null;
     }
   }
@@ -702,12 +802,6 @@ public class SoloGameService {
     return !hasGenres && !hasCountries && !hasDecades && !hasArtists;
   }
 
-  private void validateAccountNotLocked(UUID userId) {
-    if (accountLockChecker.isAccountLocked(userId)) {
-      throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_LOCKED", "The account is locked.");
-    }
-  }
-
   private SoloMatchDto toSoloMatchDto(SoloMatch match, UUID userId) {
     SoloRoundData current = match.getCurrentRoundData();
     RoundStateDto currentRoundDto = toRoundStateDto(current, match, userId);
@@ -717,8 +811,48 @@ public class SoloGameService {
   private RoundStateDto toRoundStateDto(SoloRoundData roundData, SoloMatch match, UUID userId) {
     if (!audioService.isRoundPlayable(roundData.roundId())) {
       TrackInfo track = roundData.track();
-      audioService.prepareRoundAudio(
-          roundData.roundId(), track.id(), track.provider(), track.providerTrackId());
+      AudioPreparationResult prep =
+          audioService.prepareRoundAudio(
+              roundData.roundId(), track.id(), track.provider(), track.providerTrackId());
+
+      int attempts = 0;
+      while (!prep.playable()) {
+        if (++attempts > MAX_REPLACEMENT_ATTEMPTS) {
+          LOGGER.warn(
+              "Exceeded max replacement attempts ({}) for round {}",
+              MAX_REPLACEMENT_ATTEMPTS,
+              roundData.roundNo());
+          throw new NotEnoughTracksException(1);
+        }
+
+        LOGGER.warn(
+            "Audio preparation failed for trackId={}, reason={}. Selecting replacement track (BR-27, attempt {}).",
+            track.id(),
+            prep.failureReason(),
+            attempts);
+
+        TrackInfo replacement = fetchReplacementTrack(match);
+        if (replacement == null) {
+          throw new NotEnoughTracksException(1);
+        }
+
+        match.addExcludedTrack(replacement.id());
+        track = replacement;
+        prep =
+            audioService.prepareRoundAudio(
+                roundData.roundId(), track.id(), track.provider(), track.providerTrackId());
+      }
+
+      if (track != roundData.track()) {
+        int currentLevel = roundData.round().currentLevel();
+        TargetTrack targetTrack = new TargetTrack(track.id(), track.title(), track.artistName());
+        Round newRound = Round.standardRound(roundData.roundNo(), targetTrack, false);
+        newRound.start(clock.instant());
+        for (int lvl = 1; lvl < currentLevel; lvl++) {
+          newRound.listenMore();
+        }
+        roundData.replaceTrackAndRound(track, newRound);
+      }
     }
 
     int level = roundData.round().currentLevel();

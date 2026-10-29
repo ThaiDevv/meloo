@@ -11,7 +11,7 @@ public class SoloRoundData {
   private final int roundNo;
   private final UUID roundId;
   private TrackInfo track;
-  private final Round round;
+  private Round round;
   private final int scoreBeforeRound;
   private final int comboStreakBeforeRound;
   private int comboStreakAfterRound;
@@ -45,6 +45,11 @@ public class SoloRoundData {
 
   public void replaceTrack(TrackInfo newTrack) {
     this.track = Objects.requireNonNull(newTrack, "newTrack must not be null");
+  }
+
+  public void replaceTrackAndRound(TrackInfo newTrack, Round newRound) {
+    this.track = Objects.requireNonNull(newTrack, "newTrack must not be null");
+    this.round = Objects.requireNonNull(newRound, "newRound must not be null");
   }
 
   public Round round() {

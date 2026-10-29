@@ -39,6 +39,7 @@ public class SoloMatch {
   private Instant lastActivityAt;
   private @Nullable Instant endedAt;
   private SoloMatchStatus status;
+  private boolean matchFinishedEventPublished = false;
 
   private final List<SoloRoundData> roundDataList = new ArrayList<>();
   private final List<TrackInfo> candidateTracks = new ArrayList<>();
@@ -263,5 +264,13 @@ public class SoloMatch {
     this.ranked = false;
     this.endedAt = getExpiresAt();
     return true;
+  }
+
+  public synchronized boolean isMatchFinishedPublished() {
+    return matchFinishedEventPublished;
+  }
+
+  public synchronized void markMatchFinishedPublished() {
+    this.matchFinishedEventPublished = true;
   }
 }

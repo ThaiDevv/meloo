@@ -17,7 +17,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import com.meloo.IntegrationTest;
-import com.meloo.audio.api.AccountLockChecker;
 import com.meloo.audio.api.AudioPreparationResult;
 import com.meloo.audio.api.AudioService;
 import com.meloo.catalog.api.CatalogService;
@@ -26,6 +25,7 @@ import com.meloo.game.events.MatchEndStatus;
 import com.meloo.game.events.MatchFinished;
 import com.meloo.game.events.MatchStarted;
 import com.meloo.game.solo.SoloGameService;
+import com.meloo.game.solo.SoloMatch;
 import com.meloo.game.solo.SoloMatchManager;
 import com.meloo.generated.model.CreateSoloMatchRequestDto;
 import com.meloo.generated.model.GuessRequestDto;
@@ -126,6 +126,15 @@ class SoloGameIntegrationTest extends IntegrationTest {
   public static class TestMatchFinishedListener {
     final List<MatchFinished> finishedEvents = new CopyOnWriteArrayList<>();
     final List<MatchStarted> startedEvents = new CopyOnWriteArrayList<>();
+    final java.util.concurrent.atomic.AtomicBoolean failSynchronousEvent =
+        new java.util.concurrent.atomic.AtomicBoolean(false);
+
+    @org.springframework.context.event.EventListener
+    void onSynchronousEvent(MatchFinished event) {
+      if (failSynchronousEvent.get()) {
+        throw new RuntimeException("Simulated publisher/transaction failure in event pipeline");
+      }
+    }
 
     @ApplicationModuleListener
     void onMatchFinished(MatchFinished event) {
@@ -135,6 +144,10 @@ class SoloGameIntegrationTest extends IntegrationTest {
     @ApplicationModuleListener
     void onMatchStarted(MatchStarted event) {
       startedEvents.add(event);
+    }
+
+    public void setFailSynchronousEvent(boolean fail) {
+      this.failSynchronousEvent.set(fail);
     }
 
     public List<MatchFinished> getFinishedEvents() {
@@ -160,6 +173,7 @@ class SoloGameIntegrationTest extends IntegrationTest {
     public void clear() {
       finishedEvents.clear();
       startedEvents.clear();
+      failSynchronousEvent.set(false);
     }
   }
 
@@ -173,7 +187,6 @@ class SoloGameIntegrationTest extends IntegrationTest {
 
   @MockitoBean private CatalogService catalogService;
   @MockitoBean private AudioService audioService;
-  @MockitoBean private AccountLockChecker accountLockChecker;
 
   private final Map<UUID, TrackInfo> tracksById = new ConcurrentHashMap<>();
   private final List<TrackInfo> standardTracks = new ArrayList<>();
@@ -184,8 +197,6 @@ class SoloGameIntegrationTest extends IntegrationTest {
     testListener.clear();
     tracksById.clear();
     standardTracks.clear();
-
-    when(accountLockChecker.isAccountLocked(any())).thenReturn(false);
 
     // Chuẩn bị 10 bài hát mẫu trong kho nhạc
     for (int i = 1; i <= 10; i++) {
@@ -1070,5 +1081,320 @@ class SoloGameIntegrationTest extends IntegrationTest {
                 .with(jwt().jwt(j -> j.subject(userId.toString()))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.roundScore").value(1000));
+  }
+
+  @Test
+  @DisplayName(
+      "PRACTICE: Khi chuẩn bị vòng 2 lỗi rồi audio hồi phục -> getCurrentRound lấy vòng 2 và skipRound chơi tiếp bình thường (M4)")
+  void testNextRoundPreparationFailureAndRecoveryPractice() throws Exception {
+    UUID userId = UUID.randomUUID();
+
+    CreateSoloMatchRequestDto req = new CreateSoloMatchRequestDto();
+    req.setMode(SoloModeDto.PRACTICE);
+    req.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+
+    MvcResult res =
+        mockMvc
+            .perform(
+                post("/api/v1/solo/matches")
+                    .with(jwt().jwt(j -> j.subject(userId.toString())))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isCreated())
+            .andReturn();
+
+    UUID matchId =
+        UUID.fromString(JsonPath.read(res.getResponse().getContentAsString(), "$.matchId"));
+
+    // Audio sập khi chuẩn bị vòng 2
+    when(audioService.prepareRoundAudio(any(), any(), anyString(), anyString()))
+        .thenReturn(AudioPreparationResult.failure("Provider CDN down"));
+
+    // Đoán đúng vòng 1 -> 422 NOT_ENOUGH_TRACKS do vòng 2 không chuẩn bị được
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches/{matchId}/rounds/1/guesses", matchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new GuessRequestDto().trackId(standardTracks.get(0).id()))))
+        .andExpect(status().isUnprocessableEntity())
+        .andExpect(jsonPath("$.code").value("NOT_ENOUGH_TRACKS"));
+
+    // Audio hồi phục
+    when(audioService.prepareRoundAudio(any(), any(), anyString(), anyString()))
+        .thenReturn(AudioPreparationResult.success());
+
+    // Gọi getCurrentRound -> tự chuẩn bị lại vòng 2 và trả 200 OK
+    mockMvc
+        .perform(
+            get("/api/v1/solo/matches/{matchId}/rounds/current", matchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString()))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.roundNo").value(2))
+        .andExpect(jsonPath("$.level").value(1))
+        .andExpect(jsonPath("$.canListenMore").value(true));
+
+    // Nghe tiếp lên mức 5
+    for (int lvl = 2; lvl <= 5; lvl++) {
+      mockMvc
+          .perform(
+              post("/api/v1/solo/matches/{matchId}/rounds/2/listen-more", matchId)
+                  .param("expectedLevel", String.valueOf(lvl))
+                  .with(jwt().jwt(j -> j.subject(userId.toString()))))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.level").value(lvl));
+    }
+
+    // Bỏ qua vòng 2 thành công -> chuyển tiếp sang vòng 3
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches/{matchId}/rounds/2/skip", matchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString()))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.matchFinished").value(false))
+        .andExpect(jsonPath("$.nextRound.roundNo").value(3));
+  }
+
+  @Test
+  @DisplayName(
+      "RANKED: Khi chuẩn bị vòng 2 lỗi rồi audio hồi phục -> getActive lấy vòng 2, đoán tiếp thành công, không bị kẹt (M4)")
+  void testNextRoundPreparationFailureAndRecoveryRanked() throws Exception {
+    UUID userId = UUID.randomUUID();
+
+    CreateSoloMatchRequestDto req = new CreateSoloMatchRequestDto();
+    req.setMode(SoloModeDto.RANKED);
+    req.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+
+    MvcResult res =
+        mockMvc
+            .perform(
+                post("/api/v1/solo/matches")
+                    .with(jwt().jwt(j -> j.subject(userId.toString())))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isCreated())
+            .andReturn();
+
+    UUID matchId =
+        UUID.fromString(JsonPath.read(res.getResponse().getContentAsString(), "$.matchId"));
+
+    // Audio sập khi chuẩn bị vòng 2
+    when(audioService.prepareRoundAudio(any(), any(), anyString(), anyString()))
+        .thenReturn(AudioPreparationResult.failure("Provider CDN down"));
+
+    // Đoán đúng vòng 1 -> 422 NOT_ENOUGH_TRACKS
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches/{matchId}/rounds/1/guesses", matchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new GuessRequestDto().trackId(standardTracks.get(0).id()))))
+        .andExpect(status().isUnprocessableEntity())
+        .andExpect(jsonPath("$.code").value("NOT_ENOUGH_TRACKS"));
+
+    // Khẳng định RANKED không thể abandon
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches/{matchId}/abandon", matchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString()))))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("RANKED_MATCH_CANNOT_ABANDON"));
+
+    // Audio hồi phục
+    when(audioService.prepareRoundAudio(any(), any(), anyString(), anyString()))
+        .thenReturn(AudioPreparationResult.success());
+
+    // Người chơi resume qua getActiveSoloMatch -> trả 200 và vòng 2 đã sẵn sàng
+    mockMvc
+        .perform(
+            get("/api/v1/solo/matches/active").with(jwt().jwt(j -> j.subject(userId.toString()))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.matchId").value(matchId.toString()))
+        .andExpect(jsonPath("$.currentRound.roundNo").value(2))
+        .andExpect(jsonPath("$.currentRound.level").value(1));
+
+    // Đoán đúng vòng 2 -> chơi tiếp bình thường, không bị kẹt
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches/{matchId}/rounds/2/guesses", matchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new GuessRequestDto().trackId(standardTracks.get(1).id()))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.correct").value(true))
+        .andExpect(jsonPath("$.end.result.comboStreak").value(2));
+  }
+
+  @Test
+  @DisplayName(
+      "Thử lại skipRound ở vòng 1 sau khi chuẩn bị vòng 2 bị lỗi -> audio hồi phục trả về 200 OK với vòng kế tiếp (M4)")
+  void testSkipRoundRetryAfterNextRoundPreparationFailure() throws Exception {
+    UUID userId = UUID.randomUUID();
+
+    CreateSoloMatchRequestDto req = new CreateSoloMatchRequestDto();
+    req.setMode(SoloModeDto.PRACTICE);
+    req.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+
+    MvcResult res =
+        mockMvc
+            .perform(
+                post("/api/v1/solo/matches")
+                    .with(jwt().jwt(j -> j.subject(userId.toString())))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isCreated())
+            .andReturn();
+
+    UUID matchId =
+        UUID.fromString(JsonPath.read(res.getResponse().getContentAsString(), "$.matchId"));
+
+    // Nghe lên mức 5 ở vòng 1
+    for (int lvl = 2; lvl <= 5; lvl++) {
+      mockMvc
+          .perform(
+              post("/api/v1/solo/matches/{matchId}/rounds/1/listen-more", matchId)
+                  .param("expectedLevel", String.valueOf(lvl))
+                  .with(jwt().jwt(j -> j.subject(userId.toString()))))
+          .andExpect(status().isOk());
+    }
+
+    // Audio sập khi chuẩn bị vòng 2
+    when(audioService.prepareRoundAudio(any(), any(), anyString(), anyString()))
+        .thenReturn(AudioPreparationResult.failure("Provider CDN down"));
+
+    // Gọi skipRound(1) -> ném 422 NOT_ENOUGH_TRACKS do vòng 2 lỗi
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches/{matchId}/rounds/1/skip", matchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString()))))
+        .andExpect(status().isUnprocessableEntity())
+        .andExpect(jsonPath("$.code").value("NOT_ENOUGH_TRACKS"));
+
+    // Audio hồi phục
+    when(audioService.prepareRoundAudio(any(), any(), anyString(), anyString()))
+        .thenReturn(AudioPreparationResult.success());
+
+    // Thử lại skipRound(1) -> chuẩn bị lại vòng 2 thành công và trả 200 OK
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches/{matchId}/rounds/1/skip", matchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString()))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.matchFinished").value(false))
+        .andExpect(jsonPath("$.nextRound.roundNo").value(2));
+  }
+
+  @Test
+  @DisplayName(
+      "expireInactiveMatches kiên cường khi publisher lỗi: scheduler không chết, retry ở lần quét sau và phát đúng 1 lần (M8)")
+  void testExpireInactiveMatchesResilientToPublisherExceptionAndRetriesNextRun() throws Exception {
+    UUID userId = UUID.randomUUID();
+
+    CreateSoloMatchRequestDto req = new CreateSoloMatchRequestDto();
+    req.setMode(SoloModeDto.PRACTICE);
+    req.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+
+    MvcResult res =
+        mockMvc
+            .perform(
+                post("/api/v1/solo/matches")
+                    .with(jwt().jwt(j -> j.subject(userId.toString())))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isCreated())
+            .andReturn();
+
+    UUID matchId =
+        UUID.fromString(JsonPath.read(res.getResponse().getContentAsString(), "$.matchId"));
+
+    // Tua thời gian quá 30 phút
+    testClock.advance(Duration.ofMinutes(31));
+
+    // Mô phỏng publisher/transaction ném lỗi thoáng qua
+    testListener.setFailSynchronousEvent(true);
+
+    // Chạy dọn dẹp: không ném exception ra ngoài scheduler
+    soloGameService.expireInactiveMatches();
+
+    SoloMatch match = matchManager.getMatchById(matchId).orElseThrow();
+    assertThat(match.status()).isEqualTo(com.meloo.game.solo.SoloMatchStatus.ABANDONED);
+    assertThat(match.isMatchFinishedPublished()).isFalse();
+    assertThat(testListener.findAllFinishedEvents(matchId)).isEmpty();
+
+    // Hồi phục publisher
+    testListener.setFailSynchronousEvent(false);
+
+    // Lần quét sau: phát lại sự kiện thành công
+    soloGameService.expireInactiveMatches();
+
+    await()
+        .atMost(Duration.ofSeconds(3))
+        .untilAsserted(() -> assertThat(testListener.findFinishedEvent(matchId)).isPresent());
+    assertThat(testListener.findAllFinishedEvents(matchId)).hasSize(1);
+    assertThat(match.isMatchFinishedPublished()).isTrue();
+
+    // Tua tiếp 31 phút nữa -> purgeOldMatches dọn dẹp sạch match khỏi matchManager
+    testClock.advance(Duration.ofMinutes(31));
+    soloGameService.expireInactiveMatches();
+
+    assertThat(matchManager.getMatchById(matchId)).isEmpty();
+  }
+
+  @Test
+  @DisplayName(
+      "toRoundStateDto tự động thay bài theo BR-27 nếu bài hiện tại của vòng active không phát được (m5)")
+  void testActiveRoundAudioFailureTriggersReplacement() throws Exception {
+    UUID userId = UUID.randomUUID();
+
+    CreateSoloMatchRequestDto req = new CreateSoloMatchRequestDto();
+    req.setMode(SoloModeDto.PRACTICE);
+    req.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+
+    MvcResult res =
+        mockMvc
+            .perform(
+                post("/api/v1/solo/matches")
+                    .with(jwt().jwt(j -> j.subject(userId.toString())))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isCreated())
+            .andReturn();
+
+    UUID matchId =
+        UUID.fromString(JsonPath.read(res.getResponse().getContentAsString(), "$.matchId"));
+
+    // Bài 1 của vòng 1 bị báo không thể phát khi resume
+    when(audioService.isRoundPlayable(any())).thenReturn(false);
+    when(audioService.prepareRoundAudio(
+            any(), eq(standardTracks.get(0).id()), anyString(), anyString()))
+        .thenReturn(AudioPreparationResult.failure("Corrupted audio"));
+
+    // Khi resume qua active match -> tự động đổi sang bài thay thế (BR-27)
+    mockMvc
+        .perform(
+            get("/api/v1/solo/matches/active").with(jwt().jwt(j -> j.subject(userId.toString()))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.currentRound.roundNo").value(1));
+  }
+
+  @Test
+  @DisplayName(
+      "SoloGameExceptionHandler điền correlationId từ CorrelationIdFilter.REQUEST_ATTRIBUTE khi thiếu header (m9)")
+  void testCorrelationIdInExceptionHandler() throws Exception {
+    // Gửi request sai validation mà không có header X-Correlation-Id
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches")
+                .with(jwt().jwt(j -> j.subject(UUID.randomUUID().toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"mode\":\"INVALID_MODE\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.correlationId").exists());
   }
 }

@@ -178,6 +178,7 @@ export DB_USERNAME="meloo"
 export DB_PASSWORD="meloo"
 export MELOO_CORS_ALLOWED_ORIGINS="*"
 export MELOO_JWT_SECRET="supersecretjwtsecretkeyformeloo123456789"
+export MELOO_AUDIO_HMAC_SECRET="supersecretaudiohmackeyformeloo123456789"
 
 docker compose -p "$PROJECT_NAME" \
   -f "$COMPOSE_PROD" \

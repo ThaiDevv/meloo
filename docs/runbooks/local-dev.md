@@ -33,9 +33,10 @@ DB_USERNAME=meloo
 DB_PASSWORD=meloo
 MELOO_CORS_ALLOWED_ORIGINS=http://localhost:5173
 MELOO_JWT_SECRET=meloo-local-development-secret-key-at-least-256-bits-length
+MELOO_AUDIO_HMAC_SECRET=meloo-local-audio-hmac-secret-at-least-256-bits-length
 ```
 
-> **Lưu ý về `MELOO_JWT_SECRET`:** Bắt buộc phải có độ dài tối thiểu 32 byte (256-bit) để ký HMAC-SHA256. Không được dùng chuỗi ngắn hơn hoặc để trống.
+> **Lưu ý về `MELOO_JWT_SECRET` và `MELOO_AUDIO_HMAC_SECRET`:** Bắt buộc phải có độ dài tối thiểu 32 byte (256-bit) để ký HMAC-SHA256. Không được dùng chuỗi ngắn hơn hoặc để trống. Trên môi trường production, hai biến này phải nhận hai chuỗi bí mật khác nhau.
 
 `MELOO_CORS_ALLOWED_ORIGINS` nhận danh sách origin phân cách bằng dấu phẩy.
 

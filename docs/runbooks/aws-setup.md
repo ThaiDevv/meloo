@@ -287,6 +287,7 @@ nc -zv <RDS_ENDPOINT> 5432
 
    MELOO_CORS_ALLOWED_ORIGINS=https://<tên-miền>,https://<tên-dự-án>.vercel.app
    MELOO_JWT_SECRET=<CHUỖI_NGẪU_NHIÊN_ÍT_NHẤT_32_BYTES>
+   MELOO_AUDIO_HMAC_SECRET=<CHUỖI_NGẪU_NHIÊN_ÍT_NHẤT_32_BYTES_KHÁC_JWT_SECRET>
    ```
 
 4. **Phân quyền bảo mật nghiêm ngặt cho `.env`:**

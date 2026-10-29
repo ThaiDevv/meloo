@@ -1,3 +1,79 @@
 {
-  "title": "Trang chủ"
+  "title": "Trang chủ",
+  "hero": {
+    "title": "Nghe ít. Đoán nhanh.",
+    "body": "Mỗi vòng mở dần đoạn nhạc từ 2 đến 30 giây. Đoán càng sớm, điểm càng cao.",
+    "cta": "Chơi đơn"
+  },
+  "ladder": {
+    "label": "Năm mốc nghe trong một vòng",
+    "step": "{{seconds}} giây",
+    "pointsUnit": "điểm",
+    "caption": "Thanh nhạc chia theo năm mốc nghe. Mốc càng ngắn, điểm càng cao.",
+    "marker": "{{seconds}}s"
+  },
+  "modes": {
+    "heading": "Chọn cách chơi",
+    "soon": "Sắp có",
+    "solo": {
+      "title": "Chơi đơn",
+      "description": "Một mình, xếp hạng hoặc luyện tập. Vào trận sau vài chạm."
+    },
+    "daily": {
+      "title": "Thử thách ngày",
+      "description": "Mỗi ngày một bài chung cho mọi người."
+    },
+    "room": {
+      "title": "Tạo phòng",
+      "description": "Phòng 2 đến 5 người, chơi thời gian thực."
+    },
+    "quick": {
+      "title": "Ghép trận nhanh",
+      "description": "Hệ thống ghép bạn với người chơi khác, tính xếp hạng."
+    }
+  },
+  "how": {
+    "heading": "Một vòng chơi",
+    "steps": {
+      "listen": {
+        "title": "Nghe 2 giây đầu.",
+        "body": "Mỗi vòng mở một đoạn nhạc rất ngắn. Nghe lại bao nhiêu lần cũng được."
+      },
+      "more": {
+        "title": "Chưa ra? Nghe thêm.",
+        "body": "Bấm nghe thêm hoặc đoán sai đều mở mức kế tiếp: 5, 10, 20 rồi 30 giây."
+      },
+      "guess": {
+        "title": "Gõ rồi chọn tên bài.",
+        "body": "Gợi ý tên bài hiện khi bạn gõ, gõ không dấu cũng tìm được."
+      },
+      "score": {
+        "title": "Càng sớm, càng nhiều điểm.",
+        "body": "Đúng ở mốc 2 giây được 1.000 điểm cơ bản, mỗi mốc sau bớt 200."
+      }
+    }
+  },
+  "score": {
+    "prompt": "Nghe càng lâu, điểm càng ít.",
+    "heard": "Đã nghe",
+    "points": "Điểm cơ bản"
+  },
+  "streak": {
+    "heading": "Thắp sáng mỗi ngày",
+    "badge": "Minh họa",
+    "body": "Hôm nào đoán ra thử thách ngày, hôm đó sáng lên. Đoán càng nhanh, ô càng sáng.",
+    "late": "Mốc 30s",
+    "early": "Mốc 2s",
+    "none": "Chưa đoán ra"
+  },
+  "demo": {
+    "round": "Vòng 3/10",
+    "score": "Điểm",
+    "more": "Nghe thêm",
+    "placeholder": "Tên bài hát…",
+    "typed": "bai hat bi",
+    "title": "Bài hát bí ẩn",
+    "other": "Bài hát bí mật",
+    "right": "Đúng ở mốc 5s"
+  }
 }

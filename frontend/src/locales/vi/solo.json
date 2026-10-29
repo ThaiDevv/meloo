@@ -1,3 +1,66 @@
 {
-  "title": "Chơi đơn"
+  "title": "Chơi đơn",
+  "setup": {
+    "intro": "Chọn chế độ, số vòng và bộ nhạc rồi vào trận.",
+    "mode": {
+      "legend": "Chế độ",
+      "ranked": {
+        "title": "Xếp hạng",
+        "description": "Bộ nhạc chuẩn, điểm tính vào bảng xếp hạng."
+      },
+      "practice": {
+        "title": "Luyện tập",
+        "description": "Tự chọn bộ nhạc, không tính xếp hạng."
+      }
+    },
+    "rounds": {
+      "legend": "Số vòng",
+      "unit": "vòng",
+      "option": "{{n}} vòng"
+    },
+    "music": {
+      "heading": "Bộ nhạc",
+      "rankedNote": "Chế độ xếp hạng luôn dùng bộ nhạc chuẩn. Muốn tự chọn thể loại, ca sĩ hay thập niên, hãy chuyển sang Luyện tập."
+    },
+    "summary": {
+      "heading": "Trận của bạn",
+      "standard": "Bộ chuẩn",
+      "wholeCatalog": "Toàn bộ kho nhạc",
+      "filters": "{{n}} lựa chọn",
+      "ranked": "Tính xếp hạng",
+      "practice": "Không xếp hạng"
+    },
+    "start": "Vào trận",
+    "starting": "Đang tạo trận…",
+    "errors": {
+      "inProgress": "Bạn đang có một trận chưa xong. Hãy chơi tiếp trận đó trước.",
+      "resume": "Chơi tiếp",
+      "notEnoughTracks": "Bộ nhạc này chưa đủ bài cho {{n}} vòng (thiếu {{missing}} bài). Hãy bỏ bớt bộ lọc hoặc chọn ít vòng hơn.",
+      "rateLimited": "Bạn thao tác quá nhanh. Hãy đợi một chút rồi thử lại.",
+      "unknown": "Không tạo được trận. Hãy thử lại."
+    }
+  },
+  "picker": {
+    "sourceLabel": "Cách chọn bộ nhạc",
+    "byFilter": "Bộ lọc",
+    "byPlaylist": "Bộ đề",
+    "soon": "Sắp có",
+    "filterHint": "Chọn nhiều giá trị trong một nhóm để nới rộng, chọn nhiều nhóm để thu hẹp. Không chọn gì là chơi cả kho nhạc.",
+    "genres": "Thể loại",
+    "countries": "Quốc gia",
+    "decades": "Thập niên",
+    "decade": "Thập niên {{decade}}",
+    "artists": "Ca sĩ",
+    "artistSearch": "Tìm ca sĩ",
+    "noArtist": "Không có ca sĩ nào khớp.",
+    "selectedCount": "Đã chọn {{n}}",
+    "limit": "Tối đa {{n}} lựa chọn trong một nhóm.",
+    "empty": "Kho nhạc chưa có gì để chọn.",
+    "noPlaylist": "Chưa có bộ đề nào.",
+    "trackCount": "{{n}} bài"
+  },
+  "sound": {
+    "label": "Âm thanh",
+    "hint": "Bật rồi chạm vào đâu cũng có một nốt nhạc, càng sang phải càng cao."
+  }
 }

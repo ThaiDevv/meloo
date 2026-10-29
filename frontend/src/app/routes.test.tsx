@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen } from '@testing-library/react'
 import { RouterProvider, createMemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { Providers } from './providers'
@@ -17,9 +17,7 @@ function renderAt(path: string) {
 
 // Every route in .claude/skills/meloo-frontend/references/routes.md → ticket that replaces it.
 const routes: [path: string, ticket: string][] = [
-  ['/', 'FE-SOLO-01'],
   ['/auth/callback', 'FE-AUTH-02'],
-  ['/solo', 'FE-SOLO-01'],
   ['/solo/abc', 'FE-SOLO-02'],
   ['/daily', 'FE-DAILY-01'],
   ['/rooms/new', 'FE-ROOM-01'],
@@ -52,6 +50,16 @@ describe('app routes', () => {
     expect(placeholder).toHaveTextContent(ticket)
   })
 
+  it('serves the home page at / and the solo setup at /solo', async () => {
+    renderAt('/')
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(
+      'Nghe ít. Đoán nhanh.',
+    )
+    cleanup()
+    renderAt('/solo')
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Chơi đơn')
+  })
+
   it('serves the component gallery at /_ui', async () => {
     renderAt('/_ui')
     expect(
@@ -68,7 +76,7 @@ describe('app routes', () => {
   it('redirects /admin to home unless the role is ADMIN', async () => {
     useSessionStore.getState().setRole('USER')
     const router = renderAt('/admin/users')
-    await screen.findByTestId('placeholder')
+    await screen.findByRole('heading', { level: 1, name: 'Nghe ít. Đoán nhanh.' })
     expect(router.state.location.pathname).toBe('/')
   })
 

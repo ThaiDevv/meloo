@@ -1,3 +1,79 @@
 {
-  "title": "Home"
+  "title": "Home",
+  "hero": {
+    "title": "Hear less. Guess faster.",
+    "body": "Each round opens more of the song, from 2 to 30 seconds. The earlier you guess, the more you score.",
+    "cta": "Solo play"
+  },
+  "ladder": {
+    "label": "The five listening levels of a round",
+    "step": "{{seconds}} seconds",
+    "pointsUnit": "points",
+    "caption": "The music bar, cut into the five listening levels. The shorter the level, the more you score.",
+    "marker": "{{seconds}}s"
+  },
+  "modes": {
+    "heading": "Pick how to play",
+    "soon": "Coming soon",
+    "solo": {
+      "title": "Solo play",
+      "description": "Just you, ranked or practice. In a match within a few taps."
+    },
+    "daily": {
+      "title": "Daily challenge",
+      "description": "One shared song a day for everyone."
+    },
+    "room": {
+      "title": "Create a room",
+      "description": "Rooms of 2 to 5 players, played live."
+    },
+    "quick": {
+      "title": "Quick match",
+      "description": "We match you with other players, ranked."
+    }
+  },
+  "how": {
+    "heading": "How a round works",
+    "steps": {
+      "listen": {
+        "title": "Hear the first 2 seconds.",
+        "body": "Each round opens a very short clip. Replay it as often as you like."
+      },
+      "more": {
+        "title": "Not yet? Hear more.",
+        "body": "Tapping hear more, or a wrong guess, opens the next level: 5, 10, 20, then 30 seconds."
+      },
+      "guess": {
+        "title": "Type, then pick the title.",
+        "body": "Title suggestions appear as you type, and typing without accents works too."
+      },
+      "score": {
+        "title": "Sooner means more points.",
+        "body": "Right at 2 seconds is worth 1,000 base points, and every level after takes off 200."
+      }
+    }
+  },
+  "score": {
+    "prompt": "The longer you listen, the fewer points you get.",
+    "heard": "Heard so far",
+    "points": "Base score"
+  },
+  "streak": {
+    "heading": "Light up every day",
+    "badge": "Preview",
+    "body": "Any day you guess the daily challenge lights up. The faster you guess it, the brighter it glows.",
+    "late": "30s level",
+    "early": "2s level",
+    "none": "Not guessed"
+  },
+  "demo": {
+    "round": "Round 3/10",
+    "score": "Score",
+    "more": "Hear more",
+    "placeholder": "Song title…",
+    "typed": "mystery so",
+    "title": "Mystery song",
+    "other": "Mystery night",
+    "right": "Right at the 5s level"
+  }
 }

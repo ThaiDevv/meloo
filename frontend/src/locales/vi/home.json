@@ -1,3 +1,32 @@
 {
-  "title": "Trang chủ"
+  "title": "Trang chủ",
+  "hero": {
+    "title": "Nghe ít. Đoán nhanh.",
+    "body": "Mỗi vòng mở dần đoạn nhạc từ 2 đến 30 giây. Đoán càng sớm, điểm càng cao.",
+    "cta": "Chơi đơn"
+  },
+  "ladder": {
+    "label": "Năm mốc nghe trong một vòng",
+    "step": "{{seconds}} giây"
+  },
+  "modes": {
+    "heading": "Chọn cách chơi",
+    "soon": "Sắp có",
+    "solo": {
+      "title": "Chơi đơn",
+      "description": "Một mình với bộ nhạc bạn chọn. Vào trận sau vài chạm."
+    },
+    "daily": {
+      "title": "Thử thách ngày",
+      "description": "Mỗi ngày một bài chung cho cả nước."
+    },
+    "room": {
+      "title": "Tạo phòng",
+      "description": "Chơi cùng 2 đến 5 người bạn, thời gian thực."
+    },
+    "quick": {
+      "title": "Ghép trận nhanh",
+      "description": "Vào phòng công khai theo bộ nhạc bạn thích."
+    }
+  }
 }

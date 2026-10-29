@@ -1,3 +1,32 @@
 {
-  "title": "Home"
+  "title": "Home",
+  "hero": {
+    "title": "Hear less. Guess faster.",
+    "body": "Each round opens more of the song, from 2 to 30 seconds. The earlier you guess, the more you score.",
+    "cta": "Solo play"
+  },
+  "ladder": {
+    "label": "The five listening levels of a round",
+    "step": "{{seconds}} seconds"
+  },
+  "modes": {
+    "heading": "Pick how to play",
+    "soon": "Coming soon",
+    "solo": {
+      "title": "Solo play",
+      "description": "Just you and the music you pick. In a match within a few taps."
+    },
+    "daily": {
+      "title": "Daily challenge",
+      "description": "One shared song a day for everyone."
+    },
+    "room": {
+      "title": "Create a room",
+      "description": "Play live with 2 to 5 friends."
+    },
+    "quick": {
+      "title": "Quick match",
+      "description": "Join a public room that fits the music you like."
+    }
+  }
 }

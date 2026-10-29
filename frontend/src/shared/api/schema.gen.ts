@@ -230,6 +230,8 @@ export interface paths {
          * @description The match owner only. Opens 2 -> 5 -> 10 -> 20 -> 30 seconds (BR-01, BR-04). Allowed only while `RoundState.canListenMore`;
          *     at 30 seconds the call returns 409 `LISTEN_LEVEL_MAX` and the player may only guess or skip.
          *     Listening again to the opened level is free and needs no call (BR-03).
+         *
+         *     Order of validation: If the round is already at the maximum level (level 5 / 30s), the server always returns 409 `LISTEN_LEVEL_MAX` first (even if `expectedLevel=5` is sent). If the round is not at maximum level but `expectedLevel` does not match the next level (`currentLevel + 1`), the server returns 409 `LISTEN_LEVEL_MISMATCH`. When receiving 409 `LISTEN_LEVEL_MISMATCH`, the client should call `getCurrentRound` to re-synchronize the round state and audio URL.
          */
         post: operations["listenMore"];
         delete?: never;
@@ -587,10 +589,7 @@ export interface components {
              * @description Full-listen link on the source platform (BR-29).
              */
             listenUrl: string;
-            /**
-             * Format: uri
-             * @description Optional cover art URL of the track (e.g. from Deezer album artwork) for the reveal screen. May be empty or omitted.
-             */
+            /** @description Optional cover art URL of the track (e.g. from Deezer album artwork) for the reveal screen. May be empty ("") or omitted if no artwork is available. Frontend treats an empty string the same as an omitted value (no cover art). */
             coverUrl?: string;
         };
         RoundResult: {

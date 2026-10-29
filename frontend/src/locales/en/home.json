@@ -16,7 +16,7 @@
     "soon": "Coming soon",
     "solo": {
       "title": "Solo play",
-      "description": "Just you and the music you pick. In a match within a few taps."
+      "description": "Just you, ranked or practice. In a match within a few taps."
     },
     "daily": {
       "title": "Daily challenge",
@@ -24,18 +24,18 @@
     },
     "room": {
       "title": "Create a room",
-      "description": "Play live with 2 to 5 friends."
+      "description": "Rooms of 2 to 5 players, played live."
     },
     "quick": {
       "title": "Quick match",
-      "description": "Join a public room that fits the music you like."
+      "description": "We match you with other players, ranked."
     }
   },
   "marquee": {
     "a": "Hear less",
     "b": "Guess faster",
     "c": "2 · 5 · 10 · 20 · 30 seconds",
-    "d": "Up to 1,000 points"
+    "d": "Base score from 1,000 to 200"
   },
   "how": {
     "heading": "How a round works",
@@ -50,13 +50,13 @@
       },
       "guess": {
         "title": "Type the song title.",
-        "body": "Suggestions appear as you type, and typing without accents works too."
+        "body": "Title suggestions appear as you type, and typing without accents works too."
       },
       "score": {
         "title": "Sooner means more points.",
-        "body": "Right at 2 seconds is worth 1,000 points, and every level after takes off 200."
+        "body": "Right at 2 seconds is worth 1,000 base points, and every level after takes off 200."
       }
     },
-    "figure": "points for a right guess at the 2-second mark."
+    "figure": "base points for a right guess at the 2-second mark."
   }
 }

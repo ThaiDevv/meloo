@@ -9,6 +9,8 @@ interface VinylDiscProps {
   /** Fills the label in the accent colour instead of the text colour. */
   accent?: boolean
   spinning?: boolean
+  /** Draws the tonearm; off when the disc stands in for a letter. */
+  arm?: boolean
   /** Spins quickly, for "working on it". */
   fast?: boolean
   className?: string
@@ -21,6 +23,7 @@ interface VinylDiscProps {
 export function VinylDisc({
   accent = false,
   spinning = true,
+  arm = true,
   fast = false,
   className,
 }: VinylDiscProps) {
@@ -52,25 +55,27 @@ export function VinylDisc({
         <circle cx="100" cy="100" r="28" fill={accent ? 'var(--primary)' : 'currentColor'} />
         <circle cx="100" cy="100" r="4.5" fill="var(--background)" />
       </g>
-      <g className="mv-arm">
-        <path
-          d="M176 24 L134 116"
-          stroke="currentColor"
-          strokeOpacity="0.7"
-          strokeWidth="5"
-          strokeLinecap="round"
-        />
-        <circle cx="176" cy="24" r="9" fill="currentColor" fillOpacity="0.55" />
-        <rect
-          x="124"
-          y="112"
-          width="16"
-          height="9"
-          rx="2"
-          transform="rotate(24 132 116)"
-          fill="currentColor"
-        />
-      </g>
+      {arm ? (
+        <g className="mv-arm">
+          <path
+            d="M176 24 L134 116"
+            stroke="currentColor"
+            strokeOpacity="0.7"
+            strokeWidth="5"
+            strokeLinecap="round"
+          />
+          <circle cx="176" cy="24" r="9" fill="currentColor" fillOpacity="0.55" />
+          <rect
+            x="124"
+            y="112"
+            width="16"
+            height="9"
+            rx="2"
+            transform="rotate(24 132 116)"
+            fill="currentColor"
+          />
+        </g>
+      ) : null}
     </svg>
   )
 }

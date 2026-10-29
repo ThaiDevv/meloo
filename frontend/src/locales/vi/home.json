@@ -75,5 +75,32 @@
     "title": "Bài hát bí ẩn",
     "other": "Bài hát bí mật",
     "right": "Đúng ở mốc 5s"
+  },
+  "mix": {
+    "heading": "Nghe đủ mọi gu",
+    "body": "Từ nhạc Việt đến nhạc Hàn, nhạc Âu Mỹ. Chơi cả kho nhạc, hoặc chỉ đúng gu của bạn.",
+    "scenes": {
+      "vpop": {
+        "name": "V‑pop",
+        "note": "Nhạc Việt"
+      },
+      "kpop": {
+        "name": "K‑pop",
+        "note": "Nhạc Hàn"
+      },
+      "usuk": {
+        "name": "US‑UK",
+        "note": "Nhạc Âu Mỹ"
+      }
+    },
+    "pick": "Chọn theo",
+    "facets": {
+      "genre": "Thể loại",
+      "country": "Quốc gia",
+      "decade": "Thập niên",
+      "artist": "Ca sĩ",
+      "playlist": "Bộ đề tuyển chọn"
+    },
+    "cta": "Chọn bộ nhạc của bạn"
   }
 }

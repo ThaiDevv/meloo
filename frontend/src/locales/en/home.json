@@ -75,5 +75,32 @@
     "title": "Mystery song",
     "other": "Mystery night",
     "right": "Right at the 5s level"
+  },
+  "mix": {
+    "heading": "Music for every taste",
+    "body": "From Vietnamese hits to K-pop and Western pop. Play the whole catalog, or only what suits you.",
+    "scenes": {
+      "vpop": {
+        "name": "V‑pop",
+        "note": "Vietnamese music"
+      },
+      "kpop": {
+        "name": "K‑pop",
+        "note": "Korean music"
+      },
+      "usuk": {
+        "name": "US‑UK",
+        "note": "American and British music"
+      }
+    },
+    "pick": "Pick by",
+    "facets": {
+      "genre": "Genre",
+      "country": "Country",
+      "decade": "Decade",
+      "artist": "Artist",
+      "playlist": "Curated playlist"
+    },
+    "cta": "Choose your music"
   }
 }

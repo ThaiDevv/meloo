@@ -5,11 +5,13 @@ import { Equalizer, SoundBackdrop, VinylDisc } from '@/shared/music-picker'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
 import { ListeningLadder } from './ListeningLadder'
+import { MusicMix } from './MusicMix'
 import { HOME_MODES, type HomeMode } from './modes'
 import { Reveal } from './Reveal'
 import { RoundDemo } from './RoundDemo'
 import { ScoreboardBand } from './ScoreboardBand'
 import { StreakGrid, type StreakLevel } from './StreakGrid'
+import { Wordmark } from './Wordmark'
 
 /**
  * A made-up history for the picture only, the same on every visit: no real player's turns exist on
@@ -44,9 +46,12 @@ export function HomePage() {
     <>
       <SoundBackdrop />
       <div className="mx-auto w-full max-w-6xl px-4">
+        <div className="pt-8 lg:pt-12">
+          <Wordmark />
+        </div>
         <section
           aria-labelledby="home-title"
-          className="grid gap-12 pt-14 pb-24 lg:grid-cols-12 lg:items-center lg:gap-10 lg:py-20"
+          className="grid gap-12 pt-10 pb-24 lg:grid-cols-12 lg:items-center lg:gap-10 lg:pt-12 lg:pb-20"
         >
           <div className="space-y-8 lg:col-span-7">
             <h1
@@ -138,6 +143,8 @@ export function HomePage() {
             </ul>
           </div>
         </section>
+
+        <MusicMix />
 
         <section aria-labelledby="streak-title" className="pb-20 lg:pb-32">
           <Reveal className="flex flex-wrap items-center gap-3">

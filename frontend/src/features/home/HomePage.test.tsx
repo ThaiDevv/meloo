@@ -72,8 +72,9 @@ describe('HomePage', () => {
     for (const counter of container.querySelectorAll('.mh-roll')) {
       expect(counter.closest('[aria-hidden="true"]')).not.toBeNull()
     }
-    // Only the two real links are focusable: the hero action and the solo tile.
+    // Only the real links are focusable: the hero action, the solo tile and the music picker button.
     expect(screen.getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
+      '/solo',
       '/solo',
       '/solo',
     ])
@@ -150,6 +151,26 @@ describe('HomePage', () => {
     expect(mock()).toHaveTextContent('+800')
     expect(mock()).toHaveTextContent('Đúng ở mốc 5s')
     expect(container.querySelectorAll('.mh-step-bar')).toHaveLength(1)
+  })
+
+  it('puts the name at the top as decoration, and introduces the range of music', () => {
+    const { container } = renderPage()
+
+    const wordmark = container.querySelector('p[aria-hidden="true"]')
+    expect(wordmark).toHaveTextContent('Mel')
+    expect(wordmark?.querySelectorAll('svg')).toHaveLength(2)
+
+    const mix = screen.getByRole('region', { name: 'Nghe đủ mọi gu' })
+    for (const name of ['V\u2011pop', 'K\u2011pop', 'US\u2011UK']) {
+      expect(within(mix).getByText(name)).toBeInTheDocument()
+    }
+    for (const facet of ['Thể loại', 'Quốc gia', 'Thập niên', 'Ca sĩ', 'Bộ đề tuyển chọn']) {
+      expect(within(mix).getByText(facet)).toBeInTheDocument()
+    }
+    expect(within(mix).getByRole('link', { name: /Chọn bộ nhạc của bạn/ })).toHaveAttribute(
+      'href',
+      '/solo',
+    )
   })
 
   it('speaks English when the language is switched', async () => {

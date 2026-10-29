@@ -1,3 +1,60 @@
 {
-  "title": "Solo play"
+  "title": "Solo play",
+  "setup": {
+    "intro": "Pick a mode, the number of rounds and the music, then jump in.",
+    "mode": {
+      "legend": "Mode",
+      "ranked": {
+        "title": "Ranked",
+        "description": "The standard set. Your score counts for the leaderboard."
+      },
+      "practice": {
+        "title": "Practice",
+        "description": "Pick your own music. Not ranked."
+      }
+    },
+    "rounds": {
+      "legend": "Rounds",
+      "unit": "rounds",
+      "option": "{{n}} rounds"
+    },
+    "music": {
+      "heading": "Music",
+      "rankedNote": "Ranked always uses the standard set. To pick genres, artists or decades, switch to Practice."
+    },
+    "summary": {
+      "heading": "Your match",
+      "standard": "Standard set",
+      "wholeCatalog": "Whole catalog",
+      "filters": "{{n}} selected"
+    },
+    "start": "Start match",
+    "starting": "Creating match…",
+    "errors": {
+      "inProgress": "You already have a match in progress. Finish that one first.",
+      "resume": "Resume",
+      "notEnoughTracks": "This music does not have enough songs for {{n}} rounds ({{missing}} short). Remove a filter or pick fewer rounds.",
+      "rateLimited": "You are going too fast. Wait a moment and try again.",
+      "unknown": "Could not create the match. Please try again."
+    }
+  },
+  "picker": {
+    "sourceLabel": "How to pick the music",
+    "byFilter": "Filters",
+    "byPlaylist": "Playlists",
+    "soon": "Coming soon",
+    "filterHint": "Pick several values in one group to widen the pool, and several groups to narrow it. Pick nothing to play the whole catalog.",
+    "genres": "Genre",
+    "countries": "Country",
+    "decades": "Decade",
+    "decade": "{{decade}}s",
+    "artists": "Artist",
+    "artistSearch": "Search artists",
+    "noArtist": "No artist matches.",
+    "selectedCount": "{{n}} selected",
+    "limit": "At most {{n}} choices in one group.",
+    "empty": "The catalog has nothing to pick yet.",
+    "noPlaylist": "No playlists yet.",
+    "trackCount": "{{n}} songs"
+  }
 }

@@ -12,7 +12,7 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - MELOO_CORS_ALLOWED_ORIGINS=${MELOO_CORS_ALLOWED_ORIGINS}
       - MELOO_JWT_SECRET=${MELOO_JWT_SECRET}
-      - MELOO_AUDIO_HMAC_SECRET=${MELOO_AUDIO_HMAC_SECRET}
+      - MELOO_AUDIO_HMAC_SECRET=${MELOO_AUDIO_HMAC_SECRET:?Thiếu MELOO_AUDIO_HMAC_SECRET trong .env}
       # EC2 t3.micro chỉ có 1 GB RAM: JVM dùng tối đa 60% RAM, thoát an toàn khi OOM
       - JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=60 -XX:+ExitOnOutOfMemoryError
       # Bật access log Tomcat ra stdout (MEL-127). Dùng %m thay vì %r để không lộ raw audio token (contracts/openapi.yaml:554)

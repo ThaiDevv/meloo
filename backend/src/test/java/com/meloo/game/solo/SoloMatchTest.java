@@ -188,6 +188,6 @@ class SoloMatchTest {
     assertThat(match2.status()).isEqualTo(SoloMatchStatus.ABANDONED);
     assertThat(match2.toMatchEndStatus()).isEqualTo(MatchEndStatus.ABANDONED);
     assertThat(match2.isRanked()).isFalse();
-    assertThat(match2.endedAt()).isEqualTo(expireTime);
+    assertThat(match2.endedAt()).isEqualTo(match2.getExpiresAt());
   }
 }

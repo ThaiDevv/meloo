@@ -234,22 +234,34 @@ public class SoloMatch {
         || st == RoundStatus.TIMEOUT;
   }
 
-  public synchronized void finish(Instant now) {
+  public synchronized boolean finish(Instant now) {
+    if (this.status != SoloMatchStatus.IN_PROGRESS) {
+      return false;
+    }
     this.status = SoloMatchStatus.FINISHED;
     this.endedAt = now;
     this.lastActivityAt = now;
+    return true;
   }
 
-  public synchronized void abandon(Instant now) {
+  public synchronized boolean abandon(Instant now) {
+    if (this.status != SoloMatchStatus.IN_PROGRESS) {
+      return false;
+    }
     this.status = SoloMatchStatus.ABANDONED;
     this.ranked = false;
     this.endedAt = now;
     this.lastActivityAt = now;
+    return true;
   }
 
-  public synchronized void expire(Instant now) {
+  public synchronized boolean expire(Instant now) {
+    if (this.status != SoloMatchStatus.IN_PROGRESS) {
+      return false;
+    }
     this.status = SoloMatchStatus.ABANDONED;
     this.ranked = false;
-    this.endedAt = now;
+    this.endedAt = getExpiresAt();
+    return true;
   }
 }

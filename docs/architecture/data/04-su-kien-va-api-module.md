@@ -26,7 +26,7 @@ Record nằm ở `com.meloo.<module>.events` của module phát; listener `@Appl
 | `mode` | `PRACTICE` hoặc `RANKED` (theo hợp đồng CT-01; chuyển từ BE-PROG-01 sang BE-SOLO-01/BE-ROOM-02) |
 | `ranked` | BR-23 |
 | `status` | `FINISHED` hoặc `ABANDONED` (chơi đơn quá 30 phút; chỉ vòng đã xong) |
-| `roundCount`, `playlistId`, `filter`, `startedAt`, `endedAt` | |
+| `roundCount`, `playlistId`, `filter`, `startedAt`, `endedAt` | `filter`: chuỗi JSON biểu diễn SoloFilter (hoặc `null` nếu không có bộ lọc) |
 | `rounds[]` | `roundNo`, `trackId`, `trackTitle`, `artistName`, `provider`, `providerTrackId` (sau khi thay bài nếu có) |
 | `players[]` | `userId`, `nickname`, `isGuest`, `totalScore`, `rank`, `correctCount`, `correctTimeMs`, và `results[]` theo vòng |
 | `results[]` | `roundNo`, `outcome`, `correctLevel`, `baseScore`, `comboPercent`, `speedBonus`, `roundScore`, `wrongCount`, `answerTimeMs` |

@@ -1,10 +1,8 @@
-package com.meloo.game.web;
+package com.meloo.game.solo;
 
 import com.meloo.catalog.api.TrackInfo;
 import com.meloo.game.domain.Round;
 import com.meloo.game.domain.RoundOutcome;
-import com.meloo.game.solo.SoloMatch;
-import com.meloo.game.solo.SoloRoundData;
 import com.meloo.generated.model.AnswerDto;
 import com.meloo.generated.model.AudioClipDto;
 import com.meloo.generated.model.MatchResultDto;

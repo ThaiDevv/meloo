@@ -6,6 +6,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -39,8 +41,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -139,6 +145,18 @@ class SoloGameIntegrationTest extends IntegrationTest {
       return startedEvents;
     }
 
+    public Optional<MatchFinished> findFinishedEvent(UUID matchId) {
+      return finishedEvents.stream().filter(e -> e.matchId().equals(matchId)).findFirst();
+    }
+
+    public List<MatchFinished> findAllFinishedEvents(UUID matchId) {
+      return finishedEvents.stream().filter(e -> e.matchId().equals(matchId)).toList();
+    }
+
+    public Optional<MatchStarted> findStartedEvent(UUID matchId) {
+      return startedEvents.stream().filter(e -> e.matchId().equals(matchId)).findFirst();
+    }
+
     public void clear() {
       finishedEvents.clear();
       startedEvents.clear();
@@ -219,6 +237,7 @@ class SoloGameIntegrationTest extends IntegrationTest {
               return result;
             });
 
+    when(audioService.isRoundPlayable(any())).thenReturn(true);
     when(audioService.prepareRoundAudio(any(), any(), anyString(), anyString()))
         .thenReturn(AudioPreparationResult.success());
 
@@ -236,9 +255,19 @@ class SoloGameIntegrationTest extends IntegrationTest {
 
   @Test
   @DisplayName(
-      "Integration 5 vòng đầy đủ các nhánh: đúng 2s, nghe thêm rồi đúng, bỏ qua 30s, sai hết lượt, thay bài do lỗi audio, combo")
+      "Integration 5 vòng: đúng 2s, thay bài audio lỗi giữ chuỗi combo, nghe thêm rồi đúng, bỏ qua 30s, sai hết lượt")
   void testFiveRoundCompleteGameFlowWithComboAndSkip() throws Exception {
     UUID userId = UUID.randomUUID();
+
+    // Cấu hình trước: ở vòng 2, bài gốc (standardTracks[1]) bị lỗi audio 404, bài thay thế
+    // standardTracks[5] phát thành công
+    TrackInfo originalTrack2 = standardTracks.get(1);
+    TrackInfo replacementTrack2 = standardTracks.get(5);
+    when(audioService.prepareRoundAudio(any(), eq(originalTrack2.id()), anyString(), anyString()))
+        .thenReturn(AudioPreparationResult.failure("Preview URL 404 from provider"));
+    when(audioService.prepareRoundAudio(
+            any(), eq(replacementTrack2.id()), anyString(), anyString()))
+        .thenReturn(AudioPreparationResult.success());
 
     // 1. Tạo trận 5 vòng PRACTICE
     CreateSoloMatchRequestDto createReq = new CreateSoloMatchRequestDto();
@@ -286,22 +315,12 @@ class SoloGameIntegrationTest extends IntegrationTest {
         .andExpect(jsonPath("$.end.nextRound.roundNo").value(2));
 
     // ==========================================
-    // VÒNG 2: Nghe thêm lên level 2 (5s) rồi đoán đúng -> +800 điểm cơ bản + 10% combo = 880 điểm
-    // Tổng điểm: 1000 + 880 = 1880, combo streak = 2
+    // VÒNG 2: Thay bài do lỗi audio (BR-27), đoán đúng ở level 1 (2s) -> +1000 điểm cơ bản + 10%
+    // combo = 1100 điểm
+    // Tổng điểm: 1000 + 1100 = 2100, combo streak = 2! (CHỨNG MINH BR-27: thay bài KHÔNG làm đứt
+    // chuỗi combo)
     // ==========================================
-    TrackInfo track2 = standardTracks.get(1);
-
-    // Nghe thêm lên level 2
-    mockMvc
-        .perform(
-            post("/api/v1/solo/matches/{matchId}/rounds/2/listen-more", matchId)
-                .param("expectedLevel", "2")
-                .with(jwt().jwt(j -> j.subject(userId.toString()).claim("nickname", "Thái"))))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.level").value(2))
-        .andExpect(jsonPath("$.listenSeconds").value(5));
-
-    GuessRequestDto guess2 = new GuessRequestDto().trackId(track2.id());
+    GuessRequestDto guess2 = new GuessRequestDto().trackId(replacementTrack2.id());
     mockMvc
         .perform(
             post("/api/v1/solo/matches/{matchId}/rounds/2/guesses", matchId)
@@ -310,110 +329,91 @@ class SoloGameIntegrationTest extends IntegrationTest {
                 .content(objectMapper.writeValueAsString(guess2)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.correct").value(true))
-        .andExpect(jsonPath("$.end.result.baseScore").value(800))
+        .andExpect(jsonPath("$.end.result.baseScore").value(1000))
         .andExpect(jsonPath("$.end.result.comboPercent").value(10))
-        .andExpect(jsonPath("$.end.result.roundScore").value(880))
-        .andExpect(jsonPath("$.end.result.totalScore").value(1880))
+        .andExpect(jsonPath("$.end.result.roundScore").value(1100))
+        .andExpect(jsonPath("$.end.result.totalScore").value(2100))
         .andExpect(jsonPath("$.end.result.comboStreak").value(2))
         .andExpect(jsonPath("$.end.nextRound.roundNo").value(3));
 
     // ==========================================
-    // VÒNG 3: Nghe thêm đến level 5 (30s) rồi bỏ qua (skip) -> 0 điểm, đứt combo (streak = 0)
+    // VÒNG 3: Nghe thêm lên level 2 (5s) rồi đoán đúng -> +800 cơ bản + 20% combo (streak 2) = 960
+    // điểm
+    // Tổng điểm: 2100 + 960 = 3060, combo streak = 3
     // ==========================================
-    // Nghe thêm 1 -> 2
+    TrackInfo track3 = standardTracks.get(2);
     mockMvc
         .perform(
             post("/api/v1/solo/matches/{matchId}/rounds/3/listen-more", matchId)
                 .param("expectedLevel", "2")
-                .with(jwt().jwt(j -> j.subject(userId.toString()))))
-        .andExpect(status().isOk());
-    // Nghe thêm 2 -> 3
+                .with(jwt().jwt(j -> j.subject(userId.toString()).claim("nickname", "Thái"))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.level").value(2))
+        .andExpect(jsonPath("$.listenSeconds").value(5));
+
+    GuessRequestDto guess3 = new GuessRequestDto().trackId(track3.id());
     mockMvc
         .perform(
-            post("/api/v1/solo/matches/{matchId}/rounds/3/listen-more", matchId)
-                .param("expectedLevel", "3")
-                .with(jwt().jwt(j -> j.subject(userId.toString()))))
-        .andExpect(status().isOk());
-    // Nghe thêm 3 -> 4
-    mockMvc
-        .perform(
-            post("/api/v1/solo/matches/{matchId}/rounds/3/listen-more", matchId)
-                .param("expectedLevel", "4")
-                .with(jwt().jwt(j -> j.subject(userId.toString()))))
-        .andExpect(status().isOk());
-    // Nghe thêm 4 -> 5
-    mockMvc
-        .perform(
-            post("/api/v1/solo/matches/{matchId}/rounds/3/listen-more", matchId)
-                .param("expectedLevel", "5")
-                .with(jwt().jwt(j -> j.subject(userId.toString()))))
-        .andExpect(status().isOk());
+            post("/api/v1/solo/matches/{matchId}/rounds/3/guesses", matchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString()).claim("nickname", "Thái")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(guess3)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.correct").value(true))
+        .andExpect(jsonPath("$.end.result.baseScore").value(800))
+        .andExpect(jsonPath("$.end.result.comboPercent").value(20))
+        .andExpect(jsonPath("$.end.result.roundScore").value(960))
+        .andExpect(jsonPath("$.end.result.totalScore").value(3060))
+        .andExpect(jsonPath("$.end.result.comboStreak").value(3))
+        .andExpect(jsonPath("$.end.nextRound.roundNo").value(4));
+
+    // ==========================================
+    // VÒNG 4: Nghe thêm đến level 5 (30s) rồi bỏ qua (skip) -> 0 điểm, đứt combo (streak = 0)
+    // ==========================================
+    for (int l = 2; l <= 5; l++) {
+      mockMvc
+          .perform(
+              post("/api/v1/solo/matches/{matchId}/rounds/4/listen-more", matchId)
+                  .param("expectedLevel", String.valueOf(l))
+                  .with(jwt().jwt(j -> j.subject(userId.toString()))))
+          .andExpect(status().isOk());
+    }
 
     // Skip ở level 5
     mockMvc
         .perform(
-            post("/api/v1/solo/matches/{matchId}/rounds/3/skip", matchId)
+            post("/api/v1/solo/matches/{matchId}/rounds/4/skip", matchId)
                 .with(jwt().jwt(j -> j.subject(userId.toString()).claim("nickname", "Thái"))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.result.outcome").value("GAVE_UP"))
         .andExpect(jsonPath("$.result.roundScore").value(0))
         .andExpect(jsonPath("$.result.comboStreak").value(0))
-        .andExpect(jsonPath("$.result.totalScore").value(1880))
-        .andExpect(jsonPath("$.nextRound.roundNo").value(4));
+        .andExpect(jsonPath("$.result.totalScore").value(3060))
+        .andExpect(jsonPath("$.nextRound.roundNo").value(5));
 
     // ==========================================
-    // VÒNG 4: Đoán sai 4 lần mở dần đến 30s, lần 5 đoán sai -> WRONG_OUT, 0 điểm
+    // VÒNG 5: Đoán sai 5 lần mở dần đến 30s -> WRONG_OUT, 0 điểm, trận xong
     // ==========================================
-    TrackInfo wrongTrack = standardTracks.get(9); // Bài khác đáp án
+    TrackInfo wrongTrack = standardTracks.get(9);
     GuessRequestDto wrongGuess = new GuessRequestDto().trackId(wrongTrack.id());
 
-    // Guess sai lần 1 (ở level 1) -> mở level 2
+    for (int guessCount = 1; guessCount <= 4; guessCount++) {
+      mockMvc
+          .perform(
+              post("/api/v1/solo/matches/{matchId}/rounds/5/guesses", matchId)
+                  .with(jwt().jwt(j -> j.subject(userId.toString())))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(wrongGuess)))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.correct").value(false))
+          .andExpect(jsonPath("$.roundEnded").value(false))
+          .andExpect(jsonPath("$.round.level").value(guessCount + 1));
+    }
+
+    // Lần 5 đoán sai ở level 5 -> WRONG_OUT, hết trận
     mockMvc
         .perform(
-            post("/api/v1/solo/matches/{matchId}/rounds/4/guesses", matchId)
-                .with(jwt().jwt(j -> j.subject(userId.toString())))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(wrongGuess)))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.correct").value(false))
-        .andExpect(jsonPath("$.roundEnded").value(false))
-        .andExpect(jsonPath("$.round.level").value(2));
-
-    // Guess sai lần 2 -> mở level 3
-    mockMvc.perform(
-        post("/api/v1/solo/matches/{matchId}/rounds/4/guesses", matchId)
-            .with(jwt().jwt(j -> j.subject(userId.toString())))
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(wrongGuess)));
-
-    // Guess sai lần 3 -> mở level 4
-    mockMvc.perform(
-        post("/api/v1/solo/matches/{matchId}/rounds/4/guesses", matchId)
-            .with(jwt().jwt(j -> j.subject(userId.toString())))
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(wrongGuess)));
-
-    // Guess sai lần 4 -> mở level 5 (30s)
-    mockMvc.perform(
-        post("/api/v1/solo/matches/{matchId}/rounds/4/guesses", matchId)
-            .with(jwt().jwt(j -> j.subject(userId.toString())))
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(wrongGuess)));
-
-    // Cấu hình trước cho vòng 5: audio của bài 5 bị lỗi ban đầu, bài thay thế phát thành công
-    // (BR-27)
-    TrackInfo originalTrack5 = standardTracks.get(4);
-    TrackInfo replacementTrack5 = standardTracks.get(5);
-    when(audioService.prepareRoundAudio(any(), eq(originalTrack5.id()), anyString(), anyString()))
-        .thenReturn(AudioPreparationResult.failure("Preview URL 404 from provider"));
-    when(audioService.prepareRoundAudio(
-            any(), eq(replacementTrack5.id()), anyString(), anyString()))
-        .thenReturn(AudioPreparationResult.success());
-
-    // Guess sai lần 5 ở level 5 -> WRONG_OUT, hết lượt
-    mockMvc
-        .perform(
-            post("/api/v1/solo/matches/{matchId}/rounds/4/guesses", matchId)
+            post("/api/v1/solo/matches/{matchId}/rounds/5/guesses", matchId)
                 .with(jwt().jwt(j -> j.subject(userId.toString())))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(wrongGuess)))
@@ -422,25 +422,7 @@ class SoloGameIntegrationTest extends IntegrationTest {
         .andExpect(jsonPath("$.roundEnded").value(true))
         .andExpect(jsonPath("$.end.result.outcome").value("WRONG_OUT"))
         .andExpect(jsonPath("$.end.result.roundScore").value(0))
-        .andExpect(jsonPath("$.end.result.totalScore").value(1880))
-        .andExpect(jsonPath("$.end.nextRound.roundNo").value(5));
-
-    // ==========================================
-    // VÒNG 5: Thay bài do lỗi audio (BR-27), đoán đúng ở level 1 -> +1000 điểm, trận xong
-    // ==========================================
-    // Đoán đúng bài thay thế
-    GuessRequestDto guess5 = new GuessRequestDto().trackId(replacementTrack5.id());
-    mockMvc
-        .perform(
-            post("/api/v1/solo/matches/{matchId}/rounds/5/guesses", matchId)
-                .with(jwt().jwt(j -> j.subject(userId.toString()).claim("nickname", "Thái")))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(guess5)))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.correct").value(true))
-        .andExpect(jsonPath("$.roundEnded").value(true))
-        .andExpect(jsonPath("$.end.result.roundScore").value(1000))
-        .andExpect(jsonPath("$.end.result.totalScore").value(2880))
+        .andExpect(jsonPath("$.end.result.totalScore").value(3060))
         .andExpect(jsonPath("$.end.matchFinished").value(true));
 
     // Kiểm tra kết quả trận đấu qua API getMatchResult
@@ -450,14 +432,14 @@ class SoloGameIntegrationTest extends IntegrationTest {
                 .with(jwt().jwt(j -> j.subject(userId.toString()))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value("FINISHED"))
-        .andExpect(jsonPath("$.totalScore").value(2880))
+        .andExpect(jsonPath("$.totalScore").value(3060))
         .andExpect(jsonPath("$.correctCount").value(3))
         .andExpect(jsonPath("$.rounds.length()").value(5))
         .andExpect(jsonPath("$.rounds[0].comboStreak").value(1))
         .andExpect(jsonPath("$.rounds[1].comboStreak").value(2))
-        .andExpect(jsonPath("$.rounds[2].comboStreak").value(0))
+        .andExpect(jsonPath("$.rounds[2].comboStreak").value(3))
         .andExpect(jsonPath("$.rounds[3].comboStreak").value(0))
-        .andExpect(jsonPath("$.rounds[4].comboStreak").value(1));
+        .andExpect(jsonPath("$.rounds[4].comboStreak").value(0));
 
     // Kiểm tra kết quả riêng từng vòng qua getRoundResult
     mockMvc
@@ -465,13 +447,14 @@ class SoloGameIntegrationTest extends IntegrationTest {
             get("/api/v1/solo/matches/{matchId}/rounds/2/result", matchId)
                 .with(jwt().jwt(j -> j.subject(userId.toString()))))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.comboStreak").value(2));
+        .andExpect(jsonPath("$.comboStreak").value(2))
+        .andExpect(jsonPath("$.answer.trackId").value(replacementTrack2.id().toString()));
 
     // Kiểm tra sự kiện MatchFinished phát ra qua listener giao dịch
     await()
         .atMost(Duration.ofSeconds(3))
-        .untilAsserted(() -> assertThat(testListener.getFinishedEvents()).hasSize(1));
-    MatchFinished event = testListener.getFinishedEvents().get(0);
+        .untilAsserted(() -> assertThat(testListener.findFinishedEvent(matchId)).isPresent());
+    MatchFinished event = testListener.findFinishedEvent(matchId).get();
     assertThat(event.matchId()).isEqualTo(matchId);
     assertThat(event.mode()).isEqualTo("PRACTICE");
     assertThat(event.ranked()).isFalse();
@@ -479,82 +462,39 @@ class SoloGameIntegrationTest extends IntegrationTest {
     assertThat(event.roundCount()).isEqualTo(5);
     assertThat(event.rounds()).hasSize(5);
 
-    // Vòng 5 ghi nhận đúng bài hát thay thế (provider & providerTrackId)
-    assertThat(event.rounds().get(4).trackId()).isEqualTo(replacementTrack5.id());
-    assertThat(event.rounds().get(4).provider()).isEqualTo("DEEZER");
-    assertThat(event.rounds().get(4).providerTrackId())
-        .isEqualTo(replacementTrack5.providerTrackId());
-  }
-
-  @Test
-  @DisplayName("Combo nối qua 3 vòng liên tiếp: 0% -> 10% -> 20%")
-  void testComboThreeConsecutiveRounds() throws Exception {
-    UUID userId = UUID.randomUUID();
-
-    CreateSoloMatchRequestDto createReq = new CreateSoloMatchRequestDto();
-    createReq.setMode(SoloModeDto.RANKED);
-    createReq.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
-
-    MvcResult createRes =
-        mockMvc
-            .perform(
-                post("/api/v1/solo/matches")
-                    .with(jwt().jwt(j -> j.subject(userId.toString()).claim("nickname", "Pro")))
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(createReq)))
-            .andExpect(status().isCreated())
-            .andReturn();
-
-    UUID matchId =
-        UUID.fromString(JsonPath.read(createRes.getResponse().getContentAsString(), "$.matchId"));
-
-    // Vòng 1: đúng ở level 1 -> 1000 điểm, combo 0%, streak 1
-    mockMvc
-        .perform(
-            post("/api/v1/solo/matches/{matchId}/rounds/1/guesses", matchId)
-                .with(jwt().jwt(j -> j.subject(userId.toString())))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    objectMapper.writeValueAsString(
-                        new GuessRequestDto().trackId(standardTracks.get(0).id()))))
-        .andExpect(jsonPath("$.end.result.roundScore").value(1000))
-        .andExpect(jsonPath("$.end.result.comboStreak").value(1))
-        .andExpect(jsonPath("$.end.result.comboPercent").value(0))
-        .andExpect(jsonPath("$.end.result.totalScore").value(1000));
-
-    // Vòng 2: đúng ở level 1 -> 1000 * 1.1 = 1100 điểm, combo 10%, streak 2
-    mockMvc
-        .perform(
-            post("/api/v1/solo/matches/{matchId}/rounds/2/guesses", matchId)
-                .with(jwt().jwt(j -> j.subject(userId.toString())))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    objectMapper.writeValueAsString(
-                        new GuessRequestDto().trackId(standardTracks.get(1).id()))))
-        .andExpect(jsonPath("$.end.result.roundScore").value(1100))
-        .andExpect(jsonPath("$.end.result.comboStreak").value(2))
-        .andExpect(jsonPath("$.end.result.comboPercent").value(10))
-        .andExpect(jsonPath("$.end.result.totalScore").value(2100));
-
-    // Vòng 3: đúng ở level 1 -> 1000 * 1.2 = 1200 điểm, combo 20%, streak 3
-    mockMvc
-        .perform(
-            post("/api/v1/solo/matches/{matchId}/rounds/3/guesses", matchId)
-                .with(jwt().jwt(j -> j.subject(userId.toString())))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    objectMapper.writeValueAsString(
-                        new GuessRequestDto().trackId(standardTracks.get(2).id()))))
-        .andExpect(jsonPath("$.end.result.roundScore").value(1200))
-        .andExpect(jsonPath("$.end.result.comboStreak").value(3))
-        .andExpect(jsonPath("$.end.result.comboPercent").value(20))
-        .andExpect(jsonPath("$.end.result.totalScore").value(3300));
+    // Vòng 2 ghi nhận đúng bài hát thay thế (provider & providerTrackId)
+    assertThat(event.rounds().get(1).trackId()).isEqualTo(replacementTrack2.id());
+    assertThat(event.rounds().get(1).provider()).isEqualTo("DEEZER");
   }
 
   @Test
   @DisplayName(
-      "Phiên mở lại trong 30 phút chơi tiếp bình thường; quá 30 phút phát MatchFinished ABANDONED")
-  void testResumeWithin30MinutesAndExpireAfter30Minutes() throws Exception {
+      "PRACTICE bộ lọc rỗng: gọi selectRandomTracks với filter=null từ toàn bộ kho nhạc (AC 2)")
+  void testPracticeMatchWithEmptyFilterSelectsFromEntireCatalog() throws Exception {
+    UUID userId = UUID.randomUUID();
+
+    CreateSoloMatchRequestDto req = new CreateSoloMatchRequestDto();
+    req.setMode(SoloModeDto.PRACTICE);
+    req.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+    req.setFilter(new SoloFilterDto()); // Filter rỗng
+
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches")
+                .with(jwt().jwt(j -> j.subject(userId.toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.roundCount").value(5));
+
+    // Khẳng định catalogService.selectRandomTracks được gọi với filter là null
+    verify(catalogService).selectRandomTracks(isNull(), eq(5), any());
+  }
+
+  @Test
+  @DisplayName(
+      "Resume sau 15 phút: giữ nguyên vòng, level, điểm và chuỗi combo; response không lộ đáp án (AC 7, NFR-07)")
+  void testResumePreservesRoundAndLevelAndDoesNotLeakAnswer() throws Exception {
     UUID userId = UUID.randomUUID();
 
     CreateSoloMatchRequestDto createReq = new CreateSoloMatchRequestDto();
@@ -574,20 +514,130 @@ class SoloGameIntegrationTest extends IntegrationTest {
     UUID matchId =
         UUID.fromString(JsonPath.read(createRes.getResponse().getContentAsString(), "$.matchId"));
 
-    // Tiến hành 15 phút sau (dưới 30 phút) -> getActiveSoloMatch thành công
-    testClock.advance(Duration.ofMinutes(15));
-
+    // Hoàn thành vòng 1 ở 2s
     mockMvc
         .perform(
-            get("/api/v1/solo/matches/active").with(jwt().jwt(j -> j.subject(userId.toString()))))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.matchId").value(matchId.toString()))
-        .andExpect(jsonPath("$.currentRound.roundNo").value(1));
+            post("/api/v1/solo/matches/{matchId}/rounds/1/guesses", matchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new GuessRequestDto().trackId(standardTracks.get(0).id()))))
+        .andExpect(status().isOk());
 
-    // Tiến hành tiếp 31 phút sau lần hoạt động gần nhất (tổng quá 30 phút)
+    // Ở vòng 2, nghe thêm lên level 2 (5s)
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches/{matchId}/rounds/2/listen-more", matchId)
+                .param("expectedLevel", "2")
+                .with(jwt().jwt(j -> j.subject(userId.toString()))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.level").value(2));
+
+    // Người chơi rời đi và quay lại 15 phút sau (dưới 30 phút)
+    testClock.advance(Duration.ofMinutes(15));
+
+    MvcResult activeRes =
+        mockMvc
+            .perform(
+                get("/api/v1/solo/matches/active")
+                    .with(jwt().jwt(j -> j.subject(userId.toString()))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.matchId").value(matchId.toString()))
+            .andExpect(jsonPath("$.totalScore").value(1000))
+            .andExpect(jsonPath("$.comboStreak").value(1))
+            .andExpect(jsonPath("$.currentRound.roundNo").value(2))
+            .andExpect(jsonPath("$.currentRound.level").value(2))
+            .andExpect(jsonPath("$.currentRound.listenSeconds").value(5))
+            .andExpect(jsonPath("$.currentRound.canListenMore").value(true))
+            .andExpect(jsonPath("$.currentRound.canSkip").value(false))
+            .andReturn();
+
+    // Khẳng định bảo mật NFR-07: RoundState và AudioClipDto tuyệt đối không lộ trackId, title hay
+    // artistName
+    String activeBody = activeRes.getResponse().getContentAsString();
+    assertThat(activeBody).doesNotContain(standardTracks.get(1).id().toString());
+    assertThat(activeBody).doesNotContain(standardTracks.get(1).title());
+    assertThat(activeBody).doesNotContain(standardTracks.get(1).artistName());
+
+    // Chơi tiếp vòng 2 với đúng bài gốc -> đoán đúng thành công
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches/{matchId}/rounds/2/guesses", matchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new GuessRequestDto().trackId(standardTracks.get(1).id()))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.correct").value(true))
+        .andExpect(jsonPath("$.end.result.roundScore").value(880))
+        .andExpect(jsonPath("$.end.result.totalScore").value(1880))
+        .andExpect(jsonPath("$.end.result.comboStreak").value(2));
+  }
+
+  @Test
+  @DisplayName(
+      "Trận RANKED quá 30 phút thành ABANDONED: ranked chuyển false, rounds chỉ gồm vòng đã xong (AC 4, 7)")
+  void testRankedMatchExpireAfter30Minutes() throws Exception {
+    UUID userId = UUID.randomUUID();
+
+    CreateSoloMatchRequestDto rankedReq = new CreateSoloMatchRequestDto();
+    rankedReq.setMode(SoloModeDto.RANKED);
+    rankedReq.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+
+    MvcResult createRes =
+        mockMvc
+            .perform(
+                post("/api/v1/solo/matches")
+                    .with(
+                        jwt()
+                            .jwt(
+                                j ->
+                                    j.subject(userId.toString()).claim("nickname", "RankedTester")))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(rankedReq)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.ranked").value(true))
+            .andReturn();
+
+    UUID matchId =
+        UUID.fromString(JsonPath.read(createRes.getResponse().getContentAsString(), "$.matchId"));
+
+    // Khẳng định MatchStarted được phát ra với ranked=true, mode=RANKED (AC 4, AC 8)
+    await()
+        .atMost(Duration.ofSeconds(3))
+        .untilAsserted(() -> assertThat(testListener.findStartedEvent(matchId)).isPresent());
+    MatchStarted startEvent = testListener.findStartedEvent(matchId).get();
+    assertThat(startEvent.ranked()).isTrue();
+    assertThat(startEvent.roundCount()).isEqualTo(5);
+
+    // Hoàn thành vòng 1
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches/{matchId}/rounds/1/guesses", matchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new GuessRequestDto().trackId(standardTracks.get(0).id()))))
+        .andExpect(status().isOk());
+
+    // Hoàn thành vòng 2
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches/{matchId}/rounds/2/guesses", matchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new GuessRequestDto().trackId(standardTracks.get(1).id()))))
+        .andExpect(status().isOk());
+
+    // Vòng 3 đang dở, người chơi dừng 31 phút
     testClock.advance(Duration.ofMinutes(31));
 
-    // Gọi getActiveSoloMatch lúc này sẽ phát hiện hết hạn -> trả 404 NO_ACTIVE_MATCH
+    // getActive lúc này trả 404 NO_ACTIVE_MATCH và kích hoạt expire
     mockMvc
         .perform(
             get("/api/v1/solo/matches/active").with(jwt().jwt(j -> j.subject(userId.toString()))))
@@ -597,11 +647,15 @@ class SoloGameIntegrationTest extends IntegrationTest {
     // Sự kiện MatchFinished được phát ra với trạng thái ABANDONED
     await()
         .atMost(Duration.ofSeconds(3))
-        .untilAsserted(() -> assertThat(testListener.getFinishedEvents()).hasSize(1));
-    MatchFinished event = testListener.getFinishedEvents().get(0);
-    assertThat(event.matchId()).isEqualTo(matchId);
-    assertThat(event.status()).isEqualTo(MatchEndStatus.ABANDONED);
-    assertThat(event.ranked()).isFalse();
+        .untilAsserted(() -> assertThat(testListener.findFinishedEvent(matchId)).isPresent());
+    MatchFinished finishEvent = testListener.findFinishedEvent(matchId).get();
+    assertThat(finishEvent.matchId()).isEqualTo(matchId);
+    assertThat(finishEvent.status()).isEqualTo(MatchEndStatus.ABANDONED);
+    assertThat(finishEvent.ranked()).isFalse(); // BR-23: quá hạn thì không tính xếp hạng
+    assertThat(finishEvent.rounds())
+        .hasSize(2); // Chỉ có vòng 1 và 2, vòng 3 dở KHÔNG nằm trong rounds!
+    assertThat(finishEvent.players().get(0).totalScore()).isEqualTo(2100);
+    assertThat(finishEvent.players().get(0).results().get(0).answerTimeMs()).isNotNull();
   }
 
   @Test
@@ -628,13 +682,15 @@ class SoloGameIntegrationTest extends IntegrationTest {
         UUID.fromString(JsonPath.read(res.getResponse().getContentAsString(), "$.matchId"));
 
     // Hoàn thành vòng 1
-    mockMvc.perform(
-        post("/api/v1/solo/matches/{matchId}/rounds/1/guesses", practiceMatchId)
-            .with(jwt().jwt(j -> j.subject(userId.toString())))
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(
-                objectMapper.writeValueAsString(
-                    new GuessRequestDto().trackId(standardTracks.get(0).id()))));
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches/{matchId}/rounds/1/guesses", practiceMatchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new GuessRequestDto().trackId(standardTracks.get(0).id()))))
+        .andExpect(status().isOk());
 
     // Bỏ trận ở vòng 2
     mockMvc
@@ -645,9 +701,7 @@ class SoloGameIntegrationTest extends IntegrationTest {
         .andExpect(jsonPath("$.status").value("ABANDONED"))
         .andExpect(jsonPath("$.ranked").value(false))
         .andExpect(jsonPath("$.totalScore").value(1000))
-        .andExpect(
-            jsonPath("$.rounds.length()")
-                .value(1)) // Chỉ có vòng 1, vòng 2 dở không nằm trong rounds!
+        .andExpect(jsonPath("$.rounds.length()").value(1))
         .andExpect(jsonPath("$.rounds[0].roundNo").value(1));
 
     // 2. RANKED match
@@ -719,8 +773,8 @@ class SoloGameIntegrationTest extends IntegrationTest {
 
   @Test
   @DisplayName(
-      "Xác thực skipRound (chỉ được skip ở mức 30s) và listenMore (không quá level 5, mismatch expectedLevel)")
-  void testSkipAndListenMoreValidations() throws Exception {
+      "Kiểm tra biên roundNo (404 khi > roundCount, 400 khi <= 0) và 409 ROUND_NOT_ACTIVE khi gọi vòng cũ (M5, m6)")
+  void testRoundNoBoundaryAndCompletedRoundReturns409() throws Exception {
     UUID userId = UUID.randomUUID();
 
     CreateSoloMatchRequestDto req = new CreateSoloMatchRequestDto();
@@ -740,39 +794,67 @@ class SoloGameIntegrationTest extends IntegrationTest {
     UUID matchId =
         UUID.fromString(JsonPath.read(res.getResponse().getContentAsString(), "$.matchId"));
 
-    // 1. Skip ở level 1 -> 409 SKIP_NOT_ALLOWED
+    // 1. roundNo trong khoảng 1..15 nhưng vượt quá roundCount (5) của trận: round 6 -> 404
+    // ROUND_NOT_FOUND (M5)
     mockMvc
         .perform(
-            post("/api/v1/solo/matches/{matchId}/rounds/1/skip", matchId)
-                .with(jwt().jwt(j -> j.subject(userId.toString()))))
-        .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.code").value("SKIP_NOT_ALLOWED"));
+            post("/api/v1/solo/matches/{matchId}/rounds/6/guesses", matchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new GuessRequestDto().trackId(standardTracks.get(0).id()))))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("ROUND_NOT_FOUND"));
 
-    // 2. listenMore với expectedLevel sai (đang ở level 1, next level là 2 nhưng gửi
-    // expectedLevel=3)
+    // 2. roundNo vi phạm bean validation (@Min(1) / @Max(15)) -> 400 VALIDATION_FAILED (m6)
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches/{matchId}/rounds/0/listen-more", matchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString()))))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches/{matchId}/rounds/99/guesses", matchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new GuessRequestDto().trackId(standardTracks.get(0).id()))))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+    // 3. Hoàn thành vòng 1 sang vòng 2
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches/{matchId}/rounds/1/guesses", matchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new GuessRequestDto().trackId(standardTracks.get(0).id()))))
+        .andExpect(status().isOk());
+
+    // 4. Gọi lại vòng 1 đã kết thúc khi đang ở vòng 2 -> 409 ROUND_NOT_ACTIVE (M5)
     mockMvc
         .perform(
             post("/api/v1/solo/matches/{matchId}/rounds/1/listen-more", matchId)
-                .param("expectedLevel", "3")
                 .with(jwt().jwt(j -> j.subject(userId.toString()))))
         .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.code").value("LISTEN_LEVEL_MISMATCH"));
+        .andExpect(jsonPath("$.code").value("ROUND_NOT_ACTIVE"));
 
-    // Nâng dần lên level 5
-    for (int l = 2; l <= 5; l++) {
-      mockMvc.perform(
-          post("/api/v1/solo/matches/{matchId}/rounds/1/listen-more", matchId)
-              .param("expectedLevel", String.valueOf(l))
-              .with(jwt().jwt(j -> j.subject(userId.toString()))));
-    }
-
-    // 3. Đã ở level 5, gọi listenMore tiếp -> 409 LISTEN_LEVEL_MAX
     mockMvc
         .perform(
-            post("/api/v1/solo/matches/{matchId}/rounds/1/listen-more", matchId)
-                .with(jwt().jwt(j -> j.subject(userId.toString()))))
+            post("/api/v1/solo/matches/{matchId}/rounds/1/guesses", matchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new GuessRequestDto().trackId(standardTracks.get(0).id()))))
         .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.code").value("LISTEN_LEVEL_MAX"));
+        .andExpect(jsonPath("$.code").value("ROUND_NOT_ACTIVE"));
   }
 
   @Test
@@ -829,5 +911,164 @@ class SoloGameIntegrationTest extends IntegrationTest {
                 .content(objectMapper.writeValueAsString(guessReq)))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("TRACK_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName(
+      "Đồng thời: nhiều luồng cùng gọi listenMore với expectedLevel=2 -> đúng 1 luồng 200, các luồng khác 409 (M1)")
+  void testConcurrencyListenMoreWithExpectedLevel() throws Exception {
+    UUID userId = UUID.randomUUID();
+
+    CreateSoloMatchRequestDto req = new CreateSoloMatchRequestDto();
+    req.setMode(SoloModeDto.PRACTICE);
+    req.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+
+    MvcResult res =
+        mockMvc
+            .perform(
+                post("/api/v1/solo/matches")
+                    .with(jwt().jwt(j -> j.subject(userId.toString())))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isCreated())
+            .andReturn();
+
+    UUID matchId =
+        UUID.fromString(JsonPath.read(res.getResponse().getContentAsString(), "$.matchId"));
+
+    int threadCount = 5;
+    ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+    List<Callable<Integer>> tasks = new ArrayList<>();
+
+    for (int i = 0; i < threadCount; i++) {
+      tasks.add(
+          () -> {
+            MvcResult mvcRes =
+                mockMvc
+                    .perform(
+                        post("/api/v1/solo/matches/{matchId}/rounds/1/listen-more", matchId)
+                            .param("expectedLevel", "2")
+                            .with(jwt().jwt(j -> j.subject(userId.toString()))))
+                    .andReturn();
+            return mvcRes.getResponse().getStatus();
+          });
+    }
+
+    List<Future<Integer>> futures = executor.invokeAll(tasks);
+    executor.shutdown();
+
+    int okCount = 0;
+    int conflictCount = 0;
+    for (Future<Integer> f : futures) {
+      int st = f.get();
+      if (st == 200) {
+        okCount++;
+      } else if (st == 409) {
+        conflictCount++;
+      }
+    }
+
+    // Đúng 1 luồng thành công, các luồng còn lại nhận 409 LISTEN_LEVEL_MISMATCH
+    assertThat(okCount).isEqualTo(1);
+    assertThat(conflictCount).isEqualTo(threadCount - 1);
+  }
+
+  @Test
+  @DisplayName(
+      "Đồng thời: nhiều luồng cùng gọi abandonSoloMatch -> chỉ phát đúng 1 sự kiện MatchFinished (M2)")
+  void testConcurrencyAbandonPublishesSingleMatchFinished() throws Exception {
+    UUID userId = UUID.randomUUID();
+
+    CreateSoloMatchRequestDto req = new CreateSoloMatchRequestDto();
+    req.setMode(SoloModeDto.PRACTICE);
+    req.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+
+    MvcResult res =
+        mockMvc
+            .perform(
+                post("/api/v1/solo/matches")
+                    .with(jwt().jwt(j -> j.subject(userId.toString())))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isCreated())
+            .andReturn();
+
+    UUID matchId =
+        UUID.fromString(JsonPath.read(res.getResponse().getContentAsString(), "$.matchId"));
+
+    int threadCount = 5;
+    ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+    List<Callable<Integer>> tasks = new ArrayList<>();
+
+    for (int i = 0; i < threadCount; i++) {
+      tasks.add(
+          () -> {
+            MvcResult mvcRes =
+                mockMvc
+                    .perform(
+                        post("/api/v1/solo/matches/{matchId}/abandon", matchId)
+                            .with(jwt().jwt(j -> j.subject(userId.toString()))))
+                    .andReturn();
+            return mvcRes.getResponse().getStatus();
+          });
+    }
+
+    List<Future<Integer>> futures = executor.invokeAll(tasks);
+    executor.shutdown();
+
+    await()
+        .atMost(Duration.ofSeconds(3))
+        .untilAsserted(() -> assertThat(testListener.findFinishedEvent(matchId)).isPresent());
+
+    // Khẳng định chỉ có duy nhất 1 sự kiện MatchFinished được phát ra
+    assertThat(testListener.findAllFinishedEvents(matchId)).hasSize(1);
+  }
+
+  @Test
+  @DisplayName(
+      "Khi tất cả bài thay thế đều lỗi audio -> trả 422 NOT_ENOUGH_TRACKS và không làm hỏng trạng thái match (M4)")
+  void testAllReplacementTracksFailThrowsNotEnoughTracks() throws Exception {
+    UUID userId = UUID.randomUUID();
+
+    CreateSoloMatchRequestDto req = new CreateSoloMatchRequestDto();
+    req.setMode(SoloModeDto.PRACTICE);
+    req.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+
+    MvcResult res =
+        mockMvc
+            .perform(
+                post("/api/v1/solo/matches")
+                    .with(jwt().jwt(j -> j.subject(userId.toString())))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isCreated())
+            .andReturn();
+
+    UUID matchId =
+        UUID.fromString(JsonPath.read(res.getResponse().getContentAsString(), "$.matchId"));
+
+    // Cấu hình vòng 2: mọi bài audio đều lỗi
+    when(audioService.prepareRoundAudio(any(), any(), anyString(), anyString()))
+        .thenReturn(AudioPreparationResult.failure("Provider CDN completely down"));
+
+    // Hoàn thành vòng 1 -> chuẩn bị vòng 2 sẽ gặp lỗi thay bài quá số lần
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches/{matchId}/rounds/1/guesses", matchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new GuessRequestDto().trackId(standardTracks.get(0).id()))))
+        .andExpect(status().isUnprocessableEntity())
+        .andExpect(jsonPath("$.code").value("NOT_ENOUGH_TRACKS"));
+
+    // Trạng thái trận không bị hỏng: kết quả vòng 1 vẫn lấy được chính xác
+    mockMvc
+        .perform(
+            get("/api/v1/solo/matches/{matchId}/rounds/1/result", matchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString()))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.roundScore").value(1000));
   }
 }

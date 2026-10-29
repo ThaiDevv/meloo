@@ -9,8 +9,9 @@ const WEEKS = 40
 const PHONE_WEEKS = 14
 
 /**
- * 0 = no turn that day; 1 to 5 = the day's challenge was guessed at the 30, 20, 10, 5 or 2 second
- * level (BR-25: the earlier the level, the better the result), so a brighter cell is a better day.
+ * 0 = the day is not lit: the daily challenge was not taken, or taken but not guessed ("Chưa đoán
+ * ra"). 1 to 5 = it was guessed at the 30, 20, 10, 5 or 2 second level (BR-25: the earlier the
+ * level, the better the result), so the faster the guess, the brighter the cell.
  */
 export type StreakLevel = 0 | 1 | 2 | 3 | 4 | 5
 

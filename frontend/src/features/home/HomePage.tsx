@@ -166,7 +166,9 @@ export function HomePage() {
               aria-hidden="true"
               className="mt-5 flex flex-wrap items-center justify-end gap-x-3 gap-y-2 text-sm text-muted-foreground"
             >
-              <span>{t('streak.late')}</span>
+              <span data-level={0} className="mh-cell size-3.5 rounded-[3px]" />
+              <span>{t('streak.none')}</span>
+              <span className="ml-2">{t('streak.late')}</span>
               {[0, 1, 2, 3, 4, 5].map((level) => (
                 <span key={level} data-level={level} className="mh-cell size-3.5 rounded-[3px]" />
               ))}

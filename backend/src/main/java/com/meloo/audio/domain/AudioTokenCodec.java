@@ -6,6 +6,7 @@ import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.UUID;
@@ -38,6 +39,7 @@ public class AudioTokenCodec {
   private static final int PAYLOAD_SIZE = 16 + 16 + 1 + 8; // 41 bytes
   private static final int SIGNATURE_SIZE = 32; // 32 bytes for HMAC-SHA256
   private static final int TOTAL_BINARY_SIZE = PAYLOAD_SIZE + SIGNATURE_SIZE; // 73 bytes
+  private static final Duration MAX_EXPIRY_SKEW = Duration.ofMinutes(2).plusSeconds(30);
 
   private final SecretKeySpec secretKeySpec;
   private final Clock clock;
@@ -49,6 +51,10 @@ public class AudioTokenCodec {
   public AudioTokenCodec(String secret, Clock clock) {
     if (secret == null || secret.isBlank()) {
       throw new IllegalArgumentException("Audio HMAC secret must not be blank");
+    }
+    if (secret.startsWith("change-me-")) {
+      throw new IllegalArgumentException(
+          "Audio HMAC secret must not use the placeholder key; set MELOO_AUDIO_HMAC_SECRET in environment");
     }
     byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
     if (keyBytes.length < 32) {
@@ -124,9 +130,15 @@ public class AudioTokenCodec {
     UUID playerId = new UUID(playerMsb, playerLsb);
     Instant expiresAt = Instant.ofEpochMilli(expiresAtEpochMilli);
 
+    Instant now = clock.instant();
     AudioToken token = new AudioToken(roundId, playerId, level, expiresAt);
-    if (token.isExpired(clock.instant())) {
+    if (token.isExpired(now)) {
       throw new AudioTokenExpiredException();
+    }
+
+    // Token must not exceed 2 minutes TTL (+ 30s skew allowance)
+    if (expiresAt.isAfter(now.plus(MAX_EXPIRY_SKEW))) {
+      throw AudioTokenInvalidException.invalidSignature();
     }
 
     return token;

@@ -1,5 +1,6 @@
 package com.meloo.audio.web;
 
+import com.meloo.audio.api.AccountLockChecker;
 import com.meloo.audio.domain.AccountLockedException;
 import com.meloo.audio.domain.AudioException;
 import com.meloo.audio.domain.AudioRangeNotSatisfiableException;
@@ -7,7 +8,6 @@ import com.meloo.audio.domain.AudioRateLimitException;
 import com.meloo.audio.domain.AudioToken;
 import com.meloo.audio.domain.AudioTokenCodec;
 import com.meloo.audio.domain.AudioTokenInvalidException;
-import com.meloo.audio.service.AccountLockChecker;
 import com.meloo.audio.service.AudioRateLimiter;
 import com.meloo.audio.service.AudioStreamService;
 import com.meloo.generated.api.AudioApi;
@@ -68,13 +68,17 @@ public class AudioController implements AudioApi {
     }
 
     // Rate limiting per token and per player (Bucket4j)
-    audioRateLimiter.checkRateLimit(token, audioToken.playerId());
+    audioRateLimiter.checkRateLimit(
+        audioToken.roundId(), audioToken.playerId(), audioToken.level());
 
     AudioStreamService.SlicedStreamResult result;
     try {
       result = audioStreamService.streamAudioClip(audioToken, range);
+    } catch (AudioException ae) {
+      throw ae;
     } catch (IOException e) {
-      log.error("I/O error streaming audio clip: {}", e.getMessage());
+      // M1: Do not log raw exception message which could contain URLs
+      log.error("I/O error streaming audio clip: {}", e.getClass().getSimpleName());
       throw new AudioException(
           org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR,
           "INTERNAL_ERROR",

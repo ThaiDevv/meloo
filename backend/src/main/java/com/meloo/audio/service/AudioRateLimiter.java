@@ -13,8 +13,10 @@ import java.util.concurrent.TimeUnit;
 
 public class AudioRateLimiter {
 
+  public record TokenBucketKey(UUID roundId, UUID playerId, int level) {}
+
   private final AudioProperties.RateLimitProperties properties;
-  private final Cache<String, Bucket> tokenBuckets;
+  private final Cache<TokenBucketKey, Bucket> tokenBuckets;
   private final Cache<UUID, Bucket> playerBuckets;
 
   public AudioRateLimiter(AudioProperties.RateLimitProperties properties) {
@@ -25,10 +27,11 @@ public class AudioRateLimiter {
         Caffeine.newBuilder().expireAfterAccess(Duration.ofMinutes(5)).maximumSize(10_000).build();
   }
 
-  public void checkRateLimit(String token, UUID playerId) {
-    Bucket tokenBucket = tokenBuckets.get(token, k -> buildTokenBucket());
-    if (tokenBucket != null) {
-      ConsumptionProbe probe = tokenBucket.tryConsumeAndReturnRemaining(1);
+  public void checkRateLimit(UUID roundId, UUID playerId, int level) {
+    // 1. Consume player bucket first (30 req / 1 min)
+    Bucket playerBucket = playerBuckets.get(playerId, k -> buildPlayerBucket());
+    if (playerBucket != null) {
+      ConsumptionProbe probe = playerBucket.tryConsumeAndReturnRemaining(1);
       if (!probe.isConsumed()) {
         long retryAfterSec =
             Math.max(1, TimeUnit.NANOSECONDS.toSeconds(probe.getNanosToWaitForRefill()));
@@ -36,9 +39,11 @@ public class AudioRateLimiter {
       }
     }
 
-    Bucket playerBucket = playerBuckets.get(playerId, k -> buildPlayerBucket());
-    if (playerBucket != null) {
-      ConsumptionProbe probe = playerBucket.tryConsumeAndReturnRemaining(1);
+    // 2. Consume token bucket second (5 req / 1 min) keyed on (roundId, playerId, level)
+    TokenBucketKey tokenKey = new TokenBucketKey(roundId, playerId, level);
+    Bucket tokenBucket = tokenBuckets.get(tokenKey, k -> buildTokenBucket());
+    if (tokenBucket != null) {
+      ConsumptionProbe probe = tokenBucket.tryConsumeAndReturnRemaining(1);
       if (!probe.isConsumed()) {
         long retryAfterSec =
             Math.max(1, TimeUnit.NANOSECONDS.toSeconds(probe.getNanosToWaitForRefill()));

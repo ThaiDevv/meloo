@@ -7,6 +7,7 @@ import com.meloo.audio.domain.AudioToken;
 import com.meloo.audio.domain.AudioTokenCodec;
 import com.meloo.generated.model.AudioClipDto;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.UUID;
@@ -39,11 +40,6 @@ public class AudioServiceImpl implements AudioService {
   }
 
   @Override
-  public AudioPreparationResult prepareRoundAudio(UUID roundId, UUID trackId, String previewUrl) {
-    return audioStreamService.prepareRoundAudio(roundId, trackId, previewUrl);
-  }
-
-  @Override
   public boolean isRoundPlayable(UUID roundId) {
     return audioStreamService.isRoundPlayable(roundId);
   }
@@ -55,12 +51,11 @@ public class AudioServiceImpl implements AudioService {
 
   @Override
   public AudioClipDto createAudioClip(UUID roundId, UUID playerId, int level) {
-    Instant expiresAt = clock.instant().plus(properties.tokenTtl());
-    return createAudioClip(roundId, playerId, level, expiresAt);
-  }
-
-  @Override
-  public AudioClipDto createAudioClip(UUID roundId, UUID playerId, int level, Instant expiresAt) {
+    Duration ttl = properties.tokenTtl();
+    if (ttl.compareTo(Duration.ofMinutes(2)) > 0) {
+      ttl = Duration.ofMinutes(2);
+    }
+    Instant expiresAt = clock.instant().plus(ttl);
     AudioToken token = new AudioToken(roundId, playerId, level, expiresAt);
     String rawToken = audioTokenCodec.encode(token);
 

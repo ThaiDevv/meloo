@@ -1,10 +1,12 @@
 # Configuration owned by the audio module.
 meloo:
   audio:
-    hmac-secret: "change-me-to-a-very-secure-random-secret-key-at-least-256-bits"
+    hmac-secret: ${MELOO_AUDIO_HMAC_SECRET}
     token-ttl: 2m
     preview-cache-ttl: 15m
     preview-cache-max-size: 1000
+    active-rounds-ttl: 45m
+    active-rounds-max-size: 2000
     rate-limit:
       token-capacity: 5
       token-refill-tokens: 5

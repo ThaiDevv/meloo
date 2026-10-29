@@ -27,16 +27,20 @@ class AudioRateLimiterTest {
   @Test
   @DisplayName("token rate limiting allows up to capacity and rejects subsequent requests with 429")
   void tokenRateLimit_exceededRequests_throws429() {
-    String token = "sample-token-1234567890";
+    UUID roundId = UUID.randomUUID();
     UUID playerId = UUID.randomUUID();
+    int level = 1;
 
     // 3 requests allowed
-    assertThatCode(() -> rateLimiter.checkRateLimit(token, playerId)).doesNotThrowAnyException();
-    assertThatCode(() -> rateLimiter.checkRateLimit(token, playerId)).doesNotThrowAnyException();
-    assertThatCode(() -> rateLimiter.checkRateLimit(token, playerId)).doesNotThrowAnyException();
+    assertThatCode(() -> rateLimiter.checkRateLimit(roundId, playerId, level))
+        .doesNotThrowAnyException();
+    assertThatCode(() -> rateLimiter.checkRateLimit(roundId, playerId, level))
+        .doesNotThrowAnyException();
+    assertThatCode(() -> rateLimiter.checkRateLimit(roundId, playerId, level))
+        .doesNotThrowAnyException();
 
     // 4th request exceeds token burst limit
-    assertThatThrownBy(() -> rateLimiter.checkRateLimit(token, playerId))
+    assertThatThrownBy(() -> rateLimiter.checkRateLimit(roundId, playerId, level))
         .isInstanceOf(AudioRateLimitException.class)
         .satisfies(
             ex -> {
@@ -48,18 +52,20 @@ class AudioRateLimiterTest {
   }
 
   @Test
-  @DisplayName("player rate limiting aggregates across different tokens")
+  @DisplayName("player rate limiting aggregates across different rounds and levels")
   void playerRateLimit_exceededPlayerRequests_throws429() {
     UUID playerId = UUID.randomUUID();
 
-    // Each token allows 3, but player limit is 10
+    // Each round/level allows 3, but player limit is 10
     for (int i = 0; i < 10; i++) {
-      String token = "token-" + (i / 2) + "-unique-" + i;
-      assertThatCode(() -> rateLimiter.checkRateLimit(token, playerId)).doesNotThrowAnyException();
+      UUID roundId = UUID.randomUUID();
+      int level = (i % 5) + 1;
+      assertThatCode(() -> rateLimiter.checkRateLimit(roundId, playerId, level))
+          .doesNotThrowAnyException();
     }
 
     // 11th request exceeds player limit
-    assertThatThrownBy(() -> rateLimiter.checkRateLimit("token-fresh-11", playerId))
+    assertThatThrownBy(() -> rateLimiter.checkRateLimit(UUID.randomUUID(), playerId, 1))
         .isInstanceOf(AudioRateLimitException.class)
         .satisfies(
             ex -> {

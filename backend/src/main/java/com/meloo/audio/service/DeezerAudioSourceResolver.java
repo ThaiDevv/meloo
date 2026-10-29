@@ -12,10 +12,10 @@ import io.github.resilience4j.retry.RetryConfig;
 import io.github.resilience4j.retry.RetryRegistry;
 import java.io.IOException;
 import java.util.Optional;
+import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
@@ -36,17 +36,7 @@ public class DeezerAudioSourceResolver implements AudioSourceResolver {
       @Nullable CircuitBreakerRegistry circuitBreakerRegistry,
       @Nullable RetryRegistry retryRegistry) {
 
-    var timeout = properties.timeout();
-    var requestFactory = new SimpleClientHttpRequestFactory();
-    requestFactory.setConnectTimeout(timeout);
-    requestFactory.setReadTimeout(timeout);
-
-    this.restClient =
-        restClientBuilder
-            .clone()
-            .baseUrl(properties.baseUrl())
-            .requestFactory(requestFactory)
-            .build();
+    this.restClient = restClientBuilder.clone().baseUrl(properties.baseUrl()).build();
 
     var retryConfig =
         RetryConfig.custom()
@@ -78,8 +68,7 @@ public class DeezerAudioSourceResolver implements AudioSourceResolver {
   }
 
   @Override
-  public Optional<String> resolvePreviewUrl(
-      java.util.UUID trackId, String provider, String providerTrackId) {
+  public Optional<String> resolvePreviewUrl(UUID trackId, String provider, String providerTrackId) {
     if (providerTrackId == null || providerTrackId.isBlank()) {
       return Optional.empty();
     }
@@ -107,10 +96,9 @@ public class DeezerAudioSourceResolver implements AudioSourceResolver {
             }
           });
     } catch (Exception e) {
-      log.warn(
-          "Failed to resolve Deezer preview URL for providerTrackId {}: {}",
-          providerTrackId,
-          e.getMessage());
+      // M1 log hygiene: do not log trackId, providerTrackId or e.getMessage() which may leak
+      // provider details
+      log.warn("Failed to resolve Deezer preview URL: {}", e.getClass().getSimpleName());
       return Optional.empty();
     }
   }

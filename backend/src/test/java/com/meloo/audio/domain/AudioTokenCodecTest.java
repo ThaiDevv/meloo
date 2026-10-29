@@ -173,4 +173,29 @@ class AudioTokenCodecTest {
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("at least 32 bytes");
   }
+
+  @Test
+  @DisplayName("secret with placeholder prefix throws IllegalArgumentException")
+  void placeholderSecret_throwsIllegalArgumentException() {
+    assertThatThrownBy(
+            () ->
+                new AudioTokenCodec(
+                    "change-me-to-a-very-secure-random-secret-key-at-least-256-bits"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("placeholder");
+  }
+
+  @Test
+  @DisplayName("token with excessive expiry (> 2m30s into future) is rejected as invalid")
+  void excessiveLifetime_throwsAudioTokenInvalidException() {
+    UUID roundId = UUID.randomUUID();
+    UUID playerId = UUID.randomUUID();
+    AudioToken token = new AudioToken(roundId, playerId, 1, FIXED_NOW.plusSeconds(300));
+    String raw = codec.encode(token);
+
+    assertThatThrownBy(() -> codec.decodeAndVerify(raw))
+        .isInstanceOf(AudioTokenInvalidException.class)
+        .satisfies(
+            ex -> assertThat(((AudioTokenInvalidException) ex).getStatus().value()).isEqualTo(401));
+  }
 }

@@ -2,23 +2,30 @@ package com.meloo.audio.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.meloo.IntegrationTest;
+import com.meloo.audio.api.AccountLockChecker;
 import com.meloo.audio.api.AudioPreparationResult;
 import com.meloo.audio.api.AudioService;
+import com.meloo.audio.domain.AudioToken;
 import com.meloo.audio.domain.AudioTokenCodec;
-import com.meloo.audio.service.AccountLockChecker;
 import com.meloo.generated.model.AudioClipDto;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Base64;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -30,13 +37,18 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 @AutoConfigureMockMvc
+@ExtendWith(OutputCaptureExtension.class)
 class AudioControllerIntegrationTest extends IntegrationTest {
+
+  private static final String TEST_SECRET =
+      "test-hmac-secret-key-for-unit-and-integration-tests-must-be-long-enough";
 
   @DynamicPropertySource
   static void registerProperties(DynamicPropertyRegistry registry) {
     registry.add(
         "MELOO_JWT_SECRET", () -> "test-meloo-jwt-secret-key-with-minimum-32-bytes-length-xyz");
     registry.add("meloo.audio.provider.type", () -> "fake");
+    registry.add("meloo.audio.hmac-secret", () -> TEST_SECRET);
   }
 
   @Autowired private MockMvc mockMvc;
@@ -80,6 +92,19 @@ class AudioControllerIntegrationTest extends IntegrationTest {
       assertThat(val).doesNotContainIgnoringCase("See Tình");
       assertThat(val).doesNotContainIgnoringCase("Hoàng Thùy Linh");
     }
+  }
+
+  @Test
+  @DisplayName("Pure Bearer model: anonymous request without Authentication header returns 200 OK")
+  void getAudioClip_anonymousBearer_returns200() throws Exception {
+    UUID roundId = UUID.randomUUID();
+    UUID trackId = UUID.randomUUID();
+    UUID playerId = UUID.randomUUID();
+
+    audioService.prepareRoundAudio(roundId, trackId, "FAKE", "fake-1");
+    AudioClipDto clip = audioService.createAudioClip(roundId, playerId, 1);
+
+    mockMvc.perform(get(clip.getUrl())).andExpect(status().isOk());
   }
 
   @Test
@@ -182,11 +207,15 @@ class AudioControllerIntegrationTest extends IntegrationTest {
 
     audioService.prepareRoundAudio(roundId, UUID.randomUUID(), "FAKE", "fake-1");
 
-    Instant past = Instant.now().minusSeconds(10);
-    AudioClipDto clip = audioService.createAudioClip(roundId, playerId, 1, past);
+    // Generate expired token directly via past clock
+    Instant pastTime = Instant.now().minusSeconds(10);
+    AudioTokenCodec pastCodec =
+        new AudioTokenCodec(TEST_SECRET, Clock.fixed(pastTime, ZoneOffset.UTC));
+    AudioToken expiredToken = new AudioToken(roundId, playerId, 1, pastTime.minusSeconds(1));
+    String expiredRaw = pastCodec.encode(expiredToken);
 
     mockMvc
-        .perform(get(clip.getUrl()))
+        .perform(get("/api/v1/audio/" + expiredRaw))
         .andExpect(status().isUnauthorized())
         .andExpect(
             header().string(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PROBLEM_JSON_VALUE))
@@ -200,8 +229,7 @@ class AudioControllerIntegrationTest extends IntegrationTest {
   }
 
   @Test
-  @DisplayName(
-      "GET /api/v1/audio/{token} when authenticated caller is not the token owner returns HTTP 401 AUDIO_TOKEN_INVALID")
+  @DisplayName("khi request có Authentication của người khác thì 401 (WithMockUser)")
   @WithMockUser(username = "11111111-1111-1111-1111-111111111111")
   void getAudioClip_otherPlayerToken_returns401() throws Exception {
     UUID roundId = UUID.randomUUID();
@@ -218,6 +246,40 @@ class AudioControllerIntegrationTest extends IntegrationTest {
         .andExpect(jsonPath("$.code").value("AUDIO_TOKEN_INVALID"))
         .andExpect(jsonPath("$.title").value("Invalid audio token"))
         .andExpect(jsonPath("$.instance").value("/api/v1/audio/%7Btoken%7D"));
+  }
+
+  @Test
+  @DisplayName("khi request có JWT Authentication của người khác thì 401 (nhánh production)")
+  void getAudioClip_jwtDifferentPlayer_returns401() throws Exception {
+    UUID roundId = UUID.randomUUID();
+    UUID tokenPlayerId = UUID.fromString("22222222-2222-2222-2222-222222222222");
+    String callerJwtSubject = "33333333-3333-3333-3333-333333333333";
+
+    audioService.prepareRoundAudio(roundId, UUID.randomUUID(), "FAKE", "fake-1");
+    AudioClipDto clip = audioService.createAudioClip(roundId, tokenPlayerId, 1);
+
+    mockMvc
+        .perform(get(clip.getUrl()).with(jwt().jwt(j -> j.subject(callerJwtSubject))))
+        .andExpect(status().isUnauthorized())
+        .andExpect(
+            header().string(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PROBLEM_JSON_VALUE))
+        .andExpect(jsonPath("$.code").value("AUDIO_TOKEN_INVALID"))
+        .andExpect(jsonPath("$.title").value("Invalid audio token"))
+        .andExpect(jsonPath("$.instance").value("/api/v1/audio/%7Btoken%7D"));
+  }
+
+  @Test
+  @DisplayName("khi request có JWT Authentication khớp với chủ token thì 200 OK")
+  void getAudioClip_jwtMatchingPlayer_returns200() throws Exception {
+    UUID roundId = UUID.randomUUID();
+    UUID tokenPlayerId = UUID.fromString("22222222-2222-2222-2222-222222222222");
+
+    audioService.prepareRoundAudio(roundId, UUID.randomUUID(), "FAKE", "fake-1");
+    AudioClipDto clip = audioService.createAudioClip(roundId, tokenPlayerId, 1);
+
+    mockMvc
+        .perform(get(clip.getUrl()).with(jwt().jwt(j -> j.subject(tokenPlayerId.toString()))))
+        .andExpect(status().isOk());
   }
 
   @Test
@@ -284,5 +346,21 @@ class AudioControllerIntegrationTest extends IntegrationTest {
     assertThat(result.playable()).isFalse();
     assertThat(result.failureReason()).isNotEmpty();
     assertThat(audioService.isRoundPlayable(roundId)).isFalse();
+  }
+
+  @Test
+  @DisplayName("M1: prepareRoundAudio and streaming logs never contain trackId or providerTrackId")
+  void audioLogs_neverContainTrackIdOrProviderTrackId(CapturedOutput output) throws Exception {
+    UUID roundId = UUID.randomUUID();
+    UUID trackId = UUID.randomUUID();
+    UUID playerId = UUID.randomUUID();
+
+    audioService.prepareRoundAudio(roundId, trackId, "FAKE", "fake-1");
+    AudioClipDto clip = audioService.createAudioClip(roundId, playerId, 1);
+    mockMvc.perform(get(clip.getUrl())).andExpect(status().isOk());
+
+    String logs = output.getAll();
+    assertThat(logs).doesNotContain(trackId.toString());
+    assertThat(logs).doesNotContain("fake-1");
   }
 }

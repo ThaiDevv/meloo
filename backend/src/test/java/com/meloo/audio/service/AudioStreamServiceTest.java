@@ -7,11 +7,13 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withRawStatus;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import com.meloo.audio.api.AudioPreparationResult;
 import com.meloo.audio.config.AudioProperties;
+import com.meloo.audio.domain.AudioException;
 import com.meloo.audio.domain.AudioRangeNotSatisfiableException;
 import com.meloo.audio.domain.AudioToken;
 import com.meloo.audio.domain.ListeningLevel;
@@ -377,6 +379,136 @@ class AudioStreamServiceTest {
     AudioPreparationResult result =
         service.prepareRoundAudio(UUID.randomUUID(), UUID.randomUUID(), "DEEZER", "track-range");
     assertThat(result.playable()).isTrue();
+  }
+
+  @Test
+  @DisplayName("m1 (a): stream re-resolves and retries when initial remote preview URL returns 403")
+  void streamAudioClip_remote403_reResolvesAndSucceeds() throws IOException {
+    String expiredUrl = "https://cdns-preview.dzcdn.net/stream/expired-stream.mp3";
+    String freshUrl = "https://cdns-preview.dzcdn.net/stream/fresh-stream.mp3";
+    byte[] audioContent = new byte[32 * 1024];
+
+    RestClient.Builder builder = RestClient.builder();
+    MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+
+    // 1. Initial HEAD probe succeeds for expiredUrl
+    server
+        .expect(once(), requestTo(expiredUrl))
+        .andExpect(method(HttpMethod.HEAD))
+        .andRespond(withStatus(HttpStatus.OK).header(HttpHeaders.CONTENT_LENGTH, "32768"));
+
+    // 2. Stream request to expiredUrl fails with 403 Forbidden
+    server
+        .expect(once(), requestTo(expiredUrl))
+        .andExpect(method(HttpMethod.GET))
+        .andRespond(withRawStatus(403));
+
+    // 3. Re-probe freshUrl via HEAD succeeds
+    server
+        .expect(once(), requestTo(freshUrl))
+        .andExpect(method(HttpMethod.HEAD))
+        .andRespond(withStatus(HttpStatus.OK).header(HttpHeaders.CONTENT_LENGTH, "32768"));
+
+    // 4. Stream request to freshUrl succeeds with 206 Partial Content
+    server
+        .expect(once(), requestTo(freshUrl))
+        .andExpect(method(HttpMethod.GET))
+        .andRespond(
+            withStatus(HttpStatus.PARTIAL_CONTENT)
+                .contentType(MediaType.valueOf("audio/mpeg"))
+                .body(new InputStreamResource(new ByteArrayInputStream(audioContent))));
+
+    AtomicLong resolveCount = new AtomicLong();
+    AudioSourceResolver resolver =
+        (trackId, provider, id) -> {
+          long count = resolveCount.incrementAndGet();
+          return count == 1 ? Optional.of(expiredUrl) : Optional.of(freshUrl);
+        };
+
+    AudioStreamService service =
+        new AudioStreamService(properties, resolver, new DefaultResourceLoader(), builder);
+
+    UUID roundId = UUID.randomUUID();
+    UUID trackId = UUID.randomUUID();
+    UUID playerId = UUID.randomUUID();
+
+    service.prepareRoundAudio(roundId, trackId, "DEEZER", "track-re-resolve");
+
+    AudioToken token = new AudioToken(roundId, playerId, 1, Instant.now().plusSeconds(120));
+    AudioStreamService.SlicedStreamResult result = service.streamAudioClip(token, null);
+
+    try (InputStream is = result.resource().getInputStream()) {
+      byte[] bytes = is.readAllBytes();
+      assertThat(bytes.length).isEqualTo(32 * 1024);
+    }
+    assertThat(resolveCount.get()).isEqualTo(2);
+  }
+
+  @Test
+  @DisplayName("m1 (b): stream failure on upstream 5xx maps to 502 UPSTREAM_ERROR")
+  void streamAudioClip_upstreamServerError_throwsAudioException502() throws IOException {
+    String remoteUrl = "https://cdns-preview.dzcdn.net/stream/server-error.mp3";
+
+    RestClient.Builder builder = RestClient.builder();
+    MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+
+    // HEAD probe succeeds
+    server
+        .expect(once(), requestTo(remoteUrl))
+        .andExpect(method(HttpMethod.HEAD))
+        .andRespond(withStatus(HttpStatus.OK).header(HttpHeaders.CONTENT_LENGTH, "32768"));
+
+    // GET fails with 500
+    server
+        .expect(once(), requestTo(remoteUrl))
+        .andExpect(method(HttpMethod.GET))
+        .andRespond(withServerError());
+
+    AtomicLong resolveCount = new AtomicLong();
+    AudioSourceResolver resolver =
+        (trackId, provider, id) -> {
+          long count = resolveCount.incrementAndGet();
+          return count == 1 ? Optional.of(remoteUrl) : Optional.empty();
+        };
+    AudioStreamService service =
+        new AudioStreamService(properties, resolver, new DefaultResourceLoader(), builder);
+
+    UUID roundId = UUID.randomUUID();
+    UUID trackId = UUID.randomUUID();
+    UUID playerId = UUID.randomUUID();
+
+    service.prepareRoundAudio(roundId, trackId, "DEEZER", "track-500");
+
+    AudioToken token = new AudioToken(roundId, playerId, 1, Instant.now().plusSeconds(120));
+    AudioStreamService.SlicedStreamResult result = service.streamAudioClip(token, null);
+
+    assertThatThrownBy(() -> result.resource().getInputStream())
+        .isInstanceOf(AudioException.class)
+        .satisfies(
+            ex -> {
+              AudioException ae = (AudioException) ex;
+              assertThat(ae.getStatus().value()).isEqualTo(502);
+              assertThat(ae.getCode()).isEqualTo("UPSTREAM_ERROR");
+            });
+  }
+
+  @Test
+  @DisplayName("m1 (c): path traversal with .. in fake media is rejected")
+  void prepareRoundAudio_pathTraversalFakeMedia_returnsFailure() {
+    AudioSourceResolver resolver =
+        (trackId, provider, id) -> Optional.of("classpath:fake-media/../config/audio.yml");
+    AudioStreamService service =
+        new AudioStreamService(
+            properties, resolver, new DefaultResourceLoader(), RestClient.builder());
+
+    UUID roundId = UUID.randomUUID();
+    UUID trackId = UUID.randomUUID();
+
+    AudioPreparationResult result =
+        service.prepareRoundAudio(roundId, trackId, "FAKE", "traversal-track");
+
+    assertThat(result.playable()).isFalse();
+    assertThat(service.isRoundPlayable(roundId)).isFalse();
   }
 
   @Test

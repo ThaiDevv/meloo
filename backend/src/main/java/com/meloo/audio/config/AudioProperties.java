@@ -21,6 +21,9 @@ public record AudioProperties(
 
   public AudioProperties {
     if (hmacSecret != null) {
+      if (hmacSecret.startsWith("${")) {
+        throw new IllegalArgumentException("Biến môi trường MELOO_AUDIO_HMAC_SECRET chưa được đặt");
+      }
       if (hmacSecret.startsWith("change-me-")) {
         throw new IllegalArgumentException(
             "Audio HMAC secret must not use the placeholder key; set MELOO_AUDIO_HMAC_SECRET in environment");

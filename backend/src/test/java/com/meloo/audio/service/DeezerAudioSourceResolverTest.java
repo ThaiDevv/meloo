@@ -14,10 +14,14 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
+@ExtendWith(OutputCaptureExtension.class)
 class DeezerAudioSourceResolverTest {
 
   private static final String BASE_URL = "https://api.deezer.com";
@@ -121,5 +125,26 @@ class DeezerAudioSourceResolverTest {
 
     server.verify();
     assertThat(url).isEmpty();
+  }
+
+  @Test
+  @DisplayName(
+      "resolvePreviewUrl on server error logs exception class but never leaks providerTrackId")
+  void resolvePreviewUrl_serverError_neverLogsProviderTrackId(CapturedOutput output) {
+    RestClient.Builder builder = RestClient.builder();
+    MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+    DeezerAudioSourceResolver resolver =
+        new DeezerAudioSourceResolver(createProperties(), builder, null, null);
+
+    String secretTrackId = "super-secret-provider-track-9999";
+    server
+        .expect(times(3), requestTo(BASE_URL + "/track/" + secretTrackId))
+        .andRespond(withServerError());
+
+    resolver.resolvePreviewUrl(UUID.randomUUID(), "DEEZER", secretTrackId);
+
+    String logs = output.getAll();
+    assertThat(logs).contains("Failed to resolve Deezer preview URL");
+    assertThat(logs).doesNotContain(secretTrackId);
   }
 }

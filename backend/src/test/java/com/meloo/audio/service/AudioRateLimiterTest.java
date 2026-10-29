@@ -52,6 +52,25 @@ class AudioRateLimiterTest {
   }
 
   @Test
+  @DisplayName("token rate limiting is isolated per listening level for the same round and player")
+  void tokenRateLimit_isolatedPerLevel() {
+    UUID roundId = UUID.randomUUID();
+    UUID playerId = UUID.randomUUID();
+
+    // Consume 3 for Level 1
+    for (int i = 0; i < 3; i++) {
+      rateLimiter.checkRateLimit(roundId, playerId, 1);
+    }
+    // 4th for Level 1 fails
+    assertThatThrownBy(() -> rateLimiter.checkRateLimit(roundId, playerId, 1))
+        .isInstanceOf(AudioRateLimitException.class);
+
+    // But Level 2 has its own token bucket (still allows request since player limit is 10)
+    assertThatCode(() -> rateLimiter.checkRateLimit(roundId, playerId, 2))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
   @DisplayName("player rate limiting aggregates across different rounds and levels")
   void playerRateLimit_exceededPlayerRequests_throws429() {
     UUID playerId = UUID.randomUUID();

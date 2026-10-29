@@ -27,6 +27,8 @@ import com.meloo.game.events.MatchStarted;
 import com.meloo.game.solo.SoloGameService;
 import com.meloo.game.solo.SoloMatch;
 import com.meloo.game.solo.SoloMatchManager;
+import com.meloo.game.solo.SoloMatchStatus;
+import com.meloo.game.solo.SoloRoundData;
 import com.meloo.generated.model.CreateSoloMatchRequestDto;
 import com.meloo.generated.model.GuessRequestDto;
 import com.meloo.generated.model.SoloFilterDto;
@@ -1348,7 +1350,7 @@ class SoloGameIntegrationTest extends IntegrationTest {
 
   @Test
   @DisplayName(
-      "toRoundStateDto tự động thay bài theo BR-27 nếu bài hiện tại của vòng active không phát được (m5)")
+      "toRoundStateDto tự động thay bài theo BR-27 nếu bài hiện tại của vòng active không phát được (m5, m16)")
   void testActiveRoundAudioFailureTriggersReplacement() throws Exception {
     UUID userId = UUID.randomUUID();
 
@@ -1369,10 +1371,31 @@ class SoloGameIntegrationTest extends IntegrationTest {
     UUID matchId =
         UUID.fromString(JsonPath.read(res.getResponse().getContentAsString(), "$.matchId"));
 
-    // Bài 1 của vòng 1 bị báo không thể phát khi resume
-    when(audioService.isRoundPlayable(any())).thenReturn(false);
+    SoloMatch match = matchManager.getActiveMatchByUserId(userId).orElseThrow();
+    TrackInfo initialRound1Track = match.getCurrentRoundData().track();
+
+    // Đoán đúng vòng 1 để tạo combo streak = 1
+    GuessRequestDto guessReq = new GuessRequestDto();
+    guessReq.setTrackId(initialRound1Track.id());
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches/{matchId}/rounds/1/guesses", matchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(guessReq)))
+        .andExpect(status().isOk());
+
+    assertThat(match.comboTracker().currentStreak()).isEqualTo(1);
+    int scoreBefore = match.calculateTotalScore();
+    TrackInfo initialRound2Track = match.getCurrentRoundData().track();
+
+    // Bài của vòng 2 bị báo không thể phát khi resume
+    when(audioService.isRoundPlayable(match.getCurrentRoundData().roundId())).thenReturn(false);
     when(audioService.prepareRoundAudio(
-            any(), eq(standardTracks.get(0).id()), anyString(), anyString()))
+            eq(match.getCurrentRoundData().roundId()),
+            eq(initialRound2Track.id()),
+            anyString(),
+            anyString()))
         .thenReturn(AudioPreparationResult.failure("Corrupted audio"));
 
     // Khi resume qua active match -> tự động đổi sang bài thay thế (BR-27)
@@ -1380,7 +1403,13 @@ class SoloGameIntegrationTest extends IntegrationTest {
         .perform(
             get("/api/v1/solo/matches/active").with(jwt().jwt(j -> j.subject(userId.toString()))))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.currentRound.roundNo").value(1));
+        .andExpect(jsonPath("$.currentRound.roundNo").value(2));
+
+    // Assert: bài đã được đổi sang track khác, điểm và combo streak được bảo toàn (m16)
+    TrackInfo replacedTrack = match.getCurrentRoundData().track();
+    assertThat(replacedTrack.id()).isNotEqualTo(initialRound2Track.id());
+    assertThat(match.comboTracker().currentStreak()).isEqualTo(1);
+    assertThat(match.calculateTotalScore()).isEqualTo(scoreBefore);
   }
 
   @Test
@@ -1396,5 +1425,345 @@ class SoloGameIntegrationTest extends IntegrationTest {
                 .content("{\"mode\":\"INVALID_MODE\"}"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.correlationId").exists());
+  }
+
+  @Test
+  @DisplayName(
+      "Đồng thời: hai request submitGuess cùng vòng 1 song song -> không làm trùng vòng, roundNo liên tục (M9)")
+  void testConcurrencyDuplicateGuessDoesNotDuplicateRounds() throws Exception {
+    UUID userId = UUID.randomUUID();
+
+    CreateSoloMatchRequestDto req = new CreateSoloMatchRequestDto();
+    req.setMode(SoloModeDto.PRACTICE);
+    req.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+
+    MvcResult res =
+        mockMvc
+            .perform(
+                post("/api/v1/solo/matches")
+                    .with(jwt().jwt(j -> j.subject(userId.toString())))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isCreated())
+            .andReturn();
+
+    UUID matchId =
+        UUID.fromString(JsonPath.read(res.getResponse().getContentAsString(), "$.matchId"));
+
+    SoloMatch match = matchManager.getMatchById(matchId).orElseThrow();
+    TrackInfo track1 = match.getCurrentRoundData().track();
+
+    GuessRequestDto guessReq = new GuessRequestDto();
+    guessReq.setTrackId(track1.id());
+    String guessJson = objectMapper.writeValueAsString(guessReq);
+
+    java.util.concurrent.CountDownLatch inRound2Audio = new java.util.concurrent.CountDownLatch(1);
+    java.util.concurrent.CountDownLatch releaseAudio = new java.util.concurrent.CountDownLatch(1);
+    java.util.concurrent.atomic.AtomicInteger callCount =
+        new java.util.concurrent.atomic.AtomicInteger(0);
+
+    when(audioService.prepareRoundAudio(any(), any(), any(), any()))
+        .thenAnswer(
+            invocation -> {
+              int c = callCount.incrementAndGet();
+              if (c == 1) {
+                inRound2Audio.countDown();
+                releaseAudio.await(5, java.util.concurrent.TimeUnit.SECONDS);
+              } else if (c == 2) {
+                releaseAudio.countDown();
+              }
+              return AudioPreparationResult.success();
+            });
+
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    Future<Integer> f1 =
+        executor.submit(
+            () ->
+                mockMvc
+                    .perform(
+                        post("/api/v1/solo/matches/{matchId}/rounds/1/guesses", matchId)
+                            .with(jwt().jwt(j -> j.subject(userId.toString())))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(guessJson))
+                    .andReturn()
+                    .getResponse()
+                    .getStatus());
+
+    // Chờ thread 1 đang chuẩn bị audio vòng 2 ngoài khóa
+    assertThat(inRound2Audio.await(5, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+
+    // Thread 2 gửi request đoán trùng cùng lúc
+    Future<Integer> f2 =
+        executor.submit(
+            () ->
+                mockMvc
+                    .perform(
+                        post("/api/v1/solo/matches/{matchId}/rounds/1/guesses", matchId)
+                            .with(jwt().jwt(j -> j.subject(userId.toString())))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(guessJson))
+                    .andReturn()
+                    .getResponse()
+                    .getStatus());
+
+    assertThat(f1.get()).isEqualTo(200);
+    assertThat(f2.get()).isEqualTo(200);
+    executor.shutdown();
+
+    // Phục hồi audioService mặc định
+    when(audioService.prepareRoundAudio(any(), any(), any(), any()))
+        .thenReturn(AudioPreparationResult.success());
+
+    // Kiểm tra cấu trúc vòng của trận: không bị duplicate vòng 2
+    assertThat(match.roundDataList()).hasSize(2);
+    assertThat(match.currentRoundIndex()).isEqualTo(1);
+    List<Integer> roundNos = match.roundDataList().stream().map(SoloRoundData::roundNo).toList();
+    assertThat(roundNos).containsExactly(1, 2);
+
+    // Chơi tiếp các vòng 2, 3, 4, 5 để đảm bảo thứ tự hoàn tất sạch sẽ
+    for (int r = 2; r <= 5; r++) {
+      TrackInfo currentTrack = match.getCurrentRoundData().track();
+      GuessRequestDto nextGuess = new GuessRequestDto();
+      nextGuess.setTrackId(currentTrack.id());
+
+      mockMvc
+          .perform(
+              post("/api/v1/solo/matches/{matchId}/rounds/{roundNo}/guesses", matchId, r)
+                  .with(jwt().jwt(j -> j.subject(userId.toString())))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(nextGuess)))
+          .andExpect(status().isOk());
+    }
+
+    assertThat(match.status()).isEqualTo(SoloMatchStatus.FINISHED);
+    List<Integer> finalRoundNos =
+        match.roundDataList().stream().map(SoloRoundData::roundNo).toList();
+    assertThat(finalRoundNos).containsExactly(1, 2, 3, 4, 5);
+  }
+
+  @Test
+  @DisplayName(
+      "Đồng thời: submitGuess và getCurrentRound song song -> không làm xáo trộn thứ tự vòng (M9)")
+  void testConcurrencyGuessAndGetCurrentRoundDoesNotCorruptRoundOrder() throws Exception {
+    UUID userId = UUID.randomUUID();
+
+    CreateSoloMatchRequestDto req = new CreateSoloMatchRequestDto();
+    req.setMode(SoloModeDto.PRACTICE);
+    req.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+
+    MvcResult res =
+        mockMvc
+            .perform(
+                post("/api/v1/solo/matches")
+                    .with(jwt().jwt(j -> j.subject(userId.toString())))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isCreated())
+            .andReturn();
+
+    UUID matchId =
+        UUID.fromString(JsonPath.read(res.getResponse().getContentAsString(), "$.matchId"));
+
+    SoloMatch match = matchManager.getMatchById(matchId).orElseThrow();
+    TrackInfo track1 = match.getCurrentRoundData().track();
+
+    GuessRequestDto guessReq = new GuessRequestDto();
+    guessReq.setTrackId(track1.id());
+    String guessJson = objectMapper.writeValueAsString(guessReq);
+
+    java.util.concurrent.CountDownLatch inRound2Audio = new java.util.concurrent.CountDownLatch(1);
+    java.util.concurrent.CountDownLatch releaseAudio = new java.util.concurrent.CountDownLatch(1);
+
+    java.util.concurrent.atomic.AtomicBoolean firstCall =
+        new java.util.concurrent.atomic.AtomicBoolean(true);
+
+    java.util.concurrent.atomic.AtomicInteger callCount =
+        new java.util.concurrent.atomic.AtomicInteger(0);
+
+    when(audioService.prepareRoundAudio(any(), any(), any(), any()))
+        .thenAnswer(
+            invocation -> {
+              int c = callCount.incrementAndGet();
+              if (c == 1) {
+                inRound2Audio.countDown();
+                releaseAudio.await(5, java.util.concurrent.TimeUnit.SECONDS);
+              } else if (c == 2) {
+                releaseAudio.countDown();
+              }
+              return AudioPreparationResult.success();
+            });
+
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    Future<Integer> f1 =
+        executor.submit(
+            () ->
+                mockMvc
+                    .perform(
+                        post("/api/v1/solo/matches/{matchId}/rounds/1/guesses", matchId)
+                            .with(jwt().jwt(j -> j.subject(userId.toString())))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(guessJson))
+                    .andReturn()
+                    .getResponse()
+                    .getStatus());
+
+    assertThat(inRound2Audio.await(5, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+
+    Future<Integer> f2 =
+        executor.submit(
+            () ->
+                mockMvc
+                    .perform(
+                        get("/api/v1/solo/matches/{matchId}/rounds/current", matchId)
+                            .with(jwt().jwt(j -> j.subject(userId.toString()))))
+                    .andReturn()
+                    .getResponse()
+                    .getStatus());
+
+    assertThat(f1.get()).isEqualTo(200);
+    assertThat(f2.get()).isEqualTo(200);
+    executor.shutdown();
+
+    when(audioService.prepareRoundAudio(any(), any(), any(), any()))
+        .thenReturn(AudioPreparationResult.success());
+
+    assertThat(match.roundDataList()).hasSize(2);
+    assertThat(match.currentRoundIndex()).isEqualTo(1);
+    List<Integer> roundNos = match.roundDataList().stream().map(SoloRoundData::roundNo).toList();
+    assertThat(roundNos).containsExactly(1, 2);
+  }
+
+  @Test
+  @DisplayName(
+      "expireInactiveMatches phát lại MatchFinished cho trận FINISHED khi publish lúc xong trận gặp lỗi (m12)")
+  void testExpireInactiveMatchesRetriesFinishedMatchWhenPublisherFails() throws Exception {
+    UUID userId = UUID.randomUUID();
+
+    CreateSoloMatchRequestDto req = new CreateSoloMatchRequestDto();
+    req.setMode(SoloModeDto.PRACTICE);
+    req.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+
+    MvcResult res =
+        mockMvc
+            .perform(
+                post("/api/v1/solo/matches")
+                    .with(jwt().jwt(j -> j.subject(userId.toString())))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isCreated())
+            .andReturn();
+
+    UUID matchId =
+        UUID.fromString(JsonPath.read(res.getResponse().getContentAsString(), "$.matchId"));
+
+    SoloMatch match = matchManager.getMatchById(matchId).orElseThrow();
+
+    // Chơi qua 4 vòng đầu
+    for (int r = 1; r <= 4; r++) {
+      TrackInfo currentTrack = match.getCurrentRoundData().track();
+      GuessRequestDto guess = new GuessRequestDto();
+      guess.setTrackId(currentTrack.id());
+
+      mockMvc
+          .perform(
+              post("/api/v1/solo/matches/{matchId}/rounds/{roundNo}/guesses", matchId, r)
+                  .with(jwt().jwt(j -> j.subject(userId.toString())))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(guess)))
+          .andExpect(status().isOk());
+    }
+
+    // Ở vòng 5: Giả lập lỗi publisher khi kết thúc trận
+    testListener.setFailSynchronousEvent(true);
+
+    TrackInfo round5Track = match.getCurrentRoundData().track();
+    GuessRequestDto round5Guess = new GuessRequestDto();
+    round5Guess.setTrackId(round5Track.id());
+
+    // Request vẫn thành công trả 200 kết quả trận
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches/{matchId}/rounds/5/guesses", matchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(round5Guess)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.roundEnded").value(true))
+        .andExpect(jsonPath("$.end.matchFinished").value(true));
+
+    assertThat(match.status()).isEqualTo(SoloMatchStatus.FINISHED);
+    assertThat(match.isMatchFinishedPublished()).isFalse();
+
+    // Hạ cờ lỗi và cho bộ dọn quét lại -> retry phát MatchFinished
+    testListener.setFailSynchronousEvent(false);
+    soloGameService.expireInactiveMatches();
+
+    assertThat(match.isMatchFinishedPublished()).isTrue();
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(() -> assertThat(testListener.findFinishedEvent(matchId)).isPresent());
+
+    // Quá hạn 30 phút -> purgeOldMatches dọn trận đã publish
+    testClock.advance(Duration.ofMinutes(35));
+    soloGameService.expireInactiveMatches();
+
+    assertThat(matchManager.getMatchById(matchId)).isEmpty();
+  }
+
+  @Test
+  @DisplayName(
+      "Phát lại lượt đoán đúng cả bài lẫn ca sĩ trên vòng đã kết thúc giữ đúng rightArtist = true (m15)")
+  void testReplayedGuessPreservesRightArtist() throws Exception {
+    UUID userId = UUID.randomUUID();
+
+    CreateSoloMatchRequestDto req = new CreateSoloMatchRequestDto();
+    req.setMode(SoloModeDto.PRACTICE);
+    req.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+
+    MvcResult res =
+        mockMvc
+            .perform(
+                post("/api/v1/solo/matches")
+                    .with(jwt().jwt(j -> j.subject(userId.toString())))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isCreated())
+            .andReturn();
+
+    UUID matchId =
+        UUID.fromString(JsonPath.read(res.getResponse().getContentAsString(), "$.matchId"));
+
+    SoloMatch match = matchManager.getMatchById(matchId).orElseThrow();
+    TrackInfo track1 = match.getCurrentRoundData().track();
+
+    GuessRequestDto guessReq = new GuessRequestDto();
+    guessReq.setTrackId(track1.id());
+
+    // Giả lập lỗi chuẩn bị audio vòng 2 để vòng 1 kết thúc nhưng trận không chuyển sang vòng 2 (M4)
+    when(audioService.prepareRoundAudio(any(), any(), any(), any()))
+        .thenReturn(AudioPreparationResult.failure("Mock error"));
+
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches/{matchId}/rounds/1/guesses", matchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(guessReq)))
+        .andExpect(status().isUnprocessableEntity());
+
+    // Audio sẵn sàng trở lại
+    when(audioService.prepareRoundAudio(any(), any(), any(), any()))
+        .thenReturn(AudioPreparationResult.success());
+
+    // Phát lại lượt đoán trên vòng 1 đã kết thúc -> rightArtist vẫn là true (m15)
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches/{matchId}/rounds/1/guesses", matchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(guessReq)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.correct").value(true))
+        .andExpect(jsonPath("$.rightArtist").value(true));
   }
 }

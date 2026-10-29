@@ -10,6 +10,7 @@ import com.meloo.game.domain.Round;
 import com.meloo.game.domain.RoundOutcome;
 import com.meloo.game.domain.RoundStatus;
 import com.meloo.game.domain.TargetTrack;
+import com.meloo.game.domain.TitleNormalizer;
 import com.meloo.game.events.MatchFinished;
 import com.meloo.game.events.MatchStarted;
 import com.meloo.game.events.MatchType;
@@ -116,8 +117,8 @@ public class SoloGameService {
           HttpStatus.BAD_REQUEST, "VALIDATION_FAILED", "Filter is only allowed for PRACTICE mode");
     }
 
+    // 1. Kiểm tra nhanh trong khóa xem người dùng đã có trận đang chơi chưa (BR-23)
     synchronized (matchManager.getUserLock(userId)) {
-      // Kiểm tra trận đang diễn ra của người dùng (BR-23)
       Optional<SoloMatch> activeOpt = matchManager.getActiveMatchByUserId(userId);
       if (activeOpt.isPresent()) {
         SoloMatch existing = activeOpt.get();
@@ -127,69 +128,82 @@ public class SoloGameService {
           throw new MatchInProgressException(existing.matchId());
         }
       }
+    }
 
-      int roundCount =
-          request.getRoundCount() != null
-              ? request.getRoundCount().getValue()
-              : DEFAULT_ROUND_COUNT;
+    int roundCount =
+        request.getRoundCount() != null ? request.getRoundCount().getValue() : DEFAULT_ROUND_COUNT;
 
-      TrackFilter trackFilter = toTrackFilter(request.getFilter());
+    TrackFilter trackFilter = toTrackFilter(request.getFilter());
 
-      List<TrackInfo> candidateTracks;
-      if (ranked) {
-        candidateTracks =
-            catalogService.selectRandomTracksByPlaylistCode(
-                STANDARD_PLAYLIST_CODE, roundCount, Set.of());
-      } else {
-        // PRACTICE: nếu bộ lọc rỗng thì chọn từ toàn bộ kho nhạc
-        candidateTracks =
-            catalogService.selectRandomTracks(
-                trackFilter != null && !trackFilter.isEmpty() ? trackFilter : null,
-                roundCount,
-                Set.of());
-      }
-
-      if (candidateTracks.size() < roundCount) {
-        int missing = roundCount - candidateTracks.size();
-        throw new NotEnoughTracksException(missing);
-      }
-
-      UUID matchId = UUID.randomUUID();
-      SoloMatch match =
-          new SoloMatch(
-              matchId,
-              userId,
-              nickname,
-              isGuest,
-              mode,
-              ranked,
+    // 2. Chọn bài từ catalog ngoài khóa (tránh nghẽn striped lock của người dùng khác)
+    List<TrackInfo> candidateTracks;
+    if (ranked) {
+      candidateTracks =
+          catalogService.selectRandomTracksByPlaylistCode(
+              STANDARD_PLAYLIST_CODE, roundCount, Set.of());
+    } else {
+      // PRACTICE: nếu bộ lọc rỗng thì chọn từ toàn bộ kho nhạc
+      candidateTracks =
+          catalogService.selectRandomTracks(
+              trackFilter != null && !trackFilter.isEmpty() ? trackFilter : null,
               roundCount,
-              null,
-              trackFilter,
-              request.getFilter(),
-              candidateTracks,
-              now);
+              Set.of());
+    }
 
-      // Chuẩn bị vòng đầu tiên
-      SoloRoundData firstRound = prepareNextRound(match, 0, now);
+    if (candidateTracks.size() < roundCount) {
+      int missing = roundCount - candidateTracks.size();
+      throw new NotEnoughTracksException(missing);
+    }
+
+    UUID matchId = UUID.randomUUID();
+    SoloMatch match =
+        new SoloMatch(
+            matchId,
+            userId,
+            nickname,
+            isGuest,
+            mode,
+            ranked,
+            roundCount,
+            null,
+            trackFilter,
+            request.getFilter(),
+            candidateTracks,
+            now);
+
+    // 3. Chuẩn bị vòng đầu tiên ngoài khóa
+    SoloRoundData firstRound = prepareNextRound(match, 0, now);
+
+    // 4. Kiểm tra lại và đăng ký trận trong khóa
+    synchronized (matchManager.getUserLock(userId)) {
+      Optional<SoloMatch> activeOpt = matchManager.getActiveMatchByUserId(userId);
+      if (activeOpt.isPresent()) {
+        SoloMatch existing = activeOpt.get();
+        if (!existing.isExpired(now)) {
+          audioService.releaseRoundAudio(firstRound.roundId());
+          throw new MatchInProgressException(existing.matchId());
+        }
+        expireMatch(existing, now);
+      }
+
       match.addRoundData(firstRound);
       matchManager.registerMatch(match);
-
-      // Phát MatchStarted trong transaction
-      transactionTemplate.executeWithoutResult(
-          status ->
-              eventPublisher.publishEvent(
-                  new MatchStarted(
-                      UUID.randomUUID(),
-                      match.matchId(),
-                      MatchType.SOLO,
-                      match.isRanked(),
-                      match.roundCount(),
-                      match.startedAt(),
-                      List.of(match.userId()))));
-
-      return toSoloMatchDto(match, userId);
     }
+
+    // 5. Phát MatchStarted trong transaction
+    transactionTemplate.executeWithoutResult(
+        status ->
+            eventPublisher.publishEvent(
+                new MatchStarted(
+                    UUID.randomUUID(),
+                    match.matchId(),
+                    MatchType.SOLO,
+                    match.isRanked(),
+                    match.roundCount(),
+                    match.startedAt(),
+                    List.of(match.userId()))));
+
+    return toSoloMatchDto(match, userId);
   }
 
   public SoloMatchDto getActiveSoloMatch(UUID userId) {
@@ -239,7 +253,9 @@ public class SoloGameService {
     Instant now = clock.instant();
     SoloMatch match = getAndValidateMatch(userId, matchId, now);
 
-    ensureNextRoundReady(match, now);
+    if (roundNo > match.currentRoundIndex() + 1) {
+      ensureNextRoundReady(match, now);
+    }
 
     synchronized (match) {
       if (match.status() != SoloMatchStatus.IN_PROGRESS) {
@@ -289,6 +305,7 @@ public class SoloGameService {
     SoloRoundData current;
     boolean matchFinished;
     boolean alreadyEnded = false;
+    int nextIndex;
 
     synchronized (match) {
       if (match.status() != SoloMatchStatus.IN_PROGRESS) {
@@ -326,9 +343,17 @@ public class SoloGameService {
       matchFinished = (roundNo >= match.roundCount());
       if (matchFinished && !alreadyEnded) {
         if (match.finish(now)) {
-          publishMatchFinishedEvent(match);
+          try {
+            publishMatchFinishedEvent(match);
+          } catch (Exception e) {
+            LOGGER.error(
+                "Failed to publish MatchFinished event immediately for match {}",
+                match.matchId(),
+                e);
+          }
         }
       }
+      nextIndex = match.currentRoundIndex() + 1;
     }
 
     if (matchFinished) {
@@ -338,16 +363,20 @@ public class SoloGameService {
         matchManager.clearActiveMatch(userId, matchId);
       }
     } else {
-      SoloRoundData nextRoundData = prepareNextRound(match, match.currentRoundIndex() + 1, now);
+      SoloRoundData nextRoundData;
       synchronized (match) {
-        if (match.status() != SoloMatchStatus.IN_PROGRESS) {
-          audioService.releaseRoundAudio(nextRoundData.roundId());
-          throw new ApiException(
-              HttpStatus.CONFLICT, "MATCH_NOT_IN_PROGRESS", "Match is not in progress");
+        if (match.roundDataList().size() > nextIndex) {
+          nextRoundData = match.roundDataList().get(nextIndex);
+        } else {
+          nextRoundData = null;
         }
-        match.addRoundData(nextRoundData);
-        match.advanceRound();
       }
+
+      if (nextRoundData == null) {
+        SoloRoundData prepared = prepareNextRound(match, nextIndex, now);
+        nextRoundData = commitNextRound(match, nextIndex, prepared);
+      }
+
       RoundStateDto nextRoundDto = toRoundStateDto(nextRoundData, match, userId);
       return SoloDtoMapper.toRoundEndDto(current, match, false, nextRoundDto);
     }
@@ -375,6 +404,7 @@ public class SoloGameService {
     GuessEvaluation eval;
     boolean matchFinished = false;
     boolean alreadyEnded = false;
+    int nextIndex;
 
     synchronized (match) {
       if (match.status() != SoloMatchStatus.IN_PROGRESS) {
@@ -396,7 +426,7 @@ public class SoloGameService {
         eval =
             new GuessEvaluation(
                 wasCorrect,
-                false,
+                current.lastGuessRightArtist(),
                 true,
                 current.round().status(),
                 current.round().outcome(),
@@ -415,23 +445,44 @@ public class SoloGameService {
                     guessTrack.title(), guessTrack.artistName(), now, match.comboTracker());
         match.touch(now);
 
+        boolean rightArtist =
+            eval.rightArtist()
+                || (eval.correct()
+                    && TitleNormalizer.matchesArtist(
+                        guessTrack.artistName(), current.track().artistName()));
+
         if (eval.roundEnded()) {
           current.setComboStreakAfterRound(match.comboTracker().currentStreak());
+          current.setLastGuessRightArtist(rightArtist);
           audioService.releaseRoundAudio(current.roundId());
           matchFinished = (roundNo >= match.roundCount());
 
           if (matchFinished) {
             if (match.finish(now)) {
-              publishMatchFinishedEvent(match);
+              try {
+                publishMatchFinishedEvent(match);
+              } catch (Exception e) {
+                LOGGER.error(
+                    "Failed to publish MatchFinished event immediately for match {}",
+                    match.matchId(),
+                    e);
+              }
             }
           }
         }
       }
+      nextIndex = match.currentRoundIndex() + 1;
     }
 
     GuessResponseDto response = new GuessResponseDto();
     response.setCorrect(eval.correct());
-    response.setRightArtist(eval.rightArtist());
+    response.setRightArtist(
+        alreadyEnded
+            ? eval.rightArtist()
+            : (eval.rightArtist()
+                || (eval.correct()
+                    && TitleNormalizer.matchesArtist(
+                        guessTrack.artistName(), current.track().artistName()))));
 
     if (!eval.roundEnded()) {
       response.setRoundEnded(false);
@@ -450,16 +501,20 @@ public class SoloGameService {
         matchManager.clearActiveMatch(userId, matchId);
       }
     } else {
-      SoloRoundData nextRoundData = prepareNextRound(match, match.currentRoundIndex() + 1, now);
+      SoloRoundData nextRoundData;
       synchronized (match) {
-        if (match.status() != SoloMatchStatus.IN_PROGRESS) {
-          audioService.releaseRoundAudio(nextRoundData.roundId());
-          throw new ApiException(
-              HttpStatus.CONFLICT, "MATCH_NOT_IN_PROGRESS", "Match is not in progress");
+        if (match.roundDataList().size() > nextIndex) {
+          nextRoundData = match.roundDataList().get(nextIndex);
+        } else {
+          nextRoundData = null;
         }
-        match.addRoundData(nextRoundData);
-        match.advanceRound();
       }
+
+      if (nextRoundData == null) {
+        SoloRoundData prepared = prepareNextRound(match, nextIndex, now);
+        nextRoundData = commitNextRound(match, nextIndex, prepared);
+      }
+
       RoundStateDto nextRoundDto = toRoundStateDto(nextRoundData, match, userId);
 
       response.setRoundEnded(true);
@@ -546,7 +601,7 @@ public class SoloGameService {
         try {
           if (match.status() == SoloMatchStatus.IN_PROGRESS && match.isExpired(now)) {
             expireMatch(match, now);
-          } else if (match.status() == SoloMatchStatus.ABANDONED
+          } else if (match.status() != SoloMatchStatus.IN_PROGRESS
               && !match.isMatchFinishedPublished()) {
             publishMatchFinishedEvent(match);
           }
@@ -753,6 +808,29 @@ public class SoloGameService {
     }
   }
 
+  private SoloRoundData commitNextRound(SoloMatch match, int nextIndex, SoloRoundData data) {
+    synchronized (match) {
+      if (match.status() != SoloMatchStatus.IN_PROGRESS) {
+        audioService.releaseRoundAudio(data.roundId());
+        throw new ApiException(
+            HttpStatus.CONFLICT, "MATCH_NOT_IN_PROGRESS", "Match is not in progress");
+      }
+
+      if (match.getCurrentRoundData().round().status() != RoundStatus.IN_PROGRESS
+          && match.currentRoundIndex() + 1 == nextIndex) {
+        match.addRoundData(data);
+        match.advanceRound();
+        return data;
+      } else {
+        audioService.releaseRoundAudio(data.roundId());
+        if (match.roundDataList().size() > nextIndex) {
+          return match.roundDataList().get(nextIndex);
+        }
+        return match.getCurrentRoundData();
+      }
+    }
+  }
+
   private void ensureNextRoundReady(SoloMatch match, Instant now) {
     int nextIndex;
     synchronized (match) {
@@ -767,19 +845,13 @@ public class SoloGameService {
         return;
       }
       nextIndex = match.currentRoundIndex() + 1;
+      if (match.roundDataList().size() > nextIndex) {
+        return;
+      }
     }
 
     SoloRoundData nextRoundData = prepareNextRound(match, nextIndex, now);
-
-    synchronized (match) {
-      if (match.status() == SoloMatchStatus.IN_PROGRESS
-          && match.currentRoundIndex() + 1 == nextIndex) {
-        match.addRoundData(nextRoundData);
-        match.advanceRound();
-      } else {
-        audioService.releaseRoundAudio(nextRoundData.roundId());
-      }
-    }
+    commitNextRound(match, nextIndex, nextRoundData);
   }
 
   private @Nullable String serializeFilter(@Nullable SoloFilterDto filterDto) {
@@ -844,18 +916,23 @@ public class SoloGameService {
       }
 
       if (track != roundData.track()) {
-        int currentLevel = roundData.round().currentLevel();
-        TargetTrack targetTrack = new TargetTrack(track.id(), track.title(), track.artistName());
-        Round newRound = Round.standardRound(roundData.roundNo(), targetTrack, false);
-        newRound.start(clock.instant());
-        for (int lvl = 1; lvl < currentLevel; lvl++) {
-          newRound.listenMore();
+        synchronized (match) {
+          int currentLevel = roundData.round().currentLevel();
+          TargetTrack targetTrack = new TargetTrack(track.id(), track.title(), track.artistName());
+          Round newRound = Round.standardRound(roundData.roundNo(), targetTrack, false);
+          newRound.start(clock.instant());
+          for (int lvl = 1; lvl < currentLevel; lvl++) {
+            newRound.listenMore();
+          }
+          roundData.replaceTrackAndRound(track, newRound);
         }
-        roundData.replaceTrackAndRound(track, newRound);
       }
     }
 
-    int level = roundData.round().currentLevel();
+    int level;
+    synchronized (match) {
+      level = roundData.round().currentLevel();
+    }
     AudioClipDto clip = audioService.createAudioClip(roundData.roundId(), userId, level);
     return SoloDtoMapper.toRoundStateDto(roundData, match, clip, clock.instant());
   }

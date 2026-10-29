@@ -71,4 +71,14 @@ public class SoloRoundData {
   public void setComboStreakAfterRound(int comboStreakAfterRound) {
     this.comboStreakAfterRound = comboStreakAfterRound;
   }
+
+  private boolean lastGuessRightArtist;
+
+  public boolean lastGuessRightArtist() {
+    return lastGuessRightArtist;
+  }
+
+  public void setLastGuessRightArtist(boolean lastGuessRightArtist) {
+    this.lastGuessRightArtist = lastGuessRightArtist;
+  }
 }

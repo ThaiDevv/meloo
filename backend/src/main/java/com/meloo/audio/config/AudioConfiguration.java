@@ -75,6 +75,14 @@ public class AudioConfiguration {
       AudioSourceResolver sourceResolver,
       ResourceLoader resourceLoader,
       RestClient.Builder restClientBuilder) {
-    return new AudioStreamService(properties, sourceResolver, resourceLoader, restClientBuilder);
+    var timeout = properties.provider().deezer().timeout();
+    var requestFactory = new org.springframework.http.client.SimpleClientHttpRequestFactory();
+    requestFactory.setConnectTimeout(timeout);
+    requestFactory.setReadTimeout(timeout);
+
+    RestClient.Builder timeoutClientBuilder =
+        restClientBuilder.clone().requestFactory(requestFactory);
+
+    return new AudioStreamService(properties, sourceResolver, resourceLoader, timeoutClientBuilder);
   }
 }

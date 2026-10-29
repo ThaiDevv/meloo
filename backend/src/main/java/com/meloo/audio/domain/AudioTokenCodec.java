@@ -51,6 +51,12 @@ public class AudioTokenCodec {
       throw new IllegalArgumentException("Audio HMAC secret must not be blank");
     }
     byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+    if (keyBytes.length < 32) {
+      throw new IllegalArgumentException(
+          "Audio HMAC secret must be at least 32 bytes (256 bits) for HMAC-SHA256, but was "
+              + keyBytes.length
+              + " bytes");
+    }
     this.secretKeySpec = new SecretKeySpec(keyBytes, HMAC_ALGORITHM);
     this.clock = clock;
   }

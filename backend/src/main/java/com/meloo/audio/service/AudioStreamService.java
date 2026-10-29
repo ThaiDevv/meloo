@@ -12,10 +12,9 @@ import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
@@ -43,11 +42,15 @@ public class AudioStreamService {
   // In-memory cache for preview URLs (TTL <= 15 minutes, not persisted to disk per ADR-003/ADR-008)
   private final Cache<UUID, String> previewCache;
 
-  // Active round audio bindings (roundId -> RoundAudioInfo)
-  private final ConcurrentMap<UUID, RoundAudioInfo> activeRounds = new ConcurrentHashMap<>();
+  // Active round audio bindings with automatic eviction after 15m (m1)
+  private final Cache<UUID, RoundAudioInfo> activeRounds;
 
   public record RoundAudioInfo(
-      UUID roundId, UUID trackId, String previewUrl, java.time.Instant registeredAt) {}
+      UUID roundId,
+      UUID trackId,
+      String previewUrl,
+      long contentLength,
+      java.time.Instant registeredAt) {}
 
   public record SlicedStreamResult(
       Resource resource, HttpStatus status, long contentLength, @Nullable String contentRange) {}
@@ -67,6 +70,9 @@ public class AudioStreamService {
             .expireAfterWrite(properties.previewCacheTtl())
             .maximumSize(properties.previewCacheMaxSize())
             .build();
+
+    this.activeRounds =
+        Caffeine.newBuilder().expireAfterWrite(Duration.ofMinutes(15)).maximumSize(2000).build();
   }
 
   public AudioPreparationResult prepareRoundAudio(
@@ -82,15 +88,16 @@ public class AudioStreamService {
       previewUrl = resolved.get();
     }
 
-    boolean reachable = verifySourcePlayable(previewUrl);
-    if (!reachable) {
-      log.warn("Audio source unreachable for trackId {} at URL: {}", trackId, previewUrl);
+    long contentLength = probeAndGetContentLength(trackId, previewUrl);
+    if (contentLength <= 0) {
+      log.warn("Audio source unreachable for trackId {}", trackId);
       return AudioPreparationResult.failure("Audio source is unreachable or failed to fetch");
     }
 
     previewCache.put(trackId, previewUrl);
     activeRounds.put(
-        roundId, new RoundAudioInfo(roundId, trackId, previewUrl, java.time.Instant.now()));
+        roundId,
+        new RoundAudioInfo(roundId, trackId, previewUrl, contentLength, java.time.Instant.now()));
     return AudioPreparationResult.success();
   }
 
@@ -99,29 +106,30 @@ public class AudioStreamService {
       return AudioPreparationResult.failure("Preview URL must not be blank");
     }
 
-    boolean reachable = verifySourcePlayable(previewUrl);
-    if (!reachable) {
-      log.warn("Audio source unreachable for trackId {} at URL: {}", trackId, previewUrl);
+    long contentLength = probeAndGetContentLength(trackId, previewUrl);
+    if (contentLength <= 0) {
+      log.warn("Audio source unreachable for trackId {}", trackId);
       return AudioPreparationResult.failure("Audio source is unreachable or failed to fetch");
     }
 
     previewCache.put(trackId, previewUrl);
     activeRounds.put(
-        roundId, new RoundAudioInfo(roundId, trackId, previewUrl, java.time.Instant.now()));
+        roundId,
+        new RoundAudioInfo(roundId, trackId, previewUrl, contentLength, java.time.Instant.now()));
     return AudioPreparationResult.success();
   }
 
   public boolean isRoundPlayable(UUID roundId) {
-    return activeRounds.containsKey(roundId);
+    return activeRounds.getIfPresent(roundId) != null;
   }
 
   public void releaseRoundAudio(UUID roundId) {
-    activeRounds.remove(roundId);
+    activeRounds.invalidate(roundId);
   }
 
   public SlicedStreamResult streamAudioClip(AudioToken token, @Nullable String rangeHeader)
       throws IOException {
-    RoundAudioInfo roundAudioInfo = activeRounds.get(token.roundId());
+    RoundAudioInfo roundAudioInfo = activeRounds.getIfPresent(token.roundId());
     if (roundAudioInfo == null) {
       throw AudioTokenInvalidException.invalidSignature();
     }
@@ -130,7 +138,9 @@ public class AudioStreamService {
     ListeningLevel level = ListeningLevel.fromLevel(token.level());
     long maxBytesForLevel = level.getMaxBytes();
 
-    long sourceTotalLength = getSourceContentLength(previewUrl);
+    // M1: Use cached content length from RoundAudioInfo directly in O(1) without HEAD network
+    // roundtrip
+    long sourceTotalLength = roundAudioInfo.contentLength();
     long clipSize =
         sourceTotalLength > 0 ? Math.min(sourceTotalLength, maxBytesForLevel) : maxBytesForLevel;
 
@@ -193,7 +203,7 @@ public class AudioStreamService {
     }
   }
 
-  private boolean verifySourcePlayable(String previewUrl) {
+  private long probeAndGetContentLength(UUID trackId, String previewUrl) {
     if (previewUrl.startsWith("classpath:") || previewUrl.startsWith("/fake-media/")) {
       String path =
           previewUrl.startsWith("classpath:")
@@ -201,54 +211,29 @@ public class AudioStreamService {
               : "classpath:" + previewUrl.replaceFirst("^/", "");
       Resource resource = resourceLoader.getResource(path);
       if (!resource.exists()) {
-        return false;
+        return -1;
       }
       try (InputStream is = resource.getInputStream()) {
-        return is.read() != -1;
+        if (is.read() == -1) {
+          return -1;
+        }
+        return resource.contentLength();
       } catch (Exception e) {
-        return false;
+        log.warn("Failed to probe classpath media for trackId {}: {}", trackId, e.getMessage());
+        return -1;
       }
     }
 
     try {
       ResponseEntity<Void> response =
-          restClient
-              .get()
-              .uri(URI.create(previewUrl))
-              .header(HttpHeaders.RANGE, "bytes=0-0")
-              .retrieve()
-              .toBodilessEntity();
+          restClient.head().uri(URI.create(previewUrl)).retrieve().toBodilessEntity();
 
-      return response.getStatusCode().is2xxSuccessful();
-    } catch (Exception e) {
-      log.warn("Probe request failed for URL {}: {}", previewUrl, e.getMessage());
-      return false;
-    }
-  }
-
-  private long getSourceContentLength(String previewUrl) {
-    if (previewUrl.startsWith("classpath:") || previewUrl.startsWith("/fake-media/")) {
-      String path =
-          previewUrl.startsWith("classpath:")
-              ? previewUrl
-              : "classpath:" + previewUrl.replaceFirst("^/", "");
-      Resource resource = resourceLoader.getResource(path);
-      try {
-        if (resource.exists()) {
-          return resource.contentLength();
-        }
-      } catch (IOException ignored) {
-      }
-    } else {
-      try {
-        ResponseEntity<Void> response =
-            restClient.head().uri(URI.create(previewUrl)).retrieve().toBodilessEntity();
+      if (response.getStatusCode().is2xxSuccessful()) {
         long len = response.getHeaders().getContentLength();
-        if (len > 0) {
-          return len;
-        }
-      } catch (Exception ignored) {
+        return len > 0 ? len : 480 * 1024; // Default CBR 128 kbps ~30s
       }
+    } catch (Exception e) {
+      log.warn("Probe HEAD request failed for trackId {}: {}", trackId, e.getMessage());
     }
     return -1;
   }
@@ -297,11 +282,18 @@ public class AudioStreamService {
     Resource fullResource =
         restClient.get().uri(URI.create(previewUrl)).retrieve().body(Resource.class);
     if (fullResource == null) {
-      throw new IOException("Failed to open remote audio stream from " + previewUrl);
+      throw new IOException("Failed to open remote audio stream");
     }
     InputStream fullIs = fullResource.getInputStream();
     if (start > 0) {
-      fullIs.skip(start);
+      long skipped = fullIs.skip(start);
+      while (skipped < start) {
+        long additional = fullIs.skip(start - skipped);
+        if (additional <= 0) {
+          break;
+        }
+        skipped += additional;
+      }
     }
     return new BoundedInputStream(fullIs, length);
   }

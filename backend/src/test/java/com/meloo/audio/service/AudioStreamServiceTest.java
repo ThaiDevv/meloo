@@ -28,7 +28,7 @@ class AudioStreamServiceTest {
   void setUp() {
     AudioProperties properties =
         new AudioProperties(
-            "secret",
+            "test-secret-key-that-is-at-least-256-bits-long-for-hmac-sha256!",
             Duration.ofMinutes(2),
             Duration.ofMinutes(15),
             1000,

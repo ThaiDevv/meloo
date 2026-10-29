@@ -165,4 +165,12 @@ class AudioTokenCodecTest {
         .satisfies(
             ex -> assertThat(((AudioTokenInvalidException) ex).getStatus().value()).isEqualTo(401));
   }
+
+  @Test
+  @DisplayName("secret with less than 32 bytes throws IllegalArgumentException")
+  void shortSecret_throwsIllegalArgumentException() {
+    assertThatThrownBy(() -> new AudioTokenCodec("short-secret-under-32-bytes"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("at least 32 bytes");
+  }
 }

@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Skip not allowed",
+  "status": 409,
+  "code": "SKIP_NOT_ALLOWED",
+  "detail": "Can only give up or skip at the 30-second level (level 5).",
+  "instance": "/api/v1/solo/matches/0f6e1b92-5a3c-4d77-8e21-9b4a7c3d5e60/rounds/1/skip"
+}

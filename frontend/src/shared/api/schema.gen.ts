@@ -230,6 +230,8 @@ export interface paths {
          * @description The match owner only. Opens 2 -> 5 -> 10 -> 20 -> 30 seconds (BR-01, BR-04). Allowed only while `RoundState.canListenMore`;
          *     at 30 seconds the call returns 409 `LISTEN_LEVEL_MAX` and the player may only guess or skip.
          *     Listening again to the opened level is free and needs no call (BR-03).
+         *
+         *     Order of validation: If the round is already at the maximum level (level 5 / 30s), the server always returns 409 `LISTEN_LEVEL_MAX` first (even if `expectedLevel=5` is sent). If the round is not at maximum level but `expectedLevel` does not match the next level (`currentLevel + 1`), the server returns 409 `LISTEN_LEVEL_MISMATCH`. When receiving 409 `LISTEN_LEVEL_MISMATCH`, the client should call `getCurrentRound` to re-synchronize the round state and audio URL.
          */
         post: operations["listenMore"];
         delete?: never;
@@ -375,6 +377,12 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description Bảng mã lỗi `code` dùng chung cho toàn bộ hệ thống Meloo (RFC 9457 `code`).
+         *     Bao gồm các mã lỗi mặc định HTTP và mã lỗi nghiệp vụ của các module.
+         * @enum {string}
+         */
+        ErrorCode: "VALIDATION_FAILED" | "UNAUTHORIZED" | "FORBIDDEN" | "NOT_FOUND" | "METHOD_NOT_ALLOWED" | "UNSUPPORTED_MEDIA_TYPE" | "NOT_ACCEPTABLE" | "CONFLICT" | "RATE_LIMITED" | "INTERNAL_ERROR" | "REFRESH_RACE" | "ACCOUNT_LOCKED" | "TRACK_NOT_FOUND" | "PLAYLIST_NOT_FOUND" | "SOLO_MATCH_IN_PROGRESS" | "NO_ACTIVE_MATCH" | "MATCH_NOT_IN_PROGRESS" | "MATCH_NOT_FOUND" | "MATCH_NOT_FINISHED" | "RANKED_MATCH_CANNOT_ABANDON" | "NOT_ENOUGH_TRACKS" | "ROUND_NOT_ACTIVE" | "ROUND_NOT_FOUND" | "ROUND_NOT_FINISHED" | "LISTEN_LEVEL_MAX" | "LISTEN_LEVEL_MISMATCH" | "SKIP_NOT_ALLOWED" | "AUDIO_TOKEN_INVALID" | "AUDIO_TOKEN_EXPIRED" | "RANGE_NOT_SATISFIABLE";
         /** @description RFC 9457 problem details with a stable `code`. */
         Problem: {
             /**
@@ -387,9 +395,8 @@ export interface components {
             detail?: string;
             /** Format: uri-reference */
             instance?: string;
-            /** @example VALIDATION_FAILED */
-            code: string;
-            /** @description Field errors, present for `VALIDATION_FAILED`. */
+            code: components["schemas"]["ErrorCode"];
+            /** @description Field errors, present when field-level validation details are available (e.g. for `VALIDATION_FAILED`). */
             errors?: components["schemas"]["FieldError"][];
         };
         FieldError: {
@@ -582,6 +589,8 @@ export interface components {
              * @description Full-listen link on the source platform (BR-29).
              */
             listenUrl: string;
+            /** @description Optional cover art URL of the track (e.g. from Deezer album artwork) for the reveal screen. May be empty ("") or omitted if no artwork is available. Frontend treats an empty string the same as an omitted value (no cover art). */
+            coverUrl?: string;
         };
         RoundResult: {
             roundNo: number;
@@ -976,6 +985,7 @@ export interface operations {
                     "application/json": components["schemas"]["SoloMatch"];
                 };
             };
+            400: components["responses"]["ValidationFailed"];
             401: components["responses"]["Unauthorized"];
             /** @description No match in progress (`NO_ACTIVE_MATCH`), or it expired and became `ABANDONED`. */
             404: {
@@ -1009,6 +1019,7 @@ export interface operations {
                     "application/json": components["schemas"]["RoundState"];
                 };
             };
+            400: components["responses"]["ValidationFailed"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             /** @description The match is not in progress (`MATCH_NOT_IN_PROGRESS`). */
@@ -1025,7 +1036,10 @@ export interface operations {
     };
     listenMore: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Optional expected level to unlock (2 to 5). Guards against double-clicks or retries after timeout so the player does not inadvertently unlock two levels and lose 200 points. If provided and does not match the round's next level, returns 409 `LISTEN_LEVEL_MISMATCH`. */
+                expectedLevel?: number;
+            };
             header?: never;
             path: {
                 matchId: components["parameters"]["MatchId"];
@@ -1045,9 +1059,10 @@ export interface operations {
                     "application/json": components["schemas"]["RoundState"];
                 };
             };
+            400: components["responses"]["ValidationFailed"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
-            /** @description `LISTEN_LEVEL_MAX` (already at 30 seconds), `ROUND_NOT_ACTIVE` (that round is over or is not the open one). */
+            /** @description `LISTEN_LEVEL_MAX` (already at 30 seconds), `LISTEN_LEVEL_MISMATCH` (expectedLevel does not match next level), `ROUND_NOT_ACTIVE` (that round is over or is not the open one). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1081,6 +1096,7 @@ export interface operations {
                     "application/json": components["schemas"]["RoundEnd"];
                 };
             };
+            400: components["responses"]["ValidationFailed"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             /** @description `SKIP_NOT_ALLOWED` (not at 30 seconds yet), `ROUND_NOT_ACTIVE`. */
@@ -1092,6 +1108,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            429: components["responses"]["TooManyRequests"];
         };
     };
     submitGuess: {
@@ -1140,6 +1157,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            429: components["responses"]["TooManyRequests"];
         };
     };
     getRoundResult: {
@@ -1164,6 +1182,7 @@ export interface operations {
                     "application/json": components["schemas"]["RoundResult"];
                 };
             };
+            400: components["responses"]["ValidationFailed"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             /** @description `ROUND_NOT_FINISHED`. */
@@ -1175,6 +1194,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            429: components["responses"]["TooManyRequests"];
         };
     };
     getMatchResult: {
@@ -1197,6 +1217,7 @@ export interface operations {
                     "application/json": components["schemas"]["MatchResult"];
                 };
             };
+            400: components["responses"]["ValidationFailed"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             /** @description `MATCH_NOT_FINISHED`. */
@@ -1208,6 +1229,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            429: components["responses"]["TooManyRequests"];
         };
     };
     abandonSoloMatch: {
@@ -1230,6 +1252,7 @@ export interface operations {
                     "application/json": components["schemas"]["MatchResult"];
                 };
             };
+            400: components["responses"]["ValidationFailed"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             /** @description `RANKED_MATCH_CANNOT_ABANDON` (ranked mode) or `MATCH_NOT_IN_PROGRESS`. */
@@ -1241,6 +1264,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            429: components["responses"]["TooManyRequests"];
         };
     };
     getAudioClip: {

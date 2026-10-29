@@ -1,0 +1,41 @@
+{
+  "correct": false,
+  "rightArtist": false,
+  "roundEnded": true,
+  "end": {
+    "result": {
+      "roundNo": 1,
+      "outcome": "WRONG_OUT",
+      "baseScore": 0,
+      "comboPercent": 0,
+      "speedBonus": 0,
+      "roundScore": 0,
+      "wrongCount": 4,
+      "comboStreak": 0,
+      "totalScore": 0,
+      "answer": {
+        "trackId": "3a9f6c10-2b7d-4e58-91c3-6d0a8f4b7e21",
+        "title": "Chúng Ta Của Hiện Tại",
+        "artistName": "Sơn Tùng M-TP",
+        "provider": "DEEZER",
+        "listenUrl": "https://www.deezer.com/track/1234567890",
+        "coverUrl": "https://e-cdns-images.dzcdn.net/images/cover/d41d8cd98f00b204e9800998ecf8427e/250x250-000000-80-0-0.jpg"
+      }
+    },
+    "matchFinished": false,
+    "nextRound": {
+      "matchId": "0f6e1b92-5a3c-4d77-8e21-9b4a7c3d5e60",
+      "roundNo": 2,
+      "roundCount": 10,
+      "level": 1,
+      "listenSeconds": 2,
+      "canListenMore": true,
+      "canSkip": false,
+      "audio": {
+        "url": "/api/v1/audio/Wd6HsK1nBz8TvQy4PxLe3RcNm9AfUo2JiGtX7yEb5Qk",
+        "expiresAt": "2026-10-23T13:12:00Z"
+      },
+      "serverTime": "2026-10-23T13:10:05Z"
+    }
+  }
+}

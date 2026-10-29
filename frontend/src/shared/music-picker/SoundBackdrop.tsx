@@ -63,11 +63,16 @@ export function SoundBackdrop() {
       pending.forEach((timer) => {
         window.clearTimeout(timer)
       })
+      pending.clear()
+      void context.current?.close()
+      context.current = null
     }
   }, [])
 
   useEffect(() => {
     const onPress = (event: PointerEvent) => {
+      // Pressing the sound button itself is a switch, not a note.
+      if (event.target instanceof Element && event.target.closest('[data-sound-toggle]')) return
       if (soundOn && typeof window.AudioContext === 'function') {
         context.current ??= new window.AudioContext()
         void context.current.resume()
@@ -121,6 +126,7 @@ export function SoundBackdrop() {
         variant="outline"
         size="sm"
         aria-pressed={soundOn}
+        data-sound-toggle
         title={t('sound.hint')}
         onClick={() => {
           setSoundOn((on) => !on)

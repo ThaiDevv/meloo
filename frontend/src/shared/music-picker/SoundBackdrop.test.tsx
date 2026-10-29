@@ -5,6 +5,7 @@ import { SoundBackdrop } from './SoundBackdrop'
 
 const started = vi.fn()
 const constructed = vi.fn()
+const closed = vi.fn()
 
 /** Just enough of the Web Audio API for one struck note. */
 class FakeAudioContext {
@@ -15,6 +16,10 @@ class FakeAudioContext {
     constructed()
   }
   resume() {
+    return Promise.resolve()
+  }
+  close() {
+    closed()
     return Promise.resolve()
   }
   createGain() {
@@ -32,6 +37,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
   started.mockClear()
   constructed.mockClear()
+  closed.mockClear()
 })
 
 function pressPage() {
@@ -101,5 +107,31 @@ describe('SoundBackdrop', () => {
     const { container } = render(<SoundBackdrop />)
 
     expect(container.querySelectorAll('[aria-hidden="true"]').length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('does not play a note when the sound button itself is pressed', async () => {
+    vi.stubGlobal('AudioContext', FakeAudioContext)
+    const user = userEvent.setup()
+    render(<SoundBackdrop />)
+
+    const button = screen.getByRole('button', { name: 'Âm thanh' })
+    await user.click(button)
+    await user.click(button)
+    await user.click(button)
+    expect(started).not.toHaveBeenCalled()
+  })
+
+  it('clears its timers and closes the audio when it goes away', () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('AudioContext', FakeAudioContext)
+    const { unmount } = render(<SoundBackdrop />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Âm thanh' }))
+    pressPage()
+    expect(vi.getTimerCount()).toBe(1)
+    unmount()
+    expect(vi.getTimerCount()).toBe(0)
+    expect(closed).toHaveBeenCalledTimes(1)
+    vi.useRealTimers()
   })
 })

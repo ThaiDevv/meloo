@@ -73,6 +73,43 @@ describe('HomePage', () => {
     ])
   })
 
+  it('shows a nine-month calendar that is labelled as a preview and hidden from assistive tech', () => {
+    const { container } = renderPage()
+
+    const section = screen.getByRole('region', { name: 'Thắp sáng mỗi ngày' })
+    expect(within(section).getByText('Minh họa')).toBeInTheDocument()
+
+    const cells = container.querySelectorAll('.mh-streak .mh-cell')
+    // 40 weeks of 7 days, minus the days of this week that have not come yet.
+    expect(cells.length).toBeGreaterThanOrEqual(40 * 7 - 6)
+    expect(cells.length).toBeLessThanOrEqual(40 * 7)
+    expect(container.querySelector('.mh-streak')).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('draws today as a cell still waiting to be lit, never as a played day', () => {
+    const { container } = renderPage()
+
+    const today = container.querySelectorAll('.mh-cell[data-today="true"]')
+    expect(today).toHaveLength(1)
+    expect(today[0]).toHaveAttribute('data-level', '0')
+  })
+
+  it('lights some days in all five shades, by the level the challenge was guessed at', () => {
+    const { container } = renderPage()
+
+    for (const level of ['1', '2', '3', '4', '5']) {
+      expect(container.querySelector(`.mh-streak .mh-cell[data-level="${level}"]`)).not.toBeNull()
+    }
+  })
+
+  it('has pips under both counters, one set filling and one draining', () => {
+    const { container } = renderPage()
+
+    expect(container.querySelectorAll('.mh-pip-fill-5')).toHaveLength(1)
+    expect(container.querySelectorAll('.mh-pip-drain-5')).toHaveLength(1)
+    expect(container.querySelectorAll('.mh-roll')).toHaveLength(2)
+  })
+
   it('speaks English when the language is switched', async () => {
     await i18n.changeLanguage('en')
     renderPage()

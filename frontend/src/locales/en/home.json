@@ -57,5 +57,12 @@
     "prompt": "The longer you listen, the fewer points you get.",
     "heard": "Heard so far",
     "points": "Base score"
+  },
+  "streak": {
+    "heading": "Light up every day",
+    "badge": "Preview",
+    "body": "Finish the daily challenge and a cell lights up. The earlier you guess it, the brighter it glows.",
+    "late": "30s level",
+    "early": "2s level"
   }
 }

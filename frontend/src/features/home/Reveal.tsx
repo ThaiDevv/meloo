@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { cn } from '@/shared/lib/utils'
+import { useShownOnce } from './useShownOnce'
 
 interface RevealProps {
   /** Milliseconds before the entrance starts, to stagger the parts of one section. */
@@ -13,27 +14,7 @@ interface RevealProps {
  * (old browsers, tests) the content is shown at once; under reduced motion it never travels.
  */
 export function Reveal({ delay = 0, className, children }: RevealProps) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [shown, setShown] = useState(() => typeof IntersectionObserver === 'undefined')
-
-  useEffect(() => {
-    const element = ref.current
-    if (shown || !element) return
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry?.isIntersecting) {
-          setShown(true)
-          observer.disconnect()
-        }
-      },
-      { threshold: 0.15 },
-    )
-    observer.observe(element)
-    return () => {
-      observer.disconnect()
-    }
-  }, [shown])
-
+  const [ref, shown] = useShownOnce<HTMLDivElement>()
   return (
     <div
       ref={ref}

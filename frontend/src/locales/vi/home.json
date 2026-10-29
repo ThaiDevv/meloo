@@ -57,5 +57,12 @@
     "prompt": "Nghe càng lâu, điểm càng ít.",
     "heard": "Đã nghe",
     "points": "Điểm cơ bản"
+  },
+  "streak": {
+    "heading": "Thắp sáng mỗi ngày",
+    "badge": "Minh họa",
+    "body": "Mỗi ngày làm xong thử thách ngày, một ô sáng lên. Đoán đúng càng sớm, ô càng sáng.",
+    "late": "Mốc 30s",
+    "early": "Mốc 2s"
   }
 }

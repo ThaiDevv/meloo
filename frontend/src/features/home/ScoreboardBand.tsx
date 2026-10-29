@@ -1,5 +1,7 @@
+import { Coins, Timer } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { cn } from '@/shared/lib/utils'
 import './home.css'
 
 /** The five listening levels (BR-01) and the base score of each (BR-02). Shown only; the server scores. */
@@ -11,10 +13,41 @@ const ROWS = [
   { seconds: 30, points: 200 },
 ] as const
 
-/** One counter: a window one row tall over a strip of values that rolls up as the levels open. */
-function Counter({ label, values }: { label: string; values: ReactNode[] }) {
+/** Five pips under a counter: `fill` lights one more at every level, `drain` puts one out. */
+function Pips({ mode }: { mode: 'fill' | 'drain' }) {
   return (
-    <div className="rounded-2xl bg-background p-6 sm:p-8">
+    <div className="mt-6 flex gap-2">
+      {[1, 2, 3, 4, 5].map((pip) => (
+        <span key={pip} className="relative size-3 rounded-full bg-foreground/10">
+          <span
+            className={cn(
+              'mh-pip absolute inset-0 rounded-full bg-primary',
+              pip > 1 && `mh-pip-${mode}-${String(pip)}`,
+            )}
+          />
+        </span>
+      ))}
+    </div>
+  )
+}
+
+/** One counter: a window one row tall over a strip of values that rolls up as the levels open. */
+function Counter({
+  label,
+  icon,
+  values,
+  pips,
+}: {
+  label: string
+  icon: ReactNode
+  values: ReactNode[]
+  pips: 'fill' | 'drain'
+}) {
+  return (
+    <div className="relative overflow-hidden rounded-2xl bg-background p-6 sm:p-8">
+      <span className="absolute top-6 right-6 text-muted-foreground sm:top-8 sm:right-8">
+        {icon}
+      </span>
       <p className="text-base text-muted-foreground">{label}</p>
       <div className="mt-3 h-[1em] overflow-hidden font-display text-[clamp(3.5rem,11vw,8rem)] leading-none font-extrabold tracking-[-0.04em]">
         <div className="mh-roll num">
@@ -25,6 +58,7 @@ function Counter({ label, values }: { label: string; values: ReactNode[] }) {
           ))}
         </div>
       </div>
+      <Pips mode={pips} />
     </div>
   )
 }
@@ -44,10 +78,14 @@ export function ScoreboardBand() {
         <div aria-hidden="true" className="mt-8 grid gap-3 select-none sm:grid-cols-2">
           <Counter
             label={t('score.heard')}
+            icon={<Timer className="size-6" strokeWidth={1.75} />}
+            pips="fill"
             values={ROWS.map(({ seconds }) => `0:${String(seconds).padStart(2, '0')}`)}
           />
           <Counter
             label={t('score.points')}
+            icon={<Coins className="size-6" strokeWidth={1.75} />}
+            pips="drain"
             values={ROWS.map(({ points }) => number.format(points))}
           />
         </div>

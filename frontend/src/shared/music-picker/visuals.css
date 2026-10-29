@@ -127,3 +127,45 @@
     transform: scale(1);
   }
 }
+
+/*
+ * Page backdrop: a skyline of equalizer bars far below the content, and a ring that leaves
+ * wherever the page is pressed. Both are flat and only move by transform and opacity.
+ */
+.mv-skyline {
+  transform-origin: bottom;
+  transform: scaleY(0.6);
+}
+.mv-ping {
+  translate: -50% -50%;
+  scale: 0.1;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mv-skyline {
+    animation: mv-sky 2.8s ease-in-out infinite alternate;
+  }
+  .mv-ping {
+    animation: mv-ping 900ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+}
+
+@keyframes mv-sky {
+  from {
+    transform: scaleY(0.25);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+@keyframes mv-ping {
+  from {
+    scale: 0.1;
+    opacity: 0.6;
+  }
+  to {
+    scale: 1;
+    opacity: 0;
+  }
+}

@@ -42,11 +42,11 @@ function WaveLayer({ lit }: { lit: boolean }) {
           />
         ))}
       </div>
-      <div className="relative h-9">
+      <div className="relative h-7">
         {LEVELS.map((seconds) => (
           <span
             key={seconds}
-            className="num absolute top-2.5 text-sm font-semibold"
+            className="num absolute top-1 text-sm font-semibold"
             style={{
               left: `${String((seconds / LONGEST) * 100)}%`,
               translate: '-100% 0',
@@ -69,7 +69,7 @@ export function WaveBand() {
   return (
     <div
       aria-hidden="true"
-      className="mh-wave relative h-44 overflow-hidden bg-surface select-none sm:h-52"
+      className="mh-wave relative h-28 overflow-hidden bg-surface select-none sm:h-36"
     >
       <WaveLayer lit={false} />
       <div className="mh-reveal absolute inset-0 overflow-hidden">
@@ -79,7 +79,7 @@ export function WaveBand() {
       </div>
       <div className="mh-head pointer-events-none absolute inset-0">
         <span className="absolute inset-y-0 right-0 w-[3px] bg-primary" />
-        <span className="mh-ripple absolute top-[38%] right-0 size-72 -translate-y-1/2 translate-x-1/2 rounded-full border-2 border-primary" />
+        <span className="mh-ripple absolute top-[40%] right-0 size-48 -translate-y-1/2 translate-x-1/2 rounded-full border-2 border-primary" />
       </div>
     </div>
   )

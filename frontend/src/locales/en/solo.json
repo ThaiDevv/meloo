@@ -58,5 +58,9 @@
     "empty": "The catalog has nothing to pick yet.",
     "noPlaylist": "No playlists yet.",
     "trackCount": "{{n}} songs"
+  },
+  "sound": {
+    "label": "Sound",
+    "hint": "Turn it on and every tap plays a note, higher towards the right."
   }
 }

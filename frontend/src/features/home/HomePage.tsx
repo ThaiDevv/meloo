@@ -1,7 +1,7 @@
 import { ArrowRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { Equalizer, VinylDisc } from '@/shared/music-picker'
+import { Equalizer, SoundBackdrop, VinylDisc } from '@/shared/music-picker'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
 import { ListeningLadder } from './ListeningLadder'
@@ -34,6 +34,7 @@ export function HomePage() {
 
   return (
     <>
+      <SoundBackdrop />
       <div className="mx-auto w-full max-w-6xl px-4">
         <section
           aria-labelledby="home-title"

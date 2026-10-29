@@ -9,3 +9,4 @@ export {
 export { Equalizer } from './Equalizer'
 export { VinylDisc } from './VinylDisc'
 export { levelDelay } from './levels'
+export { SoundBackdrop } from './SoundBackdrop'

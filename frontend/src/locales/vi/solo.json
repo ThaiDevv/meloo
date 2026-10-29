@@ -58,5 +58,9 @@
     "empty": "Kho nhạc chưa có gì để chọn.",
     "noPlaylist": "Chưa có bộ đề nào.",
     "trackCount": "{{n}} bài"
+  },
+  "sound": {
+    "label": "Âm thanh",
+    "hint": "Bật rồi chạm vào đâu cũng có một nốt nhạc, càng sang phải càng cao."
   }
 }

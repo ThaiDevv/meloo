@@ -6,6 +6,7 @@ import {
   EMPTY_SELECTION,
   Equalizer,
   MusicPicker,
+  SoundBackdrop,
   VinylDisc,
   countFilterValues,
   toSoloFilter,
@@ -67,6 +68,7 @@ export function SoloSetupPage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-10 lg:py-16">
+      <SoundBackdrop />
       <header className="motion-rise flex items-center justify-between gap-6">
         <div className="max-w-2xl space-y-4">
           <div className="flex items-end gap-4">

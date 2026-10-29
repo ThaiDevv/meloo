@@ -61,10 +61,8 @@
   "streak": {
     "heading": "Thắp sáng mỗi ngày",
     "badge": "Minh họa",
-    "body": "Hôm nào vào làm thử thách ngày, hôm đó sáng lên. Đoán càng nhanh, ô càng sáng.",
+    "body": "Mỗi ngày làm xong thử thách ngày, một ô sáng lên. Đoán đúng càng sớm, ô càng sáng.",
     "late": "Mốc 30s",
-    "early": "Mốc 2s",
-    "none": "Chưa làm",
-    "unsolved": "Chưa đoán ra"
+    "early": "Mốc 2s"
   }
 }

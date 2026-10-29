@@ -19,13 +19,12 @@ const STEPS = ['listen', 'more', 'guess', 'score'] as const
 function sampleLevel(date: Date): StreakLevel {
   const day = Math.floor(date.getTime() / 86_400_000)
   const roll = ((day * 2_654_435_761) >>> 0) % 100
-  if (roll < 56) return 0
-  if (roll < 62) return 1
-  if (roll < 72) return 2
-  if (roll < 82) return 3
-  if (roll < 91) return 4
-  if (roll < 97) return 5
-  return 6
+  if (roll < 58) return 0
+  if (roll < 70) return 1
+  if (roll < 82) return 2
+  if (roll < 91) return 3
+  if (roll < 97) return 4
+  return 5
 }
 // The stairs go one column further right at every step; on a phone the indent is smaller.
 const STEP_PLACEMENT = [
@@ -167,12 +166,8 @@ export function HomePage() {
               aria-hidden="true"
               className="mt-5 flex flex-wrap items-center justify-end gap-x-3 gap-y-2 text-sm text-muted-foreground"
             >
-              <span data-level={0} className="mh-cell size-3.5 rounded-[3px]" />
-              <span>{t('streak.none')}</span>
-              <span data-level={1} className="mh-cell ml-2 size-3.5 rounded-[3px]" />
-              <span>{t('streak.unsolved')}</span>
-              <span className="ml-2">{t('streak.late')}</span>
-              {[2, 3, 4, 5, 6].map((level) => (
+              <span>{t('streak.late')}</span>
+              {[0, 1, 2, 3, 4, 5].map((level) => (
                 <span key={level} data-level={level} className="mh-cell size-3.5 rounded-[3px]" />
               ))}
               <span>{t('streak.early')}</span>

@@ -38,29 +38,26 @@
 }
 
 /*
- * The streak grid: cells in six shades of the accent: a faint one for a day taken but not guessed, then the 30 second
- * level (light) up to the 2 second level (full). The first time it scrolls into view, the lit cells pop in from left to
+ * The streak grid: cells in five shades of the accent, from the 30 second level (faint) to the
+ * 2 second level (full). The first time it scrolls into view, the lit cells pop in from left to
  * right; today's cell, still waiting to be lit, has a ring that keeps breathing out.
  */
 .mh-cell {
   background: color-mix(in srgb, var(--foreground) 7%, transparent);
 }
 .mh-cell[data-level='1'] {
-  background: color-mix(in srgb, var(--primary) 16%, transparent);
+  background: color-mix(in srgb, var(--primary) 28%, transparent);
 }
 .mh-cell[data-level='2'] {
-  background: color-mix(in srgb, var(--primary) 30%, transparent);
+  background: color-mix(in srgb, var(--primary) 46%, transparent);
 }
 .mh-cell[data-level='3'] {
-  background: color-mix(in srgb, var(--primary) 48%, transparent);
+  background: color-mix(in srgb, var(--primary) 64%, transparent);
 }
 .mh-cell[data-level='4'] {
-  background: color-mix(in srgb, var(--primary) 66%, transparent);
+  background: color-mix(in srgb, var(--primary) 82%, transparent);
 }
 .mh-cell[data-level='5'] {
-  background: color-mix(in srgb, var(--primary) 84%, transparent);
-}
-.mh-cell[data-level='6'] {
   background: var(--primary);
 }
 .mh-cell[data-today='true']::after {

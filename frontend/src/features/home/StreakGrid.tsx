@@ -9,11 +9,10 @@ const WEEKS = 40
 const PHONE_WEEKS = 14
 
 /**
- * 0 = the player did not take the daily challenge that day. Any turn lights the day: 1 = taken but
- * not guessed ("Chưa đoán ra"), 2 to 6 = guessed at the 30, 20, 10, 5 or 2 second level (BR-25: the
- * earlier the level, the better the result), so the faster the guess, the brighter the cell.
+ * 0 = no turn that day; 1 to 5 = the day's challenge was guessed at the 30, 20, 10, 5 or 2 second
+ * level (BR-25: the earlier the level, the better the result), so a brighter cell is a better day.
  */
-export type StreakLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6
+export type StreakLevel = 0 | 1 | 2 | 3 | 4 | 5
 
 interface CellStyle extends CSSProperties {
   '--w': number
@@ -54,7 +53,7 @@ function buildWeeks(today: Date): Date[][] {
 
 /**
  * A calendar of the last nine months in the manner of a contribution graph or a streak: one cell per
- * day, lit whenever the daily challenge was taken, brighter the earlier it was guessed. It lights up
+ * day, lit when the daily challenge was played, brighter the earlier it was guessed. It lights up
  * from left to right the first time it scrolls into view. Decorative (the text around it says what
  * it is), so it is hidden from assistive technology.
  */

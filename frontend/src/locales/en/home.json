@@ -61,10 +61,8 @@
   "streak": {
     "heading": "Light up every day",
     "badge": "Preview",
-    "body": "Any day you take the daily challenge lights up. The faster you guess it, the brighter it glows.",
+    "body": "Finish the daily challenge and a cell lights up. The earlier you guess it, the brighter it glows.",
     "late": "30s level",
-    "early": "2s level",
-    "none": "Not played",
-    "unsolved": "Not guessed"
+    "early": "2s level"
   }
 }

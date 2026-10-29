@@ -94,10 +94,10 @@ describe('HomePage', () => {
     expect(today[0]).toHaveAttribute('data-level', '0')
   })
 
-  it('lights a day whenever it was played, brighter the faster it was guessed', () => {
+  it('lights some days in all five shades, by the level the challenge was guessed at', () => {
     const { container } = renderPage()
 
-    for (const level of ['1', '2', '3', '4', '5', '6']) {
+    for (const level of ['1', '2', '3', '4', '5']) {
       expect(container.querySelector(`.mh-streak .mh-cell[data-level="${level}"]`)).not.toBeNull()
     }
   })

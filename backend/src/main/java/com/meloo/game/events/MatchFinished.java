@@ -16,6 +16,7 @@ public record MatchFinished(
     UUID eventId,
     UUID matchId,
     MatchType type,
+    String mode,
     boolean ranked,
     MatchEndStatus status,
     int roundCount,
@@ -30,6 +31,7 @@ public record MatchFinished(
     Objects.requireNonNull(eventId, "eventId must not be null");
     Objects.requireNonNull(matchId, "matchId must not be null");
     Objects.requireNonNull(type, "type must not be null");
+    Objects.requireNonNull(mode, "mode must not be null");
     Objects.requireNonNull(status, "status must not be null");
     Objects.requireNonNull(startedAt, "startedAt must not be null");
     Objects.requireNonNull(endedAt, "endedAt must not be null");

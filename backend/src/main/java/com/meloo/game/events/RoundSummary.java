@@ -4,7 +4,13 @@ import java.util.Objects;
 import java.util.UUID;
 
 /** Thông tin tóm tắt một vòng trong trận đấu theo mục 2 tài liệu 04-su-kien-va-api-module.md. */
-public record RoundSummary(int roundNo, UUID trackId, String trackTitle, String artistName) {
+public record RoundSummary(
+    int roundNo,
+    UUID trackId,
+    String trackTitle,
+    String artistName,
+    String provider,
+    String providerTrackId) {
 
   public RoundSummary {
     if (roundNo < 1) {
@@ -13,5 +19,7 @@ public record RoundSummary(int roundNo, UUID trackId, String trackTitle, String 
     Objects.requireNonNull(trackId, "trackId must not be null");
     Objects.requireNonNull(trackTitle, "trackTitle must not be null");
     Objects.requireNonNull(artistName, "artistName must not be null");
+    Objects.requireNonNull(provider, "provider must not be null");
+    Objects.requireNonNull(providerTrackId, "providerTrackId must not be null");
   }
 }

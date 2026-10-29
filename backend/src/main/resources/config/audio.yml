@@ -1,1 +1,39 @@
 # Configuration owned by the audio module.
+meloo:
+  audio:
+    hmac-secret: "change-me-to-a-very-secure-random-secret-key-at-least-256-bits"
+    token-ttl: 2m
+    preview-cache-ttl: 15m
+    preview-cache-max-size: 1000
+    rate-limit:
+      token-capacity: 5
+      token-refill-tokens: 5
+      token-refill-duration: 1m
+      player-capacity: 30
+      player-refill-tokens: 30
+      player-refill-duration: 1m
+    provider:
+      type: deezer
+      deezer:
+        base-url: https://api.deezer.com
+        timeout: 5s
+        max-attempts: 3
+        backoff: 500ms
+        circuit-breaker:
+          sliding-window-size: 10
+          failure-rate-threshold: 50.0
+          wait-duration-in-open-state: 10s
+      fake:
+        media-location: classpath:fake-media/
+
+---
+spring:
+  config:
+    activate:
+      on-profile: e2e,test
+
+meloo:
+  audio:
+    hmac-secret: "test-hmac-secret-key-for-unit-and-integration-tests-must-be-long-enough"
+    provider:
+      type: fake

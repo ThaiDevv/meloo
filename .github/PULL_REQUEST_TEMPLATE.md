@@ -1,6 +1,6 @@
 ## Ticket
 MEL-___ · <mã nội bộ> · <tên ticket>
-Tác giả: <Codex | Claude> · Reviewer: <agent còn lại> · Mức review: <chuẩn | sâu>
+Tác giả: <Codex | Claude | Antigravity> · Reviewer: <agent còn lại> · Mức review: <chuẩn | sâu>
 
 ## Phạm vi file
 <!-- Mỗi dòng một glob, chép từ ticket (đã thêm test tương ứng). Dòng bắt đầu bằng ! là loại trừ. Reviewer và job scope-guard đọc khối này. -->

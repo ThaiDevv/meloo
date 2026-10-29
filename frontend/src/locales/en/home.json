@@ -49,7 +49,7 @@
         "body": "Tapping hear more, or a wrong guess, opens the next level: 5, 10, 20, then 30 seconds."
       },
       "guess": {
-        "title": "Type the song title.",
+        "title": "Type, then pick the title.",
         "body": "Title suggestions appear as you type, and typing without accents works too."
       },
       "score": {

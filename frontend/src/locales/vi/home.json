@@ -20,7 +20,7 @@
     },
     "daily": {
       "title": "Thử thách ngày",
-      "description": "Mỗi ngày một bài chung cho cả nước."
+      "description": "Mỗi ngày một bài chung cho mọi người."
     },
     "room": {
       "title": "Tạo phòng",
@@ -49,7 +49,7 @@
         "body": "Bấm nghe thêm hoặc đoán sai đều mở mức kế tiếp: 5, 10, 20 rồi 30 giây."
       },
       "guess": {
-        "title": "Gõ tên bài hát.",
+        "title": "Gõ rồi chọn tên bài.",
         "body": "Gợi ý tên bài hiện khi bạn gõ, gõ không dấu cũng tìm được."
       },
       "score": {

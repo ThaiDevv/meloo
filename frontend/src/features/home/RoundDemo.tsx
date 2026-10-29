@@ -8,6 +8,7 @@ import './home.css'
 const STEPS = ['listen', 'more', 'guess', 'score'] as const
 type Step = (typeof STEPS)[number]
 const LEVELS = [2, 5, 10, 20, 30] as const
+const LONGEST = 30
 
 // The stairs go one column further right at every step on a desktop; on a phone the indent is small.
 const PLACEMENT = ['', 'lg:ml-6', 'lg:ml-12', 'lg:ml-[4.5rem]'] as const
@@ -38,22 +39,38 @@ function RoundMock({ step }: { step: Step }) {
         </span>
       </div>
 
-      <div className="mt-5 flex gap-1.5">
-        {LEVELS.map((seconds, index) => (
-          <span
-            key={seconds}
-            className={cn(
-              'num flex h-8 flex-1 items-center justify-center rounded-full text-sm font-semibold transition-colors duration-300',
-              index === levelIndex
-                ? 'bg-primary text-primary-foreground'
-                : index < levelIndex
-                  ? 'bg-foreground/20'
-                  : 'bg-foreground/[0.07] text-muted-foreground',
-            )}
-          >
-            {seconds}s
-          </span>
-        ))}
+      <div className="mt-5 flex gap-[3px]">
+        {LEVELS.map((seconds, index) => {
+          const share = ((seconds - (LEVELS[index - 1] ?? 0)) / LONGEST) * 100
+          return (
+            <div
+              key={seconds}
+              style={{ flexBasis: `${String(share)}%` }}
+              className="min-w-0 flex-none"
+            >
+              <span
+                className={cn(
+                  'num mb-1.5 block text-center text-sm font-semibold transition-colors duration-300',
+                  index === levelIndex ? 'text-foreground' : 'text-muted-foreground',
+                )}
+              >
+                {seconds}s
+              </span>
+              <span
+                className={cn(
+                  'block h-6 transition-colors duration-300',
+                  index === 0 && 'rounded-l-full',
+                  index === LEVELS.length - 1 && 'rounded-r-full',
+                  index === levelIndex
+                    ? 'bg-primary'
+                    : index < levelIndex
+                      ? 'bg-foreground/40'
+                      : 'bg-foreground/[0.08]',
+                )}
+              />
+            </div>
+          )
+        })}
       </div>
 
       <div className="mt-5 flex items-center gap-4">

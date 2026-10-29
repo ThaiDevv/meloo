@@ -53,9 +53,8 @@
     },
     "figure": "base points for a right guess at the 2-second mark."
   },
-  "guess": {
-    "title": "Mystery song",
-    "prompt": "How many seconds until you know it?",
+  "lanes": {
+    "prompt": "Every lane is a listening level. The longer the block, the longer the clip.",
     "marker": "{{seconds}}s"
   }
 }

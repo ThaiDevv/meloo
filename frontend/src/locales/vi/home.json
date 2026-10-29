@@ -53,9 +53,8 @@
     },
     "figure": "điểm cơ bản khi đoán đúng ngay ở mốc 2 giây."
   },
-  "guess": {
-    "title": "Bài hát bí ẩn",
-    "prompt": "Nghe được bao nhiêu giây thì bạn đoán ra?",
+  "lanes": {
+    "prompt": "Mỗi làn là một mốc nghe. Khối càng dài, đoạn nhạc càng dài.",
     "marker": "{{seconds}}s"
   }
 }

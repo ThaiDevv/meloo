@@ -7,7 +7,7 @@ import { Button } from '@/shared/ui/Button'
 import { ListeningLadder } from './ListeningLadder'
 import { HOME_MODES, type HomeMode } from './modes'
 import { Reveal } from './Reveal'
-import { GuessBand } from './GuessBand'
+import { LanesBand } from './LanesBand'
 
 const STEPS = ['listen', 'more', 'guess', 'score'] as const
 // The stairs go one column further right at every step; on a phone the indent is smaller.
@@ -67,7 +67,7 @@ export function HomePage() {
         </section>
       </div>
 
-      <GuessBand />
+      <LanesBand />
 
       <div className="mx-auto w-full max-w-6xl px-4">
         <section aria-labelledby="modes-title" className="py-20 lg:py-32">

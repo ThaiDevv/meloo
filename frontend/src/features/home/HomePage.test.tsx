@@ -62,7 +62,10 @@ describe('HomePage', () => {
     const { container } = renderPage()
 
     expect(container.querySelectorAll('svg[aria-hidden="true"]').length).toBeGreaterThan(0)
-    expect(container.querySelector('.mh-guess')).toHaveAttribute('aria-hidden', 'true')
+    expect(container.querySelectorAll('.mh-lanes')).toHaveLength(5)
+    for (const lane of container.querySelectorAll('.mh-lanes')) {
+      expect(lane.closest('[aria-hidden="true"]')).not.toBeNull()
+    }
     // Only the two real links are focusable: the hero action and the solo tile.
     expect(screen.getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
       '/solo',

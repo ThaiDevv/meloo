@@ -1,114 +1,61 @@
 /*
- * The guess band of the home page: a song title that shows up letter by letter as the listening
- * level goes up (2, 5, 10, 20 and 30 seconds out of a 12 s loop), then rewinds. Only opacity and
- * translate move. Under prefers-reduced-motion nothing moves and the whole title is shown.
+ * The lanes band of the home page, in the manner of a rhythm game: five lanes, one per listening
+ * level, with blocks falling onto a pad. A block is as long as the clip of its level. Only
+ * translate, scale and opacity move. Under prefers-reduced-motion the blocks rest on the pads.
  */
-.mh-lit {
-  opacity: 1;
+.mh-lanes {
+  container-type: size;
+}
+.mh-block {
+  translate: 0 calc(100cqh - 100% - 0.25rem);
+  opacity: 0.9;
+}
+.mh-flash {
+  opacity: 0;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .mh-lit {
+  .mh-block {
+    animation: mh-fall var(--mh-dur) linear infinite;
+    animation-delay: var(--mh-delay);
     opacity: 0;
-    animation-duration: 12s;
-    animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
-    animation-iteration-count: infinite;
   }
-  .mh-lit-1 {
-    animation-name: mh-show-1;
-  }
-  .mh-lit-2 {
-    animation-name: mh-show-2;
-  }
-  .mh-lit-3 {
-    animation-name: mh-show-3;
-  }
-  .mh-lit-4 {
-    animation-name: mh-show-4;
-  }
-  .mh-lit-5 {
-    animation-name: mh-show-5;
+  .mh-flash {
+    animation: mh-flash var(--mh-dur) linear infinite;
+    animation-delay: var(--mh-delay);
   }
 }
 
-/* A level opens at 3, 15, 29, 50 and 74 percent; everything goes dark again at 94 to 100 percent. */
-@keyframes mh-show-1 {
-  0%,
-  2.9% {
+/* The block drops from above the lane, lands on the pad at 80 percent, then bursts and fades. */
+@keyframes mh-fall {
+  0% {
+    translate: 0 -100%;
     opacity: 0;
-    translate: 0 0.3em;
+    scale: 1;
   }
-  5%,
-  94% {
-    opacity: 1;
-    translate: 0 0;
+  6% {
+    opacity: 0.9;
+  }
+  80% {
+    translate: 0 calc(100cqh - 100% - 0.25rem);
+    opacity: 0.9;
+    scale: 1;
   }
   100% {
+    translate: 0 calc(100cqh - 100% - 0.25rem);
     opacity: 0;
-    translate: 0 0;
+    scale: 1.12 1.5;
   }
 }
-@keyframes mh-show-2 {
+@keyframes mh-flash {
   0%,
-  14.9% {
+  79% {
     opacity: 0;
-    translate: 0 0.3em;
   }
-  17%,
-  94% {
-    opacity: 1;
-    translate: 0 0;
+  83% {
+    opacity: 0.9;
   }
   100% {
     opacity: 0;
-    translate: 0 0;
-  }
-}
-@keyframes mh-show-3 {
-  0%,
-  28.9% {
-    opacity: 0;
-    translate: 0 0.3em;
-  }
-  31%,
-  94% {
-    opacity: 1;
-    translate: 0 0;
-  }
-  100% {
-    opacity: 0;
-    translate: 0 0;
-  }
-}
-@keyframes mh-show-4 {
-  0%,
-  49.9% {
-    opacity: 0;
-    translate: 0 0.3em;
-  }
-  52%,
-  94% {
-    opacity: 1;
-    translate: 0 0;
-  }
-  100% {
-    opacity: 0;
-    translate: 0 0;
-  }
-}
-@keyframes mh-show-5 {
-  0%,
-  73.9% {
-    opacity: 0;
-    translate: 0 0.3em;
-  }
-  76%,
-  94% {
-    opacity: 1;
-    translate: 0 0;
-  }
-  100% {
-    opacity: 0;
-    translate: 0 0;
   }
 }

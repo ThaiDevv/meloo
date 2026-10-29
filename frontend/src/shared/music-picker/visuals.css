@@ -169,3 +169,10 @@
     opacity: 0;
   }
 }
+
+/* A control that is being pressed: one short bounce. */
+@media (prefers-reduced-motion: no-preference) {
+  .mv-pop-once {
+    animation: mv-pop 320ms cubic-bezier(0.2, 0.8, 0.3, 1.4);
+  }
+}

@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import i18n from '@/i18n'
@@ -108,6 +109,42 @@ describe('HomePage', () => {
     expect(container.querySelectorAll('.mh-pip-fill-5')).toHaveLength(1)
     expect(container.querySelectorAll('.mh-pip-drain-5')).toHaveLength(1)
     expect(container.querySelectorAll('.mh-roll')).toHaveLength(2)
+  })
+
+  it('starts on the first step and lets the player pick any step', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    const how = screen.getByRole('region', { name: 'Một vòng chơi' })
+    const steps = within(how).getAllByRole('button')
+    expect(steps).toHaveLength(4)
+    expect(steps[0]).toHaveAttribute('aria-current', 'step')
+    expect(steps[3]).not.toHaveAttribute('aria-current')
+
+    await user.click(steps[3] as HTMLElement)
+    expect(steps[3]).toHaveAttribute('aria-current', 'step')
+    expect(steps[0]).not.toHaveAttribute('aria-current')
+  })
+
+  it('shows the made-up round change with the step, and hides it from assistive tech', async () => {
+    const user = userEvent.setup()
+    const { container } = renderPage()
+    const how = screen.getByRole('region', { name: 'Một vòng chơi' })
+    const steps = within(how).getAllByRole('button')
+    const mock = () => how.querySelector('[aria-hidden="true"].rounded-3xl')
+
+    expect(mock()).not.toBeNull()
+    expect(mock()).toHaveTextContent('Tên bài hát…')
+    expect(mock()).not.toHaveTextContent('+800')
+
+    await user.click(steps[2] as HTMLElement)
+    expect(mock()).toHaveTextContent('bai hat bi')
+    expect(mock()).toHaveTextContent('Bài hát bí ẩn')
+
+    await user.click(steps[3] as HTMLElement)
+    expect(mock()).toHaveTextContent('+800')
+    expect(mock()).toHaveTextContent('Đúng ở mốc 5s')
+    expect(container.querySelectorAll('.mh-step-bar')).toHaveLength(1)
   })
 
   it('speaks English when the language is switched', async () => {

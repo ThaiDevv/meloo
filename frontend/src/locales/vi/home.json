@@ -50,8 +50,7 @@
         "title": "Càng sớm, càng nhiều điểm.",
         "body": "Đúng ở mốc 2 giây được 1.000 điểm cơ bản, mỗi mốc sau bớt 200."
       }
-    },
-    "figure": "điểm cơ bản khi đoán đúng ngay ở mốc 2 giây."
+    }
   },
   "score": {
     "prompt": "Nghe càng lâu, điểm càng ít.",
@@ -65,5 +64,15 @@
     "late": "Mốc 30s",
     "early": "Mốc 2s",
     "none": "Chưa đoán ra"
+  },
+  "demo": {
+    "round": "Vòng 3/10",
+    "score": "Điểm",
+    "more": "Nghe thêm",
+    "placeholder": "Tên bài hát…",
+    "typed": "bai hat bi",
+    "title": "Bài hát bí ẩn",
+    "other": "Bài hát bí mật",
+    "right": "Đúng ở mốc 5s"
   }
 }

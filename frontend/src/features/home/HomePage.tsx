@@ -7,10 +7,9 @@ import { Button } from '@/shared/ui/Button'
 import { ListeningLadder } from './ListeningLadder'
 import { HOME_MODES, type HomeMode } from './modes'
 import { Reveal } from './Reveal'
+import { RoundDemo } from './RoundDemo'
 import { ScoreboardBand } from './ScoreboardBand'
 import { StreakGrid, type StreakLevel } from './StreakGrid'
-
-const STEPS = ['listen', 'more', 'guess', 'score'] as const
 
 /**
  * A made-up history for the picture only, the same on every visit: no real player's turns exist on
@@ -26,13 +25,6 @@ function sampleLevel(date: Date): StreakLevel {
   if (roll < 97) return 4
   return 5
 }
-// The stairs go one column further right at every step; on a phone the indent is smaller.
-const STEP_PLACEMENT = [
-  'lg:col-start-1',
-  'ml-[4vw] lg:col-start-2 lg:ml-0',
-  'ml-[8vw] lg:col-start-3 lg:ml-0',
-  'ml-[12vw] lg:col-start-4 lg:ml-0',
-] as const
 
 function ModeText({ id }: { id: HomeMode['id'] }) {
   const { t } = useTranslation('home')
@@ -45,7 +37,7 @@ function ModeText({ id }: { id: HomeMode['id'] }) {
 }
 
 export function HomePage() {
-  const { t, i18n } = useTranslation('home')
+  const { t } = useTranslation('home')
   const [solo, ...others] = HOME_MODES
 
   return (
@@ -186,32 +178,7 @@ export function HomePage() {
               {t('how.heading')}
             </h2>
           </Reveal>
-          <div className="mt-10 grid gap-10 lg:grid-cols-12 lg:items-stretch">
-            <ol className="grid gap-10 lg:col-span-8 lg:grid-cols-8 lg:gap-y-12">
-              {STEPS.map((step, index) => (
-                <li key={step} className={`lg:col-span-5 ${STEP_PLACEMENT[index] ?? ''}`}>
-                  <Reveal delay={index * 70} className="space-y-2">
-                    <p
-                      className={`font-display text-[clamp(1.5rem,3vw,2.25rem)] leading-tight font-extrabold tracking-[-0.025em] ${index === STEPS.length - 1 ? 'text-primary' : ''}`}
-                    >
-                      {t(`how.steps.${step}.title`)}
-                    </p>
-                    <p className="max-w-sm text-base text-muted-foreground">
-                      {t(`how.steps.${step}.body`)}
-                    </p>
-                  </Reveal>
-                </li>
-              ))}
-            </ol>
-            <Reveal delay={120} className="lg:col-span-4">
-              <div className="flex h-full min-h-64 flex-col justify-between gap-8 rounded-2xl bg-primary p-6 text-primary-foreground lg:p-8">
-                <p className="num font-display text-[clamp(4rem,9vw,6.5rem)] leading-none font-extrabold tracking-[-0.04em]">
-                  {new Intl.NumberFormat(i18n.resolvedLanguage).format(1000)}
-                </p>
-                <p className="max-w-[16rem] text-base">{t('how.figure')}</p>
-              </div>
-            </Reveal>
-          </div>
+          <RoundDemo />
         </section>
       </div>
     </>

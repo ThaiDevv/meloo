@@ -50,8 +50,7 @@
         "title": "Sooner means more points.",
         "body": "Right at 2 seconds is worth 1,000 base points, and every level after takes off 200."
       }
-    },
-    "figure": "base points for a right guess at the 2-second mark."
+    }
   },
   "score": {
     "prompt": "The longer you listen, the fewer points you get.",
@@ -65,5 +64,15 @@
     "late": "30s level",
     "early": "2s level",
     "none": "Not guessed"
+  },
+  "demo": {
+    "round": "Round 3/10",
+    "score": "Score",
+    "more": "Hear more",
+    "placeholder": "Song title…",
+    "typed": "mystery so",
+    "title": "Mystery song",
+    "other": "Mystery night",
+    "right": "Right at the 5s level"
   }
 }

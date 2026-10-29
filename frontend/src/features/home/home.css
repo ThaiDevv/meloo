@@ -252,3 +252,31 @@
     opacity: 1;
   }
 }
+
+/*
+ * The round demo: the active step has a bar that fills in 4.5 s, and when it is full the next step
+ * takes over (see RoundDemo). Hovering the demo, or moving through it with the keyboard, holds it. Under
+ * prefers-reduced-motion the bar just sits full and the steps change only when pressed.
+ */
+.mh-step-bar {
+  transform-origin: left;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mh-step-bar {
+    animation: mh-step 4.5s linear both;
+  }
+  .mh-demo:hover .mh-step-bar,
+  .mh-demo:has(:focus-visible) .mh-step-bar {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes mh-step {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}

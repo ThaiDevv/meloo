@@ -53,7 +53,9 @@
     },
     "figure": "điểm cơ bản khi đoán đúng ngay ở mốc 2 giây."
   },
-  "wave": {
+  "guess": {
+    "title": "Bài hát bí ẩn",
+    "prompt": "Nghe được bao nhiêu giây thì bạn đoán ra?",
     "marker": "{{seconds}}s"
   }
 }

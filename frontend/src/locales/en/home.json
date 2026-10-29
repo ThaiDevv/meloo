@@ -53,7 +53,9 @@
     },
     "figure": "base points for a right guess at the 2-second mark."
   },
-  "wave": {
+  "guess": {
+    "title": "Mystery song",
+    "prompt": "How many seconds until you know it?",
     "marker": "{{seconds}}s"
   }
 }

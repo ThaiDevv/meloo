@@ -53,8 +53,9 @@
     },
     "figure": "base points for a right guess at the 2-second mark."
   },
-  "lanes": {
-    "prompt": "Every lane is a listening level. The longer the block, the longer the clip.",
-    "marker": "{{seconds}}s"
+  "score": {
+    "prompt": "The longer you listen, the fewer points you get.",
+    "heard": "Heard so far",
+    "points": "Base score"
   }
 }

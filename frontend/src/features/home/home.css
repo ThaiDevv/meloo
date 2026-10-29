@@ -1,61 +1,38 @@
 /*
- * The lanes band of the home page, in the manner of a rhythm game: five lanes, one per listening
- * level, with blocks falling onto a pad. A block is as long as the clip of its level. Only
- * translate, scale and opacity move. Under prefers-reduced-motion the blocks rest on the pads.
+ * The scoreboard band of the home page: two counters that roll like an arcade machine. One counts
+ * the seconds heard (2, 5, 10, 20, 30), the other the base score that goes with them (1.000 down
+ * to 200). A strip of five values moves up by one row at a time, on a 12 s loop, then rolls back.
+ * Only translate moves. Under prefers-reduced-motion the counters rest on the first value.
  */
-.mh-lanes {
-  container-type: size;
-}
-.mh-block {
-  translate: 0 calc(100cqh - 100% - 0.25rem);
-  opacity: 0.9;
-}
-.mh-flash {
-  opacity: 0;
-}
-
 @media (prefers-reduced-motion: no-preference) {
-  .mh-block {
-    animation: mh-fall var(--mh-dur) linear infinite;
-    animation-delay: var(--mh-delay);
-    opacity: 0;
-  }
-  .mh-flash {
-    animation: mh-flash var(--mh-dur) linear infinite;
-    animation-delay: var(--mh-delay);
+  .mh-roll {
+    animation: mh-roll 12s cubic-bezier(0.3, 0.9, 0.3, 1) infinite;
   }
 }
 
-/* The block drops from above the lane, lands on the pad at 80 percent, then bursts and fades. */
-@keyframes mh-fall {
-  0% {
-    translate: 0 -100%;
-    opacity: 0;
-    scale: 1;
-  }
-  6% {
-    opacity: 0.9;
-  }
-  80% {
-    translate: 0 calc(100cqh - 100% - 0.25rem);
-    opacity: 0.9;
-    scale: 1;
-  }
-  100% {
-    translate: 0 calc(100cqh - 100% - 0.25rem);
-    opacity: 0;
-    scale: 1.12 1.5;
-  }
-}
-@keyframes mh-flash {
+/* A strip of five rows: each step moves it up by one fifth. Steps at 15, 29, 50 and 74 percent. */
+@keyframes mh-roll {
   0%,
-  79% {
-    opacity: 0;
+  12% {
+    translate: 0 0;
   }
-  83% {
-    opacity: 0.9;
+  15%,
+  26% {
+    translate: 0 -20%;
+  }
+  29%,
+  44% {
+    translate: 0 -40%;
+  }
+  50%,
+  66% {
+    translate: 0 -60%;
+  }
+  74%,
+  94% {
+    translate: 0 -80%;
   }
   100% {
-    opacity: 0;
+    translate: 0 0;
   }
 }

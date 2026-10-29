@@ -1,13 +1,17 @@
+import { Headphones, Play, Trophy } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   EMPTY_SELECTION,
+  Equalizer,
   MusicPicker,
+  VinylDisc,
   countFilterValues,
   toSoloFilter,
   type MusicSelection,
 } from '@/shared/music-picker'
+import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
 import {
   CreateSoloMatchError,
@@ -63,11 +67,17 @@ export function SoloSetupPage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-10 lg:py-16">
-      <header className="motion-rise max-w-2xl space-y-4">
-        <h1 className="font-display text-[clamp(2.5rem,7vw,4.5rem)] leading-none font-extrabold tracking-[-0.03em] text-balance">
-          {t('title')}
-        </h1>
-        <p className="text-lg">{t('setup.intro')}</p>
+      <header className="motion-rise flex items-center justify-between gap-6">
+        <div className="max-w-2xl space-y-4">
+          <div className="flex items-end gap-4">
+            <h1 className="font-display text-[clamp(2.5rem,7vw,4.5rem)] leading-none font-extrabold tracking-[-0.03em] text-balance">
+              {t('title')}
+            </h1>
+            <Equalizer className="mb-2 text-[clamp(1.5rem,3.5vw,2.5rem)] text-primary" />
+          </div>
+          <p className="text-lg">{t('setup.intro')}</p>
+        </div>
+        <VinylDisc accent className="hidden w-32 shrink-0 text-foreground sm:block lg:w-44" />
       </header>
 
       <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-14">
@@ -82,11 +92,13 @@ export function SoloSetupPage() {
                 value: 'RANKED',
                 title: t('setup.mode.ranked.title'),
                 description: t('setup.mode.ranked.description'),
+                icon: <Trophy className="size-6" strokeWidth={1.75} />,
               },
               {
                 value: 'PRACTICE',
                 title: t('setup.mode.practice.title'),
                 description: t('setup.mode.practice.description'),
+                icon: <Headphones className="size-6" strokeWidth={1.75} />,
               },
             ]}
           />
@@ -99,7 +111,12 @@ export function SoloSetupPage() {
             options={ROUND_COUNTS.map((count) => ({
               value: count,
               title: String(count),
-              badge: <span className="sr-only">{t('setup.rounds.unit')}</span>,
+              badge: (
+                <>
+                  <span className="sr-only">{t('setup.rounds.unit')}</span>
+                  <Pips count={count} />
+                </>
+              ),
             }))}
           />
           <section aria-labelledby="music-heading" className="space-y-4">
@@ -107,7 +124,14 @@ export function SoloSetupPage() {
               {t('setup.music.heading')}
             </h2>
             {mode === 'RANKED' ? (
-              <p className="rounded-2xl bg-raised px-5 py-4">{t('setup.music.rankedNote')}</p>
+              <p className="animate-in fade-in slide-in-from-bottom-2 flex items-start gap-4 rounded-2xl bg-raised px-5 py-4 duration-300 fill-mode-both motion-reduce:animate-none">
+                <Trophy
+                  aria-hidden="true"
+                  className="mt-0.5 size-6 shrink-0 text-primary"
+                  strokeWidth={1.75}
+                />
+                <span>{t('setup.music.rankedNote')}</span>
+              </p>
             ) : (
               <MusicPicker value={music} onChange={setMusic} playlistsLocked />
             )}
@@ -118,9 +142,17 @@ export function SoloSetupPage() {
           aria-labelledby="summary-heading"
           className="space-y-5 rounded-2xl bg-surface p-5 lg:sticky lg:top-20"
         >
-          <h2 id="summary-heading" className="text-base font-semibold">
-            {t('setup.summary.heading')}
-          </h2>
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-2">
+              <h2 id="summary-heading" className="text-base font-semibold">
+                {t('setup.summary.heading')}
+              </h2>
+              <Badge tone={mode === 'RANKED' ? 'positive' : 'neutral'}>
+                {t(mode === 'RANKED' ? 'setup.summary.ranked' : 'setup.summary.practice')}
+              </Badge>
+            </div>
+            <VinylDisc accent fast={create.isPending} className="w-20 shrink-0 text-foreground" />
+          </div>
           <dl className="space-y-3">
             <SummaryRow
               term={t('setup.mode.legend')}
@@ -135,12 +167,24 @@ export function SoloSetupPage() {
             <SummaryRow term={t('setup.music.heading')} detail={musicSummary} />
           </dl>
           <Button className="w-full" disabled={create.isPending} onClick={start}>
+            <Play aria-hidden="true" className="size-4 fill-current" />
             {create.isPending ? t('setup.starting') : t('setup.start')}
           </Button>
           {failure ? <FailureNotice failure={failure} roundCount={roundCount} /> : null}
         </aside>
       </div>
     </div>
+  )
+}
+
+/** One dot per round, so 5, 10 and 15 can be told apart at a glance. */
+function Pips({ count }: { count: number }) {
+  return (
+    <span aria-hidden="true" className="mx-auto flex max-w-24 flex-wrap justify-center gap-1 pt-1">
+      {Array.from({ length: count }, (_, i) => (
+        <i key={i} className="size-1.5 rounded-full bg-current opacity-70" />
+      ))}
+    </span>
   )
 }
 

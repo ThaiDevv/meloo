@@ -35,16 +35,38 @@ describe('HomePage', () => {
     expect(within(modes).getAllByText('Sắp có')).toHaveLength(3)
   })
 
-  it('shows the five listening levels', () => {
+  it('shows the five listening levels with the base score of each (BR-01, BR-02)', () => {
     renderPage()
 
     const levels = within(screen.getByRole('list', { name: 'Năm mốc nghe trong một vòng' }))
     expect(levels.getAllByRole('listitem').map((li) => li.textContent)).toEqual([
-      '2 giây',
-      '5 giây',
-      '10 giây',
-      '20 giây',
-      '30 giây',
+      '2 giây1.000 điểm',
+      '5 giây800 điểm',
+      '10 giây600 điểm',
+      '20 giây400 điểm',
+      '30 giây200 điểm',
+    ])
+  })
+
+  it('explains how a round works in four steps', () => {
+    renderPage()
+
+    const how = screen.getByRole('region', { name: 'Một vòng chơi' })
+    const steps = within(how).getAllByRole('listitem')
+    expect(steps).toHaveLength(4)
+    expect(steps[0]).toHaveTextContent('Nghe 2 giây đầu.')
+    expect(steps[3]).toHaveTextContent('Càng sớm, càng nhiều điểm.')
+  })
+
+  it('keeps the decoration out of the accessibility tree and out of the tab order', () => {
+    const { container } = renderPage()
+
+    expect(container.querySelectorAll('svg[aria-hidden="true"]').length).toBeGreaterThan(0)
+    expect(container.querySelector('.mh-marquee')).toHaveAttribute('aria-hidden', 'true')
+    // Only the two real links are focusable: the hero action and the solo tile.
+    expect(screen.getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
+      '/solo',
+      '/solo',
     ])
   })
 

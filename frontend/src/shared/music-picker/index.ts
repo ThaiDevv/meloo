@@ -6,3 +6,6 @@ export {
   type MusicFilter,
   type MusicSelection,
 } from './types'
+export { Equalizer } from './Equalizer'
+export { VinylDisc } from './VinylDisc'
+export { levelDelay } from './levels'

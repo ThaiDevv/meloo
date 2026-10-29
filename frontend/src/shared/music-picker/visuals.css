@@ -1,0 +1,129 @@
+/*
+ * Motion for the music visuals (equalizer, vinyl disc, lit levels, chip pop).
+ * Flat colour only; transform and opacity only. Every loop sits inside no-preference, so under
+ * prefers-reduced-motion the pieces simply stand still.
+ */
+
+.mv-eq {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 0.14em;
+  height: 1em;
+  vertical-align: baseline;
+}
+.mv-eq > i {
+  display: block;
+  width: 0.16em;
+  height: 100%;
+  border-radius: 999px;
+  background: currentColor;
+  transform-origin: bottom;
+  transform: scaleY(0.45);
+}
+
+.mv-disc-body {
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+}
+.mv-arm {
+  transform-box: view-box;
+  transform-origin: 176px 24px;
+}
+.mv-ring {
+  opacity: 0.4;
+}
+.mv-lit {
+  opacity: 0.5;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mv-eq > i {
+    animation: mv-eq 880ms ease-in-out infinite alternate;
+  }
+  .mv-eq > i:nth-child(2) {
+    animation-duration: 640ms;
+    animation-delay: -220ms;
+  }
+  .mv-eq > i:nth-child(3) {
+    animation-duration: 1040ms;
+    animation-delay: -480ms;
+  }
+  .mv-eq > i:nth-child(4) {
+    animation-duration: 720ms;
+    animation-delay: -120ms;
+  }
+  .mv-eq > i:nth-child(5) {
+    animation-duration: 960ms;
+    animation-delay: -360ms;
+  }
+  .mv-eq[data-paused='true'] > i {
+    animation-play-state: paused;
+  }
+
+  .mv-disc[data-spinning='true'] .mv-disc-body {
+    animation: mv-spin 14s linear infinite;
+  }
+  .mv-disc[data-spinning='true'][data-fast='true'] .mv-disc-body {
+    animation-duration: 1.8s;
+  }
+  .mv-disc[data-spinning='true'] .mv-arm {
+    animation: mv-arm 7s ease-in-out infinite alternate;
+  }
+  .mv-ring {
+    animation: mv-lit 4.6s ease-in-out infinite;
+  }
+  .mv-lit {
+    animation: mv-lit 4.6s ease-in-out infinite;
+  }
+
+  /* A chip or tile that has just been picked bounces once. */
+  .mv-chip[aria-pressed='true'],
+  .mv-tile:has(input:checked) {
+    animation: mv-pop 260ms cubic-bezier(0.2, 0.8, 0.3, 1.4);
+  }
+}
+
+@keyframes mv-eq {
+  from {
+    transform: scaleY(0.18);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+@keyframes mv-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes mv-arm {
+  from {
+    transform: rotate(-2deg);
+  }
+  to {
+    transform: rotate(3deg);
+  }
+}
+/* One level at a time lights up, from the shortest clip to the longest, then the cycle repeats. */
+@keyframes mv-lit {
+  0%,
+  42%,
+  100% {
+    opacity: 0.5;
+  }
+  8%,
+  24% {
+    opacity: 1;
+  }
+}
+@keyframes mv-pop {
+  0% {
+    transform: scale(0.94);
+  }
+  60% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}

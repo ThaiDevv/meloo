@@ -1,0 +1,23 @@
+/*
+ * The edge-to-edge band of the home page. The track holds four identical groups and moves by half
+ * its width, so the loop is seamless at any screen width. Under prefers-reduced-motion it stands still.
+ */
+.mh-marquee-track {
+  display: flex;
+  width: max-content;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mh-marquee-track {
+    animation: mh-marquee 46s linear infinite;
+  }
+  .mh-marquee:hover .mh-marquee-track {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes mh-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}

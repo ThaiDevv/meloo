@@ -6,7 +6,14 @@ interface RadioTilesProps<T extends string | number> {
   name: string
   value: T
   onChange: (value: T) => void
-  options: { value: T; title: string; description?: string; badge?: ReactNode }[]
+  options: {
+    value: T
+    title: string
+    description?: string
+    /** Decorative, aria-hidden, drawn in the tile's text colour (top right). */
+    icon?: ReactNode
+    badge?: ReactNode
+  }[]
   /** Tiles share a row on wide screens; `compact` keeps short options on one line even at 360px. */
   compact?: boolean
 }
@@ -27,7 +34,7 @@ export function RadioTiles<T extends string | number>({
         {options.map((option) => (
           <label
             key={option.value}
-            className="flex cursor-pointer flex-col justify-center gap-1 rounded-2xl bg-raised px-5 py-4 text-foreground transition-colors has-checked:bg-primary has-checked:text-primary-foreground has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring has-disabled:cursor-not-allowed has-disabled:opacity-50 motion-reduce:transition-none"
+            className="mv-tile relative flex cursor-pointer flex-col justify-center gap-1 rounded-2xl bg-raised px-5 py-4 text-foreground transition-[background-color,transform] duration-150 hover:-translate-y-0.5 has-checked:bg-primary has-checked:text-primary-foreground has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring has-disabled:cursor-not-allowed has-disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
           >
             <input
               type="radio"
@@ -39,6 +46,14 @@ export function RadioTiles<T extends string | number>({
               }}
               className="sr-only"
             />
+            {option.icon ? (
+              <span
+                aria-hidden="true"
+                className="absolute top-4 right-4 opacity-60 transition-transform duration-200 [label:has(:checked)_&]:opacity-100"
+              >
+                {option.icon}
+              </span>
+            ) : null}
             <span className={cn('font-semibold', compact ? 'num text-center text-2xl' : 'text-lg')}>
               {option.title}
             </span>

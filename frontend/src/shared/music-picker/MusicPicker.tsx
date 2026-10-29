@@ -9,7 +9,11 @@ import { Skeleton } from '@/shared/ui/Skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/Tabs'
 import { useCatalogFilters } from './api/useCatalogFilters'
 import { usePlaylists } from './api/usePlaylists'
+import { VinylDisc } from './VinylDisc'
 import { MAX_PER_GROUP, type MusicFilter, type MusicSelection } from './types'
+
+const PANEL_ENTRANCE =
+  'animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both motion-reduce:animate-none'
 
 interface MusicPickerProps {
   value: MusicSelection
@@ -47,7 +51,7 @@ export function MusicPicker({
           {playlistsLocked ? <Badge className="ml-2">{t('picker.soon')}</Badge> : null}
         </TabsTrigger>
       </TabsList>
-      <TabsContent value="filter">
+      <TabsContent value="filter" className={PANEL_ENTRANCE}>
         <FilterPanel
           filter={value.filter}
           onChange={(filter) => {
@@ -55,7 +59,7 @@ export function MusicPicker({
           }}
         />
       </TabsContent>
-      <TabsContent value="playlist">
+      <TabsContent value="playlist" className={PANEL_ENTRANCE}>
         <PlaylistPanel
           playlistId={value.playlistId}
           onChange={(playlistId) => {
@@ -240,7 +244,7 @@ function ChipGroup<T extends string | number>({
                   onToggle(option.value)
                 }}
                 className={cn(
-                  'h-10 rounded-full px-4 text-sm font-medium transition-[background-color,transform] duration-150 active:scale-[0.97] disabled:opacity-40 motion-reduce:transition-none motion-reduce:active:scale-100',
+                  'mv-chip h-10 rounded-full px-4 text-sm font-medium transition-[background-color,transform] duration-150 hover:-translate-y-0.5 active:scale-[0.97] disabled:opacity-40 disabled:hover:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100',
                   on
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-raised text-foreground hover:bg-foreground/10',
@@ -309,8 +313,11 @@ function PlaylistPanel({
                   : 'bg-raised text-foreground hover:bg-foreground/10',
               )}
             >
-              <span className="text-base font-semibold">
-                {vi ? playlist.nameVi : playlist.nameEn}
+              <span className="flex min-w-0 items-center gap-4">
+                <VinylDisc spinning={on} className="size-10 shrink-0" />
+                <span className="text-base font-semibold">
+                  {vi ? playlist.nameVi : playlist.nameEn}
+                </span>
               </span>
               <span className="num shrink-0 text-sm">
                 {t('picker.trackCount', { n: playlist.trackCount })}

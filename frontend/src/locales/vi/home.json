@@ -7,7 +7,9 @@
   },
   "ladder": {
     "label": "Năm mốc nghe trong một vòng",
-    "step": "{{seconds}} giây"
+    "step": "{{seconds}} giây",
+    "pointsUnit": "điểm",
+    "caption": "Điểm cơ bản khi đoán đúng ở từng mốc. Mốc càng ngắn, điểm càng cao."
   },
   "modes": {
     "heading": "Chọn cách chơi",
@@ -28,5 +30,33 @@
       "title": "Ghép trận nhanh",
       "description": "Vào phòng công khai theo bộ nhạc bạn thích."
     }
+  },
+  "marquee": {
+    "a": "Nghe ít",
+    "b": "Đoán nhanh",
+    "c": "2 · 5 · 10 · 20 · 30 giây",
+    "d": "Tối đa 1.000 điểm"
+  },
+  "how": {
+    "heading": "Một vòng chơi",
+    "steps": {
+      "listen": {
+        "title": "Nghe 2 giây đầu.",
+        "body": "Mỗi vòng mở một đoạn nhạc rất ngắn. Nghe lại bao nhiêu lần cũng được."
+      },
+      "more": {
+        "title": "Chưa ra? Nghe thêm.",
+        "body": "Bấm nghe thêm hoặc đoán sai đều mở mức kế tiếp: 5, 10, 20 rồi 30 giây."
+      },
+      "guess": {
+        "title": "Gõ tên bài hát.",
+        "body": "Gợi ý hiện ngay khi bạn gõ, gõ không dấu cũng tìm được."
+      },
+      "score": {
+        "title": "Càng sớm, càng nhiều điểm.",
+        "body": "Đúng ở mốc 2 giây được 1.000 điểm, mỗi mốc sau bớt 200."
+      }
+    },
+    "figure": "điểm khi đoán đúng ngay ở mốc 2 giây."
   }
 }

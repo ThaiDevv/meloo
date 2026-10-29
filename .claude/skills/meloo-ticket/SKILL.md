@@ -114,7 +114,7 @@ Ticket review chuẩn bỏ qua bước này: review chéo của agent kia là đ
 3. Điền `.github/PULL_REQUEST_TEMPLATE.md` vào `_workspace/MEL-<số>/pr-body.md`:
    - Khối `meloo:scope` chép từ `scope.txt`.
    - Bảng bằng chứng AC lấy từ `02_qa.md`.
-   - Ghi tác giả, reviewer, mức review, file nóng đã giữ.
+   - Ghi tác giả thực tế, reviewer, mức review, file nóng đã giữ. BẮT BUỘC: Nếu Antigravity là người thực hiện/viết code (Thái giao cho Antigravity làm), phải ghi rõ `Tác giả: Antigravity` ở PR description và mọi comment PR, tuyệt đối KHÔNG ghi Claude hay Codex dù trên Jira gán cho ai.
 4. `gh pr create --base main --title "MEL-<số> <type>(<module>): <mô tả>" --body-file _workspace/MEL-<số>/pr-body.md`.
 5. Không merge, không approve, không đụng Jira.
 

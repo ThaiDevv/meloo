@@ -1,9 +1,9 @@
 # AGENTS.md — Meloo
 
-Luật chung cho mọi coding agent (Codex, Claude Code) trong repo này. File này được nạp ở mọi phiên nên chỉ chứa luật. Cách làm chi tiết nằm trong skill ở `.claude/skills/`; Codex thấy cùng nội dung qua `.agents/skills/`.
+Luật chung cho mọi coding agent (Codex, Claude Code, Antigravity) trong repo này. File này được nạp ở mọi phiên nên chỉ chứa luật. Cách làm chi tiết nằm trong skill ở `.claude/skills/`; Codex và Antigravity thấy cùng nội dung qua `.agents/skills/`.
 
 ## Dự án trong 30 giây
-Meloo là web game đoán tên bài hát. Mỗi vòng mở dần đoạn preview 2 → 5 → 10 → 20 → 30 giây, đoán càng sớm càng nhiều điểm. Có chơi đơn, thử thách ngày và phòng 2–5 người realtime. Đây là đồ án môn học, một người làm cùng hai agent.
+Meloo là web game đoán tên bài hát. Mỗi vòng mở dần đoạn preview 2 → 5 → 10 → 20 → 30 giây, đoán càng sớm càng nhiều điểm. Có chơi đơn, thử thách ngày và phòng 2–5 người realtime. Đây là đồ án môn học, một người làm cùng các agent.
 
 Nguyên tắc không được phá:
 - Server là trọng tài: đáp án, điểm và đồng hồ do backend quyết. Không API, sự kiện hay log nào lộ đáp án trước khi vòng kết thúc.
@@ -24,10 +24,11 @@ Nguyên tắc không được phá:
 | Ai | Làm | Review |
 |---|---|---|
 | Thái | Product Owner + Tech Lead. Người duy nhất merge PR và đổi trạng thái Jira | Nghiệm thu cuối |
-| Codex | Backend Spring Boot, CI/CD, hạ tầng, E2E | PR của Claude |
-| Claude | Frontend, hợp đồng API, nháp tài liệu, vài ticket backend thuần logic | PR của Codex |
+| Codex | Backend Spring Boot, CI/CD, hạ tầng, E2E | PR của Claude / Antigravity |
+| Claude | Frontend, hợp đồng API, nháp tài liệu, vài ticket backend thuần logic | PR của Codex / Antigravity |
+| Antigravity | Coding agent (khi được Thái giao ticket trực tiếp) | PR của Codex / Claude |
 
-Người viết khác người review, luôn luôn.
+Người viết khác người review, luôn luôn. Tác giả thực tế: agent nào nhận và viết code từ Thái thì agent đó là tác giả, không phụ thuộc vào việc Jira phân công cho ai.
 
 ## Việc gì cũng bắt đầu bằng skill
 | Việc | Skill | Cách gọi |
@@ -45,7 +46,7 @@ Người viết khác người review, luôn luôn.
 5. Khóa file nóng: mỗi label `hot-*` chỉ một ticket In Progress được giữ (bảng dưới).
 6. Hợp đồng trước: API chỉ đổi qua ticket `CT-xx`. Sau khi CT merge, backend và frontend của tính năng chạy song song.
 7. Khung dựng sẵn: thư mục module, `api/`, `events/`, route, file i18n, file cấu hình module đã có từ S0. Ticket sau chỉ thêm file trong thư mục của mình.
-8. Tối đa 2 agent cùng lúc (1 Codex + 1 Claude), kể cả phiên review.
+8. Tối đa 2 agent cùng lúc (1 tác giả + 1 reviewer), kể cả phiên review.
 9. Sau khi một PR merge, worktree đang mở rebase lên `main` rồi `git push --force-with-lease` trên branch của mình.
 10. Agent không merge, không approve, không đổi Jira. Chỉ Thái bấm merge.
 
@@ -67,7 +68,7 @@ Người viết khác người review, luôn luôn.
 - Tiêu đề PR (cũng là commit sau squash): `MEL-<số> <type>(<module>): <mô tả tiếng Việt>`, ví dụ `MEL-55 feat(room): sảnh chờ và nút sẵn sàng`. Khi squash merge giữ nguyên tiền tố `MEL-<số>` ở tiêu đề commit: `deps-merged.sh` dựa vào nó để biết phụ thuộc đã merge.
 - PR khoảng ≤ 400 dòng thay đổi, không tính code sinh tự động. Điền đủ template, nhất là khối `meloo:scope` và bảng bằng chứng AC.
 - Không bao giờ `--force` trần. Chỉ dùng `--force-with-lease` trên branch của ticket.
-- Không ghi dòng ghi công agent vào commit, PR hay comment: không `Co-Authored-By`, không "Generated with …" hay tương tự. Tác giả là Thái; agent làm ticket đã ghi ở mục Ticket của PR.
+- Tác giả thực tế trên PR và comment: Agent nào thực sự viết code và làm ticket thì ghi rõ tên agent đó làm tác giả ở mục Ticket của PR và các comment PR (ví dụ `Tác giả: Antigravity`). Nếu Antigravity là người thực hiện (Thái giao cho Antigravity làm), khi viết code xong và mở PR hoặc comment PR phải ghi rõ tác giả là **Antigravity**, tuyệt đối KHÔNG được ghi Codex hay Claude, bất kể Jira hay ticket-index yêu cầu Claude hay Codex viết. Không ghi dòng ghi công agent vào commit (không `Co-Authored-By`, không "Generated with …"): tác giả commit là Thái, agent thực hiện được ghi danh ở PR description và comment PR.
 
 ## Definition of Done (bản ngắn)
 - Đạt toàn bộ Acceptance Criteria, PR có bằng chứng cho từng AC.

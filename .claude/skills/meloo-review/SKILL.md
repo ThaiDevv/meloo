@@ -19,7 +19,7 @@ Phiên review cũng tốn hạn mức như một agent (luật 8: tối đa 2 ag
 ## Bước 1 — Thu thập
 1. `gh pr view <số> --json number,title,body,headRefName,baseRefName,author,additions,deletions,files` và `gh pr diff <số>`.
 2. Ticket: lấy AC và Phạm vi file trong mô tả PR (khối `meloo:scope`, bảng AC). Có Jira MCP thì đối chiếu thêm (chỉ đọc).
-3. Người viết phải khác người review: PR ghi "Tác giả: Codex" thì chỉ Claude review, và ngược lại. Nếu bạn là tác giả thì dừng, báo Thái.
+3. Người viết phải khác người review: PR ghi "Tác giả: X" thì agent X không được review. Nếu bạn là tác giả (Codex, Claude hoặc Antigravity) thì dừng, báo Thái.
 4. Lấy code về để đọc và chạy test: trong worktree review của Orca, chạy `gh pr checkout <số>`.
 5. Lưu ngữ cảnh vào `_workspace/review/PR-<số>/00_context.md`.
 
@@ -62,7 +62,7 @@ Vì sao phải kiểm chứng: báo lỗi giả làm tác giả sửa nhầm và
 
 ## Định dạng nhận xét
 ```markdown
-## Review MEL-<số> · PR #<số> · vòng <k> · reviewer: <Claude|Codex>
+## Review MEL-<số> · PR #<số> · vòng <k> · reviewer: <Claude|Codex|Antigravity>
 **Kết luận:** Chặn merge — còn <n> Blocker, <m> Major | Không còn Blocker/Major — chờ Thái nghiệm thu
 
 ### Blocker
@@ -103,4 +103,4 @@ Vì sao phải kiểm chứng: báo lỗi giả làm tác giả sửa nhầm và
 ## Kịch bản kiểm thử
 **Bình thường:** "/meloo-review 12" (PR của Codex cho MEL-45) → check-scope đạt, CI xanh → checklist backend ra 3 nhận xét (1 Blocker lộ `trackId` trong response vòng, 1 Major N+1, 1 Minor) → 2 verifier: Blocker confirmed, Major refuted vì đã có `@EntityGraph` → đăng comment "Chặn merge — còn 1 Blocker" với ghi chú "bỏ 1 nhận xét sau kiểm chứng".
 
-**Lỗi:** "/meloo-review 13" mà PR ghi "Tác giả: Claude" và bạn là Claude → dừng: "Mình là tác giả của PR này nên không review được (luật người viết khác người review). Hãy mở phiên Codex và chạy `$meloo-review 13`."
+**Lỗi:** "/meloo-review 13" mà PR ghi bạn là tác giả (ví dụ PR ghi "Tác giả: Claude" và bạn là Claude, hoặc PR ghi "Tác giả: Antigravity" và bạn là Antigravity) → dừng: "Mình là tác giả của PR này nên không review được (luật người viết khác người review). Hãy mở phiên agent còn lại để review."

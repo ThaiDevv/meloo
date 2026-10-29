@@ -21,7 +21,9 @@ info:
     |---|---|---|
     | `/ready` | `PLAYER_READY_CHANGED` | (none) |
     | `/settings` | `ROOM_SETTINGS_CHANGED` | (none) |
-    | `/start` | `MATCH_STARTING`, `MATCH_COUNTDOWN` | (none) |
+    | `/kick` | `PLAYER_KICKED` | (none) |
+    | `/leave` | `PLAYER_LEFT` | (none) |
+    | `/start` | `MATCH_STARTING`, `MATCH_COUNTDOWN`, `ROUND_PREPARE` (topic) | `ROUND_AUDIO_CLIP` (private queue) |
     | `/prepared` | `ROUND_START` (when all ready or timeout) | (none) |
     | `/listen-more` | `LISTEN_MORE_OPENED` | `LISTEN_MORE_RESPONSE` (contains private `AudioClip`) |
     | `/guess` | `PLAYER_GUESSED` (only if correct) | `GUESS_RESULT_PRIVATE` (score breakdown, nextLevel & nextAudioClip if wrong) |
@@ -29,6 +31,8 @@ info:
     | `/resync` | (none) | `RESYNC_STATE` |
     | `/chat` | `CHAT_MESSAGE` | `ERROR` (if violating answer leak or prohibited words) |
     | `/rtc` | `RTC_SIGNAL` | (none) |
+
+    *Note on message order:* `ROUND_PREPARE` (broadcast topic) and `ROUND_AUDIO_CLIP` (private queue) are delivered across separate STOMP channels and may arrive out of order. Clients MUST correlate the audio clip token with the round prepare phase using `roundNo`.
   contact:
     name: Meloo Team
     email: contact@meloo.local
@@ -575,6 +579,7 @@ components:
 
     RtcCommand:
       summary: Client-to-server WebRTC voice signaling (S5)
+      description: WebRTC signaling placeholder for S5 voice. Server validates that room is a PRIVATE_ROOM (BR-18) and forwards to target peer.
       payload:
         type: object
         required: [signalType, payload]
@@ -1112,11 +1117,21 @@ components:
             const: ERROR
           code:
             type: string
-            enum: [ROOM_NOT_FOUND, ROOM_FULL, NOT_IN_ROOM, NOT_HOST, INVALID_STATE, ALREADY_READY, INVALID_ROUND_NO, INVALID_LEVEL, INVALID_TRACK, CHAT_ANSWER_LEAK, CHAT_PROHIBITED_WORD, RATE_LIMITED, INTERNAL_ERROR]
+            enum: [ROOM_NOT_FOUND, ROOM_FULL, NOT_IN_ROOM, NOT_HOST, NOT_ROOM_HOST, ROOM_NOT_LOBBY, ROOM_CANNOT_START, NOT_ENOUGH_TRACKS, INVALID_STATE, ALREADY_READY, INVALID_ROUND_NO, INVALID_LEVEL, INVALID_TRACK, CHAT_ANSWER_LEAK, CHAT_PROHIBITED_WORD, RATE_LIMITED, INTERNAL_ERROR]
           message:
             type: string
+            description: Message for server logging and diagnostics. Clients should localize user-facing text based on code.
           detail:
             type: [string, 'null']
+            description: Detailed diagnostic explanation for debugging.
+          startFailureReason:
+            type: [string, 'null']
+            enum: [NOT_ENOUGH_PLAYERS, NOT_ALL_READY, NOT_ENOUGH_TRACKS, null]
+            description: Specific reason why match cannot start (BR-09, BR-12, UC-17).
+          missingTracks:
+            type: [integer, 'null']
+            minimum: 0
+            description: Number of tracks still needed in playlist if code is NOT_ENOUGH_TRACKS (UC-17).
           serverTime:
             type: string
             format: date-time
@@ -1149,10 +1164,12 @@ components:
             oneOf:
               - $ref: '#/components/schemas/RoundAnswer'
               - type: 'null'
+            description: True track information revealed strictly when room is in ROUND_REVEAL or FINISHED; strictly null during ROUND_IN_PROGRESS or earlier phases of the active round.
           lastRoundResults:
             type: [array, 'null']
             items:
               $ref: '#/components/schemas/PlayerRoundResult'
+            description: Player score results revealed strictly when room is in ROUND_REVEAL or FINISHED; strictly null during ROUND_IN_PROGRESS or earlier phases of the active round.
           serverTime:
             type: string
             format: date-time
@@ -1253,7 +1270,7 @@ components:
       properties:
         url:
           type: string
-          description: Relative path `/api/v1/audio/clips/{token}`.
+          description: Relative path `/api/v1/audio/{token}`.
         level:
           type: integer
           enum: [2, 5, 10, 20, 30]

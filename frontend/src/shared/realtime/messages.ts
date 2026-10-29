@@ -352,6 +352,10 @@ export interface ErrorMessage {
     | 'ROOM_FULL'
     | 'NOT_IN_ROOM'
     | 'NOT_HOST'
+    | 'NOT_ROOM_HOST'
+    | 'ROOM_NOT_LOBBY'
+    | 'ROOM_CANNOT_START'
+    | 'NOT_ENOUGH_TRACKS'
     | 'INVALID_STATE'
     | 'ALREADY_READY'
     | 'INVALID_ROUND_NO'
@@ -363,6 +367,8 @@ export interface ErrorMessage {
     | 'INTERNAL_ERROR'
   message: string
   detail: string | null
+  startFailureReason?: 'NOT_ENOUGH_PLAYERS' | 'NOT_ALL_READY' | 'NOT_ENOUGH_TRACKS' | null
+  missingTracks?: number | null
   serverTime: string
 }
 

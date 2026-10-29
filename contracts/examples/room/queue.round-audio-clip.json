@@ -3,7 +3,7 @@
   "roundNo": 1,
   "level": 2,
   "audioClip": {
-    "url": "/api/v1/audio/clips/eyJhbGciOiJIUzI1NiJ9.eyJyIjoxLCJsIjoyfQ.signature",
+    "url": "/api/v1/audio/eyJhbGciOiJIUzI1NiJ9.eyJyIjoxLCJsIjoyfQ.signature",
     "level": 2,
     "expiresAt": "2026-10-29T10:05:00Z"
   },

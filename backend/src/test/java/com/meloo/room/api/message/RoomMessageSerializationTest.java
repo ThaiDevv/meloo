@@ -222,7 +222,9 @@ class RoomMessageSerializationTest {
                   clazz.getSimpleName(), field.getName())
               .doesNotContain("tracktitle")
               .doesNotContain("artistname")
-              .doesNotContain("audioclip");
+              .doesNotContain("audioclip")
+              .doesNotContain("trackid")
+              .doesNotContain("previewfullurl");
         }
       }
     }
@@ -406,6 +408,28 @@ class RoomMessageSerializationTest {
     }
 
     @Test
+    @DisplayName("ErrorMessage supports start failure with missing tracks (UC-17, BR-09, M6)")
+    void errorMessageStartFailure() throws Exception {
+      Instant now = Instant.now();
+      ErrorMessage err =
+          new ErrorMessage(
+              "NOT_ENOUGH_TRACKS",
+              "Playlist không đủ bài hát để bắt đầu trận.",
+              "Cần ít nhất 10 bài hát nhưng danh sách phát chỉ có 7 bài.",
+              "NOT_ENOUGH_TRACKS",
+              3,
+              now);
+
+      String json = jsonMapper.writeValueAsString(err);
+      ErrorMessage deserialized = jsonMapper.readValue(json, ErrorMessage.class);
+
+      assertThat(deserialized.type()).isEqualTo("ERROR");
+      assertThat(deserialized.code()).isEqualTo("NOT_ENOUGH_TRACKS");
+      assertThat(deserialized.startFailureReason()).isEqualTo("NOT_ENOUGH_TRACKS");
+      assertThat(deserialized.missingTracks()).isEqualTo(3);
+    }
+
+    @Test
     @DisplayName(
         "ResyncStateMessage (BR-14) delivers full room snapshot with revealed answer in ROUND_REVEAL")
     void resyncStateMessageSnapshot() throws Exception {
@@ -436,7 +460,7 @@ class RoomMessageSerializationTest {
               2,
               10,
               2,
-              new AudioClipPayload("/api/v1/audio/clips/token", 2, now.plusSeconds(300)),
+              new AudioClipPayload("/api/v1/audio/token", 2, now.plusSeconds(300)),
               35000,
               false);
 
@@ -579,6 +603,7 @@ class RoomMessageSerializationTest {
               readJson("event.lobby.match-countdown-stopped.json"),
               MatchCountdownStoppedEvent.class);
       assertThat(mcs.type()).isEqualTo("MATCH_COUNTDOWN_STOPPED");
+      assertThat(mcs.reason()).isEqualTo("PLAYER_LEFT");
 
       MatchSoloSuggestionEvent mss =
           jsonMapper.readValue(
@@ -641,6 +666,7 @@ class RoomMessageSerializationTest {
           jsonMapper.readValue(
               readJson("event.round.early-ended.json"), MatchEarlyEndedEvent.class);
       assertThat(mee.type()).isEqualTo("MATCH_EARLY_ENDED");
+      assertThat(mee.reason()).isEqualTo("ONLY_ONE_PLAYER_REMAINED");
     }
 
     @Test
@@ -666,6 +692,7 @@ class RoomMessageSerializationTest {
 
       ErrorMessage em = jsonMapper.readValue(readJson("queue.error.json"), ErrorMessage.class);
       assertThat(em.type()).isEqualTo("ERROR");
+      assertThat(em.code()).isEqualTo("CHAT_ANSWER_LEAK");
 
       ResyncStateMessage rsm =
           jsonMapper.readValue(readJson("queue.resync-state.json"), ResyncStateMessage.class);

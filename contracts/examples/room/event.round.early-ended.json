@@ -1,6 +1,6 @@
 {
   "type": "MATCH_EARLY_ENDED",
-  "reason": "ALL_OPPONENTS_LEFT",
+  "reason": "ONLY_ONE_PLAYER_REMAINED",
   "remainingUserId": "11111111-2222-3333-4444-555555555555",
   "serverTime": "2026-10-29T10:03:05Z"
 }

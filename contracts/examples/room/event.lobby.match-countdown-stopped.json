@@ -1,5 +1,5 @@
 {
   "type": "MATCH_COUNTDOWN_STOPPED",
-  "reason": "PLAYER_DISCONNECTED",
+  "reason": "PLAYER_LEFT",
   "serverTime": "2026-10-29T10:00:30Z"
 }

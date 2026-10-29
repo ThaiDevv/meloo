@@ -1,0 +1,11 @@
+{
+  "type": "ROUND_TRACK_REPLACED",
+  "roundNo": 1,
+  "audioClip": {
+    "url": "/api/v1/audio/clips/eyJhbGciOiJIUzI1NiJ9.eyJyIjoxLCJsIjoyLCJuZXciOnRydWV9.signature",
+    "level": 2,
+    "expiresAt": "2026-10-29T10:05:00Z"
+  },
+  "reason": "AUDIO_SOURCE_UNAVAILABLE",
+  "serverTime": "2026-10-29T10:02:25Z"
+}

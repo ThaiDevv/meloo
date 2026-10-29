@@ -1,0 +1,14 @@
+{
+  "type": "GUESS_RESULT_PRIVATE",
+  "roundNo": 1,
+  "result": "CORRECT",
+  "isCorrect": true,
+  "isCorrectArtist": true,
+  "scoreDetail": {
+    "baseScore": 800,
+    "comboPercent": 10,
+    "speedBonus": 133,
+    "roundScore": 1013
+  },
+  "serverTime": "2026-10-29T10:02:20Z"
+}

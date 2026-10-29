@@ -1,0 +1,8 @@
+{
+  "type": "RTC_SIGNAL",
+  "senderId": "11111111-2222-3333-4444-555555555555",
+  "targetUserId": "22222222-3333-4444-5555-666666666666",
+  "signalType": "offer",
+  "payload": "{\"sdp\":\"v=0...\"}",
+  "serverTime": "2026-10-29T10:02:32Z"
+}

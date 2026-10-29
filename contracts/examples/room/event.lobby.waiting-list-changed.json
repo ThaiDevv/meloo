@@ -1,0 +1,15 @@
+{
+  "type": "WAITING_LIST_CHANGED",
+  "waitingPlayers": [
+    {
+      "userId": "44444444-5555-6666-7777-888888888888",
+      "nickname": "LateJoiner",
+      "avatarUrl": null,
+      "isHost": false,
+      "isReady": false,
+      "isGuest": true,
+      "score": 0
+    }
+  ],
+  "serverTime": "2026-10-29T10:02:00Z"
+}

@@ -1,0 +1,9 @@
+{
+  "type": "CHAT_MESSAGE",
+  "messageId": "77777777-8888-9999-aaaa-bbbbbbbbbbbb",
+  "senderId": "11111111-2222-3333-4444-555555555555",
+  "senderNickname": "ThaiPO",
+  "content": "Bài này hay quá!",
+  "sentAt": "2026-10-29T10:02:30Z",
+  "serverTime": "2026-10-29T10:02:30Z"
+}

@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Room not found",
+  "status": 404,
+  "code": "ROOM_NOT_FOUND",
+  "detail": "The room code does not exist or the room is already closed.",
+  "instance": "/api/v1/rooms/join"
+}

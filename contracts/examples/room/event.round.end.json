@@ -1,0 +1,38 @@
+{
+  "type": "ROUND_END",
+  "roundNo": 1,
+  "answer": {
+    "trackId": "33333333-4444-5555-6666-777777777777",
+    "trackTitle": "Cắt Đôi Nỗi Sầu",
+    "artistName": "Tăng Duy Tân",
+    "albumTitle": "Cắt Đôi Nỗi Sầu (Single)",
+    "coverUrl": "https://e-cdns-images.dzcdn.net/images/cover/sample/250x250-000000-80-0-0.jpg",
+    "previewFullUrl": "https://www.deezer.com/track/12345678"
+  },
+  "results": [
+    {
+      "userId": "11111111-2222-3333-4444-555555555555",
+      "outcome": "CORRECT",
+      "correctLevel": 5,
+      "baseScore": 800,
+      "comboPercent": 10,
+      "speedBonus": 133,
+      "roundScore": 1013,
+      "wrongCount": 0,
+      "answerTimeMs": 15000
+    },
+    {
+      "userId": "22222222-3333-4444-5555-666666666666",
+      "outcome": "WRONG_OUT",
+      "correctLevel": null,
+      "baseScore": 0,
+      "comboPercent": 0,
+      "speedBonus": 0,
+      "roundScore": 0,
+      "wrongCount": 5,
+      "answerTimeMs": null
+    }
+  ],
+  "nextRoundAt": "2026-10-29T10:03:00Z",
+  "serverTime": "2026-10-29T10:02:55Z"
+}

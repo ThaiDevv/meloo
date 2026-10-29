@@ -30,6 +30,8 @@ tags:
     description: Single-player matches (ranked and practice).
   - name: audio
     description: Stream audio preview clips using opaque HMAC tokens (ADR-008).
+  - name: room
+    description: Room creation, joining, public rooms and quick match.
 security:
   - bearerAuth: []
 paths:
@@ -762,6 +764,172 @@ paths:
               examples:
                 rateLimited:
                   externalValue: ./examples/audio/problem.rate-limited.429.json
+  /api/v1/rooms:
+    post:
+      tags: [room]
+      operationId: createRoom
+      summary: Create a multiplayer room
+      description: |
+        Creates a new room (either private or public, BR-11, BR-12). The creator becomes the room host.
+        Private rooms are joinable via 6-character code or link; public rooms appear in the public lobby list.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoomRequest'
+            examples:
+              default:
+                externalValue: ./examples/room/create-room.request.json
+      responses:
+        '201':
+          description: Room created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomResponse'
+              examples:
+                default:
+                  externalValue: ./examples/room/create-room.201.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/rooms/join:
+    post:
+      tags: [room]
+      operationId: joinRoomByCode
+      summary: Join an existing room by code
+      description: |
+        Joins an existing room using its 6-character code (BR-11, BR-12, BR-15).
+        If the match is already in progress, the player waits in the lobby for the next match (BR-15).
+        Players previously kicked by the host cannot re-enter (BR-12).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JoinRoomRequest'
+            examples:
+              default:
+                externalValue: ./examples/room/join-room.request.json
+      responses:
+        '200':
+          description: Successfully joined the room.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomResponse'
+              examples:
+                default:
+                  externalValue: ./examples/room/join-room.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden because account is locked or player was kicked from this room (BR-12, BR-28).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                kicked:
+                  externalValue: ./examples/room/problem.room-kicked.403.json
+        '404':
+          description: Room not found or already closed (`ROOM_NOT_FOUND`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                roomNotFound:
+                  externalValue: ./examples/room/problem.room-not-found.404.json
+        '409':
+          description: Room is already full (`ROOM_FULL`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                roomFull:
+                  externalValue: ./examples/room/problem.room-full.409.json
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/rooms/public:
+    get:
+      tags: [room]
+      operationId: listPublicRooms
+      summary: List public rooms
+      description: |
+        Returns a paginated list of public rooms waiting in lobby or playing (BR-11, BR-15).
+        Private and quick-match rooms are not listed.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Paginated public rooms.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicRoomPage'
+              examples:
+                default:
+                  externalValue: ./examples/room/list-public-rooms.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/rooms/quick-match:
+    post:
+      tags: [room]
+      operationId: quickMatch
+      summary: Matchmake or create a quick match room
+      description: |
+        Finds a pending quick match room matching filters or creates a new one (BR-13).
+        Quick match rooms have no host (`hostId: null`), no join code, and automatically start after countdown.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuickMatchRequest'
+            examples:
+              default:
+                externalValue: ./examples/room/quick-match.request.json
+      responses:
+        '200':
+          description: Matched or created quick match room.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomResponse'
+              examples:
+                default:
+                  externalValue: ./examples/room/quick-match.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 components:
   securitySchemes:
     bearerAuth:
@@ -902,6 +1070,12 @@ components:
         - AUDIO_TOKEN_INVALID
         - AUDIO_TOKEN_EXPIRED
         - RANGE_NOT_SATISFIABLE
+        - ROOM_NOT_FOUND
+        - ROOM_FULL
+        - ROOM_KICKED
+        - NOT_ROOM_HOST
+        - ROOM_NOT_LOBBY
+        - ROOM_CANNOT_START
     Problem:
       type: object
       description: RFC 9457 problem details with a stable `code`.
@@ -1416,3 +1590,161 @@ components:
         endedAt:
           type: string
           format: date-time
+    RoomType:
+      type: string
+      enum: [PRIVATE_ROOM, PUBLIC_ROOM, QUICK_MATCH]
+    RoomStatus:
+      type: string
+      enum: [LOBBY, PLAYING, FINISHED, CLOSED]
+    RoomPlayerSummary:
+      type: object
+      required: [userId, nickname, isHost, isReady, isGuest, score]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        nickname:
+          type: string
+          minLength: 3
+          maxLength: 20
+        avatarUrl:
+          type: string
+          nullable: true
+        isHost:
+          type: boolean
+        isReady:
+          type: boolean
+        isGuest:
+          type: boolean
+        score:
+          type: integer
+          minimum: 0
+    RoomResponse:
+      type: object
+      required: [roomId, roomType, status, roundCount, maxPlayers, currentRound, playerCount, players, createdAt]
+      properties:
+        roomId:
+          type: string
+          format: uuid
+        code:
+          type: string
+          nullable: true
+          description: 6-character room code; null for quick match rooms (BR-13).
+        roomType:
+          $ref: '#/components/schemas/RoomType'
+        hostId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Current host user ID; null for quick match rooms (BR-13).
+        status:
+          $ref: '#/components/schemas/RoomStatus'
+        roundCount:
+          type: integer
+          enum: [5, 10, 15]
+        maxPlayers:
+          type: integer
+          minimum: 2
+          maximum: 5
+        currentRound:
+          type: integer
+          minimum: 0
+          maximum: 15
+        playerCount:
+          type: integer
+          minimum: 0
+          maximum: 5
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoomPlayerSummary'
+        playlistId:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    CreateRoomRequest:
+      type: object
+      required: [roomType]
+      properties:
+        roomType:
+          type: string
+          enum: [PRIVATE_ROOM, PUBLIC_ROOM]
+        playlistId:
+          type: string
+          format: uuid
+          nullable: true
+        roundCount:
+          type: integer
+          enum: [5, 10, 15]
+          default: 10
+        maxPlayers:
+          type: integer
+          minimum: 2
+          maximum: 5
+          default: 5
+    JoinRoomRequest:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          pattern: '^[A-HJ-NP-Z2-9]{6}$'
+          description: 6 uppercase alphanumeric characters excluding 0, O, 1, I, L (BR-11).
+    QuickMatchRequest:
+      type: object
+      properties:
+        playlistId:
+          type: string
+          format: uuid
+          nullable: true
+        genreCodes:
+          type: array
+          items:
+            type: string
+        decades:
+          type: array
+          items:
+            type: integer
+    PublicRoomItem:
+      type: object
+      required: [roomId, code, hostNickname, playerCount, maxPlayers, roundCount, status, createdAt]
+      properties:
+        roomId:
+          type: string
+          format: uuid
+        code:
+          type: string
+        hostNickname:
+          type: string
+        playerCount:
+          type: integer
+          minimum: 0
+          maximum: 5
+        maxPlayers:
+          type: integer
+          minimum: 2
+          maximum: 5
+        roundCount:
+          type: integer
+          enum: [5, 10, 15]
+        status:
+          $ref: '#/components/schemas/RoomStatus'
+        playlistName:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    PublicRoomPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/PublicRoomItem'

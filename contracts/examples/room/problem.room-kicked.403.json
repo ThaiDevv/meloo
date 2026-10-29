@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Kicked from room",
+  "status": 403,
+  "code": "ROOM_KICKED",
+  "detail": "The host previously kicked this user from the room; re-entry is denied (BR-12).",
+  "instance": "/api/v1/rooms/join"
+}

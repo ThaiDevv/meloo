@@ -1,0 +1,1353 @@
+asyncapi: '3.0.0'
+info:
+  title: Meloo STOMP Realtime API
+  version: 2.0.0
+  description: |
+    Source of truth for STOMP over WebSocket communication in Meloo (ADR-004, ADR-007).
+    Defines client-to-server commands sent to `/app/rooms/{roomId}/*`, server broadcast events on
+    `/topic/rooms/{roomId}/*`, and private player queues on `/user/queue/*`.
+
+    **Fairness & Anti-Cheat Rules (NFR-07, BR-07, BR-16)**
+    - The server is the authority for clocks, scores, and answers.
+    - Every event sent by the server includes `serverTime` (ISO-8601 UTC timestamp).
+    - Audio preview is streamed using short-lived opaque HMAC tokens (`AudioClip.url`) that never disclose track id or title (ADR-008).
+    - In-progress round events never reveal track title, artist name, or track ID.
+    - The correct answer is only revealed in `ROUND_END` after the round has concluded.
+    - Chat messages containing the secret answer during an active round (BR-16) or prohibited words (BR-17) are blocked and warned privately to the sender.
+  contact:
+    name: Meloo Team
+    email: contact@meloo.local
+    url: https://meloo.local
+  license:
+    name: MIT
+  tags:
+    - name: room
+      description: Room lobby, gameplay and communication channels.
+
+servers:
+  dev:
+    host: localhost:8080
+    pathname: /ws
+    protocol: ws
+    description: Development STOMP over WebSocket endpoint.
+
+channels:
+  readyCommand:
+    address: /app/rooms/{roomId}/ready
+    parameters:
+      roomId:
+        $ref: '#/components/parameters/RoomId'
+    messages:
+      readyCommand:
+        $ref: '#/components/messages/ReadyCommand'
+
+  settingsCommand:
+    address: /app/rooms/{roomId}/settings
+    parameters:
+      roomId:
+        $ref: '#/components/parameters/RoomId'
+    messages:
+      settingsCommand:
+        $ref: '#/components/messages/SettingsCommand'
+
+  kickCommand:
+    address: /app/rooms/{roomId}/kick
+    parameters:
+      roomId:
+        $ref: '#/components/parameters/RoomId'
+    messages:
+      kickCommand:
+        $ref: '#/components/messages/KickCommand'
+
+  leaveCommand:
+    address: /app/rooms/{roomId}/leave
+    parameters:
+      roomId:
+        $ref: '#/components/parameters/RoomId'
+    messages:
+      leaveCommand:
+        $ref: '#/components/messages/LeaveCommand'
+
+  startCommand:
+    address: /app/rooms/{roomId}/start
+    parameters:
+      roomId:
+        $ref: '#/components/parameters/RoomId'
+    messages:
+      startCommand:
+        $ref: '#/components/messages/StartCommand'
+
+  preparedCommand:
+    address: /app/rooms/{roomId}/prepared
+    parameters:
+      roomId:
+        $ref: '#/components/parameters/RoomId'
+    messages:
+      preparedCommand:
+        $ref: '#/components/messages/PreparedCommand'
+
+  listenMoreCommand:
+    address: /app/rooms/{roomId}/listen-more
+    parameters:
+      roomId:
+        $ref: '#/components/parameters/RoomId'
+    messages:
+      listenMoreCommand:
+        $ref: '#/components/messages/ListenMoreCommand'
+
+  giveUpCommand:
+    address: /app/rooms/{roomId}/give-up
+    parameters:
+      roomId:
+        $ref: '#/components/parameters/RoomId'
+    messages:
+      giveUpCommand:
+        $ref: '#/components/messages/GiveUpCommand'
+
+  guessCommand:
+    address: /app/rooms/{roomId}/guess
+    parameters:
+      roomId:
+        $ref: '#/components/parameters/RoomId'
+    messages:
+      guessCommand:
+        $ref: '#/components/messages/GuessCommand'
+
+  chatCommand:
+    address: /app/rooms/{roomId}/chat
+    parameters:
+      roomId:
+        $ref: '#/components/parameters/RoomId'
+    messages:
+      chatCommand:
+        $ref: '#/components/messages/ChatCommand'
+
+  resyncCommand:
+    address: /app/rooms/{roomId}/resync
+    parameters:
+      roomId:
+        $ref: '#/components/parameters/RoomId'
+    messages:
+      resyncCommand:
+        $ref: '#/components/messages/ResyncCommand'
+
+  lobbyTopic:
+    address: /topic/rooms/{roomId}/lobby
+    parameters:
+      roomId:
+        $ref: '#/components/parameters/RoomId'
+    messages:
+      playerJoined:
+        $ref: '#/components/messages/PlayerJoinedEvent'
+      playerLeft:
+        $ref: '#/components/messages/PlayerLeftEvent'
+      playerReadyChanged:
+        $ref: '#/components/messages/PlayerReadyChangedEvent'
+      playerKicked:
+        $ref: '#/components/messages/PlayerKickedEvent'
+      roomSettingsChanged:
+        $ref: '#/components/messages/RoomSettingsChangedEvent'
+      matchStarting:
+        $ref: '#/components/messages/MatchStartingEvent'
+      matchCountdown:
+        $ref: '#/components/messages/MatchCountdownEvent'
+      matchCountdownStopped:
+        $ref: '#/components/messages/MatchCountdownStoppedEvent'
+      matchSoloSuggestion:
+        $ref: '#/components/messages/MatchSoloSuggestionEvent'
+      waitingListChanged:
+        $ref: '#/components/messages/WaitingListChangedEvent'
+      returnToLobby:
+        $ref: '#/components/messages/ReturnToLobbyEvent'
+
+  roundTopic:
+    address: /topic/rooms/{roomId}/round
+    parameters:
+      roomId:
+        $ref: '#/components/parameters/RoomId'
+    messages:
+      roundPrepare:
+        $ref: '#/components/messages/RoundPrepareEvent'
+      roundStart:
+        $ref: '#/components/messages/RoundStartEvent'
+      listenMoreOpened:
+        $ref: '#/components/messages/ListenMoreOpenedEvent'
+      playerGaveUp:
+        $ref: '#/components/messages/PlayerGaveUpEvent'
+      playerGuessed:
+        $ref: '#/components/messages/PlayerGuessedEvent'
+      roundTrackReplaced:
+        $ref: '#/components/messages/RoundTrackReplacedEvent'
+      roundEnd:
+        $ref: '#/components/messages/RoundEndEvent'
+      matchEarlyEnded:
+        $ref: '#/components/messages/MatchEarlyEndedEvent'
+
+  scoreboardTopic:
+    address: /topic/rooms/{roomId}/scoreboard
+    parameters:
+      roomId:
+        $ref: '#/components/parameters/RoomId'
+    messages:
+      scoreboardUpdate:
+        $ref: '#/components/messages/ScoreboardUpdateEvent'
+      matchFinished:
+        $ref: '#/components/messages/MatchFinishedEvent'
+
+  chatTopic:
+    address: /topic/rooms/{roomId}/chat
+    parameters:
+      roomId:
+        $ref: '#/components/parameters/RoomId'
+    messages:
+      chatMessage:
+        $ref: '#/components/messages/ChatMessageEvent'
+
+  rtcTopic:
+    address: /topic/rooms/{roomId}/rtc
+    parameters:
+      roomId:
+        $ref: '#/components/parameters/RoomId'
+    messages:
+      rtcSignal:
+        $ref: '#/components/messages/RtcSignalEvent'
+
+  errorQueue:
+    address: /user/queue/errors
+    messages:
+      errorMessage:
+        $ref: '#/components/messages/ErrorMessage'
+
+  privateQueue:
+    address: /user/queue/private
+    messages:
+      resyncState:
+        $ref: '#/components/messages/ResyncStateMessage'
+      listenMoreResponse:
+        $ref: '#/components/messages/ListenMoreResponseMessage'
+      guessResultMessage:
+        $ref: '#/components/messages/GuessResultMessage'
+
+operations:
+  sendReady:
+    action: send
+    description: Send ready status in lobby.
+    channel:
+      $ref: '#/channels/readyCommand'
+    messages:
+      - $ref: '#/components/messages/ReadyCommand'
+  sendSettings:
+    action: send
+    description: Send updated room settings (host only).
+    channel:
+      $ref: '#/channels/settingsCommand'
+    messages:
+      - $ref: '#/components/messages/SettingsCommand'
+  sendKick:
+    action: send
+    description: Kick a player from the room (host only).
+    channel:
+      $ref: '#/channels/kickCommand'
+    messages:
+      - $ref: '#/components/messages/KickCommand'
+  sendLeave:
+    action: send
+    description: Leave the current room.
+    channel:
+      $ref: '#/channels/leaveCommand'
+    messages:
+      - $ref: '#/components/messages/LeaveCommand'
+  sendStart:
+    action: send
+    description: Start the match (host only).
+    channel:
+      $ref: '#/channels/startCommand'
+    messages:
+      - $ref: '#/components/messages/StartCommand'
+  sendPrepared:
+    action: send
+    description: Confirm audio preload is complete.
+    channel:
+      $ref: '#/channels/preparedCommand'
+    messages:
+      - $ref: '#/components/messages/PreparedCommand'
+  sendListenMore:
+    action: send
+    description: Request next listening duration level.
+    channel:
+      $ref: '#/channels/listenMoreCommand'
+    messages:
+      - $ref: '#/components/messages/ListenMoreCommand'
+  sendGiveUp:
+    action: send
+    description: Give up and skip the round at 30s.
+    channel:
+      $ref: '#/channels/giveUpCommand'
+    messages:
+      - $ref: '#/components/messages/GiveUpCommand'
+  sendGuess:
+    action: send
+    description: Submit track guess.
+    channel:
+      $ref: '#/channels/guessCommand'
+    messages:
+      - $ref: '#/components/messages/GuessCommand'
+  sendChat:
+    action: send
+    description: Send in-room chat message.
+    channel:
+      $ref: '#/channels/chatCommand'
+    messages:
+      - $ref: '#/components/messages/ChatCommand'
+  sendResync:
+    action: send
+    description: Request current room and round state.
+    channel:
+      $ref: '#/channels/resyncCommand'
+    messages:
+      - $ref: '#/components/messages/ResyncCommand'
+
+  receiveLobbyEvents:
+    action: receive
+    description: Receive lobby lifecycle and player events.
+    channel:
+      $ref: '#/channels/lobbyTopic'
+    messages:
+      - $ref: '#/components/messages/PlayerJoinedEvent'
+      - $ref: '#/components/messages/PlayerLeftEvent'
+      - $ref: '#/components/messages/PlayerReadyChangedEvent'
+      - $ref: '#/components/messages/PlayerKickedEvent'
+      - $ref: '#/components/messages/RoomSettingsChangedEvent'
+      - $ref: '#/components/messages/MatchStartingEvent'
+      - $ref: '#/components/messages/MatchCountdownEvent'
+      - $ref: '#/components/messages/MatchCountdownStoppedEvent'
+      - $ref: '#/components/messages/MatchSoloSuggestionEvent'
+      - $ref: '#/components/messages/WaitingListChangedEvent'
+      - $ref: '#/components/messages/ReturnToLobbyEvent'
+
+  receiveRoundEvents:
+    action: receive
+    description: Receive round gameplay events and final reveal.
+    channel:
+      $ref: '#/channels/roundTopic'
+    messages:
+      - $ref: '#/components/messages/RoundPrepareEvent'
+      - $ref: '#/components/messages/RoundStartEvent'
+      - $ref: '#/components/messages/ListenMoreOpenedEvent'
+      - $ref: '#/components/messages/PlayerGaveUpEvent'
+      - $ref: '#/components/messages/PlayerGuessedEvent'
+      - $ref: '#/components/messages/RoundTrackReplacedEvent'
+      - $ref: '#/components/messages/RoundEndEvent'
+      - $ref: '#/components/messages/MatchEarlyEndedEvent'
+
+  receiveScoreboardEvents:
+    action: receive
+    description: Receive round scores and match end ranking.
+    channel:
+      $ref: '#/channels/scoreboardTopic'
+    messages:
+      - $ref: '#/components/messages/ScoreboardUpdateEvent'
+      - $ref: '#/components/messages/MatchFinishedEvent'
+
+  receiveChatEvents:
+    action: receive
+    description: Receive broadcast chat messages.
+    channel:
+      $ref: '#/channels/chatTopic'
+    messages:
+      - $ref: '#/components/messages/ChatMessageEvent'
+
+  receiveRtcEvents:
+    action: receive
+    description: Receive WebRTC voice signaling.
+    channel:
+      $ref: '#/channels/rtcTopic'
+    messages:
+      - $ref: '#/components/messages/RtcSignalEvent'
+
+  receiveErrors:
+    action: receive
+    description: Receive private error notifications.
+    channel:
+      $ref: '#/channels/errorQueue'
+    messages:
+      - $ref: '#/components/messages/ErrorMessage'
+
+  receivePrivateMessages:
+    action: receive
+    description: Receive private responses such as resync snapshots.
+    channel:
+      $ref: '#/channels/privateQueue'
+    messages:
+      - $ref: '#/components/messages/ResyncStateMessage'
+      - $ref: '#/components/messages/ListenMoreResponseMessage'
+      - $ref: '#/components/messages/GuessResultMessage'
+
+components:
+  parameters:
+    RoomId:
+      description: Target room UUID.
+
+  messages:
+    ReadyCommand:
+      summary: Toggle or set ready status in lobby
+      payload:
+        type: object
+        required: [ready]
+        properties:
+          ready:
+            type: boolean
+        examples:
+          - $ref: './examples/room/command.ready.json'
+
+    SettingsCommand:
+      summary: Change room settings (host only, BR-12)
+      payload:
+        type: object
+        properties:
+          roundCount:
+            type: integer
+            enum: [5, 10, 15]
+          maxPlayers:
+            type: integer
+            minimum: 2
+            maximum: 5
+          playlistId:
+            type: string
+            format: uuid
+            nullable: true
+        examples:
+          - $ref: './examples/room/command.settings.json'
+
+    KickCommand:
+      summary: Kick player from room (host only; player cannot re-enter, BR-12)
+      payload:
+        type: object
+        required: [targetUserId]
+        properties:
+          targetUserId:
+            type: string
+            format: uuid
+        examples:
+          - $ref: './examples/room/command.kick.json'
+
+    LeaveCommand:
+      summary: Leave room / forfeit (BR-12, BR-14)
+      payload:
+        type: object
+        additionalProperties: false
+        examples:
+          - $ref: './examples/room/command.leave.json'
+
+    StartCommand:
+      summary: Start match (host only; >= 2 players, all ready, valid playlist, BR-09, BR-12, UC-17)
+      payload:
+        type: object
+        additionalProperties: false
+        examples:
+          - $ref: './examples/room/command.start.json'
+
+    PreparedCommand:
+      summary: Confirm round audio preload is complete (for PREPARE phase of BE-ROOM-02)
+      payload:
+        type: object
+        required: [roundNo]
+        properties:
+          roundNo:
+            type: integer
+            minimum: 1
+            maximum: 15
+        examples:
+          - $ref: './examples/room/command.prepared.json'
+
+    ListenMoreCommand:
+      summary: Request next listening level (2s -> 5s -> 10s -> 20s -> 30s, BR-04)
+      payload:
+        type: object
+        required: [roundNo, currentLevel]
+        properties:
+          roundNo:
+            type: integer
+            minimum: 1
+            maximum: 15
+          currentLevel:
+            type: integer
+            enum: [2, 5, 10, 20]
+        examples:
+          - $ref: './examples/room/command.listen-more.json'
+
+    GiveUpCommand:
+      summary: Skip round at 30s level (0 points for round, BR-04)
+      payload:
+        type: object
+        required: [roundNo]
+        properties:
+          roundNo:
+            type: integer
+            minimum: 1
+            maximum: 15
+        examples:
+          - $ref: './examples/room/command.give-up.json'
+
+    GuessCommand:
+      summary: Submit track guess (server evaluates score and combo, BR-05, BR-07, BR-08)
+      payload:
+        type: object
+        required: [roundNo, trackId]
+        properties:
+          roundNo:
+            type: integer
+            minimum: 1
+            maximum: 15
+          trackId:
+            type: string
+            format: uuid
+        examples:
+          - $ref: './examples/room/command.guess.json'
+
+    ChatCommand:
+      summary: Send in-room chat message (max 200 chars, rate limit 1/sec, BR-16, BR-17)
+      payload:
+        type: object
+        required: [content]
+        properties:
+          content:
+            type: string
+            minLength: 1
+            maxLength: 200
+        examples:
+          - $ref: './examples/room/command.chat.json'
+
+    ResyncCommand:
+      summary: Request current room state snapshot upon reconnect (BR-14)
+      payload:
+        type: object
+        additionalProperties: false
+        examples:
+          - $ref: './examples/room/command.resync.json'
+
+    PlayerJoinedEvent:
+      summary: Broadcast when a new player joins the room
+      payload:
+        type: object
+        required: [type, user, serverTime]
+        properties:
+          type:
+            type: string
+            const: PLAYER_JOINED
+          user:
+            $ref: '#/components/schemas/RoomPlayerSummary'
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/event.lobby.player-joined.json'
+
+    PlayerLeftEvent:
+      summary: Broadcast when a player leaves or disconnects (BR-12)
+      payload:
+        type: object
+        required: [type, userId, reason, serverTime]
+        properties:
+          type:
+            type: string
+            const: PLAYER_LEFT
+          userId:
+            type: string
+            format: uuid
+          newHostId:
+            type: string
+            format: uuid
+            nullable: true
+          reason:
+            type: string
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/event.lobby.player-left.json'
+
+    PlayerReadyChangedEvent:
+      summary: Broadcast when a player changes ready status
+      payload:
+        type: object
+        required: [type, userId, isReady, serverTime]
+        properties:
+          type:
+            type: string
+            const: PLAYER_READY_CHANGED
+          userId:
+            type: string
+            format: uuid
+          isReady:
+            type: boolean
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/event.lobby.player-ready-changed.json'
+
+    PlayerKickedEvent:
+      summary: Broadcast when host kicks a player (BR-12)
+      payload:
+        type: object
+        required: [type, userId, serverTime]
+        properties:
+          type:
+            type: string
+            const: PLAYER_KICKED
+          userId:
+            type: string
+            format: uuid
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/event.lobby.player-kicked.json'
+
+    RoomSettingsChangedEvent:
+      summary: Broadcast when host modifies room configuration
+      payload:
+        type: object
+        required: [type, roundCount, maxPlayers, serverTime]
+        properties:
+          type:
+            type: string
+            const: ROOM_SETTINGS_CHANGED
+          roundCount:
+            type: integer
+            enum: [5, 10, 15]
+          maxPlayers:
+            type: integer
+            minimum: 2
+            maximum: 5
+          playlistId:
+            type: string
+            format: uuid
+            nullable: true
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/event.lobby.settings-changed.json'
+
+    MatchStartingEvent:
+      summary: Broadcast starting countdown
+      payload:
+        type: object
+        required: [type, countdownSeconds, serverTime]
+        properties:
+          type:
+            type: string
+            const: MATCH_STARTING
+          countdownSeconds:
+            type: integer
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/event.lobby.match-starting.json'
+
+    MatchCountdownEvent:
+      summary: 30-second matchmaking countdown (BR-13)
+      payload:
+        type: object
+        required: [type, remainingSeconds, serverTime]
+        properties:
+          type:
+            type: string
+            const: MATCH_COUNTDOWN
+          remainingSeconds:
+            type: integer
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/event.lobby.match-countdown.json'
+
+    MatchCountdownStoppedEvent:
+      summary: Matchmaking countdown halted because players dropped below 2 (BR-13)
+      payload:
+        type: object
+        required: [type, reason, serverTime]
+        properties:
+          type:
+            type: string
+            const: MATCH_COUNTDOWN_STOPPED
+          reason:
+            type: string
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/event.lobby.match-countdown-stopped.json'
+
+    MatchSoloSuggestionEvent:
+      summary: Suggest solo play or private room after 60s waiting alone (BR-13)
+      payload:
+        type: object
+        required: [type, message, serverTime]
+        properties:
+          type:
+            type: string
+            const: MATCH_SOLO_SUGGESTION
+          message:
+            type: string
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/event.lobby.match-solo-suggestion.json'
+
+    WaitingListChangedEvent:
+      summary: List of late players waiting in lobby while match is running (BR-15)
+      payload:
+        type: object
+        required: [type, waitingPlayers, serverTime]
+        properties:
+          type:
+            type: string
+            const: WAITING_LIST_CHANGED
+          waitingPlayers:
+            type: array
+            items:
+              $ref: '#/components/schemas/RoomPlayerSummary'
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/event.lobby.waiting-list-changed.json'
+
+    ReturnToLobbyEvent:
+      summary: Room returns to lobby after match completion to play again (BR-12)
+      payload:
+        type: object
+        required: [type, serverTime]
+        properties:
+          type:
+            type: string
+            const: RETURN_TO_LOBBY
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/event.lobby.return-to-lobby.json'
+
+    RoundPrepareEvent:
+      summary: Prepare phase with audio clip preload (audio token without metadata, BR-08, ADR-008)
+      payload:
+        type: object
+        required: [type, roundNo, totalRounds, audioClip, timeoutMs, serverTime]
+        properties:
+          type:
+            type: string
+            const: ROUND_PREPARE
+          roundNo:
+            type: integer
+            minimum: 1
+            maximum: 15
+          totalRounds:
+            type: integer
+            enum: [5, 10, 15]
+          audioClip:
+            $ref: '#/components/schemas/AudioClip'
+          timeoutMs:
+            type: integer
+            description: Maximum time allowed for preloading (ms).
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/event.round.prepare.json'
+
+    RoundStartEvent:
+      summary: 45-second round clock starts (BR-07)
+      payload:
+        type: object
+        required: [type, roundNo, durationMs, serverTime]
+        properties:
+          type:
+            type: string
+            const: ROUND_START
+          roundNo:
+            type: integer
+            minimum: 1
+            maximum: 15
+          durationMs:
+            type: integer
+            default: 45000
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/event.round.start.json'
+
+    ListenMoreOpenedEvent:
+      summary: A player unlocked the next listening level (audio token with extended duration)
+      payload:
+        type: object
+        required: [type, userId, level, audioClip, serverTime]
+        properties:
+          type:
+            type: string
+            const: LISTEN_MORE_OPENED
+          userId:
+            type: string
+            format: uuid
+          level:
+            type: integer
+            enum: [2, 5, 10, 20, 30]
+          audioClip:
+            $ref: '#/components/schemas/AudioClip'
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/event.round.listen-more-opened.json'
+
+    PlayerGaveUpEvent:
+      summary: Player gave up at the 30s mark (BR-04)
+      payload:
+        type: object
+        required: [type, userId, roundNo, serverTime]
+        properties:
+          type:
+            type: string
+            const: PLAYER_GAVE_UP
+          userId:
+            type: string
+            format: uuid
+          roundNo:
+            type: integer
+            minimum: 1
+            maximum: 15
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/event.round.player-gave-up.json'
+
+    PlayerGuessedEvent:
+      summary: Broadcast that a player guessed correctly with level, NO answer leaked (BR-07)
+      payload:
+        type: object
+        required: [type, userId, nickname, level, isCorrect, serverTime]
+        properties:
+          type:
+            type: string
+            const: PLAYER_GUESSED
+          userId:
+            type: string
+            format: uuid
+          nickname:
+            type: string
+          level:
+            type: integer
+            enum: [2, 5, 10, 20, 30]
+          isCorrect:
+            type: boolean
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/event.round.player-guessed.json'
+
+    RoundTrackReplacedEvent:
+      summary: Track replaced mid-match due to audio source failure (BR-27)
+      payload:
+        type: object
+        required: [type, roundNo, audioClip, reason, serverTime]
+        properties:
+          type:
+            type: string
+            const: ROUND_TRACK_REPLACED
+          roundNo:
+            type: integer
+            minimum: 1
+            maximum: 15
+          audioClip:
+            $ref: '#/components/schemas/AudioClip'
+          reason:
+            type: string
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/event.round.track-replaced.json'
+
+    RoundEndEvent:
+      summary: Round conclusion with revealed answer and full score breakdown (BR-02, BR-07, BR-08, BR-29)
+      payload:
+        type: object
+        required: [type, roundNo, answer, results, serverTime]
+        properties:
+          type:
+            type: string
+            const: ROUND_END
+          roundNo:
+            type: integer
+            minimum: 1
+            maximum: 15
+          answer:
+            $ref: '#/components/schemas/RoundAnswer'
+          results:
+            type: array
+            items:
+              $ref: '#/components/schemas/PlayerRoundResult'
+          nextRoundAt:
+            type: string
+            format: date-time
+            nullable: true
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/event.round.end.json'
+
+    MatchEarlyEndedEvent:
+      summary: Match ended early because only 1 player remains connected (BR-14)
+      payload:
+        type: object
+        required: [type, reason, remainingUserId, serverTime]
+        properties:
+          type:
+            type: string
+            const: MATCH_EARLY_ENDED
+          reason:
+            type: string
+          remainingUserId:
+            type: string
+            format: uuid
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/event.round.early-ended.json'
+
+    ScoreboardUpdateEvent:
+      summary: Realtime scoreboard update after each round
+      payload:
+        type: object
+        required: [type, scores, serverTime]
+        properties:
+          type:
+            type: string
+            const: SCOREBOARD_UPDATE
+          scores:
+            type: array
+            items:
+              $ref: '#/components/schemas/PlayerScoreSummary'
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/event.scoreboard.update.json'
+
+    MatchFinishedEvent:
+      summary: Final match results with rankings and tie-break milliseconds (BR-10)
+      payload:
+        type: object
+        required: [type, matchId, rankings, serverTime]
+        properties:
+          type:
+            type: string
+            const: MATCH_FINISHED
+          matchId:
+            type: string
+            format: uuid
+          rankings:
+            type: array
+            items:
+              $ref: '#/components/schemas/PlayerRanking'
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/event.scoreboard.match-finished.json'
+
+    ChatMessageEvent:
+      summary: In-room chat broadcast (BR-16, BR-17)
+      payload:
+        type: object
+        required: [type, messageId, senderId, senderNickname, content, sentAt, serverTime]
+        properties:
+          type:
+            type: string
+            const: CHAT_MESSAGE
+          messageId:
+            type: string
+            format: uuid
+          senderId:
+            type: string
+            format: uuid
+          senderNickname:
+            type: string
+          content:
+            type: string
+            maxLength: 200
+          sentAt:
+            type: string
+            format: date-time
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/event.chat.message.json'
+
+    RtcSignalEvent:
+      summary: WebRTC signaling placeholder for voice in S5
+      payload:
+        type: object
+        required: [type, senderId, signalType, payload, serverTime]
+        properties:
+          type:
+            type: string
+            const: RTC_SIGNAL
+          senderId:
+            type: string
+            format: uuid
+          targetUserId:
+            type: string
+            format: uuid
+            nullable: true
+          signalType:
+            type: string
+            enum: [offer, answer, ice-candidate]
+          payload:
+            type: string
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/event.rtc.signal.json'
+
+    ErrorMessage:
+      summary: Private error notification (e.g. blocked chat BR-16, BR-17 or invalid command)
+      payload:
+        type: object
+        required: [type, code, message, serverTime]
+        properties:
+          type:
+            type: string
+            const: ERROR
+          code:
+            type: string
+          message:
+            type: string
+          detail:
+            type: string
+            nullable: true
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/queue.error.json'
+
+    ResyncStateMessage:
+      summary: Full room snapshot delivered to a player upon resync or join (BR-14)
+      payload:
+        type: object
+        required: [type, room, roomPhase, scores, serverTime]
+        properties:
+          type:
+            type: string
+            const: RESYNC_STATE
+          room:
+            $ref: '#/components/schemas/RoomResponse'
+          roomPhase:
+            type: string
+            enum: [LOBBY, COUNTDOWN, ROUND_PREPARE, ROUND_IN_PROGRESS, ROUND_REVEAL, FINISHED]
+          currentRound:
+            $ref: '#/components/schemas/ActiveRoundState'
+          scores:
+            type: array
+            items:
+              $ref: '#/components/schemas/PlayerScoreSummary'
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/queue.resync-state.json'
+
+    ListenMoreResponseMessage:
+      summary: Private response with new audio clip for player who called listen-more
+      payload:
+        type: object
+        required: [type, roundNo, level, audioClip, serverTime]
+        properties:
+          type:
+            type: string
+            const: LISTEN_MORE_RESPONSE
+          roundNo:
+            type: integer
+            minimum: 1
+            maximum: 15
+          level:
+            type: integer
+            enum: [2, 5, 10, 20, 30]
+          audioClip:
+            $ref: '#/components/schemas/AudioClip'
+          serverTime:
+            type: string
+            format: date-time
+
+    GuessResultMessage:
+      summary: Private result of a player's guess attempt (BR-05, BR-06, BR-07)
+      payload:
+        type: object
+        required: [type, roundNo, result, isCorrect, isCorrectArtist, serverTime]
+        properties:
+          type:
+            type: string
+            const: GUESS_RESULT_PRIVATE
+          roundNo:
+            type: integer
+            minimum: 1
+            maximum: 15
+          result:
+            type: string
+            enum: [CORRECT, WRONG_ARTIST, WRONG, WRONG_OUT]
+          isCorrect:
+            type: boolean
+          isCorrectArtist:
+            type: boolean
+          scoreDetail:
+            $ref: '#/components/schemas/RoundScoreDetail'
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/queue.guess-result.json'
+
+  schemas:
+    AudioClip:
+      type: object
+      description: Opaque audio preview stream URL with signature (ADR-008). No metadata leaked.
+      required: [url, level, expiresAt]
+      properties:
+        url:
+          type: string
+          description: Relative path `/api/v1/audio/clips/{token}`.
+        level:
+          type: integer
+          enum: [2, 5, 10, 20, 30]
+        expiresAt:
+          type: string
+          format: date-time
+
+    RoundAnswer:
+      type: object
+      description: True track information revealed strictly at ROUND_END (BR-29).
+      required: [trackId, trackTitle, artistName, previewFullUrl]
+      properties:
+        trackId:
+          type: string
+          format: uuid
+        trackTitle:
+          type: string
+        artistName:
+          type: string
+        albumTitle:
+          type: string
+          nullable: true
+        coverUrl:
+          type: string
+          nullable: true
+        previewFullUrl:
+          type: string
+          description: Full track link on original platform (Deezer, BR-29).
+
+    RoundScoreDetail:
+      type: object
+      description: Detailed score composition according to BR-02, BR-07, BR-08.
+      required: [baseScore, comboPercent, speedBonus, roundScore]
+      properties:
+        baseScore:
+          type: integer
+          enum: [0, 200, 400, 600, 800, 1000]
+        comboPercent:
+          type: integer
+          enum: [0, 10, 20]
+        speedBonus:
+          type: integer
+          minimum: 0
+          maximum: 200
+          description: Millisecond speed bonus `max(0, floor(200 * remainingMs / 45000))` (BR-07).
+        roundScore:
+          type: integer
+          minimum: 0
+
+    PlayerRoundResult:
+      type: object
+      description: Round performance for one player.
+      required: [userId, outcome, baseScore, comboPercent, speedBonus, roundScore, wrongCount]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        outcome:
+          type: string
+          enum: [CORRECT, WRONG_OUT, TIMEOUT, GAVE_UP]
+        correctLevel:
+          type: integer
+          enum: [2, 5, 10, 20, 30]
+          nullable: true
+        baseScore:
+          type: integer
+          minimum: 0
+        comboPercent:
+          type: integer
+          minimum: 0
+        speedBonus:
+          type: integer
+          minimum: 0
+        roundScore:
+          type: integer
+          minimum: 0
+        wrongCount:
+          type: integer
+          minimum: 0
+        answerTimeMs:
+          type: integer
+          minimum: 0
+          nullable: true
+
+    PlayerScoreSummary:
+      type: object
+      required: [userId, nickname, totalScore, comboStreak, rank]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        nickname:
+          type: string
+        totalScore:
+          type: integer
+          minimum: 0
+        comboStreak:
+          type: integer
+          minimum: 0
+        rank:
+          type: integer
+          minimum: 1
+
+    PlayerRanking:
+      type: object
+      description: Final match standings; ties broken by total milliseconds to answer (BR-10).
+      required: [rank, userId, nickname, totalScore, correctCount, totalCorrectTimeMs]
+      properties:
+        rank:
+          type: integer
+          minimum: 1
+        userId:
+          type: string
+          format: uuid
+        nickname:
+          type: string
+        totalScore:
+          type: integer
+          minimum: 0
+        correctCount:
+          type: integer
+          minimum: 0
+        totalCorrectTimeMs:
+          type: integer
+          minimum: 0
+          description: Sum of answer timestamps in ms from round start; lower is better in tie breaks.
+
+    ActiveRoundState:
+      type: object
+      description: In-progress round state without revealing track metadata.
+      required: [roundNo, totalRounds, currentLevel, audioClip, remainingMs, hasGuessed]
+      properties:
+        roundNo:
+          type: integer
+          minimum: 1
+          maximum: 15
+        totalRounds:
+          type: integer
+          enum: [5, 10, 15]
+        currentLevel:
+          type: integer
+          enum: [2, 5, 10, 20, 30]
+        audioClip:
+          $ref: '#/components/schemas/AudioClip'
+        remainingMs:
+          type: integer
+          minimum: 0
+          maximum: 45000
+        hasGuessed:
+          type: boolean
+
+    RoomPlayerSummary:
+      type: object
+      required: [userId, nickname, isHost, isReady, isGuest, score]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        nickname:
+          type: string
+          minLength: 3
+          maxLength: 20
+        avatarUrl:
+          type: string
+          nullable: true
+        isHost:
+          type: boolean
+        isReady:
+          type: boolean
+        isGuest:
+          type: boolean
+        score:
+          type: integer
+          minimum: 0
+
+    RoomResponse:
+      type: object
+      required: [roomId, roomType, status, roundCount, maxPlayers, currentRound, playerCount, players, createdAt]
+      properties:
+        roomId:
+          type: string
+          format: uuid
+        code:
+          type: string
+          nullable: true
+          description: 6-character room code; null for quick match rooms (BR-13).
+        roomType:
+          type: string
+          enum: [PRIVATE_ROOM, PUBLIC_ROOM, QUICK_MATCH]
+        hostId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Host user id; null for quick match rooms (BR-13).
+        status:
+          type: string
+          enum: [LOBBY, PLAYING, FINISHED, CLOSED]
+        roundCount:
+          type: integer
+          enum: [5, 10, 15]
+        maxPlayers:
+          type: integer
+          minimum: 2
+          maximum: 5
+        currentRound:
+          type: integer
+          minimum: 0
+          maximum: 15
+        playerCount:
+          type: integer
+          minimum: 0
+          maximum: 5
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoomPlayerSummary'
+        playlistId:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time

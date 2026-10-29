@@ -1,0 +1,66 @@
+{
+  "type": "RESYNC_STATE",
+  "room": {
+    "roomId": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+    "code": "MEL889",
+    "roomType": "PRIVATE_ROOM",
+    "hostId": "11111111-2222-3333-4444-555555555555",
+    "status": "PLAYING",
+    "roundCount": 10,
+    "maxPlayers": 5,
+    "currentRound": 2,
+    "playerCount": 2,
+    "players": [
+      {
+        "userId": "11111111-2222-3333-4444-555555555555",
+        "nickname": "ThaiPO",
+        "avatarUrl": "https://avatar.iran.liara.run/public/1",
+        "isHost": true,
+        "isReady": true,
+        "isGuest": false,
+        "score": 1013
+      },
+      {
+        "userId": "22222222-3333-4444-5555-666666666666",
+        "nickname": "PlayerTwo",
+        "avatarUrl": null,
+        "isHost": false,
+        "isReady": true,
+        "isGuest": true,
+        "score": 0
+      }
+    ],
+    "playlistId": "4a7c1b23-5e89-4d66-a3f1-0c9b8a7d6e54",
+    "createdAt": "2026-10-29T10:00:00Z"
+  },
+  "roomPhase": "ROUND_IN_PROGRESS",
+  "currentRound": {
+    "roundNo": 2,
+    "totalRounds": 10,
+    "currentLevel": 2,
+    "audioClip": {
+      "url": "/api/v1/audio/clips/eyJhbGciOiJIUzI1NiJ9.eyJyIjoyLCJsIjoyfQ.signature",
+      "level": 2,
+      "expiresAt": "2026-10-29T10:05:00Z"
+    },
+    "remainingMs": 35000,
+    "hasGuessed": false
+  },
+  "scores": [
+    {
+      "userId": "11111111-2222-3333-4444-555555555555",
+      "nickname": "ThaiPO",
+      "totalScore": 1013,
+      "comboStreak": 2,
+      "rank": 1
+    },
+    {
+      "userId": "22222222-3333-4444-5555-666666666666",
+      "nickname": "PlayerTwo",
+      "totalScore": 0,
+      "comboStreak": 0,
+      "rank": 2
+    }
+  ],
+  "serverTime": "2026-10-29T10:03:20Z"
+}

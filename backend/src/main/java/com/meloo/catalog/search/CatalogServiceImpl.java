@@ -1,8 +1,10 @@
 package com.meloo.catalog.search;
 
 import com.meloo.catalog.api.CatalogService;
+import com.meloo.catalog.api.PlaylistInfo;
 import com.meloo.catalog.api.TrackFilter;
 import com.meloo.catalog.api.TrackInfo;
+import com.meloo.catalog.persistence.PlaylistRepository;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -18,9 +20,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class CatalogServiceImpl implements CatalogService {
 
   private final CatalogQueryRepository catalogQueryRepository;
+  private final PlaylistRepository playlistRepository;
 
-  public CatalogServiceImpl(CatalogQueryRepository catalogQueryRepository) {
+  public CatalogServiceImpl(
+      CatalogQueryRepository catalogQueryRepository, PlaylistRepository playlistRepository) {
     this.catalogQueryRepository = catalogQueryRepository;
+    this.playlistRepository = playlistRepository;
   }
 
   @Override
@@ -48,7 +53,26 @@ public class CatalogServiceImpl implements CatalogService {
   }
 
   @Override
+  public Optional<PlaylistInfo> findPlaylistByCode(String code) {
+    return playlistRepository.findInfoByCode(code).map(this::toPlaylistInfo);
+  }
+
+  @Override
+  public Optional<PlaylistInfo> findPlaylistById(UUID id) {
+    return playlistRepository.findInfoById(id).map(this::toPlaylistInfo);
+  }
+
+  @Override
   public Map<UUID, TrackInfo> getTracksByIds(Collection<UUID> trackIds) {
     return catalogQueryRepository.findTracksByIds(trackIds);
+  }
+
+  private PlaylistInfo toPlaylistInfo(PlaylistRepository.PlaylistInfoProjection projection) {
+    return new PlaylistInfo(
+        projection.getId(),
+        projection.getCode(),
+        projection.getName(),
+        projection.getEnabled(),
+        Math.toIntExact(projection.getEnabledTrackCount()));
   }
 }

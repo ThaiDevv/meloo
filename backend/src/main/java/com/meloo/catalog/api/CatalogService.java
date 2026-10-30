@@ -72,6 +72,22 @@ public interface CatalogService {
   Optional<TrackInfo> getTrackById(UUID trackId);
 
   /**
+   * Finds playlist details by its unique code, including disabled playlists.
+   *
+   * @param code unique playlist code
+   * @return playlist details, or empty if no playlist has the code
+   */
+  Optional<PlaylistInfo> findPlaylistByCode(String code);
+
+  /**
+   * Finds playlist details by ID, including disabled playlists.
+   *
+   * @param id playlist UUID
+   * @return playlist details, or empty if no playlist has the ID
+   */
+  Optional<PlaylistInfo> findPlaylistById(UUID id);
+
+  /**
    * Retrieves track information for multiple track IDs.
    *
    * @param trackIds collection of track UUIDs

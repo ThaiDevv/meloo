@@ -109,6 +109,67 @@ class CatalogServiceIntegrationTest extends IntegrationTest {
   }
 
   @Test
+  @DisplayName("findPlaylistByCode returns playlist details and counts enabled tracks only")
+  void findPlaylistByCodeReturnsPlaylistAndEnabledTrackCount() {
+    Track enabledTrack =
+        createTrack("Enabled Song", artistA, genreVpop, "VN", (short) 2020, true, null);
+    Track disabledTrack =
+        createTrack("Disabled Song", artistA, genreVpop, "VN", (short) 2021, false, null);
+    linkTrackToPlaylist(playlistStandard, enabledTrack, 1);
+    linkTrackToPlaylist(playlistStandard, disabledTrack, 2);
+
+    var result = catalogService.findPlaylistByCode("standard");
+
+    assertThat(result).isPresent();
+    assertThat(result.orElseThrow().id()).isEqualTo(playlistStandard.getId());
+    assertThat(result.orElseThrow().code()).isEqualTo("standard");
+    assertThat(result.orElseThrow().name()).isEqualTo("Bộ chuẩn");
+    assertThat(result.orElseThrow().enabled()).isTrue();
+    assertThat(result.orElseThrow().enabledTrackCount()).isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName("findPlaylistByCode returns empty when the playlist code does not exist")
+  void findPlaylistByCodeReturnsEmptyForUnknownCode() {
+    assertThat(catalogService.findPlaylistByCode("unknown")).isEmpty();
+  }
+
+  @Test
+  @DisplayName("findPlaylistById includes disabled playlists and counts enabled tracks only")
+  void findPlaylistByIdReturnsDisabledPlaylistAndEnabledTrackCount() {
+    Playlist disabledPlaylist =
+        playlistRepository.saveAndFlush(
+            Playlist.builder()
+                .id(UUID.randomUUID())
+                .code("disabled")
+                .nameVi("Bộ tắt")
+                .nameEn("Disabled Set")
+                .kind(PlaylistKind.STANDARD)
+                .enabled(false)
+                .build());
+    Track enabledTrack =
+        createTrack("Enabled Song", artistA, genreVpop, "VN", (short) 2020, true, null);
+    Track disabledTrack =
+        createTrack("Disabled Song", artistA, genreVpop, "VN", (short) 2021, false, null);
+    linkTrackToPlaylist(disabledPlaylist, enabledTrack, 1);
+    linkTrackToPlaylist(disabledPlaylist, disabledTrack, 2);
+
+    var result = catalogService.findPlaylistById(disabledPlaylist.getId());
+
+    assertThat(result).isPresent();
+    assertThat(result.orElseThrow().id()).isEqualTo(disabledPlaylist.getId());
+    assertThat(result.orElseThrow().name()).isEqualTo("Bộ tắt");
+    assertThat(result.orElseThrow().enabled()).isFalse();
+    assertThat(result.orElseThrow().enabledTrackCount()).isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName("findPlaylistById returns empty when the playlist ID does not exist")
+  void findPlaylistByIdReturnsEmptyForUnknownId() {
+    assertThat(catalogService.findPlaylistById(UUID.randomUUID())).isEmpty();
+  }
+
+  @Test
   @DisplayName(
       "AC 6: selectRandomTracksByPlaylist returns distinct enabled tracks and excludes disabled or excluded IDs")
   void selectRandomTracksByPlaylistRespectsConditions() {

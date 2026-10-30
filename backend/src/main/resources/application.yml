@@ -2,6 +2,7 @@ spring:
   application:
     name: meloo-backend
   jackson:
+    default-property-inclusion: non_null
     deserialization:
       fail-on-unknown-properties: true
   config:

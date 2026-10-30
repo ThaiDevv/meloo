@@ -87,6 +87,15 @@ class RoomActorTest {
   }
 
   @Test
+  void cancellingScheduledCommandRemovesItFromTheActorTimerSet() {
+    var timer = actor.schedule(Duration.ofHours(1), () -> {});
+
+    assertThat(actor.pendingTimerCount()).isOne();
+    assertThat(timer.cancel(false)).isTrue();
+    assertThat(actor.pendingTimerCount()).isZero();
+  }
+
+  @Test
   void closingActorRejectsNewCommandsAndCompletesQueuedCommandsExceptionally() throws Exception {
     CountDownLatch runningStarted = new CountDownLatch(1);
     CountDownLatch releaseRunning = new CountDownLatch(1);

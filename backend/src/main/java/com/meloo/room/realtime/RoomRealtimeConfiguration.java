@@ -1,7 +1,9 @@
 package com.meloo.room.realtime;
 
+import java.util.List;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,14 +20,18 @@ public class RoomRealtimeConfiguration implements WebSocketMessageBrokerConfigur
 
   private final RoomRealtimeProperties properties;
   private final ThreadPoolTaskScheduler scheduler;
+  private final List<String> allowedOrigins;
 
   public RoomRealtimeConfiguration(
-      RoomRealtimeProperties properties, ThreadPoolTaskScheduler roomRealtimeScheduler) {
+      RoomRealtimeProperties properties,
+      ThreadPoolTaskScheduler roomRealtimeScheduler,
+      @Value("${meloo.cors.allowed-origins}") List<String> allowedOrigins) {
     this.properties = properties;
     this.scheduler = roomRealtimeScheduler;
+    this.allowedOrigins = List.copyOf(allowedOrigins);
   }
 
-  @Bean(name = {"taskScheduler", "roomRealtimeScheduler"})
+  @Bean("roomRealtimeScheduler")
   static ThreadPoolTaskScheduler roomRealtimeScheduler(RoomRealtimeProperties properties) {
     ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
     taskScheduler.setPoolSize(properties.schedulerPoolSize());
@@ -49,7 +55,7 @@ public class RoomRealtimeConfiguration implements WebSocketMessageBrokerConfigur
 
   @Override
   public void registerStompEndpoints(StompEndpointRegistry registry) {
-    registry.addEndpoint("/ws");
+    registry.addEndpoint("/ws").setAllowedOrigins(allowedOrigins.toArray(String[]::new));
   }
 
   private static ThreadFactory virtualThreadFactory() {

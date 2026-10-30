@@ -13,12 +13,16 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Component;
 
 @Component
 public class RoomRegistry implements RoomDirectory, AutoCloseable {
+
+  private static final Logger log = LoggerFactory.getLogger(RoomRegistry.class);
 
   private final ConcurrentMap<UUID, RoomRuntime> rooms = new ConcurrentHashMap<>();
   private final Map<String, Set<RoomUser>> sessionRooms = new HashMap<>();
@@ -73,7 +77,7 @@ public class RoomRegistry implements RoomDirectory, AutoCloseable {
     if (sessions.add(sessionId)) {
       sessionRooms.computeIfAbsent(sessionId, ignored -> new HashSet<>()).add(roomUser);
       if (newlyConnected) {
-        runtime.actor().execute(() -> runtime.connectionHandler().connected(userId));
+        enqueueConnectionCallback(runtime, userId, true);
       }
     }
   }
@@ -95,7 +99,7 @@ public class RoomRegistry implements RoomDirectory, AutoCloseable {
       userSessions.remove(roomUser);
       RoomRuntime runtime = rooms.get(roomUser.roomId());
       if (runtime != null) {
-        runtime.actor().execute(() -> runtime.connectionHandler().disconnected(roomUser.userId()));
+        enqueueConnectionCallback(runtime, roomUser.userId(), false);
       }
     }
   }
@@ -132,6 +136,31 @@ public class RoomRegistry implements RoomDirectory, AutoCloseable {
         RoomDescriptor descriptor, RoomActor actor, RoomConnectionHandler connectionHandler) {
       this(new AtomicReference<>(descriptor), actor, connectionHandler);
     }
+  }
+
+  private static void enqueueConnectionCallback(
+      RoomRuntime runtime, UUID userId, boolean connected) {
+    String callback = connected ? "connected" : "disconnected";
+    runtime
+        .actor()
+        .execute(
+            () -> {
+              if (connected) {
+                runtime.connectionHandler().connected(userId);
+              } else {
+                runtime.connectionHandler().disconnected(userId);
+              }
+            })
+        .whenComplete(
+            (ignored, failure) -> {
+              if (failure != null) {
+                log.error(
+                    "Room {} connection callback failed (callback={}, exceptionType={})",
+                    runtime.descriptor().get().roomId(),
+                    callback,
+                    failure.getClass().getName());
+              }
+            });
   }
 
   private record RoomUser(UUID roomId, UUID userId) {}

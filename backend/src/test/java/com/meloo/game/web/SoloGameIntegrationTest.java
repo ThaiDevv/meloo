@@ -506,6 +506,48 @@ class SoloGameIntegrationTest extends IntegrationTest {
   }
 
   @Test
+  @DisplayName("Tạo trận không filter và đoán sai: response không chứa trường tùy chọn null")
+  void soloMatchAndWrongGuessResponsesOmitNullFields() throws Exception {
+    UUID userId = UUID.randomUUID();
+
+    CreateSoloMatchRequestDto request = new CreateSoloMatchRequestDto();
+    request.setMode(SoloModeDto.PRACTICE);
+    request.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+
+    MvcResult createResult =
+        mockMvc
+            .perform(
+                post("/api/v1/solo/matches")
+                    .with(jwt().jwt(j -> j.subject(userId.toString())))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.filter").doesNotExist())
+            .andReturn();
+    String createResponse = createResult.getResponse().getContentAsString();
+    assertNoNullAnywhere(createResponse);
+
+    UUID matchId = UUID.fromString(JsonPath.read(createResponse, "$.matchId"));
+    GuessRequestDto wrongGuess = new GuessRequestDto().trackId(standardTracks.get(1).id());
+
+    MvcResult guessResult =
+        mockMvc
+            .perform(
+                post("/api/v1/solo/matches/{matchId}/rounds/1/guesses", matchId)
+                    .with(jwt().jwt(j -> j.subject(userId.toString())))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(wrongGuess)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.correct").value(false))
+            .andExpect(jsonPath("$.roundEnded").value(false))
+            .andExpect(jsonPath("$.round").exists())
+            .andExpect(jsonPath("$.end").doesNotExist())
+            .andReturn();
+
+    assertNoNullAnywhere(guessResult.getResponse().getContentAsString());
+  }
+
+  @Test
   @DisplayName(
       "Resume sau 15 phút: giữ nguyên vòng, level, điểm và chuỗi combo; response không lộ đáp án (AC 7, NFR-07)")
   void testResumePreservesRoundAndLevelAndDoesNotLeakAnswer() throws Exception {
@@ -1783,5 +1825,19 @@ class SoloGameIntegrationTest extends IntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.correct").value(true))
         .andExpect(jsonPath("$.rightArtist").value(false));
+  }
+
+  private static void assertNoNullAnywhere(String json) {
+    Object root = JsonPath.read(json, "$");
+    assertNoNullAnywhere((Object) root);
+  }
+
+  private static void assertNoNullAnywhere(Object value) {
+    assertThat(value).isNotNull();
+    if (value instanceof Map<?, ?> object) {
+      object.values().forEach(child -> assertNoNullAnywhere(child));
+    } else if (value instanceof Iterable<?> array) {
+      array.forEach(child -> assertNoNullAnywhere(child));
+    }
   }
 }

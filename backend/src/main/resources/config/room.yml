@@ -1,1 +1,6 @@
 # Configuration owned by the room module.
+meloo:
+  room:
+    realtime:
+      heartbeat-interval: 10s
+      scheduler-pool-size: 4

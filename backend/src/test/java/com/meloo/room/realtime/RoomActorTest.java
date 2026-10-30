@@ -1,6 +1,7 @@
 package com.meloo.room.realtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Duration;
 import java.util.List;
@@ -10,6 +11,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -82,5 +84,35 @@ class RoomActorTest {
         Duration.ofMillis(10), () -> timerThread.complete(Thread.currentThread().getName()));
 
     assertThat(timerThread.get(5, TimeUnit.SECONDS)).isEqualTo(commandThread);
+  }
+
+  @Test
+  void closingActorRejectsNewCommandsAndCompletesQueuedCommandsExceptionally() throws Exception {
+    CountDownLatch runningStarted = new CountDownLatch(1);
+    CountDownLatch releaseRunning = new CountDownLatch(1);
+    AtomicBoolean queuedCommandRan = new AtomicBoolean();
+    CompletableFuture<Void> running =
+        actor.execute(
+            () -> {
+              runningStarted.countDown();
+              try {
+                releaseRunning.await();
+              } catch (InterruptedException failure) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(failure);
+              }
+            });
+    assertThat(runningStarted.await(5, TimeUnit.SECONDS)).isTrue();
+    CompletableFuture<Void> queued = actor.execute(() -> queuedCommandRan.set(true));
+
+    CompletableFuture<Void> terminated = actor.closeAsync();
+    CompletableFuture<Void> rejected = actor.execute(() -> {});
+    assertThatThrownBy(rejected::join).hasRootCauseInstanceOf(IllegalStateException.class);
+
+    releaseRunning.countDown();
+    running.get(5, TimeUnit.SECONDS);
+    assertThatThrownBy(queued::join).hasRootCauseInstanceOf(IllegalStateException.class);
+    terminated.get(5, TimeUnit.SECONDS);
+    assertThat(queuedCommandRan).isFalse();
   }
 }

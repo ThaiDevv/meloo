@@ -135,6 +135,15 @@ class CatalogServiceIntegrationTest extends IntegrationTest {
   }
 
   @Test
+  @DisplayName("findPlaylistByCode returns zero enabled tracks for an empty playlist")
+  void findPlaylistByCodeReturnsZeroEnabledTrackCountForEmptyPlaylist() {
+    var result = catalogService.findPlaylistByCode("standard");
+
+    assertThat(result).isPresent();
+    assertThat(result.orElseThrow().enabledTrackCount()).isZero();
+  }
+
+  @Test
   @DisplayName("findPlaylistById includes disabled playlists and counts enabled tracks only")
   void findPlaylistByIdReturnsDisabledPlaylistAndEnabledTrackCount() {
     Playlist disabledPlaylist =

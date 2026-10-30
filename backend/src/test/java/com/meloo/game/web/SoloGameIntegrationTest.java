@@ -525,7 +525,7 @@ class SoloGameIntegrationTest extends IntegrationTest {
             .andExpect(jsonPath("$.filter").doesNotExist())
             .andReturn();
     String createResponse = createResult.getResponse().getContentAsString();
-    assertNoNullJsonValues(createResponse);
+    assertNoNullAnywhere(createResponse);
 
     UUID matchId = UUID.fromString(JsonPath.read(createResponse, "$.matchId"));
     GuessRequestDto wrongGuess = new GuessRequestDto().trackId(standardTracks.get(1).id());
@@ -544,7 +544,7 @@ class SoloGameIntegrationTest extends IntegrationTest {
             .andExpect(jsonPath("$.end").doesNotExist())
             .andReturn();
 
-    assertNoNullJsonValues(guessResult.getResponse().getContentAsString());
+    assertNoNullAnywhere(guessResult.getResponse().getContentAsString());
   }
 
   @Test
@@ -1470,20 +1470,6 @@ class SoloGameIntegrationTest extends IntegrationTest {
         .andExpect(jsonPath("$.correlationId").exists());
   }
 
-  private static void assertNoNullJsonValues(String json) {
-    Object root = JsonPath.read(json, "$");
-    assertNoNullJsonObjectValues(root);
-  }
-
-  private static void assertNoNullJsonObjectValues(Object value) {
-    assertThat(value).isNotNull();
-    if (value instanceof Map<?, ?> object) {
-      object.values().forEach(SoloGameIntegrationTest::assertNoNullJsonObjectValues);
-    } else if (value instanceof Iterable<?> array) {
-      array.forEach(SoloGameIntegrationTest::assertNoNullJsonObjectValues);
-    }
-  }
-
   @Test
   @DisplayName(
       "Đồng thời: hai request submitGuess cùng vòng 1 song song -> không làm trùng vòng, roundNo liên tục (M9)")
@@ -1839,5 +1825,19 @@ class SoloGameIntegrationTest extends IntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.correct").value(true))
         .andExpect(jsonPath("$.rightArtist").value(false));
+  }
+
+  private static void assertNoNullAnywhere(String json) {
+    Object root = JsonPath.read(json, "$");
+    assertNoNullAnywhere((Object) root);
+  }
+
+  private static void assertNoNullAnywhere(Object value) {
+    assertThat(value).isNotNull();
+    if (value instanceof Map<?, ?> object) {
+      object.values().forEach(child -> assertNoNullAnywhere(child));
+    } else if (value instanceof Iterable<?> array) {
+      array.forEach(child -> assertNoNullAnywhere(child));
+    }
   }
 }

@@ -9,8 +9,8 @@ Cơ chế chơi là mở dần đoạn preview 2 → 5 → 10 → 20 → 30 giâ
 | Phương án | Ưu | Nhược |
 |---|---|---|
 | Trả thẳng URL preview của nhà cung cấp cho client | Không tốn băng thông backend | Lộ id/tên bài trong URL; không kiểm soát được mức nghe; không thu hồi được |
-| Cấp URL cố định theo bài nhưng cắt sẵn đoạn | Đơn giản | Link dùng lại được, đoán được cấu trúc, chia sẻ ngoài phòng |
-| **Backend làm trung gian: streaming proxy + token mờ HMAC theo (vòng, người chơi, mức), hết hạn ngắn** | Kiểm soát mức nghe và người dùng ở server; URL không lộ metadata; hết hạn nhanh; không vi phạm lưu trữ audio | Backend phải làm trung gian proxy audio; cần quản lý băng thông và RAM trên máy chủ nhỏ |
+| Cấp URL cố định theo bài nhưng cắt sẵn đoạn | Đơn giản | Link dùng lại được, đoán được cấu trúc, chia sẻ ngoài phòng (không có cơ chế hết hạn ngắn) |
+| **Backend làm trung gian: streaming proxy + token mờ HMAC theo (vòng, người chơi, mức), hết hạn ngắn** | Kiểm soát mức nghe ở server; token ký theo (vòng, người chơi, mức, hạn); URL không lộ metadata; hết hạn nhanh (link bearer tối đa 2 phút, xem rủi ro bên dưới); không vi phạm lưu trữ audio | Backend phải làm trung gian proxy audio; cần quản lý băng thông và RAM trên máy chủ nhỏ |
 
 ## Quyết định
 Chọn phương án **Backend làm streaming proxy với token mờ HMAC ngắn hạn**. Kiến trúc này là giải pháp cốt lõi độc lập với nhà cung cấp; việc tích hợp cụ thể dựa trên nguồn nhạc đề xuất từ SPK-01 / ADR-003:

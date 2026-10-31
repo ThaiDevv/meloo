@@ -13,10 +13,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.meloo.IntegrationTest;
-import com.meloo.audio.api.AccountLockChecker;
 import com.meloo.audio.api.AudioPreparationResult;
 import com.meloo.audio.api.AudioService;
 import com.meloo.generated.model.AudioClipDto;
+import com.meloo.identity.api.AccountLockQuery;
 import com.meloo.shared.api.ModuleSecurityRules;
 import com.meloo.shared.api.ModuleSecurityRules.HttpRule;
 import java.net.URI;
@@ -49,7 +49,7 @@ class ProblemInstanceAudioMaskingIntegrationTest extends IntegrationTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private AudioService audioService;
-  @MockitoBean private AccountLockChecker accountLockChecker;
+  @MockitoBean private AccountLockQuery accountLockQuery;
 
   @Test
   @DisplayName(
@@ -202,7 +202,7 @@ class ProblemInstanceAudioMaskingIntegrationTest extends IntegrationTest {
     String realAudioUrl = clip.getUrl();
     String rawToken = realAudioUrl.substring("/api/v1/audio/".length());
 
-    when(accountLockChecker.isAccountLocked(any()))
+    when(accountLockQuery.isLocked(any()))
         .thenThrow(new RuntimeException("Simulated unexpected database failure"));
 
     mockMvc

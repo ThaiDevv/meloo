@@ -1,6 +1,5 @@
 package com.meloo.audio.web;
 
-import com.meloo.audio.api.AccountLockChecker;
 import com.meloo.audio.domain.AccountLockedException;
 import com.meloo.audio.domain.AudioException;
 import com.meloo.audio.domain.AudioRangeNotSatisfiableException;
@@ -11,6 +10,7 @@ import com.meloo.audio.domain.AudioTokenInvalidException;
 import com.meloo.audio.service.AudioRateLimiter;
 import com.meloo.audio.service.AudioStreamService;
 import com.meloo.generated.api.AudioApi;
+import com.meloo.identity.api.AccountLockQuery;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.io.IOException;
@@ -40,17 +40,17 @@ public class AudioController implements AudioApi {
 
   private final AudioTokenCodec audioTokenCodec;
   private final AudioRateLimiter audioRateLimiter;
-  private final AccountLockChecker accountLockChecker;
+  private final AccountLockQuery accountLockQuery;
   private final AudioStreamService audioStreamService;
 
   public AudioController(
       AudioTokenCodec audioTokenCodec,
       AudioRateLimiter audioRateLimiter,
-      AccountLockChecker accountLockChecker,
+      AccountLockQuery accountLockQuery,
       AudioStreamService audioStreamService) {
     this.audioTokenCodec = audioTokenCodec;
     this.audioRateLimiter = audioRateLimiter;
-    this.accountLockChecker = accountLockChecker;
+    this.accountLockQuery = accountLockQuery;
     this.audioStreamService = audioStreamService;
   }
 
@@ -63,7 +63,7 @@ public class AudioController implements AudioApi {
     verifyPlayerOwnershipIfAuthenticated(audioToken.playerId());
 
     // Check account lock status (BR-28)
-    if (accountLockChecker.isAccountLocked(audioToken.playerId())) {
+    if (accountLockQuery.isLocked(audioToken.playerId())) {
       throw new AccountLockedException();
     }
 

@@ -1,6 +1,5 @@
 package com.meloo.audio.config;
 
-import com.meloo.audio.api.AccountLockChecker;
 import com.meloo.audio.domain.AudioTokenCodec;
 import com.meloo.audio.service.AudioRateLimiter;
 import com.meloo.audio.service.AudioSourceResolver;
@@ -10,8 +9,6 @@ import com.meloo.audio.service.FakeAudioSourceResolver;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.github.resilience4j.retry.RetryRegistry;
 import java.time.Clock;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -24,16 +21,6 @@ import org.springframework.web.client.RestClient;
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(AudioProperties.class)
 public class AudioConfiguration {
-
-  private static final Logger log = LoggerFactory.getLogger(AudioConfiguration.class);
-
-  @Bean
-  @ConditionalOnMissingBean(AccountLockChecker.class)
-  public AccountLockChecker fallbackAccountLockChecker() {
-    log.warn(
-        "Using fallback AccountLockChecker (no-op). Production requires identity module to provide an AccountLockChecker implementation.");
-    return playerId -> false;
-  }
 
   @Bean
   @ConditionalOnMissingBean(AudioSourceResolver.class)

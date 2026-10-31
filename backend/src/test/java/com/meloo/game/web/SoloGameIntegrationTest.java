@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -1825,6 +1826,196 @@ class SoloGameIntegrationTest extends IntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.correct").value(true))
         .andExpect(jsonPath("$.rightArtist").value(false));
+  }
+
+  @Test
+  @DisplayName(
+      "BE-RL-01: Exceeding create-match limit returns 429 with Retry-After, isolates players, and resets after clock advances")
+  void createMatch_rateLimit_enforcesLimit_isolatesUsers_refillsAfterWait() throws Exception {
+    UUID player1 = UUID.randomUUID();
+    UUID player2 = UUID.randomUUID();
+
+    CreateSoloMatchRequestDto createReq = new CreateSoloMatchRequestDto();
+    createReq.setMode(SoloModeDto.PRACTICE);
+    createReq.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+
+    // Create and abandon 10 matches consecutively (consuming all 10 create-match tokens for player
+    // 1)
+    for (int i = 0; i < 10; i++) {
+      MvcResult res =
+          mockMvc
+              .perform(
+                  post("/api/v1/solo/matches")
+                      .with(jwt().jwt(j -> j.subject(player1.toString()).claim("nickname", "P1")))
+                      .contentType(MediaType.APPLICATION_JSON)
+                      .content(objectMapper.writeValueAsString(createReq)))
+              .andExpect(status().isCreated())
+              .andReturn();
+
+      String matchIdStr = JsonPath.read(res.getResponse().getContentAsString(), "$.matchId");
+      mockMvc
+          .perform(
+              post("/api/v1/solo/matches/{matchId}/abandon", matchIdStr)
+                  .with(jwt().jwt(j -> j.subject(player1.toString()).claim("nickname", "P1"))))
+          .andExpect(status().isOk());
+    }
+
+    // 11th call exceeds create match rate limit (10 req / 1 min) -> 429 Too Many Requests
+    MvcResult rateLimitedRes =
+        mockMvc
+            .perform(
+                post("/api/v1/solo/matches")
+                    .with(jwt().jwt(j -> j.subject(player1.toString()).claim("nickname", "P1")))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(createReq)))
+            .andExpect(status().isTooManyRequests())
+            .andExpect(header().exists("Retry-After"))
+            .andExpect(jsonPath("$.status").value(429))
+            .andExpect(jsonPath("$.code").value("RATE_LIMITED"))
+            .andExpect(jsonPath("$.title").value("Too Many Requests"))
+            .andExpect(jsonPath("$.type").value("about:blank"))
+            .andExpect(jsonPath("$.instance").value("/api/v1/solo/matches"))
+            .andReturn();
+
+    String retryAfterHeader = rateLimitedRes.getResponse().getHeader("Retry-After");
+    assertThat(retryAfterHeader).isNotNull();
+    assertThat(Long.parseLong(retryAfterHeader)).isGreaterThanOrEqualTo(1L);
+
+    // Another player (player 2) is unaffected and creates match successfully
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches")
+                .with(jwt().jwt(j -> j.subject(player2.toString()).claim("nickname", "P2")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(createReq)))
+        .andExpect(status().isCreated());
+
+    // After waiting period (clock advanced by 1 minute), player 1 can create match again
+    testClock.advance(Duration.ofMinutes(1));
+
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches")
+                .with(jwt().jwt(j -> j.subject(player1.toString()).claim("nickname", "P1")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(createReq)))
+        .andExpect(status().isCreated());
+  }
+
+  @Test
+  @DisplayName(
+      "BE-RL-01: Exceeding action quota (60/min) returns 429 and refills after clock advances")
+  void actionRateLimit_enforcesLimit_andRefillsAfterWait() throws Exception {
+    UUID playerId = UUID.randomUUID();
+
+    // 60 allowed getActiveSoloMatch requests
+    for (int i = 0; i < 60; i++) {
+      mockMvc
+          .perform(
+              get("/api/v1/solo/matches/active")
+                  .with(jwt().jwt(j -> j.subject(playerId.toString()).claim("nickname", "P"))))
+          .andExpect(status().isNotFound()); // NO_ACTIVE_MATCH
+    }
+
+    // 61st request exceeds action limit
+    mockMvc
+        .perform(
+            get("/api/v1/solo/matches/active")
+                .with(jwt().jwt(j -> j.subject(playerId.toString()).claim("nickname", "P"))))
+        .andExpect(status().isTooManyRequests())
+        .andExpect(header().exists("Retry-After"))
+        .andExpect(jsonPath("$.status").value(429))
+        .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+
+    // Advance clock by 1 minute
+    testClock.advance(Duration.ofMinutes(1));
+
+    // Request succeeds again
+    mockMvc
+        .perform(
+            get("/api/v1/solo/matches/active")
+                .with(jwt().jwt(j -> j.subject(playerId.toString()).claim("nickname", "P"))))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  @DisplayName(
+      "BE-RL-01: Exceeding action quota blocks all remaining in-match action endpoints with 429")
+  void actionRateLimit_blocksAllActionEndpointsWhenExhausted() throws Exception {
+    UUID playerId = UUID.randomUUID();
+    UUID dummyMatchId = UUID.randomUUID();
+
+    // Consume all 60 action tokens
+    for (int i = 0; i < 60; i++) {
+      mockMvc
+          .perform(
+              get("/api/v1/solo/matches/active")
+                  .with(jwt().jwt(j -> j.subject(playerId.toString()).claim("nickname", "P"))))
+          .andExpect(status().isNotFound());
+    }
+
+    // Next request to getActiveSoloMatch exceeds action quota -> 429
+    mockMvc
+        .perform(
+            get("/api/v1/solo/matches/active")
+                .with(jwt().jwt(j -> j.subject(playerId.toString()).claim("nickname", "P"))))
+        .andExpect(status().isTooManyRequests())
+        .andExpect(header().exists("Retry-After"))
+        .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+
+    // Verify all other 7 action endpoints are also protected by checkAction
+    mockMvc
+        .perform(
+            get("/api/v1/solo/matches/{matchId}/rounds/current", dummyMatchId)
+                .with(jwt().jwt(j -> j.subject(playerId.toString()).claim("nickname", "P"))))
+        .andExpect(status().isTooManyRequests())
+        .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches/{matchId}/rounds/1/listen-more", dummyMatchId)
+                .with(jwt().jwt(j -> j.subject(playerId.toString()).claim("nickname", "P"))))
+        .andExpect(status().isTooManyRequests())
+        .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches/{matchId}/rounds/1/skip", dummyMatchId)
+                .with(jwt().jwt(j -> j.subject(playerId.toString()).claim("nickname", "P"))))
+        .andExpect(status().isTooManyRequests())
+        .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+
+    GuessRequestDto guessDto = new GuessRequestDto();
+    guessDto.setTrackId(UUID.randomUUID());
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches/{matchId}/rounds/1/guesses", dummyMatchId)
+                .with(jwt().jwt(j -> j.subject(playerId.toString()).claim("nickname", "P")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(guessDto)))
+        .andExpect(status().isTooManyRequests())
+        .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+
+    mockMvc
+        .perform(
+            get("/api/v1/solo/matches/{matchId}/rounds/1/result", dummyMatchId)
+                .with(jwt().jwt(j -> j.subject(playerId.toString()).claim("nickname", "P"))))
+        .andExpect(status().isTooManyRequests())
+        .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+
+    mockMvc
+        .perform(
+            get("/api/v1/solo/matches/{matchId}/result", dummyMatchId)
+                .with(jwt().jwt(j -> j.subject(playerId.toString()).claim("nickname", "P"))))
+        .andExpect(status().isTooManyRequests())
+        .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches/{matchId}/abandon", dummyMatchId)
+                .with(jwt().jwt(j -> j.subject(playerId.toString()).claim("nickname", "P"))))
+        .andExpect(status().isTooManyRequests())
+        .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
   }
 
   private static void assertNoNullAnywhere(String json) {

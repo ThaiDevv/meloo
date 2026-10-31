@@ -171,13 +171,15 @@ export function GuessBox({
         {status}
       </p>
 
-      {/* The suggestion list floats over the page, the one place a shadow belongs. taste-skill-ignore */}
       <ul
         id={listId}
         role="listbox"
         aria-label={t('guess.label')}
         hidden={!showList}
-        className="absolute inset-x-0 z-10 mt-2 max-h-72 overflow-y-auto rounded-xl bg-raised p-1.5 shadow-lg shadow-black/40"
+        className={cn(
+          'absolute inset-x-0 z-10 mt-2 max-h-72 overflow-y-auto rounded-xl bg-raised p-1.5',
+          'shadow-lg shadow-black/40', // taste-skill-ignore: the list floats over the page
+        )}
       >
         {showList && !settled ? (
           <li role="presentation" className="px-3 py-3 text-sm text-muted-foreground">

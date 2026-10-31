@@ -32,7 +32,7 @@ export const MOCK_COVER_URL =
 
 /** What the mock server answers at `MOCK_COVER_URL`: a drawn square cover, so the preview needs no network. */
 export const MOCK_COVER_SVG =
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><rect width="400" height="400" fill="#202022"/><circle cx="200" cy="200" r="150" fill="#2a2a2c"/><circle cx="200" cy="200" r="104" fill="none" stroke="#b9f24b" stroke-width="10"/><circle cx="200" cy="200" r="58" fill="none" stroke="#b9f24b" stroke-opacity=".5" stroke-width="10"/><circle cx="200" cy="200" r="14" fill="#f5f5f4"/></svg>'
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><rect width="400" height="400" fill="#1d3b3a"/><circle cx="268" cy="150" r="92" fill="#f2a541"/><rect y="236" width="400" height="164" fill="#0f2524"/><rect y="262" width="400" height="10" fill="#f2a541" opacity=".55"/><rect y="292" width="400" height="6" fill="#f2a541" opacity=".35"/><rect y="316" width="400" height="4" fill="#f2a541" opacity=".2"/><text x="32" y="368" font-family="Arial, sans-serif" font-size="30" font-weight="700" fill="#f4efe6">M-TP</text></svg>'
 
 const ANSWER = {
   trackId: '3a9f6c10-2b7d-4e58-91c3-6d0a8f4b7e21',

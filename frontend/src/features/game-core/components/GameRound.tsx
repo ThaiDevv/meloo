@@ -10,6 +10,7 @@ import { SnippetPlayer } from '../audio/snippetPlayer'
 import { useSnippetPlayer } from '../audio/useSnippetPlayer'
 import { formatScore } from '../lib/format'
 import { levelLabel, pointsForLevel } from '../lib/levels'
+import { useCountTo } from '../lib/motion'
 import type {
   GuessVerdict,
   RoundResult,
@@ -17,13 +18,13 @@ import type {
   RoundTimerState,
   TrackSuggestion,
 } from '../types'
+import { ClipStrip } from './ClipStrip'
 import { GuessBox } from './GuessBox'
 import { GuessFeedback } from './GuessFeedback'
-import { LevelDisc } from './LevelDisc'
-import { LevelLadder } from './LevelLadder'
 import { ListenControls } from './ListenControls'
 import { RoundReveal } from './RoundReveal'
 import { RoundTimer } from './RoundTimer'
+import { Turntable } from './Turntable'
 
 export interface GameRoundProps {
   /** The open round, straight from the server. It carries no answer (NFR-07). */
@@ -63,7 +64,7 @@ export interface GameRoundProps {
  */
 export function GameRound(props: GameRoundProps) {
   const { round, result, totalScore, combo, matchFinished, busy = false, onContinue } = props
-  const { t, i18n } = useTranslation('game')
+  const { t } = useTranslation('game')
   // One player for the whole match: once a tap has unlocked sound, later rounds can start by themselves.
   const [player] = useState(() => new SnippetPlayer())
   useEffect(
@@ -75,19 +76,15 @@ export function GameRound(props: GameRoundProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
+      <header className="flex flex-col gap-3">
         <div className="flex items-end justify-between gap-6">
-          <p className="num text-sm font-semibold text-muted-foreground">
-            {t('header.round', { current: round.roundNo, total: round.roundCount })}
-          </p>
-          {totalScore !== undefined ? (
-            <p className="num flex items-baseline gap-2">
-              <span className="text-xs text-faint">{t('header.total')}</span>
-              <span className="font-display text-2xl font-extrabold tracking-tight">
-                {formatScore(totalScore, i18n.language)}
-              </span>
+          <div className="flex flex-col gap-2">
+            <p className="num text-sm font-semibold text-muted-foreground">
+              {t('header.round', { current: round.roundNo, total: round.roundCount })}
             </p>
-          ) : null}
+            <RoundPips current={round.roundNo} total={round.roundCount} />
+          </div>
+          {totalScore !== undefined ? <TotalScore value={totalScore} /> : null}
         </div>
         {combo && !result ? <ComboLine streak={combo.streak} /> : null}
       </header>
@@ -114,16 +111,87 @@ export function GameRound(props: GameRoundProps) {
   )
 }
 
+function TotalScore({ value }: { value: number }) {
+  const { t, i18n } = useTranslation('game')
+  const shown = useCountTo(value, { ms: 900 })
+  return (
+    <p className="num flex flex-col items-end">
+      <span className="text-xs text-faint">{t('header.total')}</span>
+      <span className="font-display text-3xl leading-none font-extrabold tracking-tight">
+        {formatScore(shown, i18n.language)}
+      </span>
+    </p>
+  )
+}
+
+/** One mark per round of the match: past rounds dim, this one long and lit. */
+function RoundPips({ current, total }: { current: number; total: number }) {
+  return (
+    <span aria-hidden="true" className="flex items-center gap-1">
+      {Array.from({ length: total }, (_, index) => {
+        const n = index + 1
+        return (
+          <span
+            key={n}
+            className={cn(
+              'h-1.5 rounded-full transition-[width,background-color] duration-300',
+              n < current && 'w-2.5 bg-foreground/40 sm:w-3',
+              n === current && 'w-6 bg-primary sm:w-8',
+              n > current && 'w-2.5 bg-foreground/12 sm:w-3',
+            )}
+          />
+        )
+      })}
+    </span>
+  )
+}
+
+/** BR-08 as three notches: one right round starts the chain, the second earns +10%, the third +20%. */
 function ComboLine({ streak }: { streak: number }) {
   const { t } = useTranslation('game')
   const percent = streak >= 2 ? 20 : 10
   return (
-    <p className="text-sm text-muted-foreground">
+    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+      <span aria-hidden="true" className="flex gap-1">
+        {[1, 2, 3].map((notch) => (
+          <span
+            key={notch}
+            className={cn(
+              'h-3 w-1.5 -skew-x-12 rounded-sm transition-colors duration-300',
+              streak >= notch ? 'bg-primary' : 'bg-foreground/15',
+            )}
+          />
+        ))}
+      </span>
       <span className={cn('num font-semibold', streak > 0 ? 'text-primary' : 'text-faint')}>
         {streak > 0 ? t('combo.streak', { count: streak }) : t('combo.none')}
       </span>
-      <span className="text-faint"> · </span>
-      {streak > 0 ? t('combo.next', { percent }) : t('combo.nextFirst')}
+      <span>{streak > 0 ? t('combo.next', { percent }) : t('combo.nextFirst')}</span>
+    </p>
+  )
+}
+
+/** What a right guess is still worth. It counts down when a level opens, and says how much went. */
+function PointsLeft({ level }: { level: number }) {
+  const { t, i18n } = useTranslation('game')
+  const points = pointsForLevel(level)
+  const shown = useCountTo(points)
+  const [firstLevel] = useState(level)
+  return (
+    <p className="num" data-testid="points-left">
+      <span className="relative inline-block font-display text-6xl leading-none font-extrabold tracking-tight text-primary sm:text-7xl">
+        {formatScore(shown, i18n.language)}
+        {level > firstLevel ? (
+          <span
+            key={level}
+            aria-hidden="true"
+            className="gc-float absolute top-0 left-full ml-3 text-lg font-bold text-negative"
+          >
+            −{formatScore(200, i18n.language)}
+          </span>
+        ) : null}
+      </span>
+      <span className="mt-2 block text-sm text-muted-foreground">{t('stage.pointsLeft')}</span>
     </p>
   )
 }
@@ -145,7 +213,7 @@ function RoundPlay({
   onTimeout,
   onAudioExpired,
 }: GameRoundProps & { player: SnippetPlayer }) {
-  const { t, i18n } = useTranslation('game')
+  const { t } = useTranslation('game')
   const audio = useSnippetPlayer({
     url: round.audio.url,
     seconds: round.listenSeconds,
@@ -161,27 +229,21 @@ function RoundPlay({
       <section
         aria-label={t('stage.level', { n: round.level, max: 5 })}
         aria-busy={audio.status === 'loading'}
-        className="grid items-center gap-8 rounded-3xl bg-surface p-6 sm:p-8 md:grid-cols-[auto_1fr] md:gap-12 md:p-10"
+        className="grid gap-6 rounded-3xl bg-surface p-5 sm:p-8 md:grid-cols-[minmax(0,25rem)_1fr] md:items-center md:gap-x-10 md:p-10"
       >
-        <LevelDisc
+        <Turntable
           level={round.level}
           listenSeconds={round.listenSeconds}
           playing={audio.playing}
-          className="mx-auto w-52 sm:w-64 md:w-72"
+          player={player}
+          joltKey={verdict && !verdict.correct ? verdict.nonce : undefined}
+          className="mx-auto w-full max-w-80 md:max-w-none"
         />
         <div className="flex min-w-0 flex-col gap-6">
-          <h2 className="text-center font-display text-2xl font-extrabold tracking-tight md:text-left md:text-3xl">
+          <h2 className="font-display text-2xl font-extrabold tracking-tight md:text-3xl">
             {t('stage.heading')}
           </h2>
-          <p className="num text-center md:text-left" data-testid="points-left">
-            <span className="block font-display text-5xl leading-none font-extrabold tracking-tight text-primary sm:text-6xl">
-              {formatScore(pointsForLevel(round.level), i18n.language)}
-            </span>
-            <span className="mt-2 block text-sm text-muted-foreground">
-              {t('stage.pointsLeft')}
-            </span>
-          </p>
-          <LevelLadder level={round.level} />
+          <PointsLeft level={round.level} />
           <AudioStatus
             status={audio.status}
             failure={audio.failure}
@@ -190,7 +252,32 @@ function RoundPlay({
             onTap={audio.play}
             onRetry={audio.retry}
           />
+          <ListenControls
+            level={round.level}
+            canListenMore={round.canListenMore}
+            canSkip={round.canSkip}
+            busy={busy}
+            canReplay={audio.status === 'ready' || audio.status === 'blocked'}
+            onReplay={audio.play}
+            onListenMore={() => {
+              audio.unlock()
+              onListenMore(round.level + 1)
+            }}
+            onSkip={() => {
+              audio.unlock()
+              onSkip()
+            }}
+          />
         </div>
+        <ClipStrip
+          level={round.level}
+          listenSeconds={round.listenSeconds}
+          url={round.audio.url}
+          decoded={audio.status === 'ready' || audio.status === 'blocked'}
+          playing={audio.playing}
+          player={player}
+          className="md:col-span-2"
+        />
       </section>
 
       {timer ? <RoundTimer timer={timer} onTimeout={onTimeout} /> : null}
@@ -207,22 +294,6 @@ function RoundPlay({
           }}
         />
         <GuessFeedback verdict={verdict} listenSeconds={round.listenSeconds} />
-        <ListenControls
-          level={round.level}
-          canListenMore={round.canListenMore}
-          canSkip={round.canSkip}
-          busy={busy}
-          canReplay={audio.status === 'ready' || audio.status === 'blocked'}
-          onReplay={audio.play}
-          onListenMore={() => {
-            audio.unlock()
-            onListenMore(round.level + 1)
-          }}
-          onSkip={() => {
-            audio.unlock()
-            onSkip()
-          }}
-        />
       </div>
     </div>
   )

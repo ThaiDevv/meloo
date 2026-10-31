@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { formatScore } from '../lib/format'
+import { useCountTo } from '../lib/motion'
 import type { RoundResult } from '../types'
 
 /** Where the round's points came from: base (BR-02), combo (BR-08) and speed (BR-07), then the sum. */
@@ -7,6 +8,7 @@ export function ScoreBreakdown({ result }: { result: RoundResult }) {
   const { t, i18n } = useTranslation('game')
   const fmt = (value: number) => formatScore(value, i18n.language)
   const comboPoints = Math.round((result.baseScore * result.comboPercent) / 100)
+  const roundScore = useCountTo(result.roundScore, { from: 0, ms: 900 })
 
   return (
     <section aria-labelledby="gc-score-heading" className="rounded-2xl bg-surface p-5 sm:p-6">
@@ -33,7 +35,7 @@ export function ScoreBreakdown({ result }: { result: RoundResult }) {
 
         <dt className="pt-3 text-base font-semibold">{t('reveal.score.round')}</dt>
         <dd className="num pt-3 text-right font-display text-4xl font-extrabold tracking-tight text-primary">
-          {fmt(result.roundScore)}
+          {fmt(roundScore)}
         </dd>
       </dl>
       <p className="num mt-4 flex items-baseline justify-between gap-4 text-sm text-muted-foreground">

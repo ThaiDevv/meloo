@@ -174,3 +174,43 @@ describe('SnippetPlayer.dispose', () => {
     expect(FakeAudioContext.instances).toHaveLength(0)
   })
 })
+
+describe('SnippetPlayer: what the screen draws', () => {
+  it('passes every clip through one analyser on its way to the speakers', async () => {
+    const { player } = makePlayer()
+    await player.play('/a', 2)
+    await player.play('/a', 2)
+
+    const [analyser] = context().analysers
+    expect(context().analysers).toHaveLength(1)
+    expect(analyser?.connectedTo).toBe(context().destination)
+    expect(context().sources.every((source) => source.connectedTo === analyser)).toBe(true)
+    expect(player.analyserNode).toBe(analyser)
+  })
+
+  it('tells how far the clip has got on the audio clock, and nothing once it stops', async () => {
+    FakeAudioContext.clipSeconds = 10
+    const { player } = makePlayer()
+    expect(player.position()).toBeNull()
+
+    await player.play('/a', 10)
+    context().currentTime = 4
+    expect(player.position()).toEqual({ elapsed: 4, duration: 10 })
+    context().currentTime = 99
+    expect(player.position()?.elapsed).toBe(10)
+
+    player.stop()
+    expect(player.position()).toBeNull()
+  })
+
+  it('measures the waveform of the decoded clip, per second, loudest bar = 1', async () => {
+    FakeAudioContext.clipSeconds = 2
+    const { player } = makePlayer()
+    const peaks = await player.waveform('/a', 4)
+
+    // 2 s at 4 bars a second; the fake clip is loud (0.8) then quiet (0.2).
+    expect(peaks).toHaveLength(8)
+    expect(peaks.slice(0, 4)).toEqual([1, 1, 1, 1])
+    expect(peaks[7]).toBeCloseTo(0.25)
+  })
+})

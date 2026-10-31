@@ -5,7 +5,7 @@ import { Button } from '@/shared/ui/Button'
 import { levelLabel } from '../lib/levels'
 import { providerName } from '../lib/format'
 import type { RoundResult } from '../types'
-import { CoverArt } from './CoverArt'
+import { Packshot } from './Packshot'
 import { ScoreBreakdown } from './ScoreBreakdown'
 import '../game-core.css'
 
@@ -37,20 +37,15 @@ export function RoundReveal({
   return (
     <section
       aria-labelledby="gc-answer-title"
-      className="grid gap-6 md:grid-cols-[minmax(0,20rem)_1fr] md:gap-8"
+      className="grid gap-6 md:grid-cols-[minmax(0,24rem)_1fr] md:items-start md:gap-8"
     >
-      <div
-        data-outcome={correct ? 'correct' : 'wrong'}
-        className="gc-cover relative mx-auto size-52 md:mx-0 md:size-auto md:w-full md:max-w-80"
-      >
-        <CoverArt url={answer.coverUrl} title={answer.title} className="size-full" />
-        {correct ? (
-          <span
-            aria-hidden="true"
-            className="gc-burst pointer-events-none absolute inset-0 rounded-2xl border-2 border-primary"
-          />
-        ) : null}
-      </div>
+      <Packshot
+        coverUrl={answer.coverUrl}
+        title={answer.title}
+        artistName={answer.artistName}
+        correct={correct}
+        className="mx-auto max-w-80 md:mx-0 md:max-w-none"
+      />
 
       <div className="gc-stagger flex min-w-0 flex-col gap-5">
         <div>

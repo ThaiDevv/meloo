@@ -11,22 +11,21 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
- * Giới hạn tần suất gọi API chơi đơn theo người chơi.
+ * Rate limiter for solo game API endpoints per player.
  *
- * <p>Theo mẫu AudioRateLimiter và GuestRateLimiter. Tách biệt 2 loại giới hạn:
+ * <p>Modeled after AudioRateLimiter and GuestRateLimiter. Separates two rate limit categories:
  *
  * <ul>
- *   <li>Tạo trận: mặc định 10 lượt / phút
- *   <li>Các thao tác khác trong trận: mặc định 60 lượt / phút
+ *   <li>Create match: default 10 requests / minute
+ *   <li>Other in-match actions: default 60 requests / minute
  * </ul>
  *
- * Tự động dọn dẹp các bucket không hoạt động thông qua Caffeine cache để chống rò rỉ bộ nhớ.
+ * Automatically evicts inactive player buckets via Caffeine cache to prevent memory leaks.
  */
 @Component
 public class SoloRateLimiter {
@@ -80,9 +79,9 @@ public class SoloRateLimiter {
   }
 
   /**
-   * Kiểm tra giới hạn tạo trận mới cho người chơi.
+   * Checks the match creation rate limit for the given player.
    *
-   * @throws SoloRateLimitException nếu vượt quá giới hạn tạo trận (kèm retryAfter)
+   * @throws SoloRateLimitException if the player exceeds match creation quota
    */
   public void checkCreateMatch(UUID playerId) {
     Objects.requireNonNull(playerId, "playerId must not be null");
@@ -90,9 +89,9 @@ public class SoloRateLimiter {
   }
 
   /**
-   * Kiểm tra giới hạn cho các thao tác chơi đơn khác (đoán, nghe thêm, bỏ qua, lấy kết quả,...).
+   * Checks the action rate limit for all other solo game operations.
    *
-   * @throws SoloRateLimitException nếu vượt quá giới hạn thao tác (kèm retryAfter)
+   * @throws SoloRateLimitException if the player exceeds action quota
    */
   public void checkAction(UUID playerId) {
     Objects.requireNonNull(playerId, "playerId must not be null");
@@ -100,13 +99,10 @@ public class SoloRateLimiter {
   }
 
   private void consumeOrThrow(Bucket bucket) {
-    if (bucket == null) {
-      return;
-    }
     ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
     if (!probe.isConsumed()) {
-      long retryAfterSec =
-          Math.max(1, TimeUnit.NANOSECONDS.toSeconds(probe.getNanosToWaitForRefill()));
+      long nanosToWait = probe.getNanosToWaitForRefill();
+      long retryAfterSec = Math.max(1, (nanosToWait + 999_999_999L) / 1_000_000_000L);
       throw new SoloRateLimitException(retryAfterSec);
     }
   }
@@ -135,25 +131,21 @@ public class SoloRateLimiter {
     return now.getEpochSecond() * 1_000_000_000L + now.getNano();
   }
 
-  /** Xóa toàn bộ bucket được lưu tạm (dùng cho test). */
-  public void reset() {
+  void reset() {
     createMatchBuckets.invalidateAll();
     actionBuckets.invalidateAll();
   }
 
-  /** Kích hoạt dọn dẹp các mục hết hạn theo thời gian. */
-  public void cleanUp() {
+  void cleanUp() {
     createMatchBuckets.cleanUp();
     actionBuckets.cleanUp();
   }
 
-  /** Số lượng bucket tạo trận đang nằm trong cache. */
-  public long getCreateMatchBucketCount() {
+  long getCreateMatchBucketCount() {
     return createMatchBuckets.estimatedSize();
   }
 
-  /** Số lượng bucket thao tác đang nằm trong cache. */
-  public long getActionBucketCount() {
+  long getActionBucketCount() {
     return actionBuckets.estimatedSize();
   }
 }

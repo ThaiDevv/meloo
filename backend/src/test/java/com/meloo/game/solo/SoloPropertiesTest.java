@@ -23,14 +23,20 @@ class SoloPropertiesTest {
   @DisplayName(
       "Default properties provide recommended limits: 10/min create match and 60/min actions")
   void defaultValuesProvideRecommendedLimits() {
-    SoloProperties properties = new SoloProperties(null);
-    assertThat(properties.rateLimit()).isNotNull();
-    assertThat(properties.rateLimit().createMatchCapacity()).isEqualTo(10);
-    assertThat(properties.rateLimit().createMatchRefillTokens()).isEqualTo(10);
-    assertThat(properties.rateLimit().createMatchRefillDuration()).isEqualTo(Duration.ofMinutes(1));
-    assertThat(properties.rateLimit().actionCapacity()).isEqualTo(60);
-    assertThat(properties.rateLimit().actionRefillTokens()).isEqualTo(60);
-    assertThat(properties.rateLimit().actionRefillDuration()).isEqualTo(Duration.ofMinutes(1));
+    contextRunner.run(
+        context -> {
+          assertThat(context).hasNotFailed();
+          SoloProperties properties = context.getBean(SoloProperties.class);
+          assertThat(properties.rateLimit()).isNotNull();
+          assertThat(properties.rateLimit().createMatchCapacity()).isEqualTo(10);
+          assertThat(properties.rateLimit().createMatchRefillTokens()).isEqualTo(10);
+          assertThat(properties.rateLimit().createMatchRefillDuration())
+              .isEqualTo(Duration.ofMinutes(1));
+          assertThat(properties.rateLimit().actionCapacity()).isEqualTo(60);
+          assertThat(properties.rateLimit().actionRefillTokens()).isEqualTo(60);
+          assertThat(properties.rateLimit().actionRefillDuration())
+              .isEqualTo(Duration.ofMinutes(1));
+        });
   }
 
   @Test

@@ -12,13 +12,6 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties("meloo.game")
 public record SoloProperties(@Valid @NotNull @DefaultValue RateLimitProperties rateLimit) {
 
-  public SoloProperties {
-    if (rateLimit == null) {
-      rateLimit =
-          new RateLimitProperties(10, 10, Duration.ofMinutes(1), 60, 60, Duration.ofMinutes(1));
-    }
-  }
-
   public record RateLimitProperties(
       @Positive int createMatchCapacity,
       @Positive int createMatchRefillTokens,

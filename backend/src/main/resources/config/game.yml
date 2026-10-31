@@ -1,1 +1,10 @@
 # Configuration owned by the game module.
+meloo:
+  game:
+    rate-limit:
+      create-match-capacity: 10
+      create-match-refill-tokens: 10
+      create-match-refill-duration: 1m
+      action-capacity: 60
+      action-refill-tokens: 60
+      action-refill-duration: 1m

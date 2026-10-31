@@ -1,6 +1,7 @@
 package com.meloo.game.web;
 
 import com.meloo.game.solo.SoloGameService;
+import com.meloo.game.solo.SoloRateLimiter;
 import com.meloo.generated.api.GameApi;
 import com.meloo.generated.model.CreateSoloMatchRequestDto;
 import com.meloo.generated.model.GuessRequestDto;
@@ -26,16 +27,20 @@ import org.springframework.web.bind.annotation.RestController;
 public class SoloGameController implements GameApi {
 
   private final SoloGameService soloGameService;
+  private final SoloRateLimiter soloRateLimiter;
 
-  public SoloGameController(SoloGameService soloGameService) {
+  public SoloGameController(SoloGameService soloGameService, SoloRateLimiter soloRateLimiter) {
     this.soloGameService =
         Objects.requireNonNull(soloGameService, "soloGameService must not be null");
+    this.soloRateLimiter =
+        Objects.requireNonNull(soloRateLimiter, "soloRateLimiter must not be null");
   }
 
   @Override
   public ResponseEntity<SoloMatchDto> createSoloMatch(
       CreateSoloMatchRequestDto createSoloMatchRequestDto) {
     UserPrincipal user = getCurrentUser();
+    soloRateLimiter.checkCreateMatch(user.userId());
     SoloMatchDto match =
         soloGameService.createSoloMatch(
             user.userId(), user.nickname(), user.isGuest(), createSoloMatchRequestDto);
@@ -45,6 +50,7 @@ public class SoloGameController implements GameApi {
   @Override
   public ResponseEntity<SoloMatchDto> getActiveSoloMatch() {
     UserPrincipal user = getCurrentUser();
+    soloRateLimiter.checkAction(user.userId());
     SoloMatchDto match = soloGameService.getActiveSoloMatch(user.userId());
     return ResponseEntity.ok(match);
   }
@@ -52,6 +58,7 @@ public class SoloGameController implements GameApi {
   @Override
   public ResponseEntity<RoundStateDto> getCurrentRound(UUID matchId) {
     UserPrincipal user = getCurrentUser();
+    soloRateLimiter.checkAction(user.userId());
     RoundStateDto round = soloGameService.getCurrentRound(user.userId(), matchId);
     return ResponseEntity.ok(round);
   }
@@ -60,6 +67,7 @@ public class SoloGameController implements GameApi {
   public ResponseEntity<RoundStateDto> listenMore(
       UUID matchId, Integer roundNo, @Nullable Integer expectedLevel) {
     UserPrincipal user = getCurrentUser();
+    soloRateLimiter.checkAction(user.userId());
     RoundStateDto round =
         soloGameService.listenMore(user.userId(), matchId, roundNo, expectedLevel);
     return ResponseEntity.ok(round);
@@ -68,6 +76,7 @@ public class SoloGameController implements GameApi {
   @Override
   public ResponseEntity<RoundEndDto> skipRound(UUID matchId, Integer roundNo) {
     UserPrincipal user = getCurrentUser();
+    soloRateLimiter.checkAction(user.userId());
     RoundEndDto result = soloGameService.skipRound(user.userId(), matchId, roundNo);
     return ResponseEntity.ok(result);
   }
@@ -76,6 +85,7 @@ public class SoloGameController implements GameApi {
   public ResponseEntity<GuessResponseDto> submitGuess(
       UUID matchId, Integer roundNo, GuessRequestDto guessRequestDto) {
     UserPrincipal user = getCurrentUser();
+    soloRateLimiter.checkAction(user.userId());
     GuessResponseDto result =
         soloGameService.submitGuess(user.userId(), matchId, roundNo, guessRequestDto);
     return ResponseEntity.ok(result);
@@ -84,6 +94,7 @@ public class SoloGameController implements GameApi {
   @Override
   public ResponseEntity<RoundResultDto> getRoundResult(UUID matchId, Integer roundNo) {
     UserPrincipal user = getCurrentUser();
+    soloRateLimiter.checkAction(user.userId());
     RoundResultDto result = soloGameService.getRoundResult(user.userId(), matchId, roundNo);
     return ResponseEntity.ok(result);
   }
@@ -91,6 +102,7 @@ public class SoloGameController implements GameApi {
   @Override
   public ResponseEntity<MatchResultDto> getMatchResult(UUID matchId) {
     UserPrincipal user = getCurrentUser();
+    soloRateLimiter.checkAction(user.userId());
     MatchResultDto result = soloGameService.getMatchResult(user.userId(), matchId);
     return ResponseEntity.ok(result);
   }
@@ -98,6 +110,7 @@ public class SoloGameController implements GameApi {
   @Override
   public ResponseEntity<MatchResultDto> abandonSoloMatch(UUID matchId) {
     UserPrincipal user = getCurrentUser();
+    soloRateLimiter.checkAction(user.userId());
     MatchResultDto result = soloGameService.abandonSoloMatch(user.userId(), matchId);
     return ResponseEntity.ok(result);
   }

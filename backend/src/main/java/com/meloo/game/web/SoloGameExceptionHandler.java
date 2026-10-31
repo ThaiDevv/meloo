@@ -3,11 +3,13 @@ package com.meloo.game.web;
 import com.meloo.game.domain.InvalidRoundStateException;
 import com.meloo.game.solo.MatchInProgressException;
 import com.meloo.game.solo.NotEnoughTracksException;
+import com.meloo.game.solo.SoloRateLimitException;
 import com.meloo.generated.model.ErrorCodeDto;
 import com.meloo.generated.model.MatchInProgressProblemDto;
 import com.meloo.generated.model.NotEnoughTracksProblemDto;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
+import java.net.URI;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
@@ -70,6 +72,24 @@ public class SoloGameExceptionHandler {
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(MediaType.valueOf("application/problem+json"));
     return new ResponseEntity<>(problem, headers, HttpStatus.CONFLICT);
+  }
+
+  @ExceptionHandler(SoloRateLimitException.class)
+  public ResponseEntity<ProblemDetail> handleSoloRateLimit(
+      SoloRateLimitException ex, HttpServletRequest request) {
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(
+            HttpStatus.TOO_MANY_REQUESTS, "Rate limit exceeded. Try again later.");
+    problem.setType(URI.create("about:blank"));
+    problem.setTitle("Too Many Requests");
+    problem.setProperty("code", ErrorCodeDto.RATE_LIMITED.getValue());
+    problem.setInstance(URI.create(request.getRequestURI()));
+    problem.setProperty("correlationId", correlationId(request));
+
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(MediaType.valueOf("application/problem+json"));
+    headers.set(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfterSeconds()));
+    return new ResponseEntity<>(problem, headers, HttpStatus.TOO_MANY_REQUESTS);
   }
 
   @ExceptionHandler({

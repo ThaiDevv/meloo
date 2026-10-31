@@ -1,16 +1,16 @@
 # ADR-008: Chống gian lận audio
 - Trạng thái: Chấp nhận
-- Ngày: 2026-10-21 (chốt: 2026-10-28) · Ticket: MEL-26, MEL-118
+- Ngày: 2026-10-21 (chốt: 2026-10-28; cập nhật: 2026-10-29) · Ticket: MEL-26, MEL-118, MEL-136
 
 ## Bối cảnh
-Cơ chế chơi là mở dần đoạn preview 2 → 5 → 10 → 20 → 30 giây, đoán càng sớm càng nhiều điểm (BR-02). Người chơi gian lận bằng cách lấy đáp án hoặc nghe nhiều hơn mức được phép: đọc tên bài trong URL hay metadata, tải trước cả đoạn 30 giây rồi tua, dùng lại link của vòng khác, hoặc chia sẻ link cho người ngoài phòng. Nguyên tắc không thể phá vỡ: server là trọng tài, đoạn nhạc chỉ cấp qua token mờ, URL không chứa id hay tên bài, và đáp án không được lộ trước khi kết thúc vòng (NFR-07).
+Cơ chế chơi là mở dần đoạn preview 2 → 5 → 10 → 20 → 30 giây, đoán càng sớm càng nhiều điểm (BR-02). Người chơi gian lận bằng cách lấy đáp án hoặc nghe nhiều hơn mức được phép: đọc tên bài trong URL hay metadata, tải trước cả đoạn 30 giây rồi tua, dùng lại link của vòng khác, hoặc chia sẻ link cho người ngoài phòng (xem rủi ro bearer token đã được chấp nhận ở mục Xấu hoặc rủi ro bên dưới). Nguyên tắc không thể phá vỡ: server là trọng tài, đoạn nhạc chỉ cấp qua token mờ, URL không chứa id hay tên bài, và đáp án không được lộ trước khi kết thúc vòng (NFR-07).
 
 ## Các phương án
 | Phương án | Ưu | Nhược |
 |---|---|---|
 | Trả thẳng URL preview của nhà cung cấp cho client | Không tốn băng thông backend | Lộ id/tên bài trong URL; không kiểm soát được mức nghe; không thu hồi được |
-| Cấp URL cố định theo bài nhưng cắt sẵn đoạn | Đơn giản | Link dùng lại được, đoán được cấu trúc, chia sẻ ngoài phòng |
-| **Backend làm trung gian: streaming proxy + token mờ HMAC theo (vòng, người chơi, mức), hết hạn ngắn** | Kiểm soát mức nghe và người dùng ở server; URL không lộ metadata; hết hạn nhanh; không vi phạm lưu trữ audio | Backend phải làm trung gian proxy audio; cần quản lý băng thông và RAM trên máy chủ nhỏ |
+| Cấp URL cố định theo bài nhưng cắt sẵn đoạn | Đơn giản | Link dùng lại được, đoán được cấu trúc, chia sẻ ngoài phòng (không có cơ chế hết hạn ngắn) |
+| **Backend làm trung gian: streaming proxy + token mờ HMAC theo (vòng, người chơi, mức), hết hạn ngắn** | Kiểm soát mức nghe ở server; token ký theo (vòng, người chơi, mức, hạn); URL không lộ metadata; hết hạn nhanh (link bearer tối đa 2 phút, xem rủi ro bên dưới); không vi phạm lưu trữ audio | Backend phải làm trung gian proxy audio; cần quản lý băng thông và RAM trên máy chủ nhỏ |
 
 ## Quyết định
 Chọn phương án **Backend làm streaming proxy với token mờ HMAC ngắn hạn**. Kiến trúc này là giải pháp cốt lõi độc lập với nhà cung cấp; việc tích hợp cụ thể dựa trên nguồn nhạc đề xuất từ SPK-01 / ADR-003:
@@ -25,11 +25,16 @@ Chọn phương án **Backend làm streaming proxy với token mờ HMAC ngắn 
 ## Hệ quả
 - **Tốt:**
   - Không thể trích xuất hoặc suy đoán đáp án bài hát từ URL hoặc response headers.
-  - Token gắn chặt với từng người chơi, từng vòng và từng mức nghe; token của mức cao không thể dùng cho mức thấp; không thể chia sẻ link cho người ngoài phòng hoặc tái sử dụng sau khi hết hạn.
+  - Token được server ký theo (vòng, người chơi, mức, hạn) nên không giả mạo, không nâng mức, không dùng lại sau khi hết hạn. Token là bearer: ai có URL đều nghe được đoạn đó trong tối đa 2 phút (xem rủi ro bên dưới).
   - Hạn chế rủi ro bản quyền ở mức kỹ thuật vì backend không lưu trữ đĩa (no persistent caching) hay phân phối lại toàn bộ bản thu. Đây là giải pháp kỹ thuật, không phải quyền đã được cấp: Deezer chưa xác nhận việc stream và proxy của Meloo (LEG-02, Mục 6.1).
   - Tiết kiệm 52% băng thông so với iTunes nhờ định dạng MP3 128 kbps từ Deezer.
 - **Xấu hoặc rủi ro kèm giải pháp:**
   - *Nhận diện nhạc bằng ứng dụng ngoài:* Không thể chống được người chơi dùng thiết bị thứ hai (Shazam, SoundHound qua micro/loa ngoài). Đây là giới hạn vật lý không thể tránh khỏi của mọi game đoán nhạc trên trình duyệt, được chấp nhận và ghi nhận rõ trong tài liệu bảo mật.
+  - *Chia sẻ link token (bearer):*
+    - **Nguyên nhân:** Thẻ `<audio>` của trình duyệt không gửi được header `Authorization`, server chỉ so khớp người gọi với `playerId` trong token khi request có đăng nhập.
+    - **Tác động:** Người ngoài phòng nếu có URL đều nghe được đúng đoạn người chơi đã được nghe trong thời hạn token, không có `trackId` hay tên bài trong URL.
+    - **Giảm thiểu:** Thời hạn token ngắn (≤ 2 phút), cắt byte khống chế theo mức nghe, rate limit theo token và theo người chơi, header `Cache-Control: no-store`.
+    - **Kết luận:** Chấp nhận, thuộc cùng nhóm rủi ro "nhận diện nhạc bằng ứng dụng ngoài" ở trên, Thái (PO) quyết ngày 2026-10-29.
   - *Ước tính băng thông và bộ nhớ RAM trên EC2 1 GB:*
     - **Băng thông:** Tính từ bitrate 128 kbps đo ở SPK-01 (16 KB/giây). Một người chơi nghe đủ 5 mức (phát lại từ giây 0: 2+5+10+20+30 = 67 giây) nhận tổng cộng khoảng 1,07 MB dữ liệu (so với 2,24 MB của iTunes). Nếu client chỉ nhận đoạn mới (tổng 30 giây), lưu lượng chỉ còn khoảng 0,48 MB. Một phòng 5 người nghe đủ 5 mức tốn khoảng 5,36 MB/vòng (so với 11,23 MB của iTunes). Ở mức tải mục tiêu 20 phòng đồng thời (100 người cùng stream ở mức cao điểm), lưu lượng mạng ra (egress) ước tính tối đa ~1,6 MB/s (12,8 Mbps).
     - **Bộ nhớ RAM:** Ước lượng lý thuyết theo kích thước bộ đệm của streaming proxy (buffer nhỏ ~8 KB đến 64 KB cho mỗi stream kết nối). Về mặt lý thuyết, 100 kết nối stream đồng thời chỉ cần 1–6,4 MB cho buffer truyền dữ liệu giữa input stream và output stream, giúp tránh nạp trọn vẹn tệp nhạc vào RAM heap. Tuy nhiên, con số này chưa tính chi phí kết nối 2 đầu (socket client ↔ backend và backend ↔ Deezer), TLS context, thread pool của servlet container, cũng như bộ nhớ giữ trạng thái phòng (ADR-007). Khả năng chịu tải thực tế trên máy chủ EC2 1 GB RAM (heap ~600 MB theo `-XX:MaxRAMPercentage=60`, ADR-006) chưa được đo thực nghiệm tại SPK-01 và cần được kiểm chứng thông qua kiểm thử tải k6 ở QA-03 theo mục tiêu NFR-03 (20 phòng × 5 người).
@@ -46,3 +51,4 @@ Chọn phương án **Backend làm streaming proxy với token mờ HMAC ngắn 
 2. **Token chống gian lận bằng cách nào?** — Token được ký HMAC-SHA256 gắn chặt với bộ tứ `(roundId, playerId, level, expiresAt)`, kiểm tra bằng so sánh hằng số thời gian, chỉ phát đúng số byte ứng với mức nghe cho phép và hết hạn ngắn trong 2 phút.
 3. **Vì sao backend proxy audio giảm thiểu áp lực RAM trên EC2 1 GB?** — Thay vì nạp toàn bộ file MP3 vào RAM heap hoặc lưu vào đĩa, backend chỉ dùng streaming proxy chuyển tiếp trực tiếp theo chunk với bộ đệm nhỏ (8–64 KB/kết nối), giúp tiết kiệm đáng kể heap JVM. Tuy nhiên đây mới là ước tính lý thuyết cho buffer; mức tiêu thụ RAM tổng thể (gồm socket, thread và trạng thái phòng) sẽ được đo lường và kiểm chứng thực tế bằng k6 ở QA-03.
 4. **Còn hình thức gian lận nào chưa thể ngăn chặn triệt để?** — Người chơi dùng thiết bị khác nhận diện âm thanh qua loa ngoài (như Shazam). Đây là giới hạn cố hữu của nền tảng web game âm nhạc, không thể can thiệp từ phía server và được chấp nhận trong phạm vi đề tài.
+5. **Ai có URL audio thì nghe được không?** — Nghe được, trong tối đa 2 phút. Thẻ `<audio>` của trình duyệt không gửi được header `Authorization`, nên server xác thực qua token HMAC trong đường dẫn làm bearer token (server chỉ so khớp người gọi với `playerId` nếu request có đăng nhập). Người có URL chỉ nghe được đúng đoạn byte đã cắt theo mức người chơi mở trong tối đa 2 phút, URL không chứa `trackId` hay tên bài, và có rate limit. Đây là rủi ro đã được Thái (PO) chấp nhận ngày 2026-10-29.

@@ -1,6 +1,11 @@
 import { http, HttpResponse } from 'msw'
 import { gameAudioHandlers } from './audio'
-import { mockResultEmptyCover, mockResultNoCover, mockResultWithCover } from './fixtures'
+import {
+  MOCK_COVER_SVG,
+  mockResultEmptyCover,
+  mockResultNoCover,
+  mockResultWithCover,
+} from './fixtures'
 
 /**
  * `GET /api/v1/solo/matches/{matchId}/rounds/{roundNo}/result`, answering with all three shapes the
@@ -16,5 +21,17 @@ export const gameRoundResultHandlers = [
   }),
 ]
 
+/** The artwork host of the contract examples, answered with a drawn cover. */
+export const gameCoverHandlers = [
+  http.get(
+    'https://e-cdns-images.dzcdn.net/images/cover/*',
+    () => new HttpResponse(MOCK_COVER_SVG, { headers: { 'Content-Type': 'image/svg+xml' } }),
+  ),
+]
+
 /** Everything game-core needs from a mock server. FE-SOLO-02 and the daily and room tickets register these. */
-export const gameCoreHandlers = [...gameAudioHandlers, ...gameRoundResultHandlers]
+export const gameCoreHandlers = [
+  ...gameAudioHandlers,
+  ...gameRoundResultHandlers,
+  ...gameCoverHandlers,
+]

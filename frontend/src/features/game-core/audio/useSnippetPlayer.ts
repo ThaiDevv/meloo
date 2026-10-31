@@ -60,15 +60,21 @@ export function useSnippetPlayer({
     onExpiredRef.current = onExpired
   })
 
-  const start = useCallback(async () => {
-    const id = ++latestPlay.current
-    await player.play(url, seconds, {
-      onEnded: () => {
-        if (latestPlay.current === id) setSnippetPlaying(false)
-      },
-    })
-    if (latestPlay.current === id) setSnippetPlaying(true)
-  }, [player, url, seconds])
+  // `id` comes from latestPlay: any later play, level change or unmount makes it stale, and a stale
+  // play never starts a clip, however long it waited for the network or for the browser to resume.
+  const start = useCallback(
+    async (id: number) => {
+      const isCurrent = () => latestPlay.current === id
+      await player.play(url, seconds, {
+        isCurrent,
+        onEnded: () => {
+          if (isCurrent()) setSnippetPlaying(false)
+        },
+      })
+      if (isCurrent()) setSnippetPlaying(true)
+    },
+    [player, url, seconds],
+  )
 
   const fail = useCallback(
     (error: unknown) => {
@@ -86,7 +92,7 @@ export function useSnippetPlayer({
   useEffect(() => {
     let cancelled = false
     const isCancelled = () => cancelled
-    latestPlay.current++
+    const id = ++latestPlay.current
     player.stop()
     setSnippetPlaying(false)
     const preload = preloadKey ? preloadKey.split('\n') : []
@@ -98,7 +104,7 @@ export function useSnippetPlayer({
       .then(async () => {
         if (isCancelled()) return
         if (autoPlay && player.isRunning) {
-          await start()
+          await start(id)
           if (!isCancelled()) setOutcome({ url, status: 'ready' })
         } else {
           setOutcome({ url, status: autoPlay ? 'blocked' : 'ready' })
@@ -125,14 +131,18 @@ export function useSnippetPlayer({
   )
 
   const play = useCallback(() => {
+    const id = ++latestPlay.current
     // unlock() must be reached before any await: it is what the browser ties to the tap.
     const unlocking = player.unlock()
     void unlocking
-      .then(() => start())
-      .then(() => {
-        setOutcome({ url, status: 'ready' })
+      .then(async () => {
+        if (latestPlay.current !== id) return
+        await start(id)
+        if (latestPlay.current === id) setOutcome({ url, status: 'ready' })
       })
-      .catch(fail)
+      .catch((error: unknown) => {
+        if (latestPlay.current === id) fail(error)
+      })
   }, [player, start, fail, url])
 
   const unlock = useCallback(() => {

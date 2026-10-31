@@ -139,4 +139,48 @@ describe('useSnippetPlayer', () => {
     })
     expect(FakeAudioContext.instances[0]?.sources[0]?.stopped).toBe(true)
   })
+
+  it('does not start a clip that was waiting for sound when the round has ended', async () => {
+    FakeAudioContext.allowSound = false
+    const player = newPlayer()
+    const view = render(<Harness url={URL_OK} player={player} />)
+    await waitFor(() => {
+      expect(status()).toBe('blocked')
+    })
+
+    // The browser takes a while to allow sound after the tap...
+    let release: () => void = () => undefined
+    FakeAudioContext.resumeGate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    await userEvent.click(screen.getByRole('button', { name: 'play' }))
+    // ...and the round ends (the answer screen replaces it) before it does.
+    view.unmount()
+    FakeAudioContext.allowSound = true
+    release()
+    await new Promise((resolve) => setTimeout(resolve, 20))
+
+    expect(FakeAudioContext.instances[0]?.sources ?? []).toHaveLength(0)
+    expect(isSnippetPlaying()).toBe(false)
+  })
+
+  it('lets the newest tap win when two are waiting for sound', async () => {
+    FakeAudioContext.allowSound = false
+    render(<Harness url={URL_OK} player={newPlayer()} />)
+    await waitFor(() => {
+      expect(status()).toBe('blocked')
+    })
+    let release: () => void = () => undefined
+    FakeAudioContext.resumeGate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    await userEvent.click(screen.getByRole('button', { name: 'play' }))
+    await userEvent.click(screen.getByRole('button', { name: 'play' }))
+    FakeAudioContext.allowSound = true
+    release()
+    await waitFor(() => {
+      expect(screen.getByTestId('playing')).toHaveTextContent('true')
+    })
+    expect(FakeAudioContext.instances[0]?.sources).toHaveLength(1)
+  })
 })

@@ -26,15 +26,13 @@ export function mockRound(
   }
 }
 
-/**
- * A drawn square cover, so the preview needs no network. A data: URI is a deliberate exception to
- * the contract's `https?://` pattern for `coverUrl`; real answers carry a Deezer artwork URL.
- */
+/** The cover URL of `contracts/examples/game/get-round-result.200.json`, so mock data stays inside the contract. */
 export const MOCK_COVER_URL =
-  'data:image/svg+xml;utf8,' +
-  encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><rect width="400" height="400" fill="#202022"/><circle cx="200" cy="200" r="150" fill="#2a2a2c"/><circle cx="200" cy="200" r="104" fill="none" stroke="#b9f24b" stroke-width="10"/><circle cx="200" cy="200" r="58" fill="none" stroke="#b9f24b" stroke-opacity=".5" stroke-width="10"/><circle cx="200" cy="200" r="14" fill="#f5f5f4"/></svg>',
-  )
+  'https://e-cdns-images.dzcdn.net/images/cover/d41d8cd98f00b204e9800998ecf8427e/250x250-000000-80-0-0.jpg'
+
+/** What the mock server answers at `MOCK_COVER_URL`: a drawn square cover, so the preview needs no network. */
+export const MOCK_COVER_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><rect width="400" height="400" fill="#202022"/><circle cx="200" cy="200" r="150" fill="#2a2a2c"/><circle cx="200" cy="200" r="104" fill="none" stroke="#b9f24b" stroke-width="10"/><circle cx="200" cy="200" r="58" fill="none" stroke="#b9f24b" stroke-opacity=".5" stroke-width="10"/><circle cx="200" cy="200" r="14" fill="#f5f5f4"/></svg>'
 
 const ANSWER = {
   trackId: '3a9f6c10-2b7d-4e58-91c3-6d0a8f4b7e21',

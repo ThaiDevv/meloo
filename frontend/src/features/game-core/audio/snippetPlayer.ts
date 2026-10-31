@@ -21,6 +21,11 @@ export interface SnippetPlayerOptions {
 }
 
 export interface PlayHandlers {
+  /**
+   * Asked again after every wait inside `play()`. When it says false (the round moved on while the
+   * clip was loading or the browser was still resuming sound) the clip is not started.
+   */
+  isCurrent?: () => boolean
   /** Called when the clip stops by itself or is stopped. `elapsed` is measured on the audio clock (seconds). */
   onEnded?: (elapsed: number) => void
 }
@@ -98,9 +103,10 @@ export class SnippetPlayer {
   async play(url: string, seconds: number, handlers: PlayHandlers = {}): Promise<void> {
     const epoch = this.epoch
     const buffer = await this.load(url)
-    if (epoch !== this.epoch) return
+    if (epoch !== this.epoch || handlers.isCurrent?.() === false) return
     const context = this.ensureContext()
     if (context.state === 'suspended') await context.resume().catch(() => undefined)
+    if (epoch !== this.epoch || handlers.isCurrent?.() === false) return
     if (context.state !== 'running') throw new SnippetError('blocked')
 
     this.stop()

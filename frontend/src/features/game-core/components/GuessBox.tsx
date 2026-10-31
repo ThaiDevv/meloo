@@ -10,6 +10,7 @@ import type { TrackSuggestion } from '../types'
 interface GuessBoxProps {
   /** Suggestions for the last query handed to `onSearch`, supplied by the host (catalog-wide, BR-05). */
   suggestions: readonly TrackSuggestion[]
+  /** Must be true from the moment `onSearch` is called until its suggestions arrive, so old ones are never offered. */
   loading?: boolean
   /** A guess request is in flight. */
   disabled?: boolean
@@ -51,6 +52,10 @@ export function GuessBox({
   )
 
   const showList = open && !selected && text.trim() !== ''
+  // Suggestions answer the query the host was last asked. While the player has typed on, or a
+  // search is still running, they are for another text: showing them would let a wrong song be picked.
+  const settled = query === text.trim() && !loading
+  const listed = showList && settled ? suggestions : []
   const optionId = (index: number) => `${listId}-${String(index)}`
 
   function handleChange(value: string) {
@@ -86,14 +91,14 @@ export function GuessBox({
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      if (suggestions.length === 0) return
+      if (listed.length === 0) return
       event.preventDefault()
       setOpen(true)
       const step = event.key === 'ArrowDown' ? 1 : -1
-      setActive((current) => (current + step + suggestions.length) % suggestions.length)
+      setActive((current) => (current + step + listed.length) % listed.length)
     } else if (event.key === 'Enter') {
       event.preventDefault()
-      const highlighted = showList ? suggestions[active] : undefined
+      const highlighted = listed[active]
       if (highlighted) pick(highlighted)
       else submit()
     } else if (event.key === 'Escape') {
@@ -103,11 +108,11 @@ export function GuessBox({
   }
 
   const status = showList
-    ? loading
+    ? !settled
       ? t('guess.searching')
-      : suggestions.length === 0
+      : listed.length === 0
         ? t('guess.empty')
-        : t('guess.results', { count: suggestions.length })
+        : t('guess.results', { count: listed.length })
     : selected
       ? t('guess.selected', { title: selected.title, artist: selected.artistName })
       : ''
@@ -168,45 +173,43 @@ export function GuessBox({
         hidden={!showList}
         className="absolute inset-x-0 z-10 mt-2 max-h-72 overflow-y-auto rounded-xl bg-raised p-1.5 shadow-lg shadow-black/40"
       >
-        {showList && loading && suggestions.length === 0 ? (
+        {showList && !settled ? (
           <li role="presentation" className="px-3 py-3 text-sm text-muted-foreground">
             {t('guess.searching')}
           </li>
         ) : null}
-        {showList && !loading && suggestions.length === 0 ? (
+        {showList && settled && listed.length === 0 ? (
           <li role="presentation" className="px-3 py-3 text-sm text-muted-foreground">
             {t('guess.empty')}
           </li>
         ) : null}
-        {showList
-          ? suggestions.map((track, index) => (
-              <li
-                key={track.id}
-                id={optionId(index)}
-                role="option"
-                aria-selected={index === active}
-                // mousedown, not click: the input would blur first and close the list.
-                onMouseDown={(event) => {
-                  event.preventDefault()
-                  pick(track)
-                }}
-                onMouseEnter={() => {
-                  setActive(index)
-                }}
-                className={cn(
-                  'flex cursor-pointer flex-col rounded-lg px-3 py-2.5',
-                  index === active && 'bg-foreground/10',
-                )}
-              >
-                <span className="text-sm font-medium text-foreground">
-                  <Highlight text={track.title} query={query} />
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  <Highlight text={track.artistName} query={query} />
-                </span>
-              </li>
-            ))
-          : null}
+        {listed.map((track, index) => (
+          <li
+            key={track.id}
+            id={optionId(index)}
+            role="option"
+            aria-selected={index === active}
+            // mousedown, not click: the input would blur first and close the list.
+            onMouseDown={(event) => {
+              event.preventDefault()
+              pick(track)
+            }}
+            onMouseEnter={() => {
+              setActive(index)
+            }}
+            className={cn(
+              'flex cursor-pointer flex-col rounded-lg px-3 py-2.5',
+              index === active && 'bg-foreground/10',
+            )}
+          >
+            <span className="text-sm font-medium text-foreground">
+              <Highlight text={track.title} query={query} />
+            </span>
+            <span className="text-xs text-muted-foreground">
+              <Highlight text={track.artistName} query={query} />
+            </span>
+          </li>
+        ))}
       </ul>
     </div>
   )

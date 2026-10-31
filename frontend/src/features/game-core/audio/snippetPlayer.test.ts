@@ -137,6 +137,26 @@ describe('SnippetPlayer', () => {
   })
 })
 
+describe('SnippetPlayer.play with isCurrent', () => {
+  it('does not start the clip when the caller moved on while sound was resuming', async () => {
+    FakeAudioContext.allowSound = false
+    let release: () => void = () => undefined
+    FakeAudioContext.resumeGate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const { player } = makePlayer()
+    let current = true
+    const playing = player.play('/api/v1/audio/abc', 2, { isCurrent: () => current })
+    await Promise.resolve()
+    current = false
+    FakeAudioContext.allowSound = true
+    release()
+    await playing
+
+    expect(context().sources).toHaveLength(0)
+  })
+})
+
 describe('SnippetPlayer.dispose', () => {
   it('does not revive the audio context for a clip that finished loading afterwards', async () => {
     let release: (value: Response) => void = () => undefined

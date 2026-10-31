@@ -14,6 +14,13 @@ function setup(props: Partial<React.ComponentProps<typeof GuessBox>> = {}) {
   return { onSearch, onGuess, user, box: screen.getByRole('combobox', { name: 'Đoán tên bài' }) }
 }
 
+/** The wait after the last keystroke, after which the host is asked and its suggestions count. */
+function settle() {
+  act(() => {
+    vi.advanceTimersByTime(200)
+  })
+}
+
 beforeEach(() => {
   vi.useFakeTimers()
   // Testing Library only drains its own timers under fake clocks when it sees Jest's global.
@@ -71,6 +78,7 @@ describe('GuessBox', () => {
   it('picks with the arrow keys and Enter, then guesses with Enter (keyboard only)', async () => {
     const { onGuess, user, box } = setup()
     await user.type(box, 'chung')
+    settle()
     expect(screen.getAllByRole('option')).toHaveLength(3)
 
     await user.keyboard('{ArrowDown}{ArrowDown}')
@@ -88,6 +96,7 @@ describe('GuessBox', () => {
     const { onGuess, user, box } = setup()
     const button = screen.getByRole('button', { name: 'Đoán' })
     await user.type(box, 'chung')
+    settle()
     expect(button).toBeDisabled()
     await user.keyboard('{Enter}')
     expect(onGuess).not.toHaveBeenCalled()
@@ -98,9 +107,32 @@ describe('GuessBox', () => {
     expect(onGuess).toHaveBeenCalledExactlyOnceWith(mockSuggestions[0]?.id)
   })
 
+  it('does not offer suggestions of an earlier query for text typed since', async () => {
+    const { onGuess, user, box } = setup()
+    await user.type(box, 'chung')
+    settle()
+    expect(screen.getAllByRole('option')).toHaveLength(3)
+
+    await user.type(box, ' xyz')
+    expect(screen.queryAllByRole('option')).toHaveLength(0)
+    // ArrowDown, Enter, Enter: the keystrokes that used to pick a stale song and guess it.
+    await user.keyboard('{ArrowDown}{Enter}{Enter}')
+    expect(onGuess).not.toHaveBeenCalled()
+    expect(box).toHaveValue('chung xyz')
+  })
+
+  it('offers nothing while a search is still running', async () => {
+    const { user, box } = setup({ loading: true })
+    await user.type(box, 'chung')
+    settle()
+    expect(screen.queryAllByRole('option')).toHaveLength(0)
+    expect(screen.getAllByText('Đang tìm…').length).toBeGreaterThan(0)
+  })
+
   it('closes the list on Escape', async () => {
     const { user, box } = setup()
     await user.type(box, 'chung')
+    settle()
     expect(box).toHaveAttribute('aria-expanded', 'true')
     await user.keyboard('{Escape}')
     expect(box).toHaveAttribute('aria-expanded', 'false')
@@ -109,6 +141,8 @@ describe('GuessBox', () => {
   it('says so when nothing matches, and while searching', async () => {
     const { user, box } = setup({ suggestions: [] })
     await user.type(box, 'zzz')
+    expect(screen.getAllByText('Đang tìm…').length).toBeGreaterThan(0)
+    settle()
     expect(screen.getAllByText('Không thấy bài nào khớp').length).toBeGreaterThan(0)
   })
 

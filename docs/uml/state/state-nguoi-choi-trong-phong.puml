@@ -1,0 +1,79 @@
+@startuml state-nguoi-choi-trong-phong
+title Sơ đồ máy trạng thái: Người chơi trong phòng (Player Lifecycle - BR-12, BR-14, BR-15, commit c0f723e)
+skinparam shadowing false
+skinparam defaultFontName DejaVu Sans
+skinparam state {
+  BackgroundColor white
+  BorderColor black
+  ArrowColor black
+  StartColor black
+  EndColor black
+}
+
+[*] --> CONNECTED : Kết nối STOMP WebSocket (/ws)
+
+CONNECTED --> LOBBY_JOINED : Vào phòng thành công bằng mã hoặc link (BR-11, BR-15)
+
+state LOBBY_JOINED as "Trong sảnh chờ (LOBBY)" {
+  state NOT_READY as "Chưa sẵn sàng (NOT_READY)"
+  state READY as "Đã sẵn sàng (READY)"
+
+  [*] --> NOT_READY
+  NOT_READY --> READY : Bấm nút "Sẵn sàng" (BR-12)
+  READY --> NOT_READY : Hủy sẵn sàng
+}
+
+LOBBY_JOINED --> KICKED : Bị chủ phòng mời ra khỏi phòng (BR-12)
+LOBBY_JOINED --> LEFT : Bấm "Rời phòng"
+
+LOBBY_JOINED --> IN_MATCH : Trận đấu bắt đầu\n(Chủ phòng bấm Bắt đầu HOẶC hết đếm ngược ghép trận)
+
+state IN_MATCH as "Đang trong trận đấu (IN_MATCH)" {
+  state ROUND_ACTIVE as "Đang chơi vòng" {
+    state PLAYING as "Đang nghe & đoán" : Nghe audio mức 2s–30s, đoán bài hát
+    state FINISHED_ROUND as "Hoàn thành vòng" : Đã đoán đúng, hoặc hết lượt, hoặc bỏ qua;\nChờ người khác hoàn thành (BR-07)
+
+    [*] --> PLAYING
+    PLAYING --> FINISHED_ROUND : Đoán đúng / Hết lượt / Bỏ qua / Hết 45s
+  }
+
+  state DISCONNECTED_GRACE as "Mất kết nối tạm thời" {
+    DISCONNECTED_GRACE : - Server giữ chỗ trong 30 giây (BR-14)
+    DISCONNECTED_GRACE : - Trận đấu KHÔNG dừng lại để chờ (BR-14)
+    DISCONNECTED_GRACE : - Mic tự động ngắt kết nối RTC
+  }
+
+  ROUND_ACTIVE --> DISCONNECTED_GRACE : Mất kết nối WebSocket (đứt mạng)
+  DISCONNECTED_GRACE --> ROUND_ACTIVE : Kết nối lại kịp trong 30 giây\n(Chơi tiếp vòng hiện tại; vòng lỡ tính 0 điểm, BR-14)
+}
+
+IN_MATCH --> FORFEITED_LEFT : Mất kết nối quá 30 giây (BR-14)\nHOẶC chủ động đóng tab/thoát game
+
+IN_MATCH --> MATCH_COMPLETED : Hoàn thành tất cả các vòng đấu\n(5/10/15 vòng)
+
+state MATCH_COMPLETED as "Tổng kết trận đấu" {
+  MATCH_COMPLETED : - Xem bảng xếp hạng chung cuộc & danh hiệu
+  MATCH_COMPLETED : - Cả phòng thảo luận qua chat / voice
+}
+
+MATCH_COMPLETED --> LOBBY_JOINED : Cả phòng quay về sảnh để chơi tiếp\n(Giữ nguyên mã phòng, BR-12)
+MATCH_COMPLETED --> LEFT : Bấm "Rời phòng"
+
+state KICKED as "BỊ MỜI RA (KICKED)" {
+  KICKED : - Người bị mời ra không thể vào lại phòng này (BR-12)
+}
+
+state LEFT as "ĐÃ RỜI PHÒNG (LEFT)" {
+  LEFT : - Thoát khỏi sảnh chờ
+}
+
+state FORFEITED_LEFT as "BỎ CUỘC (FORFEITED)" {
+  FORFEITED_LEFT : - Coi như đã rời trận đấu
+  FORFEITED_LEFT : - Điểm các vòng đã chơi vẫn được bảo lưu (BR-14)
+}
+
+KICKED --> [*]
+LEFT --> [*]
+FORFEITED_LEFT --> [*]
+
+@enduml

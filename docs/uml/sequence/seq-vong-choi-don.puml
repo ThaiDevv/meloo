@@ -1,0 +1,153 @@
+@startuml seq-vong-choi-don
+title Sơ đồ tuần tự: Một vòng chơi đơn (UC-07, UC-08, BR-01..05, BR-08, ADR-008, commit c0f723e)
+autonumber
+skinparam shadowing false
+skinparam defaultFontName DejaVu Sans
+skinparam responseMessageBelowArrow true
+skinparam sequence {
+  ArrowColor black
+  ActorBorderColor black
+  LifeLineBorderColor black
+  LifeLineBackgroundColor white
+  ParticipantBorderColor black
+  ParticipantBackgroundColor white
+  BoxBackgroundColor #F8F9FA
+  BoxBorderColor #CCCCCC
+}
+
+actor "Người chơi" as Player
+boundary "Trình duyệt / Web Audio" as FE
+
+box "Meloo Backend (Game & Audio Modules)" #FFFFFF
+  control "SoloGameController" as Ctrl
+  entity "SoloGameService" as GameSvc
+  entity "SoloMatchManager" as MatchMgr
+  entity "Round (Domain Aggregate)" as Round
+  control "AudioService" as AudioSvc
+  control "ScoreCalculator" as ScoreCalc
+  control "ComboTracker" as Combo
+  boundary "AudioController" as AudioEp
+end box
+
+Player -> FE : Bấm "Bắt đầu vòng chơi"
+activate FE
+
+FE -> Ctrl : GET /api/v1/solo/matches/{matchId}/rounds/current
+activate Ctrl
+
+Ctrl -> GameSvc : getCurrentRound(userId, matchId)
+activate GameSvc
+
+GameSvc -> MatchMgr : get(matchId)
+activate MatchMgr
+MatchMgr --> GameSvc : soloMatch
+deactivate MatchMgr
+
+GameSvc -> Round : start(Instant.now())\n(Chuyển trạng thái từ WAITING -> IN_PROGRESS)
+activate Round
+Round --> GameSvc : roundData (roundNo, currentLevel=1 (2s))
+deactivate Round
+
+GameSvc -> AudioSvc : prepareClipToken(trackId, duration=2s)
+activate AudioSvc
+note over AudioSvc
+  ADR-008: Cấp token HMAC mờ, hết hạn ngắn (60s).
+  URL không chứa trackId hay tên bài hát.
+end note
+AudioSvc --> GameSvc : audioClip { token: "hmac_tok_2s", duration: 2000 }
+deactivate AudioSvc
+
+GameSvc --> Ctrl : RoundStateDto(roundNo=1, level=1, audioClip, options=[...])
+deactivate GameSvc
+
+Ctrl --> FE : 200 OK { roundNo: 1, currentLevel: 1, audioClip: {...} }
+deactivate Ctrl
+
+FE -> AudioEp : GET /api/v1/audio/hmac_tok_2s
+activate AudioEp
+AudioEp --> FE : 200 OK (Audio stream 2 giây đầu của preview)
+deactivate AudioEp
+
+FE -> FE : Phát 2s audio qua Web Audio API
+FE --> Player : Hiển thị thanh tiến trình 2s, ô tìm kiếm bài hát
+
+note over FE, Player
+  BR-03: Người chơi có thể bấm nghe lại đoạn 2s không giới hạn, không mất điểm.
+end note
+
+alt Nhánh 1: Người chơi bấm "Nghe thêm" (BR-04)
+  Player -> FE : Bấm nút "Nghe thêm" (muốn mở 5s)
+  FE -> Ctrl : POST /api/v1/solo/matches/{matchId}/rounds/1/listen-more
+  activate Ctrl
+  Ctrl -> GameSvc : listenMore(userId, matchId, roundNo=1)
+  activate GameSvc
+  GameSvc -> Round : listenMore() -> tăng currentLevel = 2 (5s)
+  GameSvc -> AudioSvc : prepareClipToken(trackId, duration=5s)
+  activate AudioSvc
+  AudioSvc --> GameSvc : audioClip { token: "hmac_tok_5s", duration: 5000 }
+  deactivate AudioSvc
+  GameSvc --> Ctrl : RoundStateDto(currentLevel=2, audioClip)
+  deactivate GameSvc
+  Ctrl --> FE : 200 OK { currentLevel: 2, audioClip: { token: "hmac_tok_5s" } }
+  deactivate Ctrl
+  FE -> AudioEp : GET /api/v1/audio/hmac_tok_5s
+  AudioEp --> FE : Audio stream 5 giây đầu
+  FE -> FE : Phát đoạn 5s cho người chơi
+end
+
+alt Nhánh 2: Người chơi đoán bài hát (BR-05)
+  Player -> FE : Chọn bài hát từ gợi ý tìm kiếm, bấm "Đoán"
+  FE -> Ctrl : POST /api/v1/solo/matches/{matchId}/rounds/1/guesses\n{ "trackId": "...", "title": "Chạy Ngay Đi" }
+  activate Ctrl
+
+  Ctrl -> GameSvc : submitGuess(userId, matchId, roundNo=1, request)
+  activate GameSvc
+
+  GameSvc -> Round : evaluateGuess(guessTrackId, guessTitle, Instant.now())
+  activate Round
+  note over Round
+    BR-05: Chuẩn hóa không dấu, viết thường, bỏ ngoặc và hậu tố Remix/Live...
+    So khớp normalizedTitle với TargetTrack.
+  end note
+
+  alt Đoán ĐÚNG
+    Round -> Round : status = ENDED, outcome = CORRECT
+    Round -> ScoreCalc : calculateBaseScore(level=2 (5s)) -> 800đ (BR-02)
+    Round -> Combo : recordCorrect(level=2) -> tăng chuỗi combo (BR-08)
+    note over Round
+      BR-07: Chơi đơn không giới hạn thời gian nên Thưởng tốc độ = 0đ.
+      Điểm = Điểm cơ bản (800) × (1 + hệ số combo).
+    end note
+    Round --> GameSvc : GuessEvaluation(correct=true, scoreDetail, roundResult)
+    deactivate Round
+
+    GameSvc --> Ctrl : GuessResponseDto(correct=true, roundResult: {...})
+    Ctrl --> FE : 200 OK\n{\n  "correct": true,\n  "roundResult": {\n    "score": 880, "baseScore": 800, "comboBonus": 80,\n    "track": { "title": "Chạy Ngay Đi", "artist": "Sơn Tùng M-TP", "coverUrl": "...", "deezerUrl": "..." }\n  }\n}
+    FE --> Player : Báo "CHÍNH XÁC!", hiện ảnh bìa, tên bài hát và link nghe Deezer (BR-29)
+
+  else Đoán SAI
+    activate Round
+    Round -> Round : Kiểm tra ca sĩ chính (BR-06)
+    alt Đúng ca sĩ chính nhưng sai bài
+      Round --> GameSvc : GuessEvaluation(correct=false, correctArtist=true, nextLevel)
+    else Sai hoàn toàn
+      Round --> GameSvc : GuessEvaluation(correct=false, correctArtist=false, nextLevel)
+    end
+    deactivate Round
+
+    alt Còn lượt (level < 30s)
+      GameSvc --> Ctrl : GuessResponseDto(correct=false, correctArtist=true/false, nextLevel, nextAudioClip)
+      Ctrl --> FE : 200 OK { correct: false, correctArtist: true, nextLevel: 3 }
+      FE --> Player : Báo "Chưa chính xác (Đúng ca sĩ!)", tự động mở mức 10s (BR-04)
+    else Đã ở mức 30s (Hết lượt)
+      GameSvc --> Ctrl : GuessResponseDto(correct=false, outcome: "WRONG_OUT", score: 0)
+      Ctrl --> FE : 200 OK { correct: false, outcome: "WRONG_OUT", score: 0, track: {...} }
+      FE --> Player : Báo "Hết lượt!", công bố đáp án vòng này (0 điểm)
+    end
+  end
+  deactivate GameSvc
+  deactivate Ctrl
+end
+
+deactivate FE
+@enduml

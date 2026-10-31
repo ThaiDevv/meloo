@@ -1,0 +1,144 @@
+@startuml seq-vong-nhieu-nguoi
+title Sơ đồ tuần tự: Một vòng chơi nhiều người realtime qua STOMP (UC-18, BR-07, BR-08, BR-10, BR-16, commit c0f723e)
+autonumber
+skinparam shadowing false
+skinparam defaultFontName DejaVu Sans
+skinparam responseMessageBelowArrow true
+skinparam sequence {
+  ArrowColor black
+  ActorBorderColor black
+  LifeLineBorderColor black
+  LifeLineBackgroundColor white
+  ParticipantBorderColor black
+  ParticipantBackgroundColor white
+  BoxBackgroundColor #F8F9FA
+  BoxBorderColor #CCCCCC
+}
+
+actor "Người chơi A" as PlayerA
+actor "Người chơi B" as PlayerB
+boundary "STOMP WebSocket" as WS
+
+box "Meloo Backend (Module Room & Realtime)" #FFFFFF
+  control "RoomActor (Hàng đợi tuần tự)" as Actor
+  entity "CatalogService" as Catalog
+  control "AudioService" as Audio
+  control "ScoreCalculator" as Score
+  control "RoomEventPublisher" as Pub
+end box
+
+== 1. Bắt đầu vòng chơi (Round Start) ==
+
+Actor -> Catalog : selectRandomTracksByPlaylist(playlistId, count=1, playedIds)
+activate Actor
+activate Catalog
+Catalog --> Actor : targetTrack
+deactivate Catalog
+
+Actor -> Audio : prepareClipToken(trackId, duration=2s, userA)
+activate Audio
+Audio --> Actor : clipTokenA_2s
+Actor -> Audio : prepareClipToken(trackId, duration=2s, userB)
+Audio --> Actor : clipTokenB_2s
+deactivate Audio
+
+Actor -> Actor : Bắt đầu đồng hồ server 45 giây (BR-07)\nroundDeadline = now + 45.000 ms
+
+Actor -> Pub : broadcastRound(roomId, RoundStartEvent(roundNo=1, durationMs=45000, deadlineTimestamp))
+activate Pub
+Pub -> WS : Gửi tới /topic/rooms/{roomId}/round
+deactivate Pub
+WS --> PlayerA : Nhận RoundStartEvent (Đồng hồ đếm ngược 45s bắt đầu)
+WS --> PlayerB : Nhận RoundStartEvent (Đồng hồ đếm ngược 45s bắt đầu)
+
+Actor -> Pub : sendToUser(userA, "/queue/private", RoundAudioClipMessage(level=1, token=clipTokenA_2s))
+activate Pub
+Pub -> WS : Gửi tới /user/queue/private của Player A
+deactivate Pub
+WS --> PlayerA : Phát 2 giây đầu của bài hát
+
+Actor -> Pub : sendToUser(userB, "/queue/private", RoundAudioClipMessage(level=1, token=clipTokenB_2s))
+activate Pub
+Pub -> WS : Gửi tới /user/queue/private của Player B
+deactivate Pub
+WS --> PlayerB : Phát 2 giây đầu của bài hát
+deactivate Actor
+
+== 2. Tương tác trong vòng: Nghe thêm, Chat & Đoán bài ==
+
+PlayerA -> WS : SEND /app/rooms/{roomId}/listen-more (Bấm "Nghe thêm")
+WS -> Actor : submit(ListenMoreCommand(userA))
+activate Actor
+Actor -> Audio : prepareClipToken(trackId, duration=5s, userA)
+activate Audio
+Audio --> Actor : clipTokenA_5s
+deactivate Audio
+Actor -> Pub : sendToUser(userA, "/queue/private", ListenMoreResponseMessage(level=2, token=clipTokenA_5s))
+Actor -> Pub : broadcastRound(roomId, ListenMoreOpenedEvent(userId=A, level=2 (5s)))
+deactivate Actor
+WS --> PlayerA : Nhận clip 5s và phát tiếp
+WS --> PlayerB : Nhìn thấy Player A đang mở mức 5s (tạo áp lực thời gian, BR-07)
+
+note over PlayerB
+  Player B thử gõ vào khung chat tên bài hát: "Chạy Ngay Đi"
+end note
+PlayerB -> WS : SEND /app/rooms/{roomId}/chat\n{ "content": "Co phai bai Chay Ngay Di khong?" }
+WS -> Actor : submit(ChatCommand(userB, content))
+activate Actor
+note over Actor
+  BR-16: Kiểm tra tin nhắn chat trong vòng.
+  Chuẩn hóa bỏ dấu, nếu trùng tên bài hát đáp án -> CHẶN TIN.
+end note
+Actor -> Pub : sendToUser(userB, "/queue/private", ErrorMessage("TIN_BI_CHAN: Không được chat lộ đáp án!"))
+deactivate Actor
+WS --> PlayerB : Hiển thị cảnh báo màu đỏ (Chỉ riêng Player B thấy)
+
+note over PlayerA
+  Tại thời điểm 15 giây (còn lại 30.000 ms theo đồng hồ server):
+  Player A chọn đáp án đúng từ ô gợi ý.
+end note
+PlayerA -> WS : SEND /app/rooms/{roomId}/guess\n{ "trackId": "uuid-chay-ngay-di" }
+WS -> Actor : submit(GuessCommand(userA, trackId))
+activate Actor
+
+note over Actor
+  BR-07: So khớp thời điểm nhận với mốc 45.000 ms.
+  Nhận lúc 15.000 ms (< 45.000 ms) -> ĐƯỢC CHẤM.
+  Đoán đúng ở mức 5s (Điểm cơ bản: 800đ, BR-02).
+  Combo vòng 2 liên tiếp: +10% (80đ, BR-08).
+  Thưởng tốc độ: floor(200 × 30.000 ÷ 45.000) = 133đ (BR-07).
+  Tổng điểm vòng = 800 + 80 + 133 = 1.013đ.
+end note
+
+Actor -> Actor : Đánh dấu Player A đã đoán đúng, kết thúc lượt của A
+Actor -> Pub : broadcastRound(roomId, PlayerGuessedEvent(userId=A, level=2 (5s)))
+activate Pub
+Pub -> WS : Gửi tới /topic/rooms/{roomId}/round
+deactivate Pub
+
+WS --> PlayerA : Thông báo: "Chính xác! +1.013 điểm"
+WS --> PlayerB : Thông báo: "Player A đã đoán đúng ở mức 5s!"\n(ẨN ĐÁP ÁN, BR-07)
+
+== 3. Kết thúc vòng & Công bố kết quả ==
+
+note over Actor
+  Hết 45 giây HOẶC tất cả người chơi đã đoán xong/hết lượt:
+  Vòng kết thúc (BR-07).
+end note
+
+Actor -> Actor : Hủy hẹn giờ, chuyển trạng thái vòng sang ROUND_ENDED
+Actor -> Pub : broadcastRound(roomId, RoundEndEvent(\n  roundNo=1,\n  answer={ "title": "Chạy Ngay Đi", "artist": "Sơn Tùng M-TP", "deezerUrl": "..." },\n  results=[ { userA: 1013, outcome: CORRECT }, { userB: 0, outcome: TIMEOUT } ]\n))
+activate Pub
+Pub -> WS : Gửi tới /topic/rooms/{roomId}/round
+deactivate Pub
+
+Actor -> Pub : broadcastScoreboard(roomId, ScoreboardUpdateEvent(rankings=[\n  { rank: 1, user: A, totalScore: 1013, streak: 2 },\n  { rank: 2, user: B, totalScore: 0, streak: 0 }\n]))
+activate Pub
+Pub -> WS : Gửi tới /topic/rooms/{roomId}/scoreboard
+deactivate Pub
+
+WS --> PlayerA : Hiển thị đáp án, link Deezer (BR-29) và bảng xếp hạng cập nhật
+WS --> PlayerB : Hiển thị đáp án, link Deezer (BR-29) và bảng xếp hạng cập nhật
+deactivate Actor
+
+@enduml

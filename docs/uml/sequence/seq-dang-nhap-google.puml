@@ -1,0 +1,110 @@
+@startuml seq-dang-nhap-google
+title Sơ đồ tuần tự: Đăng nhập Google & Gộp tài khoản khách (UC-02, BR-21, commit c0f723e)
+autonumber
+skinparam shadowing false
+skinparam defaultFontName DejaVu Sans
+skinparam responseMessageBelowArrow true
+skinparam sequence {
+  ArrowColor black
+  ActorBorderColor black
+  LifeLineBorderColor black
+  LifeLineBackgroundColor white
+  ParticipantBorderColor black
+  ParticipantBackgroundColor white
+  BoxBackgroundColor #F8F9FA
+  BoxBorderColor #CCCCCC
+}
+
+actor "Người dùng" as User
+boundary "Trình duyệt / Client" as FE
+participant "Google OAuth2 Server" as Google
+
+box "Meloo Backend" #FFFFFF
+  control "OAuth2LoginController / Filter" as AuthCtrl
+  entity "SocialAuthService" as SocialSvc
+  database "AuthIdentityRepository" as AuthRepo
+  database "AppUserRepository" as UserRepo
+  entity "AccountMergeService" as MergeSvc
+  control "JwtTokenService" as Jwt
+  control "RefreshTokenService" as RT
+end box
+
+User -> FE : Bấm nút "Đăng nhập bằng Google"
+activate FE
+
+FE -> Google : Chuyển hướng xác thực OAuth2 (client_id, scope=openid,email,profile)
+activate Google
+Google --> User : Hiển thị màn hình chọn tài khoản Google & cấp quyền
+User -> Google : Xác nhận cấp quyền
+Google --> FE : Chuyển hướng kèm mã xác thực (authorization_code)
+deactivate Google
+
+FE -> AuthCtrl : POST /api/v1/auth/social/google\n{ "code": "4/0A..." } (kèm Cookie/Header của khách nếu có)
+activate AuthCtrl
+
+AuthCtrl -> Google : Đổi code lấy Google ID Token & Profile
+activate Google
+Google --> AuthCtrl : Google ID Token (sub, email, name, picture)
+deactivate Google
+
+AuthCtrl -> SocialSvc : handleGoogleLogin(idTokenPayload, currentGuestId)
+activate SocialSvc
+
+SocialSvc -> AuthRepo : findByProviderAndProviderSubject(GOOGLE, sub)
+activate AuthRepo
+AuthRepo --> SocialSvc : Optional<AuthIdentity>
+deactivate AuthRepo
+
+alt Tài khoản Google đã tồn tại trước đó
+  SocialSvc -> UserRepo : findById(authIdentity.userId)
+  activate UserRepo
+  UserRepo --> SocialSvc : registeredUser
+  deactivate UserRepo
+else Lần đầu đăng nhập bằng Google
+  SocialSvc -> UserRepo : save(AppUser(kind=REGISTERED, email, name))
+  activate UserRepo
+  UserRepo --> SocialSvc : registeredUser (id = new UUID)
+  deactivate UserRepo
+
+  SocialSvc -> AuthRepo : save(AuthIdentity(user=registeredUser, provider=GOOGLE, sub))
+  activate AuthRepo
+  AuthRepo --> SocialSvc : savedIdentity
+  deactivate AuthRepo
+end
+
+opt Người dùng hiện đang ở phiên khách (currentGuestId != null)
+  SocialSvc -> MergeSvc : mergeGuestIntoRegistered(guestId, registeredUser.id)
+  activate MergeSvc
+  note over MergeSvc
+    BR-21: Gộp lịch sử đấu, thống kê, huy hiệu và điểm xếp hạng
+    của khách vào tài khoản đã đăng nhập.
+    Nếu cả 2 đều đã chơi thử thách ngày hôm nay:
+    giữ lượt của tài khoản đã đăng nhập.
+  end note
+  MergeSvc -> UserRepo : updateGuestStatus(guestId, status=MERGED, mergedIntoId=registeredUser.id)
+  MergeSvc --> SocialSvc : Gộp thành công
+  deactivate MergeSvc
+end
+
+SocialSvc -> Jwt : generateAccessToken(registeredUser)
+activate Jwt
+Jwt --> SocialSvc : accessToken
+deactivate Jwt
+
+SocialSvc -> RT : createRefreshToken(registeredUser)
+activate RT
+RT --> SocialSvc : refreshToken
+deactivate RT
+
+SocialSvc --> AuthCtrl : AuthSessionDto(registeredUser, accessToken, refreshToken)
+deactivate SocialSvc
+
+AuthCtrl -> AuthCtrl : Set Cookie "meloo_refresh_token" (HttpOnly, Secure)
+AuthCtrl --> FE : 200 OK\n{\n  "accessToken": "ey...",\n  "user": { "id": "...", "kind": "REGISTERED", "email": "...", "role": "USER" }\n}
+deactivate AuthCtrl
+
+FE -> FE : Cập nhật state người dùng sang REGISTERED\n(Điểm các trận trước giờ được đưa lên bảng xếp hạng)
+FE --> User : Thông báo đăng nhập thành công, chào mừng trở lại
+deactivate FE
+
+@enduml

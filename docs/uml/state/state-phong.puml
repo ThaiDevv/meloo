@@ -1,0 +1,73 @@
+@startuml state-phong
+title Sơ đồ máy trạng thái: Vòng đời Phòng chơi (Room State Machine - BR-11..15, commit c0f723e)
+skinparam shadowing false
+skinparam defaultFontName DejaVu Sans
+skinparam state {
+  BackgroundColor white
+  BorderColor black
+  ArrowColor black
+  StartColor black
+  EndColor black
+}
+
+[*] --> WAITING_LOBBY : Tạo phòng mới\n(Chủ phòng tạo hoặc Hệ thống tạo ghép trận)
+
+state WAITING_LOBBY as "Sảnh chờ (WAITING_LOBBY)" {
+  WAITING_LOBBY : - Người chơi vào/rời phòng (2–5 người, BR-11)
+  WAITING_LOBBY : - Chủ phòng chỉnh bộ nhạc, số vòng (5/10/15, BR-09, BR-12)
+  WAITING_LOBBY : - Người chơi bật/tắt trạng thái Sẵn sàng (BR-12)
+  WAITING_LOBBY : - Ghép trận 1 mình quá 60s: Gợi ý chơi đơn / tạo phòng mời bạn (BR-13)
+}
+
+WAITING_LOBBY --> COUNTDOWN : [Phòng tự tạo] Chủ phòng bấm Bắt đầu\n(≥ 2 người và TẤT CẢ đã sẵn sàng, BR-12)\n---\n[Ghép trận] Có người thứ 2 vào phòng\n(Kích hoạt đếm ngược 30 giây, BR-13)
+
+state COUNTDOWN as "Đang đếm ngược (COUNTDOWN)" {
+  COUNTDOWN : - Đồng hồ đếm ngược 30 giây
+  COUNTDOWN : - Không đặt lại khi có thêm người vào (BR-13)
+}
+
+COUNTDOWN --> WAITING_LOBBY : Số người kết nối giảm xuống < 2\n(Đếm ngược dừng, quay lại chờ, BR-13)
+
+COUNTDOWN --> IN_MATCH : Hết đếm ngược 30s (server kiểm tra lại ≥ 2 người)\nHOẶC đủ số người tối đa của phòng (5 người, BR-13)
+
+state IN_MATCH as "Trận đấu đang diễn ra (IN_MATCH)" {
+  state ROUND_PREPARING as "Chuẩn bị vòng" : Chọn bài hát, kiểm tra preview (BR-27), sinh token audio 2s
+  state ROUND_PLAYING as "Đang chơi vòng" : Đồng hồ server 45 giây, người chơi nghe & đoán
+  state ROUND_REVEAL as "Công bố kết quả" : Hiện đáp án, nguồn Deezer (BR-29), cập nhật điểm & combo
+  state INTERMISSION as "Nghỉ giữa vòng" : Đếm ngược 3–5 giây chuẩn bị vòng kế
+
+  [*] --> ROUND_PREPARING
+  ROUND_PREPARING --> ROUND_PLAYING : Phát sự kiện RoundStartEvent
+  ROUND_PLAYING --> ROUND_REVEAL : Hết 45s HOẶC mọi người đã đoán xong/hết lượt (BR-07)
+  ROUND_REVEAL --> INTERMISSION : Cập nhật Scoreboard
+  INTERMISSION --> ROUND_PREPARING : Chưa hết số vòng trận đấu
+  INTERMISSION --> [*] : Đã hoàn thành đủ số vòng (5/10/15 vòng)
+}
+
+note right of IN_MATCH
+  BR-15: Người vào phòng lúc trận đang chạy
+  sẽ chờ ở sảnh và tham gia từ trận sau.
+  BR-14: Phòng chỉ còn 1 người kết nối > 30s
+  thì trận kết thúc sớm.
+end note
+
+IN_MATCH --> MATCH_FINISHED : Hoàn thành tất cả các vòng\nHOẶC chỉ còn 1 người (kết thúc sớm, BR-14)
+
+state MATCH_FINISHED as "Trận kết thúc (MATCH_FINISHED)" {
+  MATCH_FINISHED : - Công bố bảng tổng sắp chung cuộc
+  MATCH_FINISHED : - Xác định người thắng theo tổng điểm (hòa tính theo tổng ms, BR-10)
+  MATCH_FINISHED : - Lưu lịch sử, thống kê, huy hiệu, bảng xếp hạng (BR-23, BR-24)
+}
+
+MATCH_FINISHED --> WAITING_LOBBY : Cả phòng quay về sảnh để chơi tiếp\n(Giữ nguyên mã phòng, BR-12)
+
+WAITING_LOBBY --> CLOSED : Phòng trống quá 10 phút (BR-15)\nHOẶC tất cả người chơi rời phòng
+MATCH_FINISHED --> CLOSED : Tất cả người chơi rời phòng
+
+state CLOSED as "Phòng đã đóng (CLOSED)" {
+  CLOSED : - Hủy RoomActor và giải phóng tài nguyên
+}
+
+CLOSED --> [*]
+
+@enduml

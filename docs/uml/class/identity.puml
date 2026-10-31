@@ -1,0 +1,209 @@
+@startuml identity
+title Sơ đồ lớp thiết kế - Module Identity (MEL-51, đối chiếu commit c0f723e)
+left to right direction
+skinparam shadowing false
+skinparam linetype ortho
+skinparam nodesep 25
+skinparam ranksep 45
+skinparam defaultFontName DejaVu Sans
+skinparam class {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam package {
+  BackgroundColor #F8F9FA
+  BorderColor black
+}
+
+legend left
+  Thiết kế chi tiết module Identity theo Spring Modulith.
+  - Web: Controller hiện thực OpenAPI IdentityApi.
+  - Service: Xác thực khách, cấp phát JWT, xoay vòng Refresh Token.
+  - Persistence: Thực thể lưu trữ PostgreSQL (app_user, auth_identity, refresh_token).
+  - API: AccountLockQuery cung cấp cho các module khác tra cứu trạng thái khóa tài khoản.
+  Đối chiếu mã nguồn tại commit c0f723e.
+endlegend
+
+package "com.meloo.identity.web" {
+  class IdentityController {
+    - guestAuthService : GuestAuthService
+    - guestRateLimiter : GuestRateLimiter
+    - nicknameValidator : NicknameValidator
+    - properties : IdentityProperties
+    - allowedOrigins : List<String>
+    + guest(request : GuestRequestDto) : ResponseEntity<AuthSessionDto>
+    + refresh(refreshToken : String) : ResponseEntity<AuthSessionDto>
+    + logout(refreshToken : String) : ResponseEntity<Void>
+    + me() : ResponseEntity<MeDto>
+  }
+}
+
+package "com.meloo.identity.api" {
+  interface AccountLockQuery {
+    + isLocked(userId : UUID) : boolean
+    + getLockReason(userId : UUID) : Optional<String>
+  }
+}
+
+package "com.meloo.identity.service" {
+  class GuestAuthService {
+    - appUserRepository : AppUserRepository
+    - jwtTokenService : JwtTokenService
+    - refreshTokenService : RefreshTokenService
+    - nicknameValidator : NicknameValidator
+    - eventPublisher : ApplicationEventPublisher
+    - clock : Clock
+    + authenticateGuest(request : GuestRequestDto) : AuthSessionDto
+    + getMe(userId : UUID) : MeDto
+  }
+
+  class AccountLockQueryImpl {
+    - appUserRepository : AppUserRepository
+    + isLocked(userId : UUID) : boolean
+    + getLockReason(userId : UUID) : Optional<String>
+  }
+
+  class JwtTokenService {
+    - jwtEncoder : JwtEncoder
+    - properties : IdentityProperties
+    + generateAccessToken(user : AppUser) : String
+  }
+
+  class RefreshTokenService {
+    - refreshTokenRepository : RefreshTokenRepository
+    - properties : IdentityProperties
+    - clock : Clock
+    + createRefreshToken(user : AppUser) : String
+    + rotateRefreshToken(tokenValue : String) : AppUser
+    + revokeFamily(familyId : UUID) : void
+  }
+
+  class NicknameValidator {
+    - bannedWords : Set<String>
+    + validate(nickname : String) : void
+  }
+
+  class GuestRateLimiter {
+    - buckets : ConcurrentMap<String, Bucket>
+    + checkLimit(ipAddress : String) : void
+  }
+}
+
+package "com.meloo.identity.persistence" {
+  enum UserKind {
+    GUEST
+    REGISTERED
+  }
+
+  enum UserRole {
+    USER
+    ADMIN
+  }
+
+  enum UserStatus {
+    ACTIVE
+    LOCKED
+    DELETED
+    MERGED
+  }
+
+  enum AuthProvider {
+    GOOGLE
+    FACEBOOK
+  }
+
+  class AppUser {
+    - id : UUID
+    - kind : UserKind
+    - role : UserRole
+    - status : UserStatus
+    - nickname : String
+    - email : String
+    - lockReason : String
+    - lockedAt : Instant
+    - mergedIntoId : UUID
+    - lastActiveAt : Instant
+    - createdAt : Instant
+    + isNew() : boolean
+  }
+
+  class AuthIdentity {
+    - id : UUID
+    - user : AppUser
+    - provider : AuthProvider
+    - providerSubject : String
+    - createdAt : Instant
+  }
+
+  class RefreshToken {
+    - id : UUID
+    - user : AppUser
+    - familyId : UUID
+    - tokenHash : String
+    - expiresAt : Instant
+    - revokedAt : Instant
+    - createdAt : Instant
+    + isExpired(now : Instant) : boolean
+    + isRevoked() : boolean
+  }
+
+  interface AppUserRepository {
+    + findById(id : UUID) : Optional<AppUser>
+    + findByNickname(nickname : String) : Optional<AppUser>
+    + save(user : AppUser) : AppUser
+  }
+
+  interface AuthIdentityRepository {
+    + findByProviderAndProviderSubject(p : AuthProvider, sub : String) : Optional<AuthIdentity>
+    + findByUserId(userId : UUID) : List<AuthIdentity>
+  }
+
+  interface RefreshTokenRepository {
+    + findByTokenHash(tokenHash : String) : Optional<RefreshToken>
+    + revokeByFamilyId(familyId : UUID, revokedAt : Instant) : void
+  }
+}
+
+package "com.meloo.identity.events" {
+  class GuestCreated <<record>> {
+    + userId : UUID
+    + nickname : String
+    + createdAt : Instant
+  }
+}
+
+package "com.meloo.identity.config" {
+  class IdentitySecurityRules {
+    + configure(http : HttpSecurity) : void
+  }
+  class IdentityProperties {
+    + jwtExpiration : Duration
+    + refreshTokenTtl : Duration
+    + guestRateLimit : int
+  }
+}
+
+' Relationships
+IdentityController --> GuestAuthService : delegates
+IdentityController --> GuestRateLimiter : checks IP limit
+IdentityController --> NicknameValidator : validates nickname
+
+GuestAuthService --> AppUserRepository : stores user
+GuestAuthService --> JwtTokenService : issues access token
+GuestAuthService --> RefreshTokenService : issues refresh token
+GuestAuthService --> NicknameValidator : validates
+GuestAuthService ..> GuestCreated : publishes event
+
+AccountLockQueryImpl ..|> AccountLockQuery : implements
+AccountLockQueryImpl --> AppUserRepository : queries lock status
+
+RefreshTokenService --> RefreshTokenRepository : persists tokens
+
+AppUser "1" *-- "0..*" AuthIdentity : identities
+AppUser "1" *-- "0..*" RefreshToken : active sessions
+AppUser --> UserKind
+AppUser --> UserRole
+AppUser --> UserStatus
+AuthIdentity --> AuthProvider
+
+@enduml

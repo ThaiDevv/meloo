@@ -1,0 +1,227 @@
+@startuml game
+title Sơ đồ lớp thiết kế - Module Game & Solo (MEL-51, đối chiếu commit c0f723e)
+left to right direction
+skinparam shadowing false
+skinparam linetype ortho
+skinparam nodesep 25
+skinparam ranksep 45
+skinparam defaultFontName DejaVu Sans
+skinparam class {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam package {
+  BackgroundColor #F8F9FA
+  BorderColor black
+}
+
+legend left
+  Thiết kế chi tiết module Game (Quản lý luật chơi, tính điểm, combo và chế độ Chơi đơn).
+  - Domain: Round aggregate thuần POJO, không dính framework, quản lý máy trạng thái vòng.
+  - Score & Combo: Tính điểm cơ bản (BR-02), combo (BR-08), thưởng tốc độ (BR-07).
+  - Solo: Quản lý trận chơi đơn in-memory với timeout 30 phút (BR-23).
+  - Events: Phát sự kiện miền MatchStarted, MatchFinished cho Progression module.
+  Đối chiếu mã nguồn tại commit c0f723e.
+endlegend
+
+package "com.meloo.game.web" {
+  class SoloGameController {
+    - soloGameService : SoloGameService
+    + createMatch(request : CreateSoloMatchRequestDto) : ResponseEntity<SoloMatchDto>
+    + getActiveMatch() : ResponseEntity<SoloMatchDto>
+    + getCurrentRound(matchId : UUID) : ResponseEntity<RoundStateDto>
+    + listenMore(matchId : UUID, roundNo : int) : ResponseEntity<RoundStateDto>
+    + skipRound(matchId : UUID, roundNo : int) : ResponseEntity<RoundResultDto>
+    + guess(matchId : UUID, roundNo : int, req : GuessRequestDto) : ResponseEntity<GuessResponseDto>
+    + getMatchResult(matchId : UUID) : ResponseEntity<MatchResultDto>
+    + abandonMatch(matchId : UUID) : ResponseEntity<Void>
+  }
+}
+
+package "com.meloo.game.solo" {
+  class SoloGameService {
+    - matchManager : SoloMatchManager
+    - catalogService : CatalogService
+    - audioService : AudioService
+    - eventPublisher : ApplicationEventPublisher
+    - rateLimiter : SoloRateLimiter
+    - dtoMapper : SoloDtoMapper
+    - clock : Clock
+    + createMatch(userId : UUID, req : CreateSoloMatchRequestDto) : SoloMatchDto
+    + getActiveMatch(userId : UUID) : Optional<SoloMatchDto>
+    + getCurrentRound(userId : UUID, matchId : UUID) : RoundStateDto
+    + listenMore(userId : UUID, matchId : UUID, roundNo : int) : RoundStateDto
+    + skipRound(userId : UUID, matchId : UUID, roundNo : int) : RoundResultDto
+    + submitGuess(userId : UUID, matchId : UUID, roundNo : int, req : GuessRequestDto) : GuessResponseDto
+    + abandonMatch(userId : UUID, matchId : UUID) : void
+  }
+
+  class SoloMatchManager {
+    - matches : ConcurrentMap<UUID, SoloMatch>
+    - userMatches : ConcurrentMap<UUID, UUID>
+    + get(matchId : UUID) : Optional<SoloMatch>
+    + getActiveForUser(userId : UUID) : Optional<SoloMatch>
+    + put(match : SoloMatch) : void
+    + remove(matchId : UUID) : void
+    + evictExpired(timeout : Duration) : void
+  }
+
+  class SoloMatch {
+    - matchId : UUID
+    - userId : UUID
+    - mode : SoloModeDto
+    - rounds : List<SoloRoundData>
+    - currentRoundIndex : int
+    - status : SoloMatchStatus
+    - totalScore : int
+    - comboTracker : ComboTracker
+    - createdAt : Instant
+    - lastActiveAt : Instant
+    + getCurrentRound() : SoloRoundData
+    + advanceRound() : boolean
+    + markCompleted() : void
+    + markAbandoned() : void
+  }
+
+  enum SoloMatchStatus {
+    IN_PROGRESS
+    COMPLETED
+    ABANDONED
+  }
+
+  class SoloRoundData {
+    - round : Round
+    - audioTokens : Map<Integer, String>
+    - options : List<OptionItemDto>
+  }
+}
+
+package "com.meloo.game.domain" {
+  class Round {
+    - roundNo : int
+    - targetTrack : TargetTrack
+    - gameRules : GameRules
+    - hasTimeLimit : boolean
+    - status : RoundStatus
+    - outcome : RoundOutcome
+    - currentLevel : int
+    - wrongCount : int
+    - scoreDetail : RoundScoreDetail
+    - startedAt : Instant
+    - endedAt : Instant
+    + start(now : Instant) : void
+    + listenMore() : int
+    + evaluateGuess(trackId : UUID, title : String, now : Instant) : GuessEvaluation
+    + giveUp(now : Instant) : void
+    + timeout(now : Instant) : void
+  }
+
+  enum RoundStatus {
+    WAITING
+    IN_PROGRESS
+    ENDED
+  }
+
+  enum RoundOutcome {
+    CORRECT
+    WRONG_OUT
+    GAVE_UP
+    TIMEOUT
+  }
+
+  enum ListeningLevel {
+    LEVEL_1_2S
+    LEVEL_2_5S
+    LEVEL_3_10S
+    LEVEL_4_20S
+    LEVEL_5_30S
+  }
+
+  class TargetTrack <<record>> {
+    + id : UUID
+    + title : String
+    + titleNormalized : String
+    + artistName : String
+    + previewUrl : String
+  }
+
+  class GameRules <<record>> {
+    + levelDurations : List<Duration>
+    + baseScores : List<Integer>
+    + roundTimeLimit : Duration
+    + maxWrongGuesses : int
+    + {static} defaultRules() : GameRules
+  }
+
+  class ScoreCalculator {
+    + calculateBaseScore(level : int) : int
+    + calculateSpeedBonus(remaining : Duration, total : Duration) : int
+    + calculateRoundScore(base : int, comboRate : double, speedBonus : int) : RoundScoreDetail
+  }
+
+  class ComboTracker {
+    - streak : int
+    - maxStreak : int
+    + recordCorrect(level : int) : void
+    + recordBreak() : void
+    + getComboMultiplier() : double
+  }
+
+  class RoundScoreDetail <<record>> {
+    + baseScore : int
+    + comboBonus : int
+    + speedBonus : int
+    + totalScore : int
+    + comboMultiplier : double
+  }
+
+  class GuessEvaluation <<record>> {
+    + correct : boolean
+    + correctArtist : boolean
+    + outcome : RoundOutcome
+    + nextLevel : int
+  }
+}
+
+package "com.meloo.game.events" {
+  class MatchStarted <<record>> {
+    + matchId : UUID
+    + userId : UUID
+    + matchType : MatchType
+    + totalRounds : int
+    + startedAt : Instant
+  }
+
+  class MatchFinished <<record>> {
+    + matchId : UUID
+    + userId : UUID
+    + matchType : MatchType
+    + totalScore : int
+    + endStatus : MatchEndStatus
+    + rounds : List<RoundSummary>
+  }
+}
+
+' Relationships
+SoloGameController --> SoloGameService : delegates
+
+SoloGameService --> SoloMatchManager : maintains state
+SoloGameService --> SoloMatch : updates match
+SoloGameService ..> MatchStarted : publishes
+SoloGameService ..> MatchFinished : publishes
+
+SoloMatchManager o--> "0..*" SoloMatch : manages
+SoloMatch *--> "1..*" SoloRoundData : contains
+SoloMatch --> ComboTracker : tracks combo
+SoloMatch --> SoloMatchStatus
+
+SoloRoundData *--> "1" Round : aggregate root
+Round --> TargetTrack : target
+Round --> GameRules : rules
+Round --> RoundStatus : state
+Round --> RoundOutcome : outcome
+Round --> RoundScoreDetail : score
+Round ..> GuessEvaluation : produces
+Round ..> ScoreCalculator : uses
+
+@enduml

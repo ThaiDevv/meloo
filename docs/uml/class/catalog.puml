@@ -1,0 +1,237 @@
+@startuml catalog
+title Sơ đồ lớp thiết kế - Module Catalog (MEL-51, đối chiếu commit c0f723e)
+left to right direction
+skinparam shadowing false
+skinparam linetype ortho
+skinparam nodesep 25
+skinparam ranksep 45
+skinparam defaultFontName DejaVu Sans
+skinparam class {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam package {
+  BackgroundColor #F8F9FA
+  BorderColor black
+}
+
+legend left
+  Thiết kế chi tiết module Catalog (Quản lý kho nhạc, playlist và tìm kiếm).
+  - Web: Controller tìm kiếm bài hát và danh sách playlist.
+  - Api: CatalogService cung cấp bài hát ngẫu nhiên cho game và room.
+  - Provider: Tích hợp Deezer API (chính) và iTunes API (dự phòng).
+  - Search: Chuẩn hóa không dấu và tìm kiếm gợi ý bài hát.
+  Đối chiếu mã nguồn tại commit c0f723e.
+endlegend
+
+package "com.meloo.catalog.web" {
+  class CatalogController {
+    - catalogService : CatalogService
+    - trackSearchService : TrackSearchService
+    + searchTracks(query : String, limit : int) : ResponseEntity<List<TrackSearchResultDto>>
+    + getPlaylists() : ResponseEntity<List<PlaylistDto>>
+    + getFilters() : ResponseEntity<FilterOptionsDto>
+  }
+}
+
+package "com.meloo.catalog.api" {
+  interface CatalogService {
+    + selectRandomTracksByPlaylist(playlistId : UUID, count : int, excluded : Set<UUID>) : List<TrackInfo>
+    + selectRandomTracksByPlaylistCode(code : String, count : int, excluded : Set<UUID>) : List<TrackInfo>
+    + selectRandomTracks(filter : TrackFilter, count : int, excluded : Set<UUID>) : List<TrackInfo>
+    + getTrackById(trackId : UUID) : Optional<TrackInfo>
+    + findPlaylistByCode(code : String) : Optional<PlaylistInfo>
+    + findPlaylistById(id : UUID) : Optional<PlaylistInfo>
+    + getTracksByIds(trackIds : Collection<UUID>) : Map<UUID, TrackInfo>
+  }
+
+  class TrackInfo <<record>> {
+    + id : UUID
+    + title : String
+    + artistName : String
+    + previewUrl : String
+    + coverUrl : String
+    + releaseYear : Integer
+    + genreCode : String
+  }
+
+  class PlaylistInfo <<record>> {
+    + id : UUID
+    + code : String
+    + nameVi : String
+    + nameEn : String
+    + trackCount : int
+  }
+
+  class TrackFilter <<record>> {
+    + genres : List<String>
+    + countries : List<String>
+    + releaseYears : List<Integer>
+  }
+}
+
+package "com.meloo.catalog.search" {
+  class CatalogServiceImpl {
+    - trackRepository : TrackRepository
+    - playlistRepository : PlaylistRepository
+    - queryRepository : CatalogQueryRepository
+    + selectRandomTracksByPlaylist(...) : List<TrackInfo>
+    + selectRandomTracks(...) : List<TrackInfo>
+    + getTrackById(...) : Optional<TrackInfo>
+  }
+
+  class TrackSearchService {
+    - queryRepository : CatalogQueryRepository
+    - titleNormalizer : TitleNormalizer
+    + search(query : String, limit : int) : List<TrackSearchResultDto>
+  }
+
+  class CatalogQueryRepository {
+    - jdbcTemplate : JdbcTemplate
+    + findRandomTracks(spec : QuerySpec) : List<TrackInfo>
+    + searchAutocomplete(normalizedQuery : String, limit : int) : List<TrackSearchResultDto>
+  }
+}
+
+package "com.meloo.catalog.provider" {
+  interface MusicProvider {
+    + getProviderName() : String
+    + searchTrack(title : String, artist : String) : Optional<ProviderTrack>
+    + fetchPlaylistTracks(providerPlaylistId : String) : List<ProviderTrack>
+    + verifyPreviewUrl(previewUrl : String) : boolean
+  }
+
+  class DeezerMusicProvider {
+    - restClient : RestClient
+    - properties : CatalogProviderProperties
+    + searchTrack(title : String, artist : String) : Optional<ProviderTrack>
+  }
+
+  class ItunesMusicProvider {
+    - restClient : RestClient
+    + searchTrack(title : String, artist : String) : Optional<ProviderTrack>
+  }
+
+  class CachedMusicProvider {
+    - delegate : MusicProvider
+    - cache : Cache<String, ProviderTrack>
+    + searchTrack(title : String, artist : String) : Optional<ProviderTrack>
+  }
+
+  class ProviderTrack <<record>> {
+    + providerTrackId : String
+    + title : String
+    + artist : String
+    + previewUrl : String
+    + albumCoverUrl : String
+  }
+}
+
+package "com.meloo.catalog.importing" {
+  class CatalogImportService {
+    - musicProvider : MusicProvider
+    - trackRepository : TrackRepository
+    - titleNormalizer : TitleNormalizer
+    + importTrack(providerTrack : ProviderTrack) : Track
+  }
+
+  class TitleNormalizer {
+    + normalize(title : String) : String
+    + removeAccents(text : String) : String
+  }
+}
+
+package "com.meloo.catalog.persistence" {
+  enum MusicProviderEnum {
+    DEEZER
+    ITUNES
+    LOCAL
+  }
+
+  enum PlaylistKind {
+    STANDARD
+    CURATED
+  }
+
+  class Track {
+    - id : UUID
+    - title : String
+    - titleNormalized : String
+    - artist : Artist
+    - genre : Genre
+    - provider : MusicProviderEnum
+    - providerTrackId : String
+    - previewUrl : String
+    - coverUrl : String
+    - countryCode : String
+    - releaseYear : Integer
+    - enabled : boolean
+  }
+
+  class Artist {
+    - id : UUID
+    - name : String
+    - nameNormalized : String
+  }
+
+  class Genre {
+    - id : UUID
+    - code : String
+    - nameVi : String
+    - nameEn : String
+  }
+
+  class Playlist {
+    - id : UUID
+    - code : String
+    - kind : PlaylistKind
+    - nameVi : String
+    - nameEn : String
+    - enabled : boolean
+  }
+
+  class PlaylistTrack {
+    - playlist : Playlist
+    - track : Track
+    - position : int
+  }
+
+  interface TrackRepository {
+    + findById(id : UUID) : Optional<Track>
+    + findByProviderAndProviderTrackId(...) : Optional<Track>
+  }
+
+  interface ArtistRepository {
+    + findByNameNormalized(normalized : String) : Optional<Artist>
+  }
+
+  interface PlaylistRepository {
+    + findByCode(code : String) : Optional<Playlist>
+  }
+}
+
+' Relationships
+CatalogController --> CatalogService : uses
+CatalogController --> TrackSearchService : uses
+
+CatalogServiceImpl ..|> CatalogService : implements
+CatalogServiceImpl --> TrackRepository : queries
+CatalogServiceImpl --> CatalogQueryRepository : queries random
+
+TrackSearchService --> CatalogQueryRepository : executes search
+TrackSearchService --> TitleNormalizer : normalizes query
+
+CachedMusicProvider ..|> MusicProvider : implements
+DeezerMusicProvider ..|> MusicProvider : implements
+ItunesMusicProvider ..|> MusicProvider : implements
+CachedMusicProvider o--> MusicProvider : decorates
+
+CatalogImportService --> MusicProvider : fetches previews
+CatalogImportService --> TitleNormalizer : normalizes titles
+
+Track "0..*" o--> "1" Artist : ca sĩ chính
+Track "0..*" o--> "0..1" Genre : thể loại
+Playlist "1" *--> "0..*" PlaylistTrack : danh sách bài
+PlaylistTrack "0..*" o--> "1" Track : tham chiếu
+
+@enduml

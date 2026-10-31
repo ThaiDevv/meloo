@@ -1,0 +1,125 @@
+@startuml act-luong-mot-vong-choi
+title Sơ đồ hoạt động: Luồng một vòng chơi Meloo (BR-01 → BR-08, BR-16, BR-27, BR-29, commit c0f723e)
+skinparam shadowing false
+skinparam defaultFontName DejaVu Sans
+skinparam activity {
+  BackgroundColor white
+  BorderColor black
+  ArrowColor black
+  BarColor black
+  StartColor black
+  EndColor black
+}
+
+start
+
+:Server chọn bài hát từ bộ đề/playlist;
+
+if (Kiểm tra đoạn preview hợp lệ? (BR-27)) then (Lỗi)
+  :Tự động thay bằng bài hát khác\n(Không ai bị trừ điểm);
+else (Hợp lệ)
+endif
+
+:Server sinh token audio mờ mức 1 (2 giây) (ADR-008);\nCấp danh sách gợi ý tìm kiếm bài hát;
+
+if (Chế độ chơi?) then (Nhiều người)
+  :Server kích hoạt đồng hồ đếm ngược 45 giây (BR-07);
+else (Chơi đơn)
+  :Không giới hạn thời gian (BR-07);
+endif
+
+:Client phát đoạn preview 2 giây đầu bằng Web Audio API;
+
+repeat
+  :Người chơi chọn thao tác;
+
+  if (Thao tác là gì?) then (Nghe lại (BR-03))
+    :Phát lại đoạn audio mức hiện tại\n(Không giới hạn, không mất điểm);
+
+  elseif (Gửi tin nhắn Chat (Nhiều người)) then (Chat)
+    if (Tin chứa tên bài hát (BR-16) hoặc từ cấm (BR-17)?) then (Vi phạm)
+      :Chặn tin, chỉ người gửi thấy cảnh báo\n(Không phát tán ra phòng);
+    else (Hợp lệ)
+      :Phát tin nhắn ra phòng chat;
+    endif
+
+  elseif (Bấm "Nghe thêm" (BR-04)) then (Nghe thêm)
+    if (Mức nghe hiện tại < 30 giây?) then (Còn mức)
+      :Mở mức kế tiếp (2s → 5s → 10s → 20s → 30s);\nServer cấp token audio mức mới;
+      :Client phát đoạn nhạc dài hơn;
+    else (Đang ở mức 30s)
+      :Nút chuyển thành "Bỏ qua";
+    endif
+
+  elseif (Bấm "Bỏ qua" (BR-04)) then (Bỏ qua)
+    :Ghi nhận kết quả: BỎ_QUA (GAVE_UP);\nĐiểm vòng = 0;
+    detach
+
+  elseif (Gửi lượt đoán bài (BR-05)) then (Đoán bài)
+    if (Chơi nhiều người VÀ Server nhận lượt đoán ≥ 45.000 ms? (BR-07)) then (Trễ giờ)
+      :Từ chối lượt đoán;\nGhi nhận: HẾT_GIỜ (TIMEOUT), Điểm = 0;
+      detach
+    else (Hợp lệ)
+      :Server chuẩn hóa tên bài đoán & bài đáp án:\nbỏ dấu, viết thường, bỏ ngoặc, bỏ Remix/Live... (BR-05);
+
+      if (Tên bài sau chuẩn hóa trùng khớp?) then (ĐÚNG)
+        :Xác định Điểm cơ bản theo mức nghe (BR-02):\n- 2s: 1.000đ | 5s: 800đ | 10s: 600đ | 20s: 400đ | 30s: 200đ;
+
+        if (Mức đoán đúng ≤ 5 giây? (BR-08)) then (Đúng ≤ 5s)
+          :Tăng chuỗi đúng liên tiếp (streak++);
+          if (Streak == 2) then (+10%)
+            :Hệ số combo = 10%;
+          elseif (Streak ≥ 3) then (+20%)
+            :Hệ số combo = 20%;
+          else (Vòng 1)
+            :Hệ số combo = 0%;
+          endif
+        else (Đúng > 5s)
+          :Đứt chuỗi combo (streak = 0);\nHệ số combo = 0%;
+        endif
+
+        if (Chế độ chơi nhiều người?) then (Nhiều người)
+          :Tính Thưởng tốc độ (BR-07):\nmax(0, floor(200 × mili giây còn lại ÷ 45.000));
+        else (Chơi đơn)
+          :Thưởng tốc độ = 0;
+        endif
+
+        :Điểm vòng = Điểm cơ bản × (1 + combo) + Thưởng tốc độ;
+        :Ghi nhận kết quả: ĐÚNG (CORRECT);
+
+        if (Nhiều người?) then (Có)
+          :Báo cả phòng: "<Tên> đã đúng ở mức Xs" (Ẩn đáp án, BR-07);
+        endif
+        detach
+
+      else (SAI)
+        if (Trùng ca sĩ chính? (BR-06)) then (Trùng)
+          :Hiển thị gợi ý "Đúng ca sĩ!" trên giao diện;
+        endif
+
+        if (Mức nghe hiện tại < 30 giây? (BR-04)) then (Còn mức)
+          :Tự động mở mức nghe kế tiếp;\nServer cấp token audio mức mới;
+          :Client phát đoạn nhạc mức mới;
+        else (Đã ở mức 30s)
+          :Ghi nhận kết quả: HẾT_LƯỢT (WRONG_OUT);\nĐiểm vòng = 0;
+          detach
+        endif
+      endif
+    endif
+  endif
+repeat while (Chưa hoàn thành lượt)
+
+if (Chơi nhiều người?) then (Có)
+  :Chờ đến khi tất cả người chơi hoàn thành lượt\nHOẶC hết 45 giây server (BR-07);
+  :Ai chưa xong khi hết giờ được tính là TIMEOUT (0đ);
+endif
+
+:Dừng phát nhạc toàn bộ client;
+
+:Server công bố đáp án vòng chơi (BR-29):\n- Tên bài hát, ca sĩ, ảnh bìa album\n- Nguồn Deezer và link nghe đầy đủ;
+
+:Cập nhật bảng điểm và chuỗi combo của trận đấu;
+
+stop
+
+@enduml

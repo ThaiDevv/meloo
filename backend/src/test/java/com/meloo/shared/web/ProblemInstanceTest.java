@@ -19,6 +19,8 @@ class ProblemInstanceTest {
   static Stream<Arguments> uriSanitizationCases() {
     return Stream.of(
         Arguments.of("/api/v1/audio/valid-opaque-token-12345", MASKED_AUDIO_URI),
+        Arguments.of("/api/v1/%61udio/valid-opaque-token-12345", MASKED_AUDIO_URI),
+        Arguments.of("/api/v1/foo/../audio/valid-opaque-token-12345", MASKED_AUDIO_URI),
         Arguments.of("/api/v1/audio/valid-opaque-token-12345/x", MASKED_AUDIO_URI),
         Arguments.of("/api/v1/audio/valid-opaque-token-12345/extra/path", MASKED_AUDIO_URI),
         Arguments.of("/api/v1/audio/", MASKED_AUDIO_URI),

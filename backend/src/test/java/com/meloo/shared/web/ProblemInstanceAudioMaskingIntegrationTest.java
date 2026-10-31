@@ -19,6 +19,7 @@ import com.meloo.audio.api.AudioService;
 import com.meloo.generated.model.AudioClipDto;
 import com.meloo.shared.api.ModuleSecurityRules;
 import com.meloo.shared.api.ModuleSecurityRules.HttpRule;
+import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -57,6 +58,33 @@ class ProblemInstanceAudioMaskingIntegrationTest extends IntegrationTest {
       throws Exception {
     mockMvc
         .perform(get(AUDIO_PATH).header(HttpHeaders.AUTHORIZATION, "Bearer invalid-jwt-token-xyz"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(
+            header()
+                .string(HttpHeaders.WWW_AUTHENTICATE, org.hamcrest.Matchers.startsWith("Bearer")))
+        .andExpect(jsonPath("$.type").value("about:blank"))
+        .andExpect(jsonPath("$.title").value("Unauthorized"))
+        .andExpect(jsonPath("$.status").value(401))
+        .andExpect(jsonPath("$.code").value("UNAUTHORIZED"))
+        .andExpect(jsonPath("$.instance").value(MASKED_INSTANCE))
+        .andExpect(
+            result ->
+                assertThat(result.getResponse().getContentAsString())
+                    .doesNotContain(SYNTAX_VALID_TOKEN));
+
+    assertThat(output.getAll()).doesNotContain(SYNTAX_VALID_TOKEN);
+  }
+
+  @Test
+  @DisplayName(
+      "(1b) Percent-encoded audio path with invalid Bearer triggers ProblemAuthenticationEntryPoint -> 401 with masked instance")
+  void getAudio_withPercentEncodedPath_returns401WithMaskedInstanceAndNoTokenLeak(
+      CapturedOutput output) throws Exception {
+    String encodedPath = "/api/v1/%61udio/" + SYNTAX_VALID_TOKEN;
+    mockMvc
+        .perform(
+            get(URI.create(encodedPath))
+                .header(HttpHeaders.AUTHORIZATION, "Bearer invalid-jwt-token-xyz"))
         .andExpect(status().isUnauthorized())
         .andExpect(
             header()

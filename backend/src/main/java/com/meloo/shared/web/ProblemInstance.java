@@ -34,20 +34,31 @@ public final class ProblemInstance {
     return of(request.getRequestURI());
   }
 
-  /** Resolves a sanitized instance URI from a raw URI string. */
+  /**
+   * Resolves a sanitized instance URI from a raw URI string.
+   *
+   * <p>Normalizes path traversals and percent-encoded characters (e.g. {@code
+   * /api/v1/%61udio/<token>}) prior to matching against sensitive path rules to prevent raw
+   * parameter leakage.
+   */
   public static URI of(@Nullable String uri) {
     if (uri == null || uri.isEmpty()) {
       return EMPTY_URI;
     }
+    URI parsed = null;
+    String normalizedPath = null;
+    try {
+      parsed = URI.create(uri).normalize();
+      normalizedPath = parsed.getPath();
+    } catch (IllegalArgumentException ignored) {
+    }
+
+    String candidatePath = normalizedPath != null ? normalizedPath : uri;
     for (MaskRule rule : MASK_RULES) {
-      if (uri.startsWith(rule.prefix())) {
+      if (candidatePath.startsWith(rule.prefix()) || uri.startsWith(rule.prefix())) {
         return rule.maskedUri();
       }
     }
-    try {
-      return URI.create(uri);
-    } catch (IllegalArgumentException e) {
-      return EMPTY_URI;
-    }
+    return parsed != null ? parsed : EMPTY_URI;
   }
 }

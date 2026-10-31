@@ -1,7 +1,6 @@
 package com.meloo.audio.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -9,12 +8,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.meloo.IntegrationTest;
-import com.meloo.audio.api.AccountLockChecker;
 import com.meloo.audio.api.AudioPreparationResult;
 import com.meloo.audio.api.AudioService;
 import com.meloo.audio.domain.AudioToken;
 import com.meloo.audio.domain.AudioTokenCodec;
 import com.meloo.generated.model.AudioClipDto;
+import com.meloo.generated.model.GuestRequestDto;
+import com.meloo.identity.persistence.AppUser;
+import com.meloo.identity.persistence.AppUserRepository;
+import com.meloo.identity.persistence.UserStatus;
+import com.meloo.identity.service.GuestAuthService;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -32,7 +35,6 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -54,8 +56,8 @@ class AudioControllerIntegrationTest extends IntegrationTest {
   @Autowired private MockMvc mockMvc;
   @Autowired private AudioService audioService;
   @Autowired private AudioTokenCodec audioTokenCodec;
-
-  @MockitoBean private AccountLockChecker accountLockChecker;
+  @Autowired private GuestAuthService guestAuthService;
+  @Autowired private AppUserRepository appUserRepository;
 
   @Test
   @DisplayName(
@@ -287,9 +289,18 @@ class AudioControllerIntegrationTest extends IntegrationTest {
       "GET /api/v1/audio/{token} when player account is locked returns HTTP 403 ACCOUNT_LOCKED (BR-28)")
   void getAudioClip_accountLocked_returns403() throws Exception {
     UUID roundId = UUID.randomUUID();
-    UUID lockedPlayerId = UUID.randomUUID();
 
-    when(accountLockChecker.isAccountLocked(lockedPlayerId)).thenReturn(true);
+    // Create real guest user through GuestAuthService
+    var guestResult =
+        guestAuthService.createGuest(new GuestRequestDto().nickname("lockedaudioplayer"));
+    UUID lockedPlayerId = guestResult.session().getUser().getId();
+
+    // Lock user in database
+    AppUser user = appUserRepository.findById(lockedPlayerId).orElseThrow();
+    user.setStatus(UserStatus.LOCKED);
+    user.setLockReason("Account locked for test");
+    user.setLockedAt(Instant.now());
+    appUserRepository.saveAndFlush(user);
 
     audioService.prepareRoundAudio(roundId, UUID.randomUUID(), "FAKE", "fake-1");
     AudioClipDto clip = audioService.createAudioClip(roundId, lockedPlayerId, 1);
@@ -305,6 +316,14 @@ class AudioControllerIntegrationTest extends IntegrationTest {
             jsonPath("$.detail")
                 .value("The account associated with this session is locked (BR-28)."))
         .andExpect(jsonPath("$.instance").value("/api/v1/audio/%7Btoken%7D"));
+
+    // Verify changing status back to ACTIVE allows access (HTTP 200)
+    user.setStatus(UserStatus.ACTIVE);
+    user.setLockReason(null);
+    user.setLockedAt(null);
+    appUserRepository.saveAndFlush(user);
+
+    mockMvc.perform(get(clip.getUrl())).andExpect(status().isOk());
   }
 
   @Test

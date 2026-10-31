@@ -80,7 +80,7 @@ deactivate Svc
 
 Ctrl -> Ctrl : Set Cookie "meloo_refresh_token"\n(HttpOnly, Secure, SameSite=Strict, Path=/api/v1/auth)
 
-Ctrl --> FE : 200 OK\n{\n  "accessToken": "ey...",\n  "user": { "id": "...", "nickname": "SonTungMTP", "kind": "GUEST" }\n}
+Ctrl --> FE : 201 Created\n{\n  "accessToken": "ey...",\n  "user": { "id": "...", "nickname": "SonTungMTP", "kind": "GUEST" }\n}
 deactivate Ctrl
 
 FE -> FE : Lưu accessToken vào bộ nhớ (Zustand state)\n(BR-20: Khách chơi được mọi chế độ)

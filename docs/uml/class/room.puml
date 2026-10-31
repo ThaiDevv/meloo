@@ -31,9 +31,12 @@ package "com.meloo.room.realtime" {
     - userSessions : Map<RoomUser, Set<String>>
     - scheduler : TaskScheduler
     + register(descriptor : RoomDescriptor, handler : RoomConnectionHandler) : RoomActor
-    + unregister(roomId : UUID) : void
-    + getActor(roomId : UUID) : Optional<RoomActor>
-    + findRoom(roomId : UUID) : Optional<RoomDescriptor>
+    + register(descriptor : RoomDescriptor) : RoomActor
+    + actor(roomId : UUID) : Optional<RoomActor>
+    + update(descriptor : RoomDescriptor) : CompletableFuture<Void>
+    + find(roomId : UUID) : Optional<RoomDescriptor>
+    + remove(roomId : UUID) : void
+    + close() : void
   }
 
   class RoomActor {
@@ -43,39 +46,52 @@ package "com.meloo.room.realtime" {
     - timers : Set<ScheduledFuture<?>>
     - closed : AtomicBoolean
     + submit(command : Supplier<T>) : CompletableFuture<T>
+    + execute(command : Runnable) : CompletableFuture<Void>
     + schedule(delay : Duration, action : Runnable) : ScheduledFuture<?>
     + close() : void
+    + closeAsync() : CompletableFuture<Void>
   }
 
-  class RoomRuntime {
-    - descriptor : RoomDescriptor
+  class RoomRuntime <<record>> {
+    - descriptor : AtomicReference<RoomDescriptor>
     - actor : RoomActor
-    - handler : RoomConnectionHandler
+    - connectionHandler : RoomConnectionHandler
   }
 
   class RoomEventPublisher {
     - messagingTemplate : SimpMessagingTemplate
-    + broadcastLobby(roomId : UUID, event : Object) : void
-    + broadcastRound(roomId : UUID, event : Object) : void
-    + broadcastScoreboard(roomId : UUID, event : Object) : void
-    + sendToUser(userId : UUID, destination : String, payload : Object) : void
+    + publish(roomId : UUID, topic : RoomTopic, event : RoomMessage) : void
+    + sendPrivate(userId : UUID, queue : PrivateQueue, event : RoomMessage) : void
+  }
+
+  enum RoomTopic {
+    LOBBY
+    ROUND
+    SCOREBOARD
+    CHAT
+    RTC
+  }
+
+  enum PrivateQueue {
+    ERRORS
+    PRIVATE
   }
 
   interface RoomConnectionHandler {
-    + onConnect(roomId : UUID, userId : UUID, sessionId : String) : void
-    + onDisconnect(roomId : UUID, userId : UUID, sessionId : String) : void
+    + connected(userId : UUID) : void
+    + disconnected(userId : UUID) : void
     + {static} noOp() : RoomConnectionHandler
   }
 }
 
 package "com.meloo.room.api" {
   interface RoomDirectory {
-    + findRoom(roomId : UUID) : Optional<RoomDescriptor>
+    + find(roomId : UUID) : Optional<RoomDescriptor>
     + isMember(roomId : UUID, userId : UUID) : boolean
   }
 
   interface ActiveRoundQuery {
-    + getActiveRoundInfo(roomId : UUID) : Optional<ActiveRoundStatePayload>
+    + findActiveAnswerTitle(roomId : UUID) : Optional<String>
   }
 
   class RoomDescriptor <<record>> {

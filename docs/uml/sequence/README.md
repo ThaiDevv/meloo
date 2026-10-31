@@ -1,21 +1,22 @@
 # Thiết kế Sơ đồ tuần tự (Sequence Diagrams) - DOC-03 (MEL-51)
 
-Thư mục này chứa các sơ đồ tuần tự thể hiện các luồng tương tác chính của Meloo, khớp hợp đồng REST (OpenAPI 3.1) và STOMP WebSocket (AsyncAPI 3), đối chiếu tại commit `c0f723e`.
+Thư mục này chứa các sơ đồ tuần tự thể hiện các luồng tương tác chính của Meloo, khớp hợp đồng REST (OpenAPI 3.1) và STOMP WebSocket (AsyncAPI 3) cùng thiết kế kiến trúc cho tính năng đăng nhập mạng xã hội (BE-ID-02), đối chiếu tại commit `c0f723e`.
 
 ## Danh mục sơ đồ
 1. **`seq-dang-nhap-khach.puml` / `seq-dang-nhap-khach.png`**: Đăng nhập khách bằng biệt danh (UC-01, BR-20, BR-22)
    - Luồng: Client gọi `POST /api/v1/auth/guest` kèm biệt danh.
    - Kiểm tra: `GuestRateLimiter` chặn spam theo IP; `NicknameValidator` kiểm tra độ dài 3–20 ký tự và lọc từ cấm (BR-22).
-   - Kết quả: Tạo `AppUser` loại `GUEST`, phát sự kiện `GuestCreated`, sinh JWT Access Token (15 phút) và đặt Cookie HttpOnly Refresh Token (30 ngày).
+   - Kết quả: Tạo `AppUser` loại `GUEST`, phát sự kiện `GuestCreated`, sinh JWT Access Token (15 phút) và đặt Cookie HttpOnly Refresh Token (30 ngày), trả về mã `201 Created`.
 
-2. **`seq-dang-nhap-google.puml` / `seq-dang-nhap-google.png`**: Đăng nhập Google & Gộp tài khoản khách (UC-02, BR-21)
-   - Luồng: Người dùng xác thực OAuth2 qua Google, gửi mã/token về backend.
+2. **`seq-dang-nhap-google.puml` / `seq-dang-nhap-google.png`**: Đăng nhập Google & Gộp tài khoản khách (UC-02, BR-21 - Thiết kế đề xuất BE-ID-02)
+   - Lưu ý kiến trúc: OpenAPI v1 hiện tại tập trung cho phiên khách (`/api/v1/auth/guest`); endpoint đăng nhập mạng xã hội được chuẩn bị kiến trúc tại sơ đồ này và sẽ được định nghĩa chính thức trong hợp đồng CT-03 (Sprint S2/S3).
+   - Luồng: Người dùng xác thực OAuth2 qua Google, gửi mã xác thực về backend.
    - Xử lý: Backend xác minh với máy chủ Google, kiểm tra liên kết `AuthIdentity`. Tạo mới người dùng `REGISTERED` nếu là lần đầu.
    - Gộp tài khoản (BR-21): Nếu đang ở phiên khách, toàn bộ lịch sử đấu, thống kê, huy hiệu và điểm xếp hạng của khách được chuyển giao sang tài khoản đăng ký. Nếu có xung đột thử thách ngày, ưu tiên giữ lượt của tài khoản đăng ký.
 
 3. **`seq-vong-choi-don.puml` / `seq-vong-choi-don.png`**: Một vòng chơi đơn (UC-07, UC-08, BR-01..05, BR-08, ADR-008)
    - Luồng: Client lấy thông tin vòng chơi `GET /api/v1/solo/matches/{matchId}/rounds/current`.
-   - Audio Token mờ (ADR-008): Server cấp token HMAC thời hạn ngắn (60s), URL phát audio không lộ id bài hát hay tên bài.
+   - Audio Token mờ (ADR-008): Server cấp token HMAC thời hạn ngắn (mặc định 2 phút, tối đa 2 phút theo `AudioProperties` và ADR-008), URL phát audio không lộ id bài hát hay tên bài.
    - Thao tác người chơi:
      - Nghe lại: Không giới hạn, không mất điểm (BR-03).
      - Nghe thêm: `POST .../listen-more` tăng mức nghe 2s → 5s → 10s → 20s → 30s (BR-04).

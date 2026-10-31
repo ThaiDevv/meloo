@@ -1,5 +1,5 @@
 @startuml seq-dang-nhap-google
-title Sơ đồ tuần tự: Đăng nhập Google & Gộp tài khoản khách (UC-02, BR-21, commit c0f723e)
+title Sơ đồ tuần tự: Đăng nhập Google & Gộp tài khoản khách (Thiết kế đề xuất BE-ID-02, UC-02, BR-21)
 autonumber
 skinparam shadowing false
 skinparam defaultFontName DejaVu Sans
@@ -14,6 +14,13 @@ skinparam sequence {
   BoxBackgroundColor #F8F9FA
   BoxBorderColor #CCCCCC
 }
+
+legend left
+  Thiết kế luồng đăng nhập Google và gộp tài khoản khách (UC-02, BR-21).
+  Lưu ý kiến trúc: Đây là sơ đồ thiết kế đề xuất cho tính năng đăng nhập mạng xã hội (BE-ID-02).
+  OpenAPI v1 hiện tại chỉ quản lý phiên khách (/api/v1/auth/guest); endpoint mạng xã hội
+  sẽ được đặc tả chính thức vào hợp đồng REST tại ticket hợp đồng CT-03.
+endlegend
 
 actor "Người dùng" as User
 boundary "Trình duyệt / Client" as FE
@@ -39,7 +46,7 @@ User -> Google : Xác nhận cấp quyền
 Google --> FE : Chuyển hướng kèm mã xác thực (authorization_code)
 deactivate Google
 
-FE -> AuthCtrl : POST /api/v1/auth/social/google\n{ "code": "4/0A..." } (kèm Cookie/Header của khách nếu có)
+FE -> AuthCtrl : Luồng OAuth2 Callback / POST /api/v1/auth/social/google (Đề xuất BE-ID-02)\n{ "code": "4/0A..." } (kèm Cookie/Header của khách nếu có)
 activate AuthCtrl
 
 AuthCtrl -> Google : Đổi code lấy Google ID Token & Profile

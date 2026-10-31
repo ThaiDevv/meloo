@@ -51,7 +51,7 @@ deactivate Round
 GameSvc -> AudioSvc : prepareClipToken(trackId, duration=2s)
 activate AudioSvc
 note over AudioSvc
-  ADR-008: Cấp token HMAC mờ, hết hạn ngắn (60s).
+  ADR-008: Cấp token HMAC mờ, hết hạn ngắn (mặc định 2m, tối đa 2m).
   URL không chứa trackId hay tên bài hát.
 end note
 AudioSvc --> GameSvc : audioClip { token: "hmac_tok_2s", duration: 2000 }

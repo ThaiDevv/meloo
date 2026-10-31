@@ -45,7 +45,7 @@ public class ProblemAccessDeniedHandler implements AccessDeniedHandler {
         ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "Access is denied");
     problem.setType(URI.create("about:blank"));
     problem.setTitle("Forbidden");
-    problem.setInstance(URI.create(request.getRequestURI()));
+    problem.setInstance(ProblemInstance.of(request));
     problem.setProperty(ProblemConstants.PROPERTY_CODE, ProblemConstants.CODE_FORBIDDEN);
     problem.setProperty(ProblemConstants.PROPERTY_CORRELATION_ID, correlationId(request));
 

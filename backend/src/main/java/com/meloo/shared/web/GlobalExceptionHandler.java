@@ -119,7 +119,7 @@ public final class GlobalExceptionHandler extends ResponseEntityExceptionHandler
     }
     if (request instanceof ServletWebRequest servletRequest) {
       HttpServletRequest httpRequest = servletRequest.getRequest();
-      detail.setInstance(URI.create(httpRequest.getRequestURI()));
+      detail.setInstance(ProblemInstance.of(httpRequest));
       if (detail.getProperties() == null
           || !detail.getProperties().containsKey(ProblemConstants.PROPERTY_CODE)) {
         detail.setProperty(ProblemConstants.PROPERTY_CODE, defaultCode(statusCode));
@@ -135,7 +135,7 @@ public final class GlobalExceptionHandler extends ResponseEntityExceptionHandler
         ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(status), detail);
     problem.setType(URI.create("about:blank"));
     problem.setTitle(title);
-    problem.setInstance(URI.create(request.getRequestURI()));
+    problem.setInstance(ProblemInstance.of(request));
     problem.setProperty(ProblemConstants.PROPERTY_CODE, code);
     problem.setProperty(ProblemConstants.PROPERTY_CORRELATION_ID, correlationId(request));
     return problem;

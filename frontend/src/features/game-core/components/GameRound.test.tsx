@@ -284,6 +284,15 @@ describe('GameRound: the answer (AC 5, 7)', () => {
     expect(onContinue).toHaveBeenCalledOnce()
   })
 
+  it('starts the next round with an empty guess box', async () => {
+    const { rerender } = renderRound({ round: mockRound(1, 1) })
+    await userEvent.type(screen.getByRole('combobox'), 'chung')
+    expect(screen.getByRole('combobox')).toHaveValue('chung')
+
+    rerender({ round: mockRound(1, 2) })
+    expect(screen.getByRole('combobox')).toHaveValue('')
+  })
+
   it('shows the answer screen without a cover', () => {
     renderRound({ result: mockResultNoCover })
     expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Chúng Ta Của Hiện Tại')

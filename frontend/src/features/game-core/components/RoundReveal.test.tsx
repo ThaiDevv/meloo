@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import i18n from '@/i18n'
@@ -37,7 +37,7 @@ describe('RoundReveal', () => {
   it('falls back to the stand-in when the image fails to load', async () => {
     render(<RoundReveal result={mockResultWithCover} />)
     const image = screen.getByRole('img', { name: /Ảnh bìa bài/ })
-    image.dispatchEvent(new Event('error'))
+    fireEvent.error(image)
     expect(await screen.findByRole('img', { name: 'Chưa có ảnh bìa' })).toBeInTheDocument()
   })
 

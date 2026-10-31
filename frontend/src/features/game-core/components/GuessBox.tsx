@@ -95,7 +95,13 @@ export function GuessBox({
       event.preventDefault()
       setOpen(true)
       const step = event.key === 'ArrowDown' ? 1 : -1
-      setActive((current) => (current + step + listed.length) % listed.length)
+      setActive((current) =>
+        current < 0
+          ? step === 1
+            ? 0
+            : listed.length - 1
+          : (current + step + listed.length) % listed.length,
+      )
     } else if (event.key === 'Enter') {
       event.preventDefault()
       const highlighted = listed[active]
@@ -189,10 +195,14 @@ export function GuessBox({
             id={optionId(index)}
             role="option"
             aria-selected={index === active}
-            // mousedown, not click: the input would blur first and close the list.
+            // Picked on pointerup, which comes before the blur and the emulated mouse events of a tap.
+            // Not on pointerdown: a finger that scrolls the list ends in pointercancel, not pointerup.
+            // mousedown only keeps focus in the input (so the list stays open) on desktop.
+            onPointerUp={() => {
+              pick(track)
+            }}
             onMouseDown={(event) => {
               event.preventDefault()
-              pick(track)
             }}
             onMouseEnter={() => {
               setActive(index)

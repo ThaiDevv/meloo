@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockSuggestions } from '../mocks/fixtures'
@@ -127,6 +127,46 @@ describe('GuessBox', () => {
     settle()
     expect(screen.queryAllByRole('option')).toHaveLength(0)
     expect(screen.getAllByText('Đang tìm…').length).toBeGreaterThan(0)
+  })
+
+  it('picks a suggestion that is tapped: the touch screen blurs the input before any mouse event', async () => {
+    const { user, box } = setup()
+    await user.type(box, 'chung')
+    settle()
+    const option = screen.getAllByRole('option')[1] as HTMLElement
+
+    // What a touch screen does: pointerdown, pointerup, then blur (which closes the list), no mousedown.
+    fireEvent.pointerDown(option)
+    fireEvent.pointerUp(option)
+    fireEvent.blur(box)
+
+    expect(box).toHaveValue('Chúng Ta Của Tương Lai – Sơn Tùng M-TP')
+    expect(screen.getByRole('button', { name: 'Đoán' })).toBeEnabled()
+  })
+
+  it('does not pick a suggestion when the finger only scrolls the list', async () => {
+    const { user, box } = setup()
+    await user.type(box, 'chung')
+    settle()
+    const option = screen.getAllByRole('option')[1] as HTMLElement
+
+    fireEvent.pointerDown(option)
+    fireEvent.pointerCancel(option)
+
+    expect(box).toHaveValue('chung')
+    expect(screen.getByRole('button', { name: 'Đoán' })).toBeDisabled()
+  })
+
+  it('ArrowUp from nothing highlighted goes to the last suggestion, ArrowDown to the first', async () => {
+    const { user, box } = setup()
+    await user.type(box, 'chung')
+    settle()
+    const options = screen.getAllByRole('option')
+
+    await user.keyboard('{ArrowUp}')
+    expect(box).toHaveAttribute('aria-activedescendant', options[2]?.id)
+    await user.keyboard('{ArrowDown}')
+    expect(box).toHaveAttribute('aria-activedescendant', options[0]?.id)
   })
 
   it('closes the list on Escape', async () => {

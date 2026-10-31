@@ -108,7 +108,7 @@ export function GameRound(props: GameRoundProps) {
           busy={busy}
         />
       ) : (
-        <RoundPlay {...props} player={player} />
+        <RoundPlay key={round.roundNo} {...props} player={player} />
       )}
     </div>
   )

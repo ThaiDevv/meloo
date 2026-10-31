@@ -1,0 +1,91 @@
+{
+  "header": {
+    "round": "Round {{current}} / {{total}}",
+    "total": "Total score"
+  },
+  "stage": {
+    "pointsLeft": "points left if you guess right",
+    "level": "Level {{n}} of {{max}}",
+    "heading": "What song is this?"
+  },
+  "ladder": {
+    "label": "Listening levels",
+    "opened": "opened",
+    "current": "current",
+    "locked": "locked",
+    "item": "Level {{n}}: {{label}}, {{points}} points, {{state}}"
+  },
+  "controls": {
+    "replay": "Listen again",
+    "replayHint": "Costs no points",
+    "listenMore": "Reveal more",
+    "listenMoreHint": "Opens {{label}}, {{points}} points left",
+    "skip": "Give up",
+    "skipHint": "This round scores 0"
+  },
+  "audio": {
+    "loading": "Loading the clip…",
+    "playing": "Playing {{label}}",
+    "tapToListen": "Tap to listen",
+    "tapHint": "Your browser did not allow autoplay.",
+    "errorTitle": "Could not load the clip",
+    "error": {
+      "network": "Check your connection and try again.",
+      "expired": "The clip link has expired. Press retry to get a new one.",
+      "decode": "This clip could not be decoded. Try again or give up the round."
+    }
+  },
+  "guess": {
+    "label": "Guess the song",
+    "placeholder": "Type a song or an artist",
+    "submit": "Guess",
+    "searching": "Searching…",
+    "empty": "No matching song",
+    "results": "{{count}} suggestions",
+    "selected": "Selected {{title}} by {{artist}}",
+    "clear": "Clear choice"
+  },
+  "feedback": {
+    "correct": "Correct!",
+    "wrong": "Not quite. Level {{label}} is open.",
+    "rightArtist": "Right artist!",
+    "rightArtistNote": "But not the right song."
+  },
+  "combo": {
+    "streak": "{{n}}-round streak",
+    "none": "No streak yet",
+    "next": "Guess right at 2s or 5s: next round +{{percent}}%",
+    "nextFirst": "Guess right at 2s or 5s to start a streak"
+  },
+  "timer": {
+    "label": "Time left",
+    "value": "{{seconds}} seconds"
+  },
+  "reveal": {
+    "answer": "Answer",
+    "outcome": {
+      "CORRECT": "Right at level {{label}}",
+      "WRONG_OUT": "Not guessed",
+      "GAVE_UP": "Gave up",
+      "TIMEOUT": "Time is up",
+      "MISSED": "Ran out of time"
+    },
+    "wrongCount": "{{count}} wrong guesses",
+    "listenOn": "Listen in full on {{provider}}",
+    "coverAlt": "Cover art of {{title}}",
+    "coverMissing": "No cover art",
+    "score": {
+      "heading": "This round's score",
+      "base": "Base score",
+      "combo": "Combo",
+      "comboValue": "+{{percent}}% (+{{points}})",
+      "speed": "Speed bonus",
+      "round": "Round score",
+      "total": "Total score",
+      "streak": "Current streak: {{n}} rounds",
+      "none": "none"
+    },
+    "next": "Next round",
+    "finish": "See results"
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "header": {
+    "round": "Vòng {{current}} / {{total}}",
+    "total": "Tổng điểm"
+  },
+  "stage": {
+    "pointsLeft": "điểm còn lại nếu đoán đúng",
+    "level": "Mức {{n}} trên {{max}}",
+    "heading": "Bài này là bài gì?"
+  },
+  "ladder": {
+    "label": "Các mức nghe",
+    "opened": "đã mở",
+    "current": "đang mở",
+    "locked": "chưa mở",
+    "item": "Mức {{n}}: {{label}}, {{points}} điểm, {{state}}"
+  },
+  "controls": {
+    "replay": "Nghe lại",
+    "replayHint": "Không mất điểm",
+    "listenMore": "Nghe thêm",
+    "listenMoreHint": "Mở {{label}}, còn {{points}} điểm",
+    "skip": "Bỏ qua",
+    "skipHint": "Vòng này được 0 điểm"
+  },
+  "audio": {
+    "loading": "Đang tải đoạn nhạc…",
+    "playing": "Đang phát {{label}}",
+    "tapToListen": "Chạm để nghe",
+    "tapHint": "Trình duyệt chưa cho phát tự động.",
+    "errorTitle": "Không tải được đoạn nhạc",
+    "error": {
+      "network": "Kiểm tra kết nối rồi thử lại.",
+      "expired": "Đường dẫn đoạn nhạc đã hết hạn. Bấm thử lại để lấy đường dẫn mới.",
+      "decode": "Không giải mã được đoạn nhạc này. Thử lại hoặc bỏ qua vòng."
+    }
+  },
+  "guess": {
+    "label": "Đoán tên bài",
+    "placeholder": "Gõ tên bài hoặc tên ca sĩ",
+    "submit": "Đoán",
+    "searching": "Đang tìm…",
+    "empty": "Không thấy bài nào khớp",
+    "results": "{{count}} gợi ý",
+    "selected": "Đã chọn {{title}} của {{artist}}",
+    "clear": "Bỏ chọn"
+  },
+  "feedback": {
+    "correct": "Chính xác!",
+    "wrong": "Chưa đúng. Đã mở mức {{label}}.",
+    "rightArtist": "Đúng ca sĩ!",
+    "rightArtistNote": "Nhưng chưa đúng bài."
+  },
+  "combo": {
+    "streak": "Chuỗi {{n}} vòng",
+    "none": "Chưa có chuỗi",
+    "next": "Đoán đúng ở 2s hoặc 5s: vòng sau +{{percent}}%",
+    "nextFirst": "Đoán đúng ở 2s hoặc 5s để nối chuỗi"
+  },
+  "timer": {
+    "label": "Thời gian còn lại",
+    "value": "{{seconds}} giây"
+  },
+  "reveal": {
+    "answer": "Đáp án",
+    "outcome": {
+      "CORRECT": "Đúng ở mức {{label}}",
+      "WRONG_OUT": "Chưa đoán ra",
+      "GAVE_UP": "Đã bỏ qua",
+      "TIMEOUT": "Hết giờ",
+      "MISSED": "Không kịp đoán"
+    },
+    "wrongCount": "Đoán sai {{count}} lần",
+    "listenOn": "Nghe đầy đủ trên {{provider}}",
+    "coverAlt": "Ảnh bìa bài {{title}}",
+    "coverMissing": "Chưa có ảnh bìa",
+    "score": {
+      "heading": "Điểm vòng này",
+      "base": "Điểm cơ bản",
+      "combo": "Combo",
+      "comboValue": "+{{percent}}% (+{{points}})",
+      "speed": "Thưởng tốc độ",
+      "round": "Điểm vòng",
+      "total": "Tổng điểm",
+      "streak": "Chuỗi hiện tại: {{n}} vòng",
+      "none": "không có"
+    },
+    "next": "Vòng tiếp theo",
+    "finish": "Xem kết quả"
+  }
+}

@@ -9,12 +9,14 @@ import java.util.UUID;
  * audio}) to query account lock status synchronously without directly accessing identity tables
  * (ADR-001).
  *
- * <p><strong>Design &amp; Caching:</strong> No cache is used in this initial design. Each check
- * performs a primary key lookup, protected by existing rate limits (e.g. 30 requests/minute per
- * player for audio streaming). If load testing (QA-03 / k6) shows this is a bottleneck, caching
- * will be addressed in a dedicated ticket. Consequence: account locks take effect immediately on
- * the very next request; previously issued tokens are not revoked, but any subsequent downloads or
- * requests will be blocked.
+ * <p><strong>Design &amp; Caching:</strong> No cache is used in this initial design. Each audio
+ * request with a valid token performs a primary key lookup. Because account lock checking occurs
+ * before rate limiting per ticket requirements, the query is not shielded by the rate limiter;
+ * however, cryptographic HMAC verification of the audio token prevents invalid requests from
+ * reaching the database. If load testing (QA-03 / k6) shows this is a bottleneck, caching will be
+ * addressed in a dedicated ticket. Consequence: account locks take effect immediately on the very
+ * next request; previously issued tokens are not revoked, but any subsequent downloads or requests
+ * will be blocked.
  */
 public interface AccountLockQuery {
 

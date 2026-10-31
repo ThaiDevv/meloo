@@ -62,4 +62,39 @@ class IdentityPersistenceIntegrationTest extends IntegrationTest {
     RefreshToken loaded = refreshTokenRepository.findById(tokenId).orElseThrow();
     assertThat(loaded.getTokenHash().trim()).isEqualTo(sha256);
   }
+
+  @Test
+  @DisplayName("existsByIdAndStatus returns true only for matching id and status")
+  void existsByIdAndStatus_returnsExpected() {
+    UUID activeUserId = UUID.randomUUID();
+    appUserRepository.saveAndFlush(
+        AppUser.builder()
+            .id(activeUserId)
+            .kind(UserKind.GUEST)
+            .nickname("activeuser")
+            .status(UserStatus.ACTIVE)
+            .build());
+
+    UUID lockedUserId = UUID.randomUUID();
+    appUserRepository.saveAndFlush(
+        AppUser.builder()
+            .id(lockedUserId)
+            .kind(UserKind.GUEST)
+            .nickname("lockeduser")
+            .status(UserStatus.LOCKED)
+            .lockReason("Terms violation")
+            .lockedAt(Instant.now())
+            .build());
+
+    UUID nonExistentId = UUID.randomUUID();
+
+    assertThat(appUserRepository.existsByIdAndStatus(lockedUserId, UserStatus.LOCKED)).isTrue();
+    assertThat(appUserRepository.existsByIdAndStatus(lockedUserId, UserStatus.ACTIVE)).isFalse();
+
+    assertThat(appUserRepository.existsByIdAndStatus(activeUserId, UserStatus.ACTIVE)).isTrue();
+    assertThat(appUserRepository.existsByIdAndStatus(activeUserId, UserStatus.LOCKED)).isFalse();
+
+    assertThat(appUserRepository.existsByIdAndStatus(nonExistentId, UserStatus.LOCKED)).isFalse();
+    assertThat(appUserRepository.existsByIdAndStatus(nonExistentId, UserStatus.ACTIVE)).isFalse();
+  }
 }

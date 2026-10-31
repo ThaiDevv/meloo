@@ -45,14 +45,13 @@ public class ProblemCorsProcessor extends DefaultCorsProcessor {
     response.getHeaders().setContentType(MediaType.APPLICATION_PROBLEM_JSON);
 
     HttpServletRequest request = currentRequest.get();
-    String instance = request != null ? request.getRequestURI() : "";
     String correlationId = correlationId(request);
 
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "CORS request rejected");
     problem.setType(URI.create("about:blank"));
     problem.setTitle("Forbidden");
-    problem.setInstance(URI.create(instance));
+    problem.setInstance(ProblemInstance.of(request));
     problem.setProperty(ProblemConstants.PROPERTY_CODE, ProblemConstants.CODE_FORBIDDEN);
     problem.setProperty(ProblemConstants.PROPERTY_CORRELATION_ID, correlationId);
 

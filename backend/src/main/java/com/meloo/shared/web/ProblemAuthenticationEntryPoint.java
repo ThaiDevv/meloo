@@ -50,7 +50,7 @@ public class ProblemAuthenticationEntryPoint implements AuthenticationEntryPoint
             HttpStatus.UNAUTHORIZED, "The access token is missing or expired.");
     problem.setType(URI.create("about:blank"));
     problem.setTitle("Unauthorized");
-    problem.setInstance(URI.create(request.getRequestURI()));
+    problem.setInstance(ProblemInstance.of(request));
     problem.setProperty(ProblemConstants.PROPERTY_CODE, ProblemConstants.CODE_UNAUTHORIZED);
     problem.setProperty(ProblemConstants.PROPERTY_CORRELATION_ID, correlationId(request));
 

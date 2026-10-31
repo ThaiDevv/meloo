@@ -41,9 +41,9 @@
     "submit": "Guess",
     "searching": "Searching…",
     "empty": "No matching song",
-    "results": "{{count}} suggestions",
     "selected": "Selected {{title}} by {{artist}}",
-    "clear": "Clear choice"
+    "results_one": "{{count}} suggestion",
+    "results_other": "{{count}} suggestions"
   },
   "feedback": {
     "correct": "Correct!",
@@ -52,10 +52,11 @@
     "rightArtistNote": "But not the right song."
   },
   "combo": {
-    "streak": "{{n}}-round streak",
     "none": "No streak yet",
     "next": "Guess right at 2s or 5s: next round +{{percent}}%",
-    "nextFirst": "Guess right at 2s or 5s to start a streak"
+    "nextFirst": "Guess right at 2s or 5s to start a streak",
+    "streak_one": "{{count}}-round streak",
+    "streak_other": "{{count}}-round streak"
   },
   "timer": {
     "label": "Time left",
@@ -70,7 +71,6 @@
       "TIMEOUT": "Time is up",
       "MISSED": "Ran out of time"
     },
-    "wrongCount": "{{count}} wrong guesses",
     "listenOn": "Listen in full on {{provider}}",
     "coverAlt": "Cover art of {{title}}",
     "coverMissing": "No cover art",
@@ -82,10 +82,13 @@
       "speed": "Speed bonus",
       "round": "Round score",
       "total": "Total score",
-      "streak": "Current streak: {{n}} rounds",
-      "none": "none"
+      "none": "none",
+      "streak_one": "Current streak: {{count}} round",
+      "streak_other": "Current streak: {{count}} rounds"
     },
     "next": "Next round",
-    "finish": "See results"
+    "finish": "See results",
+    "wrongCount_one": "{{count}} wrong guess",
+    "wrongCount_other": "{{count}} wrong guesses"
   }
 }

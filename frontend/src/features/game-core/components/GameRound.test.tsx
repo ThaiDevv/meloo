@@ -105,6 +105,29 @@ describe('GameRound: levels (AC 2)', () => {
     expect(onSkip).toHaveBeenCalledOnce()
   })
 
+  it('gives up from the keyboard at 30 seconds', async () => {
+    const { onSkip } = renderRound({ round: mockRound(5) })
+    screen.getByRole('button', { name: /Bỏ qua/ }).focus()
+    await userEvent.keyboard('{Enter}')
+    expect(onSkip).toHaveBeenCalledOnce()
+  })
+
+  it('decodes the next round ahead of time (AC 6)', async () => {
+    const urls: string[] = []
+    const { http, HttpResponse } = await import('msw')
+    server.use(
+      http.get('*/api/v1/audio/:token', ({ params }) => {
+        urls.push(String(params.token))
+        return new HttpResponse(new ArrayBuffer(8))
+      }),
+    )
+    renderRound({ round: mockRound(1), preloadUrls: [mockRound(1, 4).audio.url] })
+    await waitFor(() => {
+      expect(urls).toHaveLength(2)
+    })
+    expect(urls).toContain('mock-level-1-round-4-Hq3TnV8wYb5RsLd2')
+  })
+
   it('does not let a second click through while a request is in flight', () => {
     renderRound({ round: mockRound(3), busy: true })
     expect(screen.getByRole('button', { name: /Nghe thêm/ })).toBeDisabled()
@@ -237,9 +260,8 @@ describe('GameRound: the answer (AC 5, 7)', () => {
     await waitFor(() => {
       expect(screen.getByText('Đang phát 30s')).toBeInTheDocument()
     })
-    expect(document.body).not.toHaveTextContent(
-      'Chúng Ta Của Hiện Tại'.replace(' Của Hiện Tại', ' Của Hiện'),
-    )
+    expect(document.body).not.toHaveTextContent('Chúng Ta Của Hiện Tại')
+    expect(document.body).not.toHaveTextContent('Sơn Tùng')
     expect(screen.queryByRole('link', { name: /Deezer/ })).not.toBeInTheDocument()
   })
 

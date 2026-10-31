@@ -67,6 +67,7 @@ export function GuessBox({
   }
 
   function pick(track: TrackSuggestion) {
+    window.clearTimeout(timer.current)
     setSelected(track)
     setText(`${track.title} – ${track.artistName}`)
     setOpen(false)
@@ -75,6 +76,7 @@ export function GuessBox({
 
   function submit() {
     if (!selected || disabled) return
+    window.clearTimeout(timer.current)
     onGuess(selected.id)
     setSelected(null)
     setText('')

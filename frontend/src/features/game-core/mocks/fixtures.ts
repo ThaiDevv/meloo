@@ -26,7 +26,10 @@ export function mockRound(
   }
 }
 
-/** A drawn square cover, so the preview needs no network. */
+/**
+ * A drawn square cover, so the preview needs no network. A data: URI is a deliberate exception to
+ * the contract's `https?://` pattern for `coverUrl`; real answers carry a Deezer artwork URL.
+ */
 export const MOCK_COVER_URL =
   'data:image/svg+xml;utf8,' +
   encodeURIComponent(

@@ -55,6 +55,13 @@ describe('RoundReveal', () => {
     expect(screen.getByText('Đúng ở mức 5s')).toBeInTheDocument()
   })
 
+  it('uses singular forms in English', async () => {
+    await i18n.changeLanguage('en')
+    render(<RoundReveal result={{ ...mockResultWithCover, wrongCount: 1, comboStreak: 1 }} />)
+    expect(screen.getByText('1 wrong guess')).toBeInTheDocument()
+    expect(screen.getByText('Current streak: 1 round')).toBeInTheDocument()
+  })
+
   it('uses the reader’s thousands separator', async () => {
     await i18n.changeLanguage('en')
     render(<RoundReveal result={{ ...mockResultWithCover, baseScore: 1000, roundScore: 1100 }} />)
@@ -66,6 +73,13 @@ describe('RoundReveal', () => {
     render(<RoundReveal result={mockResultWrongOut} />)
     expect(screen.getByText('Chưa đoán ra')).toBeInTheDocument()
     expect(screen.getByText('Đoán sai 3 lần')).toBeInTheDocument()
+    const rows = new Map(
+      screen
+        .getAllByRole('term')
+        .map((term) => [term.textContent, term.nextElementSibling?.textContent]),
+    )
+    expect(rows.get('Điểm vòng')).toBe('0')
+    expect(rows.get('Combo')).toBe('—không có')
   })
 
   it('continues, and the button says what comes next', async () => {

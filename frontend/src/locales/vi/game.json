@@ -41,9 +41,9 @@
     "submit": "Đoán",
     "searching": "Đang tìm…",
     "empty": "Không thấy bài nào khớp",
-    "results": "{{count}} gợi ý",
     "selected": "Đã chọn {{title}} của {{artist}}",
-    "clear": "Bỏ chọn"
+    "results_one": "{{count}} gợi ý",
+    "results_other": "{{count}} gợi ý"
   },
   "feedback": {
     "correct": "Chính xác!",
@@ -52,10 +52,11 @@
     "rightArtistNote": "Nhưng chưa đúng bài."
   },
   "combo": {
-    "streak": "Chuỗi {{n}} vòng",
     "none": "Chưa có chuỗi",
     "next": "Đoán đúng ở 2s hoặc 5s: vòng sau +{{percent}}%",
-    "nextFirst": "Đoán đúng ở 2s hoặc 5s để nối chuỗi"
+    "nextFirst": "Đoán đúng ở 2s hoặc 5s để nối chuỗi",
+    "streak_one": "Chuỗi {{count}} vòng",
+    "streak_other": "Chuỗi {{count}} vòng"
   },
   "timer": {
     "label": "Thời gian còn lại",
@@ -70,7 +71,6 @@
       "TIMEOUT": "Hết giờ",
       "MISSED": "Không kịp đoán"
     },
-    "wrongCount": "Đoán sai {{count}} lần",
     "listenOn": "Nghe đầy đủ trên {{provider}}",
     "coverAlt": "Ảnh bìa bài {{title}}",
     "coverMissing": "Chưa có ảnh bìa",
@@ -82,10 +82,13 @@
       "speed": "Thưởng tốc độ",
       "round": "Điểm vòng",
       "total": "Tổng điểm",
-      "streak": "Chuỗi hiện tại: {{n}} vòng",
-      "none": "không có"
+      "none": "không có",
+      "streak_one": "Chuỗi hiện tại: {{count}} vòng",
+      "streak_other": "Chuỗi hiện tại: {{count}} vòng"
     },
     "next": "Vòng tiếp theo",
-    "finish": "Xem kết quả"
+    "finish": "Xem kết quả",
+    "wrongCount_one": "Đoán sai {{count}} lần",
+    "wrongCount_other": "Đoán sai {{count}} lần"
   }
 }

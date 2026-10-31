@@ -1,6 +1,7 @@
 import { FastForward, Play, SkipForward } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/shared/ui/Button'
+import { formatScore } from '../lib/format'
 import { levelLabel, pointsForLevel } from '../lib/levels'
 
 interface ListenControlsProps {
@@ -33,7 +34,7 @@ export function ListenControls({
   onListenMore,
   onSkip,
 }: ListenControlsProps) {
-  const { t } = useTranslation('game')
+  const { t, i18n } = useTranslation('game')
   const nextLabel = levelLabel(nextListenSeconds ?? NEXT_SECONDS[level - 1] ?? 30)
 
   return (
@@ -78,7 +79,10 @@ export function ListenControls({
             {t('controls.listenMore')}
           </span>
           <span className="num text-xs font-normal text-muted-foreground">
-            {t('controls.listenMoreHint', { label: nextLabel, points: pointsForLevel(level + 1) })}
+            {t('controls.listenMoreHint', {
+              label: nextLabel,
+              points: formatScore(pointsForLevel(level + 1), i18n.language),
+            })}
           </span>
         </Button>
       )}

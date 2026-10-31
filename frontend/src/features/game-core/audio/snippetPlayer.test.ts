@@ -58,7 +58,7 @@ describe('SnippetPlayer', () => {
     expect(fetchImpl).toHaveBeenCalledWith('https://api.test/api/v1/audio/abc')
   })
 
-  it('reports how long the clip really ran on the audio clock', async () => {
+  it('passes the elapsed audio-clock time to onEnded (fake clock: not a measurement of real latency)', async () => {
     const { player } = makePlayer()
     const onEnded = vi.fn()
     await player.play('/api/v1/audio/abc', 5, { onEnded })

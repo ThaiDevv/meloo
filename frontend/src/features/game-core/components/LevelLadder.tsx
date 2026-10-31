@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/shared/lib/utils'
+import { formatScore } from '../lib/format'
 import { pointsForLevel } from '../lib/levels'
 
 /** The listening lengths, in order. The server confirms the opened one; the rest are the fixed BR-01 steps. */
@@ -12,14 +13,14 @@ interface LevelLadderProps {
 
 /** Five steps of the round: each shows its length and what a right guess is worth there (BR-01, BR-02). */
 export function LevelLadder({ level, className }: LevelLadderProps) {
-  const { t } = useTranslation('game')
+  const { t, i18n } = useTranslation('game')
   return (
     <ol aria-label={t('ladder.label')} className={cn('grid grid-cols-5 gap-1.5', className)}>
       {LENGTHS.map((length, index) => {
         const n = index + 1
         const state = n < level ? 'opened' : n === level ? 'current' : 'locked'
         const label = `${String(length)}s`
-        const points = pointsForLevel(n)
+        const points = formatScore(pointsForLevel(n), i18n.language)
         return (
           <li
             key={length}

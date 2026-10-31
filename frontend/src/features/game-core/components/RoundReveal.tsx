@@ -39,16 +39,15 @@ export function RoundReveal({
       aria-labelledby="gc-answer-title"
       className="grid gap-6 md:grid-cols-[minmax(0,20rem)_1fr] md:gap-8"
     >
-      <div className="relative">
-        <CoverArt
-          url={answer.coverUrl}
-          title={answer.title}
-          className="gc-cover mx-auto size-52 md:mx-0 md:size-auto md:w-full md:max-w-80"
-        />
+      <div
+        data-outcome={correct ? 'correct' : 'wrong'}
+        className="gc-cover relative mx-auto size-52 md:mx-0 md:size-auto md:w-full md:max-w-80"
+      >
+        <CoverArt url={answer.coverUrl} title={answer.title} className="size-full" />
         {correct ? (
           <span
             aria-hidden="true"
-            className="gc-burst pointer-events-none absolute inset-0 mx-auto size-52 md:mx-0 md:size-auto md:max-w-80 rounded-2xl border-2 border-primary"
+            className="gc-burst pointer-events-none absolute inset-0 rounded-2xl border-2 border-primary"
           />
         ) : null}
       </div>

@@ -42,7 +42,7 @@ export function ScoreBreakdown({ result }: { result: RoundResult }) {
       </p>
       {result.comboStreak > 0 ? (
         <p className="mt-1 text-xs text-faint">
-          {t('reveal.score.streak', { n: result.comboStreak })}
+          {t('reveal.score.streak', { count: result.comboStreak })}
         </p>
       ) : null}
     </section>

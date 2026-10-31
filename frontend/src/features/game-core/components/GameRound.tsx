@@ -120,7 +120,7 @@ function ComboLine({ streak }: { streak: number }) {
   return (
     <p className="text-sm text-muted-foreground">
       <span className={cn('num font-semibold', streak > 0 ? 'text-primary' : 'text-faint')}>
-        {streak > 0 ? t('combo.streak', { n: streak }) : t('combo.none')}
+        {streak > 0 ? t('combo.streak', { count: streak }) : t('combo.none')}
       </span>
       <span className="text-faint"> · </span>
       {streak > 0 ? t('combo.next', { percent }) : t('combo.nextFirst')}

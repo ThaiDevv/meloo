@@ -14,8 +14,9 @@ interface RoundTimerProps {
 const TICK_MS = 100
 
 /**
- * Counts down to `endsAt` on the server's clock: the offset between `serverTime` and this device's
- * clock is measured once, so a wrong device clock does not move the deadline.
+ * Counts down the length of the round (`endsAt` minus `serverTime`) on this device's own clock from
+ * the moment it appears, so a wrong device clock cannot move the deadline. Network delay is not
+ * subtracted: the server judges a late guess (BR-07), this clock is only a guide.
  */
 export function RoundTimer({ timer, onTimeout, className }: RoundTimerProps) {
   const { t } = useTranslation('game')

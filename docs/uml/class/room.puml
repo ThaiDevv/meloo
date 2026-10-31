@@ -1,0 +1,206 @@
+@startuml room
+title Sơ đồ lớp thiết kế - Module Room Realtime (MEL-51, đối chiếu commit c0f723e)
+left to right direction
+skinparam shadowing false
+skinparam linetype ortho
+skinparam nodesep 25
+skinparam ranksep 45
+skinparam defaultFontName DejaVu Sans
+skinparam class {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam package {
+  BackgroundColor #F8F9FA
+  BorderColor black
+}
+
+legend left
+  Thiết kế chi tiết module Room (Phòng chơi & Realtime STOMP).
+  - Actor Model: Mỗi phòng có 1 RoomActor xử lý tuần tự (ADR-007, chống race condition).
+  - Registry: Quản lý vòng đời phòng và ánh xạ WebSocket session.
+  - Event Publisher: Đẩy sự kiện qua STOMP topics (/topic/rooms/{id}/*) và queues (/user/queue/*).
+  - Messages: Định nghĩa đầy đủ Command (client gửi) và Event/Payload (server phát) khớp AsyncAPI 3.
+  Đối chiếu mã nguồn tại commit c0f723e.
+endlegend
+
+package "com.meloo.room.realtime" {
+  class RoomRegistry {
+    - rooms : ConcurrentMap<UUID, RoomRuntime>
+    - sessionRooms : Map<String, Set<RoomUser>>
+    - userSessions : Map<RoomUser, Set<String>>
+    - scheduler : TaskScheduler
+    + register(descriptor : RoomDescriptor, handler : RoomConnectionHandler) : RoomActor
+    + register(descriptor : RoomDescriptor) : RoomActor
+    + actor(roomId : UUID) : Optional<RoomActor>
+    + update(descriptor : RoomDescriptor) : CompletableFuture<Void>
+    + find(roomId : UUID) : Optional<RoomDescriptor>
+    + remove(roomId : UUID) : void
+    + close() : void
+  }
+
+  class RoomActor {
+    - roomId : UUID
+    - queue : ExecutorService
+    - scheduler : TaskScheduler
+    - timers : Set<ScheduledFuture<?>>
+    - closed : AtomicBoolean
+    + submit(command : Supplier<T>) : CompletableFuture<T>
+    + execute(command : Runnable) : CompletableFuture<Void>
+    + schedule(delay : Duration, action : Runnable) : ScheduledFuture<?>
+    + close() : void
+    + closeAsync() : CompletableFuture<Void>
+  }
+
+  class RoomRuntime <<record>> {
+    - descriptor : AtomicReference<RoomDescriptor>
+    - actor : RoomActor
+    - connectionHandler : RoomConnectionHandler
+  }
+
+  class RoomEventPublisher {
+    - messagingTemplate : SimpMessagingTemplate
+    + publish(roomId : UUID, topic : RoomTopic, event : RoomMessage) : void
+    + sendPrivate(userId : UUID, queue : PrivateQueue, event : RoomMessage) : void
+  }
+
+  enum RoomTopic {
+    LOBBY
+    ROUND
+    SCOREBOARD
+    CHAT
+    RTC
+  }
+
+  enum PrivateQueue {
+    ERRORS
+    PRIVATE
+  }
+
+  interface RoomConnectionHandler {
+    + connected(userId : UUID) : void
+    + disconnected(userId : UUID) : void
+    + {static} noOp() : RoomConnectionHandler
+  }
+}
+
+package "com.meloo.room.api" {
+  interface RoomDirectory {
+    + find(roomId : UUID) : Optional<RoomDescriptor>
+    + isMember(roomId : UUID, userId : UUID) : boolean
+  }
+
+  interface ActiveRoundQuery {
+    + findActiveAnswerTitle(roomId : UUID) : Optional<String>
+  }
+
+  class RoomDescriptor <<record>> {
+    + roomId : UUID
+    + memberIds : Set<UUID>
+    + privateRoom : boolean
+    + hasMember(userId : UUID) : boolean
+  }
+}
+
+package "com.meloo.room.api.message (Commands)" {
+  interface RoomMessage
+
+  class ReadyCommand <<record>> implements RoomMessage {
+    + ready : boolean
+  }
+  class StartCommand <<record>> implements RoomMessage
+  class LeaveCommand <<record>> implements RoomMessage
+  class KickCommand <<record>> implements RoomMessage {
+    + targetUserId : UUID
+  }
+  class SettingsCommand <<record>> implements RoomMessage {
+    + playlistId : UUID
+    + totalRounds : int
+  }
+  class ListenMoreCommand <<record>> implements RoomMessage
+  class GuessCommand <<record>> implements RoomMessage {
+    + trackId : UUID
+  }
+  class GiveUpCommand <<record>> implements RoomMessage
+  class ChatCommand <<record>> implements RoomMessage {
+    + content : String
+  }
+  class PreparedCommand <<record>> implements RoomMessage
+  class ResyncCommand <<record>> implements RoomMessage
+  class RtcCommand <<record>> implements RoomMessage {
+    + sdpOrCandidate : String
+  }
+}
+
+package "com.meloo.room.api.message (Events & Payloads)" {
+  class PlayerJoinedEvent <<record>> {
+    + userId : UUID
+    + nickname : String
+    + role : String
+  }
+  class PlayerReadyChangedEvent <<record>> {
+    + userId : UUID
+    + ready : boolean
+  }
+  class MatchStartingEvent <<record>> {
+    + countdownSeconds : int
+    + totalRounds : int
+  }
+  class RoundStartEvent <<record>> {
+    + roundNo : int
+    + durationMs : long
+    + serverTimestamp : long
+  }
+  class RoundAudioClipMessage <<record>> {
+    + token : String
+    + level : int
+    + durationMs : int
+  }
+  class PlayerGuessedEvent <<record>> {
+    + userId : UUID
+    + level : int
+    + serverRemainingMs : long
+  }
+  class RoundEndEvent <<record>> {
+    + roundNo : int
+    + answer : RoundAnswerPayload
+    + results : List<PlayerRoundResultPayload>
+  }
+  class ScoreboardUpdateEvent <<record>> {
+    + rankings : List<PlayerRankingPayload>
+  }
+  class MatchFinishedEvent <<record>> {
+    + matchId : UUID
+    + winnerUserId : UUID
+    + finalRankings : List<PlayerRankingPayload>
+  }
+  class RoundAnswerPayload <<record>> {
+    + trackId : UUID
+    + title : String
+    + artist : String
+    + previewUrl : String
+    + externalUrl : String
+  }
+  class PlayerRoundResultPayload <<record>> {
+    + userId : UUID
+    + scoreDetail : RoundScoreDetailPayload
+    + outcome : String
+  }
+}
+
+' Relationships
+RoomRegistry ..|> RoomDirectory : implements
+RoomRegistry *--> "0..*" RoomRuntime : manages
+RoomRuntime *--> "1" RoomDescriptor : model
+RoomRuntime *--> "1" RoomActor : serial executor
+RoomRuntime *--> "1" RoomConnectionHandler : handler
+
+RoomActor ..> RoomMessage : executes sequentially
+RoomActor --> RoomEventPublisher : triggers broadcast
+
+RoomEventPublisher ..> PlayerJoinedEvent : broadcasts
+RoomEventPublisher ..> RoundStartEvent : broadcasts
+RoomEventPublisher ..> RoundEndEvent : broadcasts
+RoomEventPublisher ..> ScoreboardUpdateEvent : broadcasts
+
+@enduml

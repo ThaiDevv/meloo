@@ -1,0 +1,115 @@
+@startuml seq-tao-va-vao-phong
+title Sơ đồ tuần tự: Tạo và vào phòng chơi (UC-12, UC-13, BR-11, BR-12, BR-15, commit c0f723e)
+autonumber
+skinparam shadowing false
+skinparam defaultFontName DejaVu Sans
+skinparam responseMessageBelowArrow true
+skinparam sequence {
+  ArrowColor black
+  ActorBorderColor black
+  LifeLineBorderColor black
+  LifeLineBackgroundColor white
+  ParticipantBorderColor black
+  ParticipantBackgroundColor white
+  BoxBackgroundColor #F8F9FA
+  BoxBorderColor #CCCCCC
+}
+
+actor "Chủ phòng (Host)" as Host
+actor "Người chơi 2 (Guest)" as Guest
+boundary "Frontend Client" as FE
+
+box "Meloo Backend (Module Room)" #FFFFFF
+  control "RoomController (REST)" as RoomCtrl
+  entity "RoomRegistry" as Registry
+  control "RoomActor (Hàng đợi tuần tự)" as Actor
+  control "RoomEventPublisher" as Pub
+  boundary "STOMP WebSocket Broker" as WS
+end box
+
+== 1. Chủ phòng tạo phòng ==
+
+Host -> FE : Chọn Playlist, số vòng (10), chọn "Phòng riêng", bấm "Tạo phòng"
+activate FE
+
+FE -> RoomCtrl : POST /api/v1/rooms\n{\n  "name": "Nhóm Bạn Thân",\n  "playlistId": "...",\n  "totalRounds": 10,\n  "isPrivate": true\n}
+activate RoomCtrl
+
+note over RoomCtrl
+  BR-11: Sinh mã phòng 6 ký tự ngẫu nhiên (chữ in hoa + số),
+  loại trừ các ký tự dễ nhầm: 0, O, 1, I, L (vd: "MEL89K").
+end note
+
+RoomCtrl -> Registry : register(RoomDescriptor(roomId, hostId, isPrivate=true))
+activate Registry
+
+Registry -> Actor ** : new RoomActor(roomId, scheduler)\n(Khởi tạo hàng đợi lệnh tuần tự cho phòng)
+Registry --> RoomCtrl : roomActor
+deactivate Registry
+
+RoomCtrl --> FE : 201 Created\n{\n  "roomId": "f3b...",\n  "roomCode": "MEL89K",\n  "isHost": true,\n  "settings": { "totalRounds": 10, "maxPlayers": 5 }\n}
+deactivate RoomCtrl
+
+FE -> WS : CONNECT /ws (kèm JWT AccessToken)
+activate WS
+WS --> FE : CONNECTED
+FE -> WS : SUBSCRIBE /topic/rooms/f3b.../lobby
+FE -> WS : SUBSCRIBE /user/queue/private
+FE --> Host : Hiển thị màn hình Sảnh chờ, mã phòng "MEL89K" và nút "Sao chép link"
+
+== 2. Người chơi khác vào phòng bằng mã hoặc link ==
+
+Host -> Guest : Gửi mã "MEL89K" (hoặc link chia sẻ)
+Guest -> FE : Nhập mã phòng "MEL89K", bấm "Vào phòng"
+
+FE -> RoomCtrl : POST /api/v1/rooms/join\n{ "code": "MEL89K" }
+activate RoomCtrl
+
+RoomCtrl -> Registry : findRoom(roomId)
+activate Registry
+Registry --> RoomCtrl : roomDescriptor
+deactivate Registry
+
+note over RoomCtrl
+  Kiểm tra điều kiện vào phòng:
+  - Phòng tồn tại và chưa đủ số người tối đa (mặc định 5 người, BR-11).
+  - Người chơi không nằm trong danh sách bị mời ra (BR-12).
+  - Nếu trận đang diễn ra: người chơi vào danh sách chờ ở sảnh (BR-15).
+end note
+
+RoomCtrl --> FE : 200 OK\n{\n  "roomId": "f3b...",\n  "roomCode": "MEL89K",\n  "isHost": false,\n  "players": [ { "id": "hostId", "nickname": "Host1" } ]\n}
+deactivate RoomCtrl
+
+FE -> WS : CONNECT /ws (kèm JWT Guest)
+WS --> FE : CONNECTED
+FE -> WS : SUBSCRIBE /topic/rooms/f3b.../lobby
+FE -> WS : SUBSCRIBE /user/queue/private
+
+== 3. Đồng bộ trạng thái và sẵn sàng ==
+
+Guest -> FE : Bấm nút "Sẵn sàng"
+FE -> WS : SEND /app/rooms/f3b.../ready\n{ "ready": true }
+
+WS -> Actor : submit(ReadyCommand(userId=Guest, ready=true))
+activate Actor
+note over Actor
+  Xử lý tuần tự trong hàng đợi riêng của phòng.
+  Cập nhật trạng thái người chơi Guest = READY.
+end note
+
+Actor -> Pub : broadcastLobby(roomId, PlayerJoinedEvent(Guest))
+Actor -> Pub : broadcastLobby(roomId, PlayerReadyChangedEvent(Guest, true))
+deactivate Actor
+
+activate Pub
+Pub -> WS : Broadcast tới /topic/rooms/f3b.../lobby
+deactivate Pub
+
+WS --> FE : Nhận PlayerJoinedEvent & PlayerReadyChangedEvent
+FE --> Host : Cập nhật: Guest đã vào phòng và đã SẴN SÀNG (Đủ điều kiện bắt đầu, BR-12)
+FE --> Guest : Hiển thị tích xanh "Đã sẵn sàng"
+
+deactivate FE
+deactivate WS
+
+@enduml

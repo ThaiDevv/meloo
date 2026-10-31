@@ -1,0 +1,90 @@
+@startuml seq-dang-nhap-khach
+title Sơ đồ tuần tự: Đăng nhập khách bằng biệt danh (UC-01, BR-20, BR-22, commit c0f723e)
+autonumber
+skinparam shadowing false
+skinparam defaultFontName DejaVu Sans
+skinparam responseMessageBelowArrow true
+skinparam sequence {
+  ArrowColor black
+  ActorBorderColor black
+  LifeLineBorderColor black
+  LifeLineBackgroundColor white
+  ParticipantBorderColor black
+  ParticipantBackgroundColor white
+  BoxBackgroundColor #F8F9FA
+  BoxBorderColor #CCCCCC
+}
+
+actor "Người dùng" as User
+boundary "Trình duyệt / Client" as FE
+
+box "Meloo Backend (Module Identity)" #FFFFFF
+  control "IdentityController" as Ctrl
+  control "GuestRateLimiter" as Limiter
+  control "NicknameValidator" as Validator
+  entity "GuestAuthService" as Svc
+  database "AppUserRepository" as Repo
+  control "JwtTokenService" as Jwt
+  control "RefreshTokenService" as RT
+  queue "Spring EventBus" as Events
+end box
+
+User -> FE : Nhập biệt danh (3–20 ký tự), bấm "Chơi ngay"
+activate FE
+
+FE -> Ctrl : POST /api/v1/auth/guest\n{ "nickname": "SonTungMTP" }
+activate Ctrl
+
+Ctrl -> Limiter : checkLimit(clientIp)
+activate Limiter
+alt Vượt tần suất (IP spam)
+  Limiter --> Ctrl : throw TooManyRequestsException (429)
+  Ctrl --> FE : 429 Too Many Requests
+  FE --> User : Thông báo thao tác quá nhanh, thử lại sau
+end
+Limiter --> Ctrl : Cho phép (IP hợp lệ)
+deactivate Limiter
+
+Ctrl -> Validator : validate(nickname)
+activate Validator
+alt Biệt danh < 3 hoặc > 20 ký tự, hoặc chứa từ cấm (BR-22)
+  Validator --> Ctrl : throw BadRequestException (400)
+  Ctrl --> FE : 400 Bad Request { code: "INVALID_NICKNAME" }
+  FE --> User : Báo lỗi: Biệt danh không hợp lệ hoặc chứa từ cấm
+end
+Validator --> Ctrl : Hợp lệ
+deactivate Validator
+
+Ctrl -> Svc : authenticateGuest(request)
+activate Svc
+
+Svc -> Repo : save(AppUser(kind=GUEST, nickname, role=USER))
+activate Repo
+Repo --> Svc : appUser (id = UUID)
+deactivate Repo
+
+Svc -> Events : publishEvent(GuestCreated(userId, nickname))
+
+Svc -> Jwt : generateAccessToken(appUser)
+activate Jwt
+Jwt --> Svc : accessToken (JWT, thời hạn 15 phút)
+deactivate Jwt
+
+Svc -> RT : createRefreshToken(appUser)
+activate RT
+RT --> Svc : refreshToken (UUID/Opaque, thời hạn 30 ngày)
+deactivate RT
+
+Svc --> Ctrl : AuthSessionDto(appUser, accessToken, refreshToken)
+deactivate Svc
+
+Ctrl -> Ctrl : Set Cookie "meloo_refresh_token"\n(HttpOnly, Secure, SameSite=Strict, Path=/api/v1/auth)
+
+Ctrl --> FE : 201 Created\n{\n  "accessToken": "ey...",\n  "user": { "id": "...", "nickname": "SonTungMTP", "kind": "GUEST" }\n}
+deactivate Ctrl
+
+FE -> FE : Lưu accessToken vào bộ nhớ (Zustand state)\n(BR-20: Khách chơi được mọi chế độ)
+FE --> User : Điều hướng vào trang chủ, hiển thị biệt danh trên thanh điều hướng
+deactivate FE
+
+@enduml

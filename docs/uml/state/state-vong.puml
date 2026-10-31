@@ -1,0 +1,84 @@
+@startuml state-vong
+title Sơ đồ máy trạng thái: Vòng chơi (Round State Machine - BE-GAME-01, BR-01..07, commit c0f723e)
+skinparam shadowing false
+skinparam defaultFontName DejaVu Sans
+skinparam state {
+  BackgroundColor white
+  BorderColor black
+  ArrowColor black
+  StartColor black
+  EndColor black
+}
+
+[*] --> WAITING : Khởi tạo vòng đấu\n(Round aggregate, TargetTrack, GameRules)
+
+state WAITING as "CHỜ (WAITING)" {
+  WAITING : - status = WAITING
+  WAITING : - outcome = null
+  WAITING : - currentLevel = 1 (2 giây)
+  WAITING : - Sinh token audio 2s (ADR-008)
+}
+
+WAITING --> IN_PROGRESS : start(now) : Bắt đầu vòng\n(Khởi chạy đồng hồ 45s nếu chơi nhiều người, BR-07)
+
+state IN_PROGRESS as "ĐANG CHƠI (IN_PROGRESS)" {
+  state LEVEL_1 as "Mức 1: 2 giây" : Điểm cơ bản: 1.000đ
+  state LEVEL_2 as "Mức 2: 5 giây" : Điểm cơ bản: 800đ
+  state LEVEL_3 as "Mức 3: 10 giây" : Điểm cơ bản: 600đ
+  state LEVEL_4 as "Mức 4: 20 giây" : Điểm cơ bản: 400đ
+  state LEVEL_5 as "Mức 5: 30 giây" : Điểm cơ bản: 200đ, Nút đổi thành "Bỏ qua" (BR-04)
+
+  [*] --> LEVEL_1
+  LEVEL_1 --> LEVEL_2 : Bấm "Nghe thêm" HOẶC đoán sai bài (BR-04)
+  LEVEL_2 --> LEVEL_3 : Bấm "Nghe thêm" HOẶC đoán sai bài (BR-04)
+  LEVEL_3 --> LEVEL_4 : Bấm "Nghe thêm" HOẶC đoán sai bài (BR-04)
+  LEVEL_4 --> LEVEL_5 : Bấm "Nghe thêm" HOẶC đoán sai bài (BR-04)
+
+  note "Mỗi mức nghe lại không giới hạn, không mất điểm (BR-03)" as N_Replay
+}
+
+IN_PROGRESS --> CORRECT : Đoán đúng tên bài hát (BR-05)\n[evaluateGuess() == CORRECT]
+
+state CORRECT as "ĐÚNG (CORRECT)" {
+  CORRECT : - Điểm = Cơ bản × (1 + combo) + Thưởng tốc độ
+  CORRECT : - Đúng ≤ 5s: tăng chuỗi combo (BR-08)
+  CORRECT : - Đúng > 5s: đứt chuỗi combo (BR-08)
+  CORRECT : - Ẩn đáp án với người khác (BR-07)
+}
+
+IN_PROGRESS --> WRONG_OUT : Đoán sai tại Mức 5 (30s)\n[wrongCount == maxAttempts]
+
+state WRONG_OUT as "HẾT LƯỢT (WRONG_OUT)" {
+  WRONG_OUT : - Điểm vòng = 0
+  WRONG_OUT : - Đứt chuỗi combo (streak = 0)
+}
+
+IN_PROGRESS --> GAVE_UP : Bấm "Bỏ qua" tại Mức 5 (30s)\n[giveUp() - BR-04]
+
+state GAVE_UP as "BỎ QUA (GAVE_UP)" {
+  GAVE_UP : - Điểm vòng = 0
+  GAVE_UP : - Đứt chuỗi combo (streak = 0)
+}
+
+IN_PROGRESS --> TIMEOUT : [Nhiều người] Hết 45 giây server\n[timeout() - BR-07]
+
+state TIMEOUT as "HẾT GIỜ (TIMEOUT)" {
+  TIMEOUT : - Điểm vòng = 0
+  TIMEOUT : - Đứt chuỗi combo (streak = 0)
+}
+
+CORRECT --> ENDED : Kết thúc lượt chơi
+WRONG_OUT --> ENDED : Kết thúc lượt chơi
+GAVE_UP --> ENDED : Kết thúc lượt chơi
+TIMEOUT --> ENDED : Kết thúc lượt chơi
+
+state ENDED as "KẾT THÚC (ENDED)" {
+  ENDED : - status = ENDED
+  ENDED : - Dừng phát audio trên mọi client
+  ENDED : - Công bố đáp án, tên bài, ca sĩ, link Deezer (BR-29)
+  ENDED : - Cập nhật điểm tích lũy vào trận đấu
+}
+
+ENDED --> [*]
+
+@enduml

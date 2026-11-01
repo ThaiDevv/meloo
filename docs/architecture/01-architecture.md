@@ -169,7 +169,7 @@ Kiến trúc Meloo được thiết kế với các chiến thuật chuyên bi�
    - Toàn bộ trạng thái phòng chơi, vòng đấu, điểm số người chơi và đồng hồ đếm ngược được duy trì hoàn toàn trong RAM máy chủ (In-memory state).
    - Chỉ tương tác với cơ sở dữ liệu PostgreSQL ở thời điểm khởi tạo trận (đọc danh sách bài hát) và khi kết thúc trận đấu (ghi nhận kết quả, điểm xếp hạng). Thiết kế này hướng tới mục tiêu độ trễ phản hồi sự kiện STOMP < 200 ms (NFR-02, đo bằng k6 WebSocket) và tốc độ API p95 < 300 ms (NFR-01, đo bằng Actuator và k6).
 3. **Tải trước âm thanh phát nhanh (Audio Preloading - NFR-04):**
-   - Trong thời gian đếm ngược 3 giây chuẩn bị bắt đầu vòng chơi, frontend chủ động gọi endpoint audio proxy để nạp sẵn dữ liệu đệm ban đầu vào Web Audio API. Nhờ đó, âm thanh phát ra < 1 s ngay sau khi vòng chính thức bắt đầu (NFR-04, kiểm chứng qua E2E Playwright).
+   - Trong pha chuẩn bị vòng chơi (`ROUND_PREPARE`, thời gian tối đa `timeoutMs` theo `contracts/asyncapi.yaml`), frontend chủ động gọi endpoint audio proxy để nạp sẵn dữ liệu đệm ban đầu vào Web Audio API rồi gửi tin nhắn báo đã sẵn sàng (`/app/rooms/{roomId}/prepared`). Nhờ đó, âm thanh phát ra < 1 s ngay sau khi vòng chính thức bắt đầu (NFR-04, kiểm chứng qua E2E Playwright).
 4. **Tối ưu hóa thời gian tải trang ban đầu (Frontend Speed - NFR-12):**
    - Sử dụng Vite để code-splitting theo route, tree-shaking và nén tài nguyên tối đa.
    - Toàn bộ tài nguyên tĩnh và hiệu ứng âm thanh (sound effects UI) được phân phối qua Vercel Global Anycast CDN, hướng tới mục tiêu chỉ số LCP trang chủ ≤ 2,5 s trên mạng di động (NFR-12, đo bằng Lighthouse).

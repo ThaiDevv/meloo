@@ -15,7 +15,11 @@ export function ListeningLadder() {
   const number = new Intl.NumberFormat(i18n.language)
 
   return (
-    <section aria-labelledby="ladder-heading" className="rounded-3xl bg-surface p-6 sm:p-8">
+    <section
+      aria-labelledby="ladder-heading"
+      style={{ animationDelay: '140ms' }}
+      className="motion-rise rounded-3xl bg-surface p-6 sm:p-8"
+    >
       <h2
         id="ladder-heading"
         className="font-display text-2xl leading-tight font-extrabold tracking-tight"
@@ -61,7 +65,7 @@ export function ListeningLadder() {
           )
         })}
       </ol>
-      <div className="mt-6 space-y-2 text-sm text-muted-foreground">
+      <div className="mt-6 space-y-2 text-base text-muted-foreground">
         <p>{t('play.intro.ladder.note')}</p>
         <p>{t('play.intro.ladder.combo')}</p>
       </div>

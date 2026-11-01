@@ -97,7 +97,6 @@
       }
     },
     "status": {
-      "ranked": "Ranked",
       "practice": "Not ranked"
     },
     "exit": {
@@ -132,8 +131,14 @@
       "action": "Continue that match"
     },
     "summary": {
-      "title": "Match summary",
-      "abandonedTitle": "Match stopped",
+      "title": {
+        "RANKED": "Ranked match summary",
+        "PRACTICE": "Practice match summary"
+      },
+      "abandonedTitle": {
+        "RANKED": "Ranked match stopped",
+        "PRACTICE": "Practice match stopped"
+      },
       "total": "Total score",
       "unit": "points",
       "correct": "{{correct}}/{{total}} songs right",

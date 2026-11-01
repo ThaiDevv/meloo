@@ -97,7 +97,6 @@
       }
     },
     "status": {
-      "ranked": "Tính xếp hạng",
       "practice": "Không xếp hạng"
     },
     "exit": {
@@ -132,8 +131,14 @@
       "action": "Chơi tiếp trận đó"
     },
     "summary": {
-      "title": "Tổng kết trận",
-      "abandonedTitle": "Trận đã dừng",
+      "title": {
+        "RANKED": "Tổng kết trận xếp hạng",
+        "PRACTICE": "Tổng kết trận luyện tập"
+      },
+      "abandonedTitle": {
+        "RANKED": "Trận xếp hạng đã dừng",
+        "PRACTICE": "Trận luyện tập đã dừng"
+      },
       "total": "Tổng điểm",
       "unit": "điểm",
       "correct": "Đúng {{correct}}/{{total}} bài",

@@ -145,7 +145,9 @@ describe('SoloPlayPage', () => {
     expect(await screen.findByTestId('result')).toHaveTextContent('GAVE_UP 0')
     await next(user)
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Tổng kết trận' })).toBeVisible()
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Tổng kết trận xếp hạng' }),
+    ).toBeVisible()
     expect(screen.getByTestId('match-total')).toHaveTextContent('3.900')
     expect(screen.getByText('Đúng 4/5 bài')).toBeInTheDocument()
     expect(screen.getByText('Combo dài nhất 3 vòng')).toBeInTheDocument()
@@ -265,7 +267,9 @@ describe('SoloPlayPage', () => {
 
     const dialog = screen.getByRole('dialog', { name: 'Bỏ trận luyện tập?' })
     await user.click(within(dialog).getByRole('button', { name: 'Bỏ trận' }))
-    expect(await screen.findByRole('heading', { level: 1, name: 'Trận đã dừng' })).toBeVisible()
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Trận luyện tập đã dừng' }),
+    ).toBeVisible()
     expect(screen.getByText('Dừng sau 1/5 vòng, không tính xếp hạng')).toBeInTheDocument()
     expect(screen.getByTestId('match-total')).toHaveTextContent('1.000')
   })
@@ -296,7 +300,7 @@ describe('SoloPlayPage', () => {
       http.get('*/api/v1/solo/matches/:matchId/result', () => HttpResponse.json(resultExample)),
     )
     renderAt(`/solo/${resultExample.matchId}`)
-    await screen.findByRole('heading', { level: 1, name: 'Tổng kết trận' })
+    await screen.findByRole('heading', { level: 1, name: 'Tổng kết trận xếp hạng' })
     vi.stubGlobal('navigator', { userAgent: navigator.userAgent, clipboard: { writeText } })
     await user.click(screen.getByRole('button', { name: 'Chia sẻ' }))
 

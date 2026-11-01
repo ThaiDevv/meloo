@@ -14,19 +14,19 @@ System_Boundary(c1, "Hệ thống Meloo") {
     
     Container(be, "Backend Application (Modular Monolith)", "Spring Boot 4.x, Java 21, Spring Modulith, Spring Security, STOMP Simple Broker", "Cung cấp REST API, quản lý phiên và xác thực JWT/Cookie, điều phối phòng chơi (in-memory queue), streaming proxy audio HMAC, relay tín hiệu WebRTC.")
     
-    ContainerDb(db, "Cơ sở dữ liệu (Database)", "PostgreSQL 17, AWS RDS", "Lưu trữ tài khoản, phân quyền, danh mục bài hát, ca sĩ, bộ đề, lịch sử đấu, điểm Elo bảng xếp hạng và thử thách ngày.")
+    ContainerDb(db, "Cơ sở dữ liệu (Database)", "PostgreSQL 17, AWS RDS", "Lưu trữ tài khoản, phân quyền, danh mục bài hát, ca sĩ, bộ đề, lịch sử đấu, tổng điểm các trận xếp hạng (BR-24) và thử thách ngày.")
 }
 
-System_Ext(google, "Google OAuth 2.0", "Dịch vụ xác thực danh tính người dùng qua Google Sign-In.")
+System_Ext(auth_providers, "Google OAuth 2.0 / Facebook", "Dịch vụ xác thực danh tính người dùng qua Google OAuth 2.0 (FR-02) và Facebook Login (FR-03, S5).")
 System_Ext(deezer, "Deezer Music API & CDN", "Dịch vụ cung cấp thông tin bài hát và luồng MP3 128 kbps (30s preview).")
-System_Ext(turn, "Dịch vụ WebRTC TURN / STUN", "Metered / Xirsys: Cung cấp STUN/TURN server chuyển tiếp media thoại khi kết nối P2P trực tiếp bị chặn.")
+System_Ext(turn, "Dịch vụ WebRTC TURN / STUN bên ngoài", "Cung cấp STUN/TURN server (chưa chọn nhà cung cấp chính thức; ví dụ Metered, Xirsys, Coturn) chuyển tiếp media thoại khi kết nối P2P trực tiếp bị chặn.")
 
 Rel(user, fe, "Tương tác giao diện người dùng", "HTTPS")
 Rel(fe, caddy, "Gửi API request và kết nối WebSocket", "HTTPS, WSS (JSON, STOMP)")
 Rel(caddy, be, "Chuyển tiếp yêu cầu nội bộ", "HTTP (port 8080), WS")
 Rel(be, db, "Đọc / ghi dữ liệu quan hệ", "JDBC / PostgreSQL (port 5432)")
 
-Rel(be, google, "Xác minh Google ID Token", "HTTPS / REST")
+Rel(be, auth_providers, "Xác minh token định danh người dùng", "HTTPS / REST")
 Rel(be, deezer, "Tìm kiếm bài hát & lấy luồng preview", "HTTPS / REST")
 Rel(be, turn, "Lấy thông tin xác thực STUN/TURN tạm thời", "HTTPS / REST")
 

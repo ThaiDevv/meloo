@@ -8,27 +8,30 @@ title Sơ đồ C4 Component - Backend Modular Monolith (Spring Modulith, Java 2
 Container(fe, "Frontend SPA", "React 19, TypeScript", "Giao diện người dùng gửi HTTP REST và tin nhắn STOMP.")
 ContainerDb(db, "Cơ sở dữ liệu", "PostgreSQL 17 RDS", "Lưu trữ dữ liệu toàn hệ thống.")
 System_Ext(deezer, "Deezer Music API", "Nguồn cấp dữ liệu bài hát và audio preview.")
+System_Ext(auth_providers, "Google OAuth 2.0 / Facebook", "Xác thực danh tính (FR-02 Google; FR-03 Facebook).")
 
 Container_Boundary(backend, "Meloo Backend Application") {
-    Component(security, "Security & Identity", "Spring Security 7, JWT, Cookie", "Xác thực khách, Google OAuth2, cấp JWT in-memory và Cookie Refresh HttpOnly. Kiểm soát quyền REST & STOMP.")
+    Component(security, "Security & Identity", "Spring Security 7, JWT, Cookie", "Xác thực khách, OAuth2 (Authorization Code + State + PKCE, ADR-005). Cấp JWT in-memory và Cookie Refresh HttpOnly (lưu hash trong DB). Kiểm soát quyền REST & STOMP.")
     
     Component(room, "Room Module", "Spring STOMP, In-memory Actor Queue", "Điều phối phòng chờ 2-5 người, hàng đợi lệnh tuần tự theo phòng (NFR-08), relay tín hiệu WebRTC (offer/answer/ice).")
     
-    Component(game, "Game Engine Module", "Domain Core, Fuzzy Matcher", "Máy trạng thái vòng đấu (2s->30s), so khớp đáp án tên bài hát, tính điểm cơ bản, combo và thưởng tốc độ.")
+    Component(game, "Game Engine Module", "Domain Core, TitleNormalizer", "Máy trạng thái vòng đấu (2s->30s), so khớp đáp án tên bài hát sau khi chuẩn hóa (BR-05), tính điểm cơ bản, combo và thưởng tốc độ.")
     
     Component(audio, "Audio Streaming Proxy", "HMAC Token, CBR Truncator", "Cấp token mờ HMAC thời hạn ngắn (<= 2 phút). Proxy trực tiếp luồng audio từ Deezer và cắt byte theo mức nghe mà không tải toàn bộ vào RAM.")
     
     Component(catalog, "Music Catalog Module", "Spring Data JPA, Deezer Client", "Quản lý bài hát, ca sĩ, thể loại, bộ đề. Tìm kiếm autocomplete và nhập bài hát từ nhà cung cấp.")
     
-    Component(progression, "Progression Module", "ApplicationModuleListener", "Tích lũy kinh nghiệm, tính toán điểm xếp hạng Elo sau trận, lưu lịch sử thi đấu và bảng xếp hạng.")
+    Component(progression, "Progression Module", "ApplicationModuleListener", "Tích lũy kinh nghiệm, tính toán tổng điểm các trận xếp hạng (BR-24) sau trận, lưu lịch sử thi đấu và bảng xếp hạng.")
     
-    Component(daily, "Daily Challenge Module", "Scheduled, JPA", "Quản lý thử thách đoán nhạc hàng ngày với bộ đề cố định cho mọi người chơi trong ngày.")
+    Component(daily, "Daily Challenge Module", "Scheduled, JPA", "Quản lý thử thách đoán nhạc hàng ngày với bộ đề chung đổi vào 00:00 giờ Việt Nam (BR-25).")
     
     Component(chat, "Chat Module", "STOMP Messaging", "Xử lý tin nhắn văn bản tức thời trong phòng chơi, lọc từ thô tục và chống spam.")
     
     Component(voice, "Voice Signaler", "TURN Client, STOMP", "Cấp phát credential TURN tạm thời và hỗ trợ thiết lập mạng WebRTC thoại.")
     
     Component(admin, "Admin Module", "REST Controller, JPA", "Giao diện API quản trị viên duyệt nội dung, quản lý bộ đề thi đấu.")
+
+    Component(shared, "Shared Module", "api, config, web", "Thư viện nội bộ chứa cấu hình dùng chung, xử lý lỗi toàn cục ProblemDetail, tiện ích bảo mật và kiểm tra phạm vi.")
 }
 
 Rel(fe, security, "Đăng nhập khách, OAuth2, Refresh Token", "HTTPS / REST")
@@ -37,21 +40,22 @@ Rel(fe, catalog, "Tìm kiếm bài hát, xem danh sách bộ đề", "HTTPS / RE
 Rel(fe, game, "Bắt đầu trận chơi đơn, gửi lượt đoán (/api/v1/solo/**)", "HTTPS / REST")
 Rel(fe, room, "Lệnh phòng, sẵn sàng, gửi đoán (/app/rooms/**)", "WSS / STOMP")
 Rel(fe, chat, "Gửi tin nhắn phòng (/app/rooms/{id}/chat)", "WSS / STOMP")
-Rel(fe, voice, "Yêu cầu TURN credential (/api/v1/voice/turn)", "HTTPS / REST")
-Rel(fe, progression, "Xem bảng xếp hạng, lịch sử (/api/v1/leaderboard/**)", "HTTPS / REST")
-Rel(fe, daily, "Lấy thông tin thử thách ngày (/api/v1/daily/**)", "HTTPS / REST")
+Rel(fe, voice, "Yêu cầu TURN credential (dự kiến: /api/v1/voice/turn, chờ CT-03)", "HTTPS / REST")
+Rel(fe, progression, "Xem bảng xếp hạng, lịch sử (dự kiến: /api/v1/leaderboard/**, chờ CT-03)", "HTTPS / REST")
+Rel(fe, daily, "Lấy thông tin thử thách ngày (dự kiến: /api/v1/daily/**, chờ CT-03)", "HTTPS / REST")
 
+Rel(security, auth_providers, "Trao đổi mã ủy quyền OAuth2 & xác minh ID Token", "HTTPS / REST")
 Rel(room, game, "Ủy quyền xử lý vòng đấu và phân xử đoán", "Java API call")
 Rel(game, audio, "Yêu cầu cấp token mờ cho vòng và mức nghe", "Java API (audio/api)")
 Rel(game, catalog, "Lấy thông tin bài hát mục tiêu bí mật cho vòng", "Java API (catalog/api)")
-Rel_Back(progression, game, "Lắng nghe sự kiện Round/GameFinishedEvent sau commit", "@ApplicationModuleListener")
+Rel_Back(progression, game, "Lắng nghe sự kiện MatchFinished / MatchStarted sau commit", "@ApplicationModuleListener")
 
 Rel(audio, deezer, "Chuyển tiếp luồng âm thanh preview MP3", "HTTPS / Streaming")
 Rel(catalog, deezer, "Tìm kiếm và đồng bộ danh mục bài hát", "HTTPS / REST")
 
-Rel(security, db, "Lưu thông tin tài khoản, quyền", "JDBC / JPA")
+Rel(security, db, "Lưu thông tin tài khoản, hash refresh token", "JDBC / JPA")
 Rel(catalog, db, "Truy vấn và lưu bài hát, playlist", "JDBC / JPA")
-Rel(progression, db, "Cập nhật Elo, exp, lưu ván đấu", "JDBC / JPA")
+Rel(progression, db, "Cập nhật tổng điểm xếp hạng, EXP, lưu ván đấu", "JDBC / JPA")
 Rel(daily, db, "Lưu kết quả chơi ngày", "JDBC / JPA")
 
 @enduml

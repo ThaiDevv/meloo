@@ -1,0 +1,28 @@
+@startuml c4-context
+!include <C4/C4_Context>
+
+LAYOUT_WITH_LEGEND()
+
+title Sơ đồ C4 Context - Hệ thống đoán nhạc Meloo (C4 Level 1)
+
+Person(guest, "Khách (Guest)", "Người chơi trải nghiệm nhanh không cần đăng ký tài khoản; tham gia chơi đơn, thử thách ngày, phòng chơi qua link mời.")
+Person(user, "Người chơi (Member)", "Người chơi đăng nhập qua Google OAuth2 (và Facebook trong tương lai - FR-03); lưu tiến trình (cấp độ, EXP), tổng điểm các trận xếp hạng (BR-24) và lịch sử thi đấu.")
+Person(admin, "Quản trị viên (Admin)", "Người vận hành quản trị kho nhạc, danh mục bài hát, bộ đề và giám sát phòng chơi.")
+
+System(meloo, "Hệ thống Meloo", "Cho phép người dùng chơi game đoán tên bài hát theo các đoạn nghe tăng dần (2s -> 30s), hỗ trợ chơi đơn, thử thách ngày và phòng nhiều người realtime (2-5 người) kèm voice chat.")
+
+System_Ext(auth_providers, "Nhà cung cấp danh tính (Google OAuth 2.0 / Facebook)", "Dịch vụ xác thực danh tính người dùng qua Google OAuth 2.0 (FR-02) và Facebook Login (FR-03, S5).")
+System_Ext(deezer, "Deezer Music API & CDN", "Nguồn cung cấp dữ liệu bài hát và luồng âm thanh preview 30 giây (MP3 128 kbps).")
+System_Ext(turn, "Dịch vụ WebRTC TURN / STUN bên ngoài", "Cung cấp máy chủ STUN/TURN (chưa chọn nhà cung cấp chính thức, ví dụ: Metered, Xirsys, hoặc Coturn tự host) để thiết lập kênh thoại WebRTC P2P qua NAT đối xứng.")
+
+Rel(guest, meloo, "Chơi đơn, thử thách ngày, tham gia phòng", "HTTPS, WSS")
+Rel(user, meloo, "Đăng nhập, chơi xếp hạng, tạo phòng, tích lũy tiến trình", "HTTPS, WSS")
+Rel(admin, meloo, "Quản lý danh mục nhạc, bộ đề, cấu hình game", "HTTPS")
+
+Rel(meloo, auth_providers, "Xác thực danh tính & lấy thông tin tài khoản", "HTTPS / REST")
+Rel(meloo, deezer, "Truy vấn catalog & proxy luồng preview audio", "HTTPS / REST")
+Rel(meloo, turn, "Cấp phát thông tin chứng thực TURN tạm thời", "HTTPS / REST")
+Rel(user, turn, "Chuyển tiếp gói thoại P2P voice chat khi NAT đối xứng", "UDP/TCP / SRTP")
+Rel(guest, turn, "Chuyển tiếp gói thoại P2P voice chat khi NAT đối xứng", "UDP/TCP / SRTP")
+
+@enduml

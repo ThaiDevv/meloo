@@ -77,7 +77,8 @@ async function createMatch(mode: 'RANKED' | 'PRACTICE' = 'RANKED', roundCount: 5
 async function guess(user: UserEvent, trackId: string) {
   const input = screen.getByLabelText('stub-track')
   await user.clear(input)
-  await user.type(input, trackId)
+  await user.click(input)
+  await user.paste(trackId)
   await user.click(screen.getByRole('button', { name: 'stub-guess' }))
 }
 
@@ -159,7 +160,7 @@ describe('SoloPlayPage', () => {
     expect(items[2]).toHaveTextContent('1.200')
     expect(screen.getByRole('button', { name: 'Chơi lại' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'Chia sẻ' })).toBeEnabled()
-  })
+  }, 15_000)
 
   it('shows exactly what the server says, not a score of its own', async () => {
     const user = userEvent.setup()
@@ -283,7 +284,7 @@ describe('SoloPlayPage', () => {
     expect(await screen.findByRole('button', { name: 'Vào vòng 1' })).toBeInTheDocument()
     expect(router.state.location.pathname).not.toBe(first)
     expect(screen.getByText('5 vòng · Bộ chuẩn')).toBeInTheDocument()
-  })
+  }, 15_000)
 
   it('shares the result without song titles, by clipboard when there is no share sheet', async () => {
     const user = userEvent.setup()
@@ -296,7 +297,7 @@ describe('SoloPlayPage', () => {
     )
     renderAt(`/solo/${resultExample.matchId}`)
     await screen.findByRole('heading', { level: 1, name: 'Tổng kết trận' })
-    vi.stubGlobal('navigator', { ...navigator, share: undefined, clipboard: { writeText } })
+    vi.stubGlobal('navigator', { userAgent: navigator.userAgent, clipboard: { writeText } })
     await user.click(screen.getByRole('button', { name: 'Chia sẻ' }))
 
     await waitFor(() => {

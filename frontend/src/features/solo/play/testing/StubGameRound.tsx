@@ -37,7 +37,13 @@ export function StubGameRound(props: GameRoundProps) {
             />
           </label>
           <p data-testid="suggestions">{props.suggestions?.map((s) => s.title).join('|')}</p>
-          <button type="button" disabled={props.busy} onClick={() => props.onGuess(trackId)}>
+          <button
+            type="button"
+            disabled={props.busy}
+            onClick={() => {
+              props.onGuess(trackId)
+            }}
+          >
             stub-guess
           </button>
           <button

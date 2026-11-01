@@ -62,5 +62,120 @@
   "sound": {
     "label": "Sound",
     "hint": "Turn it on and every tap plays a note, higher towards the right."
+  },
+  "play": {
+    "loading": "Opening the match…",
+    "mode": {
+      "RANKED": "Ranked match",
+      "PRACTICE": "Practice match"
+    },
+    "rounds": "{{n}} rounds",
+    "music": {
+      "standard": "Standard set",
+      "wholeCatalog": "Whole catalogue",
+      "filters": "{{n}} filter choices"
+    },
+    "intro": {
+      "progress": "At round {{round}} / {{total}} · {{score}} points",
+      "start": "Start round 1",
+      "resume": "Continue round {{n}}",
+      "ranked": {
+        "title": "This match counts for the ranking",
+        "body": "The standard set, the same music for everyone. A ranked match cannot be abandoned: if you leave, it is kept for 30 minutes so you can come back and finish it.",
+        "guest": "You are playing as a guest, so your score is not on the board yet. When you sign in, your ranked scores are merged and appear on the board."
+      },
+      "practice": {
+        "title": "This match does not count for the ranking",
+        "body": "You chose the music, so the score stays off the board. Points, combos, history and badges still count."
+      },
+      "ladder": {
+        "heading": "Hear less, score more",
+        "item": "{{label}}: {{points}} points",
+        "unit": "points",
+        "note": "Replaying what is open is free. A wrong guess opens the next level.",
+        "combo": "Right at 2s or 5s several rounds in a row: the second round earns 10% more, from the third on 20% more of the base score."
+      }
+    },
+    "status": {
+      "practice": "Not ranked"
+    },
+    "exit": {
+      "button": "Quit",
+      "stay": "Keep playing",
+      "ranked": {
+        "title": "Leave the ranked match?",
+        "body": "A ranked match cannot be abandoned. It is kept for 30 minutes: come back within that time to continue this very round. After 30 minutes it becomes abandoned and does not count for the ranking.",
+        "confirm": "Leave"
+      },
+      "practice": {
+        "title": "Quit the practice match?",
+        "body": "Finished rounds are kept. The round in play does not count.",
+        "confirm": "Quit match"
+      },
+      "failed": "Could not quit the match. Please try again."
+    },
+    "errors": {
+      "action": "That did not go through. Check your connection and try again.",
+      "rateLimited": "You are going too fast. Wait a moment and try again.",
+      "loadTitle": "Could not open the match",
+      "loadBody": "Check your connection and try again."
+    },
+    "missing": {
+      "title": "This match was not found",
+      "body": "It does not exist or it is not yours.",
+      "action": "Start a new match"
+    },
+    "other": {
+      "title": "You have another match in progress",
+      "body": "Each player has one match in progress at a time. Finish that one before starting a new one.",
+      "action": "Continue that match"
+    },
+    "summary": {
+      "title": {
+        "RANKED": "Ranked match summary",
+        "PRACTICE": "Practice match summary"
+      },
+      "abandonedTitle": {
+        "RANKED": "Ranked match stopped",
+        "PRACTICE": "Practice match stopped"
+      },
+      "total": "Total score",
+      "unit": "points",
+      "correct": "{{correct}}/{{total}} songs right",
+      "longestCombo_one": "Longest combo {{count}} round",
+      "longestCombo_other": "Longest combo {{count}} rounds",
+      "noCombo": "No combo yet",
+      "ranked": "Counted for the ranking",
+      "unranked": "Not ranked",
+      "abandoned": "Stopped after {{done}}/{{total}} rounds, not ranked",
+      "playAgain": "Play again",
+      "starting": "Creating the match…",
+      "share": "Share",
+      "change": "Change mode or music",
+      "roundsHeading": "Round by round",
+      "round": "Round {{n}}",
+      "outcome": {
+        "CORRECT": "Right at {{label}}",
+        "WRONG_OUT": "Not guessed",
+        "GAVE_UP": "Skipped",
+        "TIMEOUT": "Time up",
+        "MISSED": "Missed"
+      },
+      "combo": "+{{percent}}% combo",
+      "noRounds": "No round finished yet.",
+      "guestNote": "You are playing as a guest: the score reaches the board once you sign in."
+    },
+    "share": {
+      "title": "My Meloo result",
+      "headline": {
+        "RANKED": "Meloo · Ranked single play",
+        "PRACTICE": "Meloo · Practice single play"
+      },
+      "score": "{{score}} points · {{correct}}/{{total}} songs right · longest combo {{combo}}",
+      "round": "Round {{n}}: {{outcome}}",
+      "invite": "Can you beat me?",
+      "copied": "Result copied. Paste it anywhere.",
+      "failed": "Could not share. Please try again."
+    }
   }
 }

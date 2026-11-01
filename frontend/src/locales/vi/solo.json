@@ -62,5 +62,120 @@
   "sound": {
     "label": "Âm thanh",
     "hint": "Bật rồi chạm vào đâu cũng có một nốt nhạc, càng sang phải càng cao."
+  },
+  "play": {
+    "loading": "Đang mở trận…",
+    "mode": {
+      "RANKED": "Trận xếp hạng",
+      "PRACTICE": "Trận luyện tập"
+    },
+    "rounds": "{{n}} vòng",
+    "music": {
+      "standard": "Bộ chuẩn",
+      "wholeCatalog": "Toàn bộ kho nhạc",
+      "filters": "{{n}} lựa chọn bộ lọc"
+    },
+    "intro": {
+      "progress": "Đang ở vòng {{round}} / {{total}} · {{score}} điểm",
+      "start": "Vào vòng 1",
+      "resume": "Chơi tiếp vòng {{n}}",
+      "ranked": {
+        "title": "Trận này tính xếp hạng",
+        "body": "Bộ chuẩn, ai cũng nghe cùng một kho nhạc. Trận xếp hạng không bỏ dở được: lỡ rời đi, trận được giữ 30 phút để bạn quay lại chơi tiếp.",
+        "guest": "Bạn đang chơi bằng khách nên điểm chưa lên bảng. Khi đăng nhập, điểm các trận xếp hạng sẽ được gộp và lên bảng."
+      },
+      "practice": {
+        "title": "Trận này không tính xếp hạng",
+        "body": "Bạn tự chọn bộ nhạc nên điểm không lên bảng. Điểm, combo, lịch sử và huy hiệu vẫn được tính."
+      },
+      "ladder": {
+        "heading": "Nghe càng ít, điểm càng cao",
+        "item": "{{label}}: {{points}} điểm",
+        "unit": "điểm",
+        "note": "Nghe lại đoạn đã mở không mất điểm. Đoán sai thì mở mức tiếp theo.",
+        "combo": "Đúng ở 2s hoặc 5s nhiều vòng liền: vòng thứ hai được thêm 10%, từ vòng thứ ba thêm 20% điểm cơ bản."
+      }
+    },
+    "status": {
+      "practice": "Không xếp hạng"
+    },
+    "exit": {
+      "button": "Thoát",
+      "stay": "Ở lại chơi",
+      "ranked": {
+        "title": "Rời trận xếp hạng?",
+        "body": "Trận xếp hạng không bỏ dở được. Trận được giữ 30 phút: quay lại trong thời gian đó để chơi tiếp đúng vòng này. Quá 30 phút, trận thành bỏ dở và không tính xếp hạng.",
+        "confirm": "Rời trận"
+      },
+      "practice": {
+        "title": "Bỏ trận luyện tập?",
+        "body": "Các vòng đã xong vẫn được lưu. Vòng đang chơi không được tính.",
+        "confirm": "Bỏ trận"
+      },
+      "failed": "Không bỏ được trận. Hãy thử lại."
+    },
+    "errors": {
+      "action": "Không gửi được. Kiểm tra kết nối rồi thử lại.",
+      "rateLimited": "Bạn thao tác quá nhanh. Hãy đợi một chút rồi thử lại.",
+      "loadTitle": "Không mở được trận",
+      "loadBody": "Kiểm tra kết nối rồi thử lại."
+    },
+    "missing": {
+      "title": "Không tìm thấy trận này",
+      "body": "Trận không tồn tại hoặc không phải của bạn.",
+      "action": "Chọn trận mới"
+    },
+    "other": {
+      "title": "Bạn đang có một trận khác chưa xong",
+      "body": "Mỗi người chỉ có một trận đang chơi. Chơi xong trận đó rồi hãy mở trận mới.",
+      "action": "Chơi tiếp trận đó"
+    },
+    "summary": {
+      "title": {
+        "RANKED": "Tổng kết trận xếp hạng",
+        "PRACTICE": "Tổng kết trận luyện tập"
+      },
+      "abandonedTitle": {
+        "RANKED": "Trận xếp hạng đã dừng",
+        "PRACTICE": "Trận luyện tập đã dừng"
+      },
+      "total": "Tổng điểm",
+      "unit": "điểm",
+      "correct": "Đúng {{correct}}/{{total}} bài",
+      "longestCombo_one": "Combo dài nhất {{count}} vòng",
+      "longestCombo_other": "Combo dài nhất {{count}} vòng",
+      "noCombo": "Chưa có combo",
+      "ranked": "Đã tính vào xếp hạng",
+      "unranked": "Không tính xếp hạng",
+      "abandoned": "Dừng sau {{done}}/{{total}} vòng, không tính xếp hạng",
+      "playAgain": "Chơi lại",
+      "starting": "Đang tạo trận…",
+      "share": "Chia sẻ",
+      "change": "Đổi chế độ hoặc bộ nhạc",
+      "roundsHeading": "Từng vòng",
+      "round": "Vòng {{n}}",
+      "outcome": {
+        "CORRECT": "Đúng ở {{label}}",
+        "WRONG_OUT": "Chưa đoán ra",
+        "GAVE_UP": "Bỏ qua",
+        "TIMEOUT": "Hết giờ",
+        "MISSED": "Không kịp đoán"
+      },
+      "combo": "+{{percent}}% combo",
+      "noRounds": "Chưa xong vòng nào.",
+      "guestNote": "Bạn đang chơi bằng khách: điểm sẽ lên bảng khi bạn đăng nhập."
+    },
+    "share": {
+      "title": "Kết quả Meloo",
+      "headline": {
+        "RANKED": "Meloo · Chơi đơn xếp hạng",
+        "PRACTICE": "Meloo · Chơi đơn luyện tập"
+      },
+      "score": "{{score}} điểm · đúng {{correct}}/{{total}} bài · combo dài nhất {{combo}}",
+      "round": "Vòng {{n}}: {{outcome}}",
+      "invite": "Thử vượt mình:",
+      "copied": "Đã chép kết quả. Dán vào đâu cũng được.",
+      "failed": "Không chia sẻ được. Hãy thử lại."
+    }
   }
 }

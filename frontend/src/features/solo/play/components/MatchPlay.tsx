@@ -38,7 +38,10 @@ export function MatchPlay({ match, onExit, onFinished }: MatchPlayProps) {
   const finish = () => {
     actions.result.mutate(undefined, {
       onSuccess: onFinished,
-      onError: fail,
+      // Not after a resync: a 409 here and a 409 there would only ask each other again.
+      onError: (error) => {
+        fail(error, false)
+      },
     })
   }
 
@@ -55,13 +58,13 @@ export function MatchPlay({ match, onExit, onFinished }: MatchPlayProps) {
     })
   }
 
-  function fail(error: unknown) {
+  function fail(error: unknown, resyncOnConflict = true) {
     if (error instanceof SoloApiError) {
       if (error.status === 401 || error.status === 403) {
         void navigate('/start', { state: { from: `/solo/${match.matchId}` } })
         return
       }
-      if (error.status === 409) {
+      if (error.status === 409 && resyncOnConflict) {
         resync()
         return
       }
@@ -108,7 +111,9 @@ export function MatchPlay({ match, onExit, onFinished }: MatchPlayProps) {
                 nonce.current += 1
                 dispatch({ type: 'guessed', response, nonce: nonce.current })
               },
-              onError: fail,
+              onError: (error) => {
+                fail(error)
+              },
             },
           )
         }}
@@ -119,7 +124,9 @@ export function MatchPlay({ match, onExit, onFinished }: MatchPlayProps) {
               onSuccess: (next) => {
                 dispatch({ type: 'level-opened', round: next })
               },
-              onError: fail,
+              onError: (error) => {
+                fail(error)
+              },
             },
           )
         }}
@@ -130,7 +137,9 @@ export function MatchPlay({ match, onExit, onFinished }: MatchPlayProps) {
               onSuccess: (end) => {
                 dispatch({ type: 'round-ended', end })
               },
-              onError: fail,
+              onError: (error) => {
+                fail(error)
+              },
             },
           )
         }}

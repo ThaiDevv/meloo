@@ -2,6 +2,7 @@ import { RotateCcw, Share2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { CoverArt, type RoundResult } from '@/features/game-core'
+import { useSessionStore } from '@/shared/session/store'
 import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/Button'
 import type { MatchResult } from '../api/soloMatchApi'
@@ -22,6 +23,7 @@ export function MatchSummary({ result, replaying = false, onReplay, onShare }: M
   const number = new Intl.NumberFormat(i18n.language)
   const abandoned = result.status === 'ABANDONED'
   const combo = longestCombo(result)
+  const isGuest = useSessionStore((s) => s.role === 'GUEST')
 
   return (
     <div className="grid gap-12 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:items-start lg:gap-16">
@@ -63,6 +65,9 @@ export function MatchSummary({ result, replaying = false, onReplay, onShare }: M
                 })
               : t(result.ranked ? 'play.summary.ranked' : 'play.summary.unranked')}
           </li>
+          {result.ranked && isGuest ? (
+            <li className="text-base text-muted-foreground">{t('play.summary.guestNote')}</li>
+          ) : null}
         </ul>
 
         <div style={rise(3)} className="motion-rise mt-8 flex flex-wrap items-center gap-3">

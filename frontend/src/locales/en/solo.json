@@ -162,7 +162,8 @@
         "MISSED": "Missed"
       },
       "combo": "+{{percent}}% combo",
-      "noRounds": "No round finished yet."
+      "noRounds": "No round finished yet.",
+      "guestNote": "You are playing as a guest: the score reaches the board once you sign in."
     },
     "share": {
       "title": "My Meloo result",

@@ -4,6 +4,7 @@ import { Navigate, useBlocker, useNavigate, useParams } from 'react-router-dom'
 import { toast } from '@/shared/ui/toast-store'
 import { CreateSoloMatchError, useCreateSoloMatch } from '../setup/api/useCreateSoloMatch'
 import {
+  SoloApiError,
   useSoloMatchActions,
   useSoloMatchLoad,
   type CreateSoloMatchRequest,
@@ -86,7 +87,7 @@ function ActiveMatch({
 }) {
   const { t } = useTranslation('solo')
   const navigate = useNavigate()
-  const { abandon } = useSoloMatchActions(match.matchId)
+  const { abandon, result } = useSoloMatchActions(match.matchId)
   const [playing, setPlaying] = useState(false)
   const [asking, setAsking] = useState(false)
   const leaving = useRef(false)
@@ -130,8 +131,24 @@ function ActiveMatch({
         if (blocker.state === 'blocked') leave()
         else onEnded(result)
       },
-      onError: () => {
-        toast({ title: t('play.exit.failed'), tone: 'negative' })
+      onError: (error) => {
+        const status = error instanceof SoloApiError ? error.status : 0
+        if (status === 401 || status === 403) {
+          leaving.current = true
+          void navigate('/start', { state: { from: `/solo/${match.matchId}` } })
+        } else if (status === 409) {
+          // Already over (it expired after 30 minutes, BR-23): show what the server kept.
+          result.mutate(undefined, {
+            onSuccess: onEnded,
+            onError: () => {
+              toast({ title: t('play.exit.failed'), tone: 'negative' })
+            },
+          })
+        } else if (status === 429) {
+          toast({ title: t('play.errors.rateLimited'), tone: 'negative' })
+        } else {
+          toast({ title: t('play.exit.failed'), tone: 'negative' })
+        }
       },
     })
   }

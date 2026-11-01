@@ -274,6 +274,43 @@ describe('SoloPlayPage', () => {
     expect(screen.getByTestId('match-total')).toHaveTextContent('1.000')
   })
 
+  it('shows what the server kept when a practice match had already expired', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.post('*/api/v1/solo/matches/:matchId/abandon', () =>
+        HttpResponse.json({ code: 'MATCH_NOT_IN_PROGRESS' }, { status: 409, headers: problem }),
+      ),
+      http.get('*/api/v1/solo/matches/:matchId/result', () =>
+        HttpResponse.json({
+          ...resultExample,
+          mode: 'PRACTICE',
+          ranked: false,
+          status: 'ABANDONED',
+        }),
+      ),
+    )
+    renderAt(`/solo/${await createMatch('PRACTICE', 5)}`)
+    await user.click(await screen.findByRole('button', { name: 'Thoát' }))
+    await user.click(screen.getByRole('button', { name: 'Bỏ trận' }))
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Trận luyện tập đã dừng' }),
+    ).toBeVisible()
+  })
+
+  it('reminds a guest on a ranked summary that the score reaches the board after signing in', async () => {
+    useSessionStore.getState().setRole('GUEST')
+    server.use(
+      http.get('*/api/v1/solo/matches/active', () =>
+        HttpResponse.json({ code: 'NO_ACTIVE_MATCH' }, { status: 404, headers: problem }),
+      ),
+      http.get('*/api/v1/solo/matches/:matchId/result', () => HttpResponse.json(resultExample)),
+    )
+    renderAt(`/solo/${resultExample.matchId}`)
+    expect(
+      await screen.findByText('Bạn đang chơi bằng khách: điểm sẽ lên bảng khi bạn đăng nhập.'),
+    ).toBeInTheDocument()
+  })
+
   it('plays again with the same settings in a fresh match', async () => {
     const user = userEvent.setup()
     const router = renderAt(`/solo/${await createMatch('RANKED', 5)}`)

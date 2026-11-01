@@ -162,7 +162,8 @@
         "MISSED": "Không kịp đoán"
       },
       "combo": "+{{percent}}% combo",
-      "noRounds": "Chưa xong vòng nào."
+      "noRounds": "Chưa xong vòng nào.",
+      "guestNote": "Bạn đang chơi bằng khách: điểm sẽ lên bảng khi bạn đăng nhập."
     },
     "share": {
       "title": "Kết quả Meloo",

@@ -8,7 +8,7 @@
 | `/start` (đặt biệt danh) | `features/auth/guest` | FE-AUTH-01 |
 | `/auth/callback` | `features/auth/oauth` | FE-AUTH-02 |
 | `/solo` | `features/solo/setup` | FE-SOLO-01 |
-| `/solo/:sessionId` | `features/solo/play` | FE-SOLO-02 |
+| `/solo/:matchId` | `features/solo/play` | FE-SOLO-02 |
 | `/daily` | `features/daily` | FE-DAILY-01 |
 | `/rooms/new` | `features/room/lobby` | FE-ROOM-01 |
 | `/r/:code` (sảnh chờ) | `features/room/lobby` | FE-ROOM-01 |

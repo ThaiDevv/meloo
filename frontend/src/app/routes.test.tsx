@@ -18,7 +18,6 @@ function renderAt(path: string) {
 // Every route in .claude/skills/meloo-frontend/references/routes.md → ticket that replaces it.
 const routes: [path: string, ticket: string][] = [
   ['/auth/callback', 'FE-AUTH-02'],
-  ['/solo/abc', 'FE-SOLO-02'],
   ['/daily', 'FE-DAILY-01'],
   ['/rooms/new', 'FE-ROOM-01'],
   ['/r/ABCD', 'FE-ROOM-01'],
@@ -58,6 +57,12 @@ describe('app routes', () => {
     cleanup()
     renderAt('/solo')
     expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Chơi đơn')
+  })
+
+  it('serves the single-play screen at /solo/:matchId', async () => {
+    renderAt('/solo/abc')
+    expect(await screen.findByText('Không tìm thấy trận này')).toBeInTheDocument()
+    expect(screen.queryByTestId('placeholder')).not.toBeInTheDocument()
   })
 
   it('serves the component gallery at /_ui', async () => {

@@ -1,0 +1,64 @@
+@startuml deployment
+!include <C4/C4_Deployment>
+
+LAYOUT_WITH_LEGEND()
+
+title Sơ đồ triển khai hạ tầng - Hệ thống đoán nhạc Meloo (Deployment Diagram)
+
+Deployment_Node(user_device, "Thiết bị người dùng", "Desktop / Smartphone (Chrome, Safari, Edge, Firefox)") {
+    Deployment_Node(browser, "Trình duyệt web", "Web Standards: HTML5, ES6+, Web Audio API, WebRTC") {
+        Container(spa_instance, "Frontend SPA Runtime", "React, Zustand, TanStack Query, STOMP Client", "Thực thi logic giao diện, giải mã và phát âm thanh qua Web Audio API, duy trì kết nối STOMP và thiết lập mesh voice chat.")
+    }
+}
+
+Deployment_Node(cloudflare, "Cloudflare Edge", "DNS & DDoS Mitigation") {
+    System_Ext(cf_dns, "Cloudflare DNS", "Phân giải tên miền chính (CNAME -> Vercel) và tên miền phụ api.<domain> (A record -> EC2 Elastic IP).")
+}
+
+Deployment_Node(vercel, "Vercel Edge Network", "Global Anycast CDN & Static Hosting") {
+    Container(fe_static, "Frontend Static Assets", "HTML, CSS, Minified JS, Audio effects", "Phân phối tài nguyên tĩnh với độ trễ thấp toàn cầu; hỗ trợ môi trường Production từ main và Preview cho mỗi PR.")
+}
+
+Deployment_Node(aws, "Amazon Web Services (AWS)", "Region: ap-southeast-1 (Singapore)") {
+    Deployment_Node(vpc, "Meloo VPC", "172.31.0.0/16") {
+        
+        Deployment_Node(public_subnet, "Public Subnet", "Internet Gateway") {
+            Deployment_Node(ec2, "EC2 Instance: t3.micro", "1 vCPU, 1 GB RAM, 2 GB Swap, 20 GB gp3 SSD\nSecurity Group: meloo-ec2-sg (80, 443 public; 22 admin only)") {
+                
+                Deployment_Node(docker, "Docker Compose Engine", "meloo-internal bridge network") {
+                    Container(caddy_container, "meloo-caddy", "caddy:2-alpine", "Reverse Proxy & TLS Gateway:\nTự động cấp chứng chỉ HTTPS Let's Encrypt;\nChuyển tiếp REST API và nâng cấp kết nối WSS WebSocket vào backend;\nBảo vệ IP thật qua X-Forwarded-For.")
+                    
+                    Container(be_container, "meloo-backend", "Spring Boot 4.x, Java 21 OpenJDK", "Modular Monolith Backend Service:\nJVM giới hạn -XX:MaxRAMPercentage=60;\nChỉ expose cổng 8080 trong mạng Docker nội bộ;\nXử lý logic game, HMAC audio token proxy, in-memory room actor queue.")
+                }
+            }
+        }
+        
+        Deployment_Node(private_subnet, "Private DB Subnet", "Không gán Public IP, cách ly internet") {
+            Deployment_Node(rds, "AWS RDS PostgreSQL", "Engine: PostgreSQL 17 (db.t4g.micro / db.t3.micro)\nStorage: 20 GB gp3, Backup tự động hằng ngày\nSecurity Group: meloo-rds-sg (5432 CHỈ từ meloo-ec2-sg)") {
+                ContainerDb(db_instance, "meloo_db", "Relational Database", "Lưu trữ dữ liệu người dùng, bài hát catalog, bộ đề, lịch sử trận đấu, bảng xếp hạng Elo.")
+            }
+        }
+    }
+}
+
+Deployment_Node(ext_services, "External Cloud Services", "SaaS Providers") {
+    System_Ext(turn_server, "Metered / Xirsys TURN Service", "Máy chủ STUN/TURN (UDP/TCP 3478, TURNS 5349) chuyển tiếp luồng thoại WebRTC khi NAT đối xứng.")
+    System_Ext(deezer_api, "Deezer Music API & CDN", "Cung cấp siêu dữ liệu bài hát và luồng MP3 preview 30s qua URL ký có thời hạn.")
+    System_Ext(google_auth, "Google Identity Services", "Xác thực danh tính người dùng OAuth 2.0.")
+}
+
+Rel(spa_instance, cf_dns, "Truy vấn DNS", "DNS UDP/53")
+Rel(spa_instance, fe_static, "Tải mã nguồn và tài nguyên web", "HTTPS / CDN")
+Rel(spa_instance, caddy_container, "Gọi REST API & duy trì STOMP WebSocket", "HTTPS (Port 443) / WSS")
+
+Rel(caddy_container, be_container, "Reverse proxy nội bộ", "HTTP (Port 8080) & WS upgrade trên meloo-internal")
+Rel(be_container, db_instance, "Truy vấn và ghi dữ liệu", "PostgreSQL Protocol (Port 5432) qua VPC nội bộ")
+
+Rel(be_container, deezer_api, "Proxy audio stream và tìm kiếm catalog", "HTTPS (Port 443)")
+Rel(be_container, google_auth, "Xác minh Google ID Token", "HTTPS (Port 443)")
+Rel(be_container, turn_server, "Lấy thông tin xác thực TURN tạm thời", "HTTPS (Port 443)")
+
+Rel(spa_instance, turn_server, "Chuyển tiếp gói tin thoại qua TURN Relay (khi NAT đối xứng)", "UDP/TCP 3478, TLS 5349 (SRTP)")
+Rel(spa_instance, spa_instance, "Truyền thoại P2P Mesh trực tiếp giữa các trình duyệt", "WebRTC / SRTP")
+
+@enduml

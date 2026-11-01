@@ -1,0 +1,28 @@
+@startuml c4-context
+!include <C4/C4_Context>
+
+LAYOUT_WITH_LEGEND()
+
+title Sơ đồ C4 Context - Hệ thống đoán nhạc Meloo (C4 Level 1)
+
+Person(guest, "Khách (Guest)", "Người chơi trải nghiệm nhanh không cần đăng ký tài khoản; tham gia chơi đơn, thử thách ngày, phòng chơi qua link mời.")
+Person(user, "Người chơi (Member)", "Người chơi đã đăng nhập bằng Google OAuth2; lưu tiến trình xếp hạng (Elo), cấp độ, lịch sử trận đấu.")
+Person(admin, "Quản trị viên (Admin)", "Người vận hành quản trị kho nhạc, danh mục bài hát, bộ đề và giám sát phòng chơi.")
+
+System(meloo, "Hệ thống Meloo", "Cho phép người dùng chơi game đoán tên bài hát theo các đoạn nghe tăng dần (2s -> 30s), hỗ trợ chơi đơn, thử thách ngày và phòng nhiều người realtime (2-5 người) kèm voice chat.")
+
+System_Ext(google, "Google OAuth 2.0", "Dịch vụ xác thực danh tính người dùng từ Google.")
+System_Ext(deezer, "Deezer Music API & CDN", "Nguồn cung cấp dữ liệu bài hát và luồng âm thanh preview 30 giây (MP3 128 kbps).")
+System_Ext(turn, "Dịch vụ WebRTC TURN / STUN", "Cung cấp máy chủ STUN/TURN (Metered / Xirsys) để thiết lập kênh thoại WebRTC P2P qua NAT đối xứng.")
+
+Rel(guest, meloo, "Chơi đơn, thử thách ngày, tham gia phòng", "HTTPS, WSS")
+Rel(user, meloo, "Đăng nhập, chơi xếp hạng, tạo phòng, tích lũy tiến trình", "HTTPS, WSS")
+Rel(admin, meloo, "Quản lý danh mục nhạc, bộ đề, cấu hình game", "HTTPS")
+
+Rel(meloo, google, "Xác thực Google ID token & lấy profile", "HTTPS / REST")
+Rel(meloo, deezer, "Truy vấn catalog & proxy luồng preview audio", "HTTPS / REST")
+Rel(meloo, turn, "Cấp phát thông tin chứng thực TURN tạm thời", "HTTPS / REST")
+Rel(user, turn, "Chuyển tiếp gói thoại P2P voice chat khi NAT đối xứng", "UDP/TCP / SRTP")
+Rel(guest, turn, "Chuyển tiếp gói thoại P2P voice chat khi NAT đối xứng", "UDP/TCP / SRTP")
+
+@enduml

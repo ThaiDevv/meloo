@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Playlist not found",
+  "status": 404,
+  "code": "PLAYLIST_NOT_FOUND",
+  "detail": "The playlist was not found or has been disabled.",
+  "instance": "/api/v1/solo/matches"
+}

@@ -163,9 +163,12 @@ export interface paths {
         put?: never;
         /**
          * Start a single-player match
-         * @description Any signed-in user, guests included (BR-20). `RANKED` uses the standard set and takes no filter;
-         *     `PRACTICE` takes a filter and is never ranked (BR-23). A user has at most one match in progress:
-         *     a second call returns 409 with the existing `matchId`, so reloading cannot swap a hard song for another. A `PRACTICE` match can be quit with `abandonSoloMatch`.
+         * @description Any signed-in user, guests included (BR-20). `RANKED` uses the standard set and takes neither filter
+         *     nor playlistId (BR-23). `PRACTICE` allows selecting either a catalog filter (`filter`) or a specific
+         *     playlist (`playlistId`), including the standard set (`STANDARD`), and is never ranked (BR-23).
+         *     `filter` and `playlistId` are mutually exclusive; sending both returns 400 (`VALIDATION_FAILED`).
+         *     A user has at most one match in progress: a second call returns 409 with the existing `matchId`, so reloading
+         *     cannot swap a hard song for another. A `PRACTICE` match can be quit with `abandonSoloMatch`.
          */
         post: operations["createSoloMatch"];
         delete?: never;
@@ -607,8 +610,13 @@ export interface components {
              * @enum {integer}
              */
             roundCount?: 5 | 10 | 15;
-            /** @description Only for `PRACTICE`; sending it with `RANKED` is a 400. Omitted or empty means the whole catalog. */
+            /** @description Only for `PRACTICE`; sending it with `RANKED` is a 400. Mutually exclusive with `playlistId`: sending both returns 400 (`VALIDATION_FAILED`). Omitted or empty means the whole catalog. */
             filter?: components["schemas"]["SoloFilter"];
+            /**
+             * Format: uuid
+             * @description Only for `PRACTICE`. The standard set (`STANDARD`) can also be chosen in `PRACTICE`, in which case the match is still unranked (BR-23). Mutually exclusive with `filter`: sending both returns 400 (`VALIDATION_FAILED`). Sending it with `RANKED` is also a 400.
+             */
+            playlistId?: string;
         };
         /** @description One listening level as an opaque URL (ADR-008). Never parse it. */
         AudioClip: {
@@ -730,6 +738,11 @@ export interface components {
             /** @enum {integer} */
             roundCount: 5 | 10 | 15;
             filter?: components["schemas"]["SoloFilter"];
+            /**
+             * Format: uuid
+             * @description Playlist chosen when creating the match in `PRACTICE` mode (BR-23). Mutually exclusive with `filter`.
+             */
+            playlistId?: string;
             totalScore: number;
             comboStreak: number;
             /** Format: date-time */
@@ -1110,6 +1123,15 @@ export interface operations {
             400: components["responses"]["ValidationFailed"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description The playlist was not found or is disabled (`PLAYLIST_NOT_FOUND`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description The user already has a match in progress (`SOLO_MATCH_IN_PROGRESS`). */
             409: {
                 headers: {

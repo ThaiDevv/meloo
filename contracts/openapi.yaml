@@ -229,9 +229,12 @@ paths:
       operationId: createSoloMatch
       summary: Start a single-player match
       description: |
-        Any signed-in user, guests included (BR-20). `RANKED` uses the standard set and takes no filter;
-        `PRACTICE` takes a filter and is never ranked (BR-23). A user has at most one match in progress:
-        a second call returns 409 with the existing `matchId`, so reloading cannot swap a hard song for another. A `PRACTICE` match can be quit with `abandonSoloMatch`.
+        Any signed-in user, guests included (BR-20). `RANKED` uses the standard set and takes neither filter
+        nor playlistId (BR-23). `PRACTICE` allows selecting either a catalog filter (`filter`) or a specific
+        playlist (`playlistId`), including the standard set (`STANDARD`), and is never ranked (BR-23).
+        `filter` and `playlistId` are mutually exclusive; sending both returns 400 (`VALIDATION_FAILED`).
+        A user has at most one match in progress: a second call returns 409 with the existing `matchId`, so reloading
+        cannot swap a hard song for another. A `PRACTICE` match can be quit with `abandonSoloMatch`.
       requestBody:
         required: true
         content:
@@ -243,6 +246,8 @@ paths:
                 externalValue: ./examples/game/create-solo-match.request.ranked.json
               practice:
                 externalValue: ./examples/game/create-solo-match.request.practice.json
+              practicePlaylist:
+                externalValue: ./examples/game/create-solo-match.request.practice-playlist.json
       responses:
         '201':
           description: Match created. The first round is already open.
@@ -259,6 +264,16 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          description: The playlist was not found or is disabled (`PLAYLIST_NOT_FOUND`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                playlistNotFound:
+                  summary: Playlist not found or inactive.
+                  externalValue: ./examples/game/problem.playlist-not-found.404.json
         '409':
           description: The user already has a match in progress (`SOLO_MATCH_IN_PROGRESS`).
           content:
@@ -1380,7 +1395,13 @@ components:
           description: Rounds in the match (BR-09). Defaults to 10 when omitted.
         filter:
           $ref: '#/components/schemas/SoloFilter'
-          description: Only for `PRACTICE`; sending it with `RANKED` is a 400. Omitted or empty means the whole catalog.
+          description: |
+            Only for `PRACTICE`; sending it with `RANKED` is a 400. Mutually exclusive with `playlistId`: sending both returns 400 (`VALIDATION_FAILED`). Omitted or empty means the whole catalog.
+        playlistId:
+          type: string
+          format: uuid
+          description: |
+            Only for `PRACTICE`. The standard set (`STANDARD`) can also be chosen in `PRACTICE`, in which case the match is still unranked (BR-23). Mutually exclusive with `filter`: sending both returns 400 (`VALIDATION_FAILED`). Sending it with `RANKED` is also a 400.
     AudioClip:
       type: object
       description: One listening level as an opaque URL (ADR-008). Never parse it.
@@ -1562,6 +1583,11 @@ components:
           enum: [5, 10, 15]
         filter:
           $ref: '#/components/schemas/SoloFilter'
+        playlistId:
+          type: string
+          format: uuid
+          description: |
+            Playlist chosen when creating the match in `PRACTICE` mode (BR-23). Mutually exclusive with `filter`.
         totalScore:
           type: integer
           minimum: 0

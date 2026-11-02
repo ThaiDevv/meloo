@@ -3,15 +3,7 @@
   "mode": "PRACTICE",
   "ranked": false,
   "roundCount": 5,
-  "filter": {
-    "genreCodes": [
-      "vpop"
-    ],
-    "decades": [
-      2010,
-      2020
-    ]
-  },
+  "playlistId": "14f8a2c6-d570-4e9b-b3a8-c6e1d0f27a95",
   "totalScore": 1900,
   "comboStreak": 2,
   "startedAt": "2026-10-23T13:00:00Z",

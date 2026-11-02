@@ -1,0 +1,81 @@
+name: E2E Tests
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/**'
+      - 'backend/**'
+      - 'contracts/**'
+      - 'infra/compose/e2e.yml'
+      - '.github/workflows/e2e.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - 'backend/**'
+      - 'contracts/**'
+      - 'infra/compose/e2e.yml'
+      - '.github/workflows/e2e.yml'
+
+concurrency:
+  group: e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  playwright:
+    name: E2E · Playwright Solo & Accessibility
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/setup@v1
+        with:
+          version: 10.34.7
+          install: false
+          cache: true
+          cache-dependency-path: frontend/pnpm-lock.yaml
+          package-json-file: frontend/package.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium browser
+        working-directory: frontend
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Start Docker Compose environment (PostgreSQL + Backend)
+        run: docker compose -f infra/compose/e2e.yml up -d --wait --build backend
+
+      - name: Apply E2E database seed
+        run: docker compose -f infra/compose/e2e.yml run --rm e2e-seed
+
+      - name: Run Playwright tests
+        working-directory: frontend
+        env:
+          VITE_API_MOCK: 'false'
+        run: pnpm exec playwright test
+
+      - name: Upload Playwright traces and videos on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-artifacts
+          path: |
+            frontend/test-results/
+            frontend/playwright-report/
+          retention-days: 7
+
+      - name: Stop Docker Compose services
+        if: always()
+        run: docker compose -f infra/compose/e2e.yml down --volumes --remove-orphans

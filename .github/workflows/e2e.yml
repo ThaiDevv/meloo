@@ -62,6 +62,8 @@ jobs:
 
       - name: Run Playwright tests
         working-directory: frontend
+        env:
+          VITE_API_MOCK: 'false'
         run: pnpm exec playwright test
 
       - name: Upload Playwright traces and videos on failure

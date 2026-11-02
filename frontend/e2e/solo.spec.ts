@@ -1,34 +1,44 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('Solo Game Flow (MEL-50 / QA-01)', () => {
-  test('guest plays solo match with combo and scores verified on summary', async ({ page }) => {
+  test('guest plays solo match with combo and scores verified on summary', async ({
+    page,
+    context,
+  }) => {
+    await context.clearCookies()
+
     // -------------------------------------------------------------
     // 1. Khách: Tạo phiên khách từ /start
     // -------------------------------------------------------------
     await page.goto('/start')
 
     const nicknameInput = page.locator('#guest-nickname')
-    await expect(nicknameInput).toBeVisible()
+    await expect(nicknameInput).toBeVisible({ timeout: 10_000 })
     await nicknameInput.fill('MelooTester')
 
+    // Chọn avatar
+    await page.locator('input[type="radio"]').first().check({ force: true })
+
     const submitGuestBtn = page.getByRole('button', { name: /Vào chơi|Start playing|Tiếp tục/i })
-    await submitGuestBtn.click()
+    await Promise.all([
+      page.waitForResponse((res) => res.url().includes('/api/v1/auth/guest') && res.ok()),
+      submitGuestBtn.click(),
+    ])
 
     // Sau khi trở thành khách, chuyển hướng tới /solo
     await page.goto('/solo')
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10_000 })
 
     // -------------------------------------------------------------
     // 2. Chọn bộ: Chọn chế độ và số vòng (5 vòng)
     // -------------------------------------------------------------
-    // Click vào tile chọn 5 vòng
-    const fiveRoundsTile = page.locator('label').filter({ hasText: /^5\s*(rounds|vòng)?$/i })
-    if (await fiveRoundsTile.isVisible()) {
-      await fiveRoundsTile.click()
+    const fiveRoundsInput = page.locator('input[name="rounds"][value="5"]')
+    if (await fiveRoundsInput.isVisible()) {
+      await fiveRoundsInput.check({ force: true })
     }
 
     const startMatchBtn = page.getByRole('button', { name: /Vào trận|Start match|Bắt đầu/i })
-    await expect(startMatchBtn).toBeVisible()
+    await expect(startMatchBtn).toBeVisible({ timeout: 10_000 })
     await startMatchBtn.click()
 
     // -------------------------------------------------------------
@@ -48,7 +58,7 @@ test.describe('Solo Game Flow (MEL-50 / QA-01)', () => {
     await expect(guessInput).toBeVisible({ timeout: 10_000 })
     await guessInput.fill('Chúng Ta Của Hiện Tại')
 
-    const suggestion1 = page.getByRole('option', { name: /Chúng Ta Của Hiện Tại/i })
+    const suggestion1 = page.getByRole('option', { name: /Chúng Ta Của Hiện Tại/i }).first()
     await expect(suggestion1).toBeVisible({ timeout: 5_000 })
     await suggestion1.click()
 
@@ -73,9 +83,9 @@ test.describe('Solo Game Flow (MEL-50 / QA-01)', () => {
 
     // Đoán bài vòng 2
     await expect(guessInput).toBeVisible({ timeout: 10_000 })
-    await guessInput.fill('Waiting For You')
+    await guessInput.fill('Chúng Ta Của Hiện Tại')
 
-    const suggestion2 = page.getByRole('option', { name: /Waiting For You/i })
+    const suggestion2 = page.getByRole('option', { name: /Chúng Ta Của Hiện Tại/i }).first()
     await expect(suggestion2).toBeVisible({ timeout: 5_000 })
     await suggestion2.click()
 
@@ -96,7 +106,7 @@ test.describe('Solo Game Flow (MEL-50 / QA-01)', () => {
       await expect(guessInput).toBeVisible({ timeout: 10_000 })
       await guessInput.fill('Chung Ta Cua Tuong Lai')
 
-      const decoyOption = page.getByRole('option', { name: /Chúng Ta Của Tương Lai/i })
+      const decoyOption = page.getByRole('option', { name: /Chúng Ta Của Tương Lai/i }).first()
       await expect(decoyOption).toBeVisible({ timeout: 5_000 })
       await decoyOption.click()
 

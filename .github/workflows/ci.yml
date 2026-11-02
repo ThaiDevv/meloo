@@ -139,9 +139,10 @@ jobs:
           git diff --exit-code -- src/shared/api/schema.gen.ts
 
   e2e:
-    name: E2E · Playwright (opt-in until QA-01)
+    name: E2E · Playwright (superseded by e2e.yml)
     needs: changes
-    if: needs.changes.outputs.e2e == 'true' && vars.ENABLE_E2E == 'true'
+    # Vô hiệu hoá: thay thế hoàn toàn bởi .github/workflows/e2e.yml (QA-01 / MEL-50)
+    if: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

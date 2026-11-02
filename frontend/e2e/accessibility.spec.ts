@@ -1,10 +1,27 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('Accessibility & Keyboard Navigation (NFR-13)', () => {
+  test.beforeEach(async ({ page }) => {
+    // Authenticate as guest before accessing /solo routes
+    await page.goto('/start')
+    const nicknameInput = page.locator('#guest-nickname')
+    await expect(nicknameInput).toBeVisible({ timeout: 10_000 })
+    await nicknameInput.fill('A11yTester')
+    await page.locator('input[type="radio"]').first().check({ force: true })
+    const submitGuestBtn = page.getByRole('button', { name: /Vào chơi|Start playing|Tiếp tục/i })
+    await Promise.all([
+      page.waitForResponse((res) => res.url().includes('/api/v1/auth/guest') && res.ok()),
+      submitGuestBtn.click(),
+    ])
+  })
+
   test('core game operations can be performed strictly using keyboard', async ({ page }) => {
     // 1. Visit single play setup page
     await page.goto('/solo')
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10_000 })
+
+    // Select 5 rounds (matches E2E seed dataset)
+    await page.locator('input[name="rounds"][value="5"]').check({ force: true })
 
     // 2. Start a match using keyboard navigation
     const startButton = page.getByRole('button', { name: /Vào trận|Start match|Bắt đầu|Start/i })
@@ -64,7 +81,10 @@ test.describe('Accessibility & Keyboard Navigation (NFR-13)', () => {
     await page.goto('/solo')
 
     // Check main role and headings
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10_000 })
+
+    // Select 5 rounds (matches E2E seed dataset)
+    await page.locator('input[name="rounds"][value="5"]').check({ force: true })
 
     // Start match to inspect game round ARIA semantics
     const startButton = page.getByRole('button', { name: /Vào trận|Start match|Bắt đầu|Start/i })

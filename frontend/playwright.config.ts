@@ -4,14 +4,18 @@ export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  reporter: process.env.CI ? 'github' : 'list',
-  use: { baseURL: 'http://localhost:5173', trace: 'on-first-retry' },
+  retries: process.env.CI ? 1 : 0,
+  reporter: process.env.CI ? [['github'], ['list'], ['html', { open: 'never' }]] : 'list',
+  use: {
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173',
+    trace: 'retain-on-failure',
+    video: 'retain-on-failure',
+  },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     command: 'pnpm dev',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
-    env: { VITE_API_MOCK: 'true' },
+    env: { VITE_API_MOCK: process.env.VITE_API_MOCK ?? 'true' },
   },
 })

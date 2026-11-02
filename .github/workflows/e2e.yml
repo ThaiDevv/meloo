@@ -54,8 +54,11 @@ jobs:
         working-directory: frontend
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Start Docker Compose environment (PostgreSQL + Backend + Seed)
-        run: docker compose -f infra/compose/e2e.yml up -d --wait --build
+      - name: Start Docker Compose environment (PostgreSQL + Backend)
+        run: docker compose -f infra/compose/e2e.yml up -d --wait --build backend
+
+      - name: Apply E2E database seed
+        run: docker compose -f infra/compose/e2e.yml run --rm e2e-seed
 
       - name: Run Playwright tests
         working-directory: frontend

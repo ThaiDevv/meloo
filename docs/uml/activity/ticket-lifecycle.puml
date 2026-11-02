@@ -1,0 +1,100 @@
+@startuml ticket-lifecycle
+title Sơ đồ hoạt động: Vòng đời một ticket trong dự án Meloo (PM-09, CLO3, commit 0ee44b7)
+skinparam shadowing false
+skinparam defaultFontName DejaVu Sans
+skinparam activity {
+  BackgroundColor white
+  BorderColor black
+  ArrowColor black
+  BarColor black
+  StartColor black
+  EndColor black
+}
+
+|#f9f9f9|Thái (PO & Tech Lead)|
+|#ffffff|Tác giả (AI Agent)|
+|#f4f4f4|QA & Reviewer (Subagent)|
+|#fafafa|Hệ thống CI & Công cụ|
+
+|Thái (PO & Tech Lead)|
+start
+:Chọn tối đa 2 ticket đạt điều kiện trên Jira backlog;
+:Kéo ticket sang trạng thái **In Progress**;
+
+|Tác giả (AI Agent)|
+:Đọc ticket qua Jira MCP chỉ đọc (getJiraIssue);
+:Kiểm tra 5 tiêu chí Definition of Ready (DoR);
+
+if (Đạt cả 5 tiêu chí DoR?) then (Không đạt)
+  :Dừng lại, báo Thái lý do thiếu sót;
+  |Thái (PO & Tech Lead)|
+  :Bổ sung yêu cầu / giải phóng khóa phụ thuộc;
+  stop
+else (Đạt 5/5 tiêu chí)
+  |Tác giả (AI Agent)|
+  :Khởi tạo thư mục _workspace/MEL-<số>/;
+  :Lập scope.txt, labels.txt và 01_plan.md;
+  :Nạp skill chuyên môn theo lane (backend/frontend/docs/contract);
+  
+  repeat
+    :Lập trình mã nguồn và viết test cho từng AC;
+    |Hệ thống CI & Công cụ|
+    :Chạy tự kiểm tra cứng:\n1. check-scope.sh\n2. build & test suite\n3. Quét diff (không TODO, log, secret);
+    |Tác giả (AI Agent)|
+  backward:Sửa lỗi vi phạm hoặc bổ sung test;
+  repeat while (Tự kiểm tra cứng thành công?) is (Lỗi)
+  ->Thành công;
+
+  :Gọi subagent meloo-qa (mắt mới kiểm tra khớp nối);
+  |QA & Reviewer (Subagent)|
+  :Đối chiếu 2 đầu ranh giới (API ↔ Code ↔ Test);\nLập ma trận bằng chứng AC;
+  
+  if (Kết quả QA?) then (FAIL)
+    |Tác giả (AI Agent)|
+    :Sửa chữa khiếm khuyết phát hiện;
+  else (PASS)
+  endif
+
+  |Tác giả (AI Agent)|
+  if (Mức review của ticket?) then (Review sâu)
+    :Chạy subagent meloo-reviewer & verifier;
+    |QA & Reviewer (Subagent)|
+    :Kiểm chứng độc lập các lỗi Blocker / Major;
+    |Tác giả (AI Agent)|
+    :Khắc phục các lỗi được xác nhận (confirmed);
+  else (Review chuẩn)
+  endif
+
+  :Rebase trên origin/main;
+  :git push --force-with-lease lên branch;
+  :Điền PR template với bảng bằng chứng AC;
+  :Mở Pull Request (gh pr create);
+
+  |Hệ thống CI & Công cụ|
+  :GitHub Actions kích hoạt tự động:\n- scope-guard & harness-lint\n- Unit & Integration Test\n- Spring Modulith verification\n- Quét bảo mật Gitleaks;
+
+  |Thái (PO & Tech Lead)|
+  :Kéo ticket Jira sang **In Review**;
+  :Mở phiên review chéo cho Agent đối ứng;
+
+  |QA & Reviewer (Subagent)|
+  :Chạy meloo-review trên PR;
+  :Soi bảo mật, race condition, N+1, lộ đáp án;
+
+  if (Có nhận xét Blocker / Major?) then (Có lỗi)
+    |Tác giả (AI Agent)|
+    :Sửa lỗi theo nhận xét review;
+    :Push bản sửa và cập nhật comment phản hồi;
+  else (Đạt chuẩn)
+  endif
+
+  |Thái (PO & Tech Lead)|
+  :Nghiệm thu thực tế (đọc diff, xem test, Vercel preview);
+  :Squash merge PR vào main (giữ tiền tố MEL-<số>);
+  :Kéo ticket Jira sang trạng thái **Done**;
+
+  |Tác giả (AI Agent)|
+  :Các worktree đang mở rebase lên main;
+  stop
+endif
+@enduml

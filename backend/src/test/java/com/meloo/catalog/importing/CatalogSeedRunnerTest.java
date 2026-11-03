@@ -76,4 +76,51 @@ class CatalogSeedRunnerTest {
     assertThat(exited).isTrue();
     assertThat(exitCode.get()).isEqualTo(0);
   }
+
+  @Test
+  @DisplayName(
+      "CatalogSeedRunner calls SpringApplication.exit with code 0 when --exit-after-seed CLI argument is present")
+  void run_whenCliExitOptionPresent_exitsWithCodeZero() throws InterruptedException {
+    CatalogSeedService seedService = mock(CatalogSeedService.class);
+    when(seedService.seedCatalog())
+        .thenReturn(new CatalogSeedService.CatalogSeedResult(8, 8, 100, 200));
+
+    CatalogImportProperties properties =
+        new CatalogImportProperties(
+            new CatalogImportProperties.SeedProperties(
+                true, "classpath:seed/catalog-seed.json", false),
+            new CatalogImportProperties.HealthCheckProperties(false, "0 0 3 * * *", 100));
+
+    ApplicationContext context = mock(ApplicationContext.class);
+    CountDownLatch latch = new CountDownLatch(1);
+    AtomicInteger exitCode = new AtomicInteger(-1);
+
+    CatalogSeedRunner runner =
+        new CatalogSeedRunner(
+            seedService,
+            properties,
+            context,
+            code -> {
+              exitCode.set(code);
+              latch.countDown();
+            });
+
+    runner.run(new DefaultApplicationArguments("--exit-after-seed"));
+
+    verify(seedService).seedCatalog();
+    boolean exited = latch.await(3, TimeUnit.SECONDS);
+    assertThat(exited).isTrue();
+    assertThat(exitCode.get()).isEqualTo(0);
+  }
+
+  @Test
+  @DisplayName("CatalogSeedRunner public constructor creates bean with default exit action")
+  void publicConstructor_instantiatesSuccessfully() {
+    CatalogSeedService seedService = mock(CatalogSeedService.class);
+    CatalogImportProperties properties = mock(CatalogImportProperties.class);
+    ApplicationContext context = mock(ApplicationContext.class);
+
+    CatalogSeedRunner runner = new CatalogSeedRunner(seedService, properties, context);
+    assertThat(runner).isNotNull();
+  }
 }

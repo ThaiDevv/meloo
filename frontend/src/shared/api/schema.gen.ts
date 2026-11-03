@@ -599,7 +599,7 @@ export interface components {
             artistIds?: string[];
         };
         /**
-         * @description `RANKED` = standard set; `PRACTICE` = free filter, never ranked (BR-23).
+         * @description `RANKED` = standard set; `PRACTICE` = filter or playlist, never ranked (BR-23).
          * @enum {string}
          */
         SoloMode: "RANKED" | "PRACTICE";

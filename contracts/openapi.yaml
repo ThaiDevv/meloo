@@ -1381,7 +1381,7 @@ components:
     SoloMode:
       type: string
       enum: [RANKED, PRACTICE]
-      description: '`RANKED` = standard set; `PRACTICE` = free filter, never ranked (BR-23).'
+      description: '`RANKED` = standard set; `PRACTICE` = filter or playlist, never ranked (BR-23).'
     CreateSoloMatchRequest:
       type: object
       additionalProperties: false

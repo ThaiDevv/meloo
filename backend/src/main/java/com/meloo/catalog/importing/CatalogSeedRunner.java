@@ -2,6 +2,7 @@ package com.meloo.catalog.importing;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
@@ -25,6 +26,7 @@ public class CatalogSeedRunner implements ApplicationRunner {
   private final ApplicationContext applicationContext;
   private final java.util.function.Consumer<Integer> exitAction;
 
+  @Autowired
   public CatalogSeedRunner(
       CatalogSeedService catalogSeedService,
       CatalogImportProperties properties,

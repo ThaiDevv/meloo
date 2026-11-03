@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { I18nextProvider } from 'react-i18next'
@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest'
 import i18n from '@/i18n'
 import { server } from '@/mocks/server'
 import filtersExample from '../../../../../contracts/examples/catalog/get-filters.200.json'
+import listPlaylistsExample from '../../../../../contracts/examples/catalog/list-playlists.200.json'
 import matchExample from '../../../../../contracts/examples/game/create-solo-match.201.json'
 import { SoloSetupPage } from './SoloSetupPage'
 
@@ -91,12 +92,112 @@ describe('SoloSetupPage', () => {
     ])
   })
 
-  it('keeps the playlist tab locked until the contract can carry a playlist', async () => {
+  it('locks the start button with explanation when playlist tab is selected but no playlist is chosen', async () => {
     const user = userEvent.setup()
     renderPage()
 
     await user.click(screen.getByRole('radio', { name: /Luyện tập/ }))
-    expect(await screen.findByRole('tab', { name: /Bộ đề/ })).toBeDisabled()
+    const playlistTab = await screen.findByRole('tab', { name: /Bộ đề/ })
+    expect(playlistTab).not.toBeDisabled()
+
+    await user.click(playlistTab)
+    const summary = screen.getByRole('complementary')
+    const startButton = screen.getByRole('button', { name: 'Vào trận' })
+    expect(startButton).toBeDisabled()
+    expect(screen.getByText('Hãy chọn một bộ đề để vào trận.')).toBeInTheDocument()
+    expect(within(summary).getByText('Chưa chọn bộ đề')).toBeInTheDocument()
+
+    // Pick a playlist
+    const playlistOption = await screen.findByRole('button', { name: /V-pop thập niên 2010/ })
+    await user.click(playlistOption)
+
+    expect(startButton).not.toBeDisabled()
+    expect(screen.queryByText('Hãy chọn một bộ đề để vào trận.')).not.toBeInTheDocument()
+    expect(within(summary).getByText('V-pop thập niên 2010')).toBeInTheDocument()
+
+    // Deselect playlist
+    await user.click(playlistOption)
+    expect(startButton).toBeDisabled()
+    expect(screen.getByText('Hãy chọn một bộ đề để vào trận.')).toBeInTheDocument()
+    expect(within(summary).getByText('Chưa chọn bộ đề')).toBeInTheDocument()
+  })
+
+  it('sends playlistId and no filter when starting with a playlist in practice mode', async () => {
+    const user = userEvent.setup()
+    const bodies = captureCreate()
+    renderPage()
+
+    await user.click(screen.getByRole('radio', { name: /Luyện tập/ }))
+    await user.click(await screen.findByRole('tab', { name: /Bộ đề/ }))
+    await user.click(await screen.findByRole('button', { name: /V-pop thập niên 2010/ }))
+    await user.click(screen.getByRole('button', { name: 'Vào trận' }))
+
+    await screen.findByText('match page')
+    expect(bodies).toEqual([
+      {
+        mode: 'PRACTICE',
+        roundCount: 10,
+        playlistId: '14f8a2c6-d570-4e9b-b3a8-c6e1d0f27a95',
+      },
+    ])
+    expect((bodies[0] as Record<string, unknown>).filter).toBeUndefined()
+  })
+
+  it('displays playlist name in English when language is switched', async () => {
+    const user = userEvent.setup()
+    await act(async () => {
+      await i18n.changeLanguage('en')
+    })
+    try {
+      renderPage()
+      await user.click(screen.getByRole('radio', { name: /Practice/ }))
+      await user.click(await screen.findByRole('tab', { name: /Playlists/ }))
+      await user.click(await screen.findByRole('button', { name: /V-pop of the 2010s/ }))
+
+      const summary = screen.getByRole('complementary')
+      expect(within(summary).getByText('V-pop of the 2010s')).toBeInTheDocument()
+    } finally {
+      await act(async () => {
+        await i18n.changeLanguage('vi')
+      })
+    }
+  })
+
+  it('handles 404 PLAYLIST_NOT_FOUND by showing an alert and refetching playlists', async () => {
+    const user = userEvent.setup()
+    let playlistFetchCount = 0
+    server.use(
+      http.get('*/api/v1/playlists', () => {
+        playlistFetchCount++
+        return HttpResponse.json(listPlaylistsExample)
+      }),
+      http.post('/api/v1/solo/matches', () =>
+        HttpResponse.json(
+          {
+            type: 'about:blank',
+            title: 'Playlist not found',
+            status: 404,
+            code: 'PLAYLIST_NOT_FOUND',
+            detail: 'The playlist was not found or has been disabled.',
+          },
+          { status: 404, headers: problem },
+        ),
+      ),
+    )
+    renderPage()
+
+    await user.click(screen.getByRole('radio', { name: /Luyện tập/ }))
+    await user.click(await screen.findByRole('tab', { name: /Bộ đề/ }))
+    await user.click(await screen.findByRole('button', { name: /V-pop thập niên 2010/ }))
+
+    const initialFetches = playlistFetchCount
+    expect(initialFetches).toBeGreaterThanOrEqual(1)
+
+    await user.click(screen.getByRole('button', { name: 'Vào trận' }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('không còn khả dụng')
+    expect(playlistFetchCount).toBeGreaterThan(initialFetches)
   })
 
   it('offers to resume when a match is already in progress', async () => {

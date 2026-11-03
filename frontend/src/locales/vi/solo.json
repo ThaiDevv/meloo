@@ -27,15 +27,18 @@
       "standard": "Bộ chuẩn",
       "wholeCatalog": "Toàn bộ kho nhạc",
       "filters": "{{n}} lựa chọn",
+      "noPlaylist": "Chưa chọn bộ đề",
       "ranked": "Tính xếp hạng",
       "practice": "Không xếp hạng"
     },
     "start": "Vào trận",
     "starting": "Đang tạo trận…",
+    "playlistRequired": "Hãy chọn một bộ đề để vào trận.",
     "errors": {
       "inProgress": "Bạn đang có một trận chưa xong. Hãy chơi tiếp trận đó trước.",
       "resume": "Chơi tiếp",
       "notEnoughTracks": "Bộ nhạc này chưa đủ bài cho {{n}} vòng (thiếu {{missing}} bài). Hãy bỏ bớt bộ lọc hoặc chọn ít vòng hơn.",
+      "playlistNotFound": "Bộ đề này không còn khả dụng hoặc đã bị tắt. Danh sách bộ đề đã được tải lại, hãy chọn một bộ khác.",
       "rateLimited": "Bạn thao tác quá nhanh. Hãy đợi một chút rồi thử lại.",
       "unknown": "Không tạo được trận. Hãy thử lại."
     }

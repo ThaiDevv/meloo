@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { Headphones, Play, Trophy } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,6 +13,7 @@ import {
   toSoloFilter,
   type MusicSelection,
 } from '@/shared/music-picker'
+import { usePlaylists } from '@/shared/music-picker/api/usePlaylists'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
 import {
@@ -27,29 +29,54 @@ type RoundCount = 5 | 10 | 15
 const ROUND_COUNTS: RoundCount[] = [5, 10, 15]
 
 export function SoloSetupPage() {
-  const { t } = useTranslation('solo')
+  const { t, i18n } = useTranslation('solo')
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const create = useCreateSoloMatch()
+  const playlists = usePlaylists()
   const [mode, setMode] = useState<Mode>('RANKED')
   const [roundCount, setRoundCount] = useState<RoundCount>(10)
   const [music, setMusic] = useState<MusicSelection>(EMPTY_SELECTION)
   const [failure, setFailure] = useState<CreateSoloMatchFailure | null>(null)
 
+  const isPlaylistUnselected =
+    mode === 'PRACTICE' && music.source === 'playlist' && !music.playlistId
+  const canStart = !create.isPending && !isPlaylistUnselected
+
   const filterCount = countFilterValues(music.filter)
+  const selectedPlaylist =
+    music.source === 'playlist' && music.playlistId
+      ? playlists.data?.find((p) => p.id === music.playlistId)
+      : null
+
   const musicSummary =
     mode === 'RANKED'
       ? t('setup.summary.standard')
-      : filterCount === 0
-        ? t('setup.summary.wholeCatalog')
-        : t('setup.summary.filters', { n: filterCount })
+      : music.source === 'playlist'
+        ? selectedPlaylist
+          ? i18n.resolvedLanguage === 'vi'
+            ? selectedPlaylist.nameVi
+            : selectedPlaylist.nameEn
+          : music.playlistId
+            ? music.playlistId
+            : t('setup.summary.noPlaylist')
+        : filterCount === 0
+          ? t('setup.summary.wholeCatalog')
+          : t('setup.summary.filters', { n: filterCount })
 
   const start = () => {
+    if (isPlaylistUnselected) return
     setFailure(null)
-    const filter = toSoloFilter(music.filter)
     const body =
       mode === 'RANKED'
         ? { mode, roundCount }
-        : { mode, roundCount, ...(filterCount > 0 && { filter }) }
+        : music.source === 'playlist'
+          ? { mode, roundCount, ...(music.playlistId && { playlistId: music.playlistId }) }
+          : {
+              mode,
+              roundCount,
+              ...(filterCount > 0 && { filter: toSoloFilter(music.filter) }),
+            }
     create.mutate(body, {
       onSuccess: (match) => {
         void navigate(`/solo/${match.matchId}`)
@@ -60,6 +87,10 @@ export function SoloSetupPage() {
         if (next.reason === 'unauthorized') {
           void navigate('/start', { state: { from: '/solo' } })
           return
+        }
+        if (next.reason === 'playlist-not-found') {
+          void playlists.refetch()
+          void queryClient.invalidateQueries({ queryKey: ['catalog', 'playlists'] })
         }
         setFailure(next)
       },
@@ -135,7 +166,7 @@ export function SoloSetupPage() {
                 <span>{t('setup.music.rankedNote')}</span>
               </p>
             ) : (
-              <MusicPicker value={music} onChange={setMusic} playlistsLocked />
+              <MusicPicker value={music} onChange={setMusic} />
             )}
           </section>
         </div>
@@ -168,10 +199,22 @@ export function SoloSetupPage() {
             />
             <SummaryRow term={t('setup.music.heading')} detail={musicSummary} />
           </dl>
-          <Button className="w-full" disabled={create.isPending} onClick={start}>
-            <Play aria-hidden="true" className="size-4 fill-current" />
-            {create.isPending ? t('setup.starting') : t('setup.start')}
-          </Button>
+          <div className="space-y-2">
+            <Button
+              className="w-full"
+              disabled={!canStart}
+              aria-describedby={isPlaylistUnselected ? 'playlist-required-hint' : undefined}
+              onClick={start}
+            >
+              <Play aria-hidden="true" className="size-4 fill-current" />
+              {create.isPending ? t('setup.starting') : t('setup.start')}
+            </Button>
+            {isPlaylistUnselected ? (
+              <p id="playlist-required-hint" className="text-center text-xs text-muted-foreground">
+                {t('setup.playlistRequired')}
+              </p>
+            ) : null}
+          </div>
           {failure ? <FailureNotice failure={failure} roundCount={roundCount} /> : null}
         </aside>
       </div>
@@ -220,6 +263,8 @@ function FailureNotice({
         <p>
           {t('setup.errors.notEnoughTracks', { n: roundCount, missing: failure.missingTracks })}
         </p>
+      ) : failure.reason === 'playlist-not-found' ? (
+        <p>{t('setup.errors.playlistNotFound')}</p>
       ) : failure.reason === 'rate-limited' ? (
         <p>{t('setup.errors.rateLimited')}</p>
       ) : (

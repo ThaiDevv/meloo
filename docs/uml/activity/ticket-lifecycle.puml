@@ -18,7 +18,7 @@ skinparam activity {
 
 |Thái (PO & Tech Lead)|
 start
-:Chọn tối đa 2 ticket đạt điều kiện trên Jira backlog;
+:Chọn ticket đạt điều kiện trên Jira backlog;
 :Kéo ticket sang trạng thái **In Progress**;
 
 |Tác giả (AI Agent)|
@@ -28,7 +28,7 @@ start
 if (Đạt cả 5 tiêu chí DoR?) then (Không đạt)
   :Dừng lại, báo Thái lý do thiếu sót;
   |Thái (PO & Tech Lead)|
-  :Bổ sung yêu cầu / giải phóng khóa phụ thuộc;
+  :Kéo ticket về To Do / bổ sung yêu cầu;
   stop
 else (Đạt 5/5 tiêu chí)
   |Tác giả (AI Agent)|
@@ -38,24 +38,20 @@ else (Đạt 5/5 tiêu chí)
   
   repeat
     :Lập trình mã nguồn và viết test cho từng AC;
-    |Hệ thống CI & Công cụ|
     :Chạy tự kiểm tra cứng:\n1. check-scope.sh\n2. build & test suite\n3. Quét diff (không TODO, log, secret);
-    |Tác giả (AI Agent)|
   backward:Sửa lỗi vi phạm hoặc bổ sung test;
   repeat while (Tự kiểm tra cứng thành công?) is (Lỗi)
   ->Thành công;
 
-  :Gọi subagent meloo-qa (mắt mới kiểm tra khớp nối);
-  |QA & Reviewer (Subagent)|
-  :Đối chiếu 2 đầu ranh giới (API ↔ Code ↔ Test);\nLập ma trận bằng chứng AC;
-  
-  if (Kết quả QA?) then (FAIL)
+  repeat
+    :Gọi subagent meloo-qa (mắt mới kiểm tra khớp nối);
+    |QA & Reviewer (Subagent)|
+    :Đối chiếu 2 đầu ranh giới (API ↔ Code ↔ Test);\nLập ma trận bằng chứng AC;
     |Tác giả (AI Agent)|
-    :Sửa chữa khiếm khuyết phát hiện;
-  else (PASS)
-  endif
+  backward:Sửa chữa khiếm khuyết phát hiện;
+  repeat while (Kết quả QA?) is (FAIL)
+  ->PASS;
 
-  |Tác giả (AI Agent)|
   if (Mức review của ticket?) then (Review sâu)
     :Chạy subagent meloo-reviewer & verifier;
     |QA & Reviewer (Subagent)|
@@ -77,16 +73,13 @@ else (Đạt 5/5 tiêu chí)
   :Kéo ticket Jira sang **In Review**;
   :Mở phiên review chéo cho Agent đối ứng;
 
-  |QA & Reviewer (Subagent)|
-  :Chạy meloo-review trên PR;
-  :Soi bảo mật, race condition, N+1, lộ đáp án;
-
-  if (Có nhận xét Blocker / Major?) then (Có lỗi)
+  repeat
+    |QA & Reviewer (Subagent)|
+    :Chạy meloo-review trên PR;\nSoi bảo mật, race condition, N+1, lộ đáp án;
     |Tác giả (AI Agent)|
-    :Sửa lỗi theo nhận xét review;
-    :Push bản sửa và cập nhật comment phản hồi;
-  else (Đạt chuẩn)
-  endif
+  backward:Sửa lỗi theo nhận xét review;\nPush bản sửa và cập nhật comment phản hồi;
+  repeat while (Có nhận xét Blocker / Major?) is (Có lỗi)
+  ->Đạt chuẩn;
 
   |Thái (PO & Tech Lead)|
   :Nghiệm thu thực tế (đọc diff, xem test, Vercel preview);

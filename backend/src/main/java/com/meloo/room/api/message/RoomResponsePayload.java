@@ -18,4 +18,35 @@ public record RoomResponsePayload(
     int playerCount,
     List<RoomPlayerSummaryPayload> players,
     @Nullable UUID playlistId,
-    Instant createdAt) {}
+    @Nullable RoomFilterPayload filter,
+    Instant createdAt) {
+
+  public RoomResponsePayload(
+      UUID roomId,
+      @Nullable String code,
+      String roomType,
+      @Nullable UUID hostId,
+      String status,
+      int roundCount,
+      int maxPlayers,
+      int currentRound,
+      int playerCount,
+      List<RoomPlayerSummaryPayload> players,
+      @Nullable UUID playlistId,
+      Instant createdAt) {
+    this(
+        roomId,
+        code,
+        roomType,
+        hostId,
+        status,
+        roundCount,
+        maxPlayers,
+        currentRound,
+        playerCount,
+        players,
+        playlistId,
+        null,
+        createdAt);
+  }
+}

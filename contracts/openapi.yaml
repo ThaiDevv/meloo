@@ -796,8 +796,12 @@ paths:
             schema:
               $ref: '#/components/schemas/CreateRoomRequest'
             examples:
-              default:
+              byPlaylist:
+                summary: Create room with playlist
                 externalValue: ./examples/room/create-room.request.json
+              byFilter:
+                summary: Create room with music filter
+                externalValue: ./examples/room/create-room.filter.request.json
       responses:
         '201':
           description: Room created successfully.
@@ -808,8 +812,22 @@ paths:
               examples:
                 default:
                   externalValue: ./examples/room/create-room.201.json
+                byFilter:
+                  summary: Created room with music filter
+                  externalValue: ./examples/room/create-room.filter.201.json
         '400':
-          $ref: '#/components/responses/ValidationFailed'
+          description: Validation failed (`VALIDATION_FAILED`), such as when both `playlistId` and `filter` are provided.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                validationFailed:
+                  summary: Generic validation failed
+                  externalValue: ./examples/common/problem.validation-failed.400.json
+                filterConflict:
+                  summary: Both playlistId and filter provided
+                  externalValue: ./examples/room/problem.filter-conflict.400.json
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -820,12 +838,20 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+              examples:
+                playlistNotFound:
+                  summary: Playlist not found or inactive
+                  externalValue: ./examples/room/problem.playlist-not-found.404.json
         '422':
-          description: The playlist has too few valid tracks for the chosen round count (`NOT_ENOUGH_TRACKS`, BR-09).
+          description: The playlist or filter has too few valid tracks for the chosen round count (`NOT_ENOUGH_TRACKS`, BR-09).
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/NotEnoughTracksProblem'
+              examples:
+                notEnoughTracks:
+                  summary: Not enough tracks matching filter or playlist
+                  externalValue: ./examples/room/problem.not-enough-tracks.422.json
         '429':
           $ref: '#/components/responses/TooManyRequests'
   /api/v1/rooms/join:
@@ -937,8 +963,12 @@ paths:
             schema:
               $ref: '#/components/schemas/QuickMatchRequest'
             examples:
-              default:
+              byFilter:
+                summary: Quick match with music filter
                 externalValue: ./examples/room/quick-match.request.json
+              byPlaylist:
+                summary: Quick match with playlist
+                externalValue: ./examples/room/quick-match.playlist.request.json
       responses:
         '200':
           description: Matched or created quick match room.
@@ -950,7 +980,18 @@ paths:
                 default:
                   externalValue: ./examples/room/quick-match.200.json
         '400':
-          $ref: '#/components/responses/ValidationFailed'
+          description: Validation failed (`VALIDATION_FAILED`), such as when both `playlistId` and `filter` are provided.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                validationFailed:
+                  summary: Generic validation failed
+                  externalValue: ./examples/common/problem.validation-failed.400.json
+                filterConflict:
+                  summary: Both playlistId and filter provided
+                  externalValue: ./examples/room/problem.filter-conflict.400.json
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -961,12 +1002,20 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+              examples:
+                playlistNotFound:
+                  summary: Playlist not found or inactive
+                  externalValue: ./examples/room/problem.playlist-not-found.404.json
         '422':
-          description: The playlist has too few valid tracks for the chosen round count (`NOT_ENOUGH_TRACKS`, BR-09).
+          description: The playlist or filter has too few valid tracks for the chosen round count (`NOT_ENOUGH_TRACKS`, BR-09).
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/NotEnoughTracksProblem'
+              examples:
+                notEnoughTracks:
+                  summary: Not enough tracks matching filter or playlist
+                  externalValue: ./examples/room/problem.not-enough-tracks.422.json
         '429':
           $ref: '#/components/responses/TooManyRequests'
 components:
@@ -1711,6 +1760,8 @@ components:
         playlistId:
           type: [string, 'null']
           format: uuid
+        filter:
+          $ref: '#/components/schemas/SoloFilter'
         createdAt:
           type: string
           format: date-time
@@ -1724,6 +1775,12 @@ components:
         playlistId:
           type: [string, 'null']
           format: uuid
+          description: |
+            Predefined playlist ID. Mutually exclusive with `filter`: sending both returns 400 (`VALIDATION_FAILED`). Omitted or empty along with `filter` means the whole catalog.
+        filter:
+          $ref: '#/components/schemas/SoloFilter'
+          description: |
+            Catalog filter criteria. Mutually exclusive with `playlistId`: sending both returns 400 (`VALIDATION_FAILED`). Omitted or empty along with `playlistId` means the whole catalog.
         roundCount:
           type: integer
           enum: [5, 10, 15]
@@ -1749,8 +1806,26 @@ components:
         playlistId:
           type: [string, 'null']
           format: uuid
+          description: |
+            Predefined playlist ID. Mutually exclusive with `filter`: sending both returns 400 (`VALIDATION_FAILED`).
         filter:
           $ref: '#/components/schemas/SoloFilter'
+          description: |
+            Catalog filter criteria. Mutually exclusive with `playlistId`: sending both returns 400 (`VALIDATION_FAILED`).
+        genreCodes:
+          type: array
+          deprecated: true
+          description: Deprecated. Use filter.genreCodes instead.
+          maxItems: 20
+          items:
+            type: string
+        decades:
+          type: array
+          deprecated: true
+          description: Deprecated. Use filter.decades instead.
+          maxItems: 20
+          items:
+            type: integer
     PublicRoomItem:
       type: object
       required: [roomId, code, hostNickname, playerCount, maxPlayers, roundCount, status, createdAt]

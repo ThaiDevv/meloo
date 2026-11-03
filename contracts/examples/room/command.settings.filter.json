@@ -1,0 +1,8 @@
+{
+  "roundCount": 10,
+  "maxPlayers": 5,
+  "filter": {
+    "genreCodes": ["POP", "BALLAD"],
+    "decades": [2020]
+  }
+}

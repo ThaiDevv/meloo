@@ -467,8 +467,15 @@ components:
           playlistId:
             type: [string, 'null']
             format: uuid
+            description: |
+              Predefined playlist ID. Mutually exclusive with `filter`: sending both returns error.
+          filter:
+            $ref: '#/components/schemas/SoloFilter'
+            description: |
+              Catalog filter criteria. Mutually exclusive with `playlistId`: sending both returns error.
         examples:
           - $ref: './examples/room/command.settings.json'
+          - $ref: './examples/room/command.settings.filter.json'
 
     KickCommand:
       summary: Kick player from room (host only; player cannot re-enter, BR-12)
@@ -714,11 +721,14 @@ components:
           playlistId:
             type: [string, 'null']
             format: uuid
+          filter:
+            $ref: '#/components/schemas/SoloFilter'
           serverTime:
             type: string
             format: date-time
         examples:
           - $ref: './examples/room/event.lobby.settings-changed.json'
+          - $ref: './examples/room/event.lobby.settings-changed.filter.json'
 
     MatchStartingEvent:
       summary: Broadcast starting countdown
@@ -1486,6 +1496,36 @@ components:
         playlistId:
           type: [string, 'null']
           format: uuid
+        filter:
+          $ref: '#/components/schemas/SoloFilter'
         createdAt:
           type: string
           format: date-time
+
+    SoloFilter:
+      type: object
+      additionalProperties: false
+      description: Values inside one list are OR-ed; the lists are AND-ed. An empty or missing list does not filter.
+      properties:
+        genreCodes:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+        countryCodes:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            pattern: '^[A-Z]{2}$'
+        decades:
+          type: array
+          maxItems: 20
+          items:
+            type: integer
+        artistIds:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            format: uuid

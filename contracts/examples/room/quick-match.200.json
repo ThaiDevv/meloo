@@ -21,5 +21,9 @@
     }
   ],
   "playlistId": null,
+  "filter": {
+    "genreCodes": ["POP", "BALLAD"],
+    "decades": [2020]
+  },
   "createdAt": "2026-10-29T10:10:00Z"
 }

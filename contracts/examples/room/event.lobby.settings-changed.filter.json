@@ -1,0 +1,11 @@
+{
+  "type": "ROOM_SETTINGS_CHANGED",
+  "roundCount": 15,
+  "maxPlayers": 5,
+  "playlistId": null,
+  "filter": {
+    "genreCodes": ["POP", "BALLAD"],
+    "decades": [2020]
+  },
+  "serverTime": "2026-10-29T10:00:18Z"
+}

@@ -46,6 +46,23 @@ class RoomMessageSerializationTest {
       assertThat(deserialized.roundCount()).isEqualTo(10);
       assertThat(deserialized.maxPlayers()).isEqualTo(5);
       assertThat(deserialized.playlistId()).isEqualTo(playlistId);
+      assertThat(deserialized.filter()).isNull();
+    }
+
+    @Test
+    @DisplayName("SettingsCommand serialization round-trip with filter")
+    void testSettingsCommandWithFilter() throws Exception {
+      RoomFilterPayload filter =
+          new RoomFilterPayload(List.of("POP", "BALLAD"), null, List.of(2020), null);
+      SettingsCommand cmd = new SettingsCommand(10, 5, null, filter);
+      String json = jsonMapper.writeValueAsString(cmd);
+      SettingsCommand deserialized = jsonMapper.readValue(json, SettingsCommand.class);
+      assertThat(deserialized.roundCount()).isEqualTo(10);
+      assertThat(deserialized.maxPlayers()).isEqualTo(5);
+      assertThat(deserialized.playlistId()).isNull();
+      assertThat(deserialized.filter()).isNotNull();
+      assertThat(deserialized.filter().genreCodes()).containsExactly("POP", "BALLAD");
+      assertThat(deserialized.filter().decades()).containsExactly(2020);
     }
 
     @Test
@@ -126,6 +143,25 @@ class RoomMessageSerializationTest {
       assertThat(deserialized.type()).isEqualTo("PLAYER_JOINED");
       assertThat(deserialized.user().nickname()).isEqualTo("PlayerOne");
       assertThat(deserialized.user().isConnected()).isTrue();
+      assertThat(deserialized.serverTime()).isEqualTo(now);
+    }
+
+    @Test
+    @DisplayName("RoomSettingsChangedEvent includes filter when configured")
+    void testRoomSettingsChangedEventWithFilter() throws Exception {
+      Instant now = Instant.parse("2026-10-29T10:00:18Z");
+      RoomFilterPayload filter =
+          new RoomFilterPayload(List.of("POP", "BALLAD"), null, List.of(2020), null);
+      RoomSettingsChangedEvent event = new RoomSettingsChangedEvent(15, 5, null, filter, now);
+      String json = jsonMapper.writeValueAsString(event);
+      RoomSettingsChangedEvent deserialized =
+          jsonMapper.readValue(json, RoomSettingsChangedEvent.class);
+      assertThat(deserialized.type()).isEqualTo("ROOM_SETTINGS_CHANGED");
+      assertThat(deserialized.roundCount()).isEqualTo(15);
+      assertThat(deserialized.maxPlayers()).isEqualTo(5);
+      assertThat(deserialized.playlistId()).isNull();
+      assertThat(deserialized.filter()).isNotNull();
+      assertThat(deserialized.filter().genreCodes()).containsExactly("POP", "BALLAD");
       assertThat(deserialized.serverTime()).isEqualTo(now);
     }
 
@@ -526,6 +562,12 @@ class RoomMessageSerializationTest {
       assertThat(settings.roundCount()).isEqualTo(10);
       assertThat(settings.maxPlayers()).isEqualTo(5);
 
+      SettingsCommand settingsFilter =
+          jsonMapper.readValue(readJson("command.settings.filter.json"), SettingsCommand.class);
+      assertThat(settingsFilter.roundCount()).isEqualTo(10);
+      assertThat(settingsFilter.filter()).isNotNull();
+      assertThat(settingsFilter.filter().genreCodes()).containsExactly("POP", "BALLAD");
+
       KickCommand kick = jsonMapper.readValue(readJson("command.kick.json"), KickCommand.class);
       assertThat(kick.targetUserId()).isNotNull();
 
@@ -587,6 +629,13 @@ class RoomMessageSerializationTest {
           jsonMapper.readValue(
               readJson("event.lobby.settings-changed.json"), RoomSettingsChangedEvent.class);
       assertThat(rsc.type()).isEqualTo("ROOM_SETTINGS_CHANGED");
+
+      RoomSettingsChangedEvent rscFilter =
+          jsonMapper.readValue(
+              readJson("event.lobby.settings-changed.filter.json"), RoomSettingsChangedEvent.class);
+      assertThat(rscFilter.type()).isEqualTo("ROOM_SETTINGS_CHANGED");
+      assertThat(rscFilter.filter()).isNotNull();
+      assertThat(rscFilter.filter().decades()).containsExactly(2020);
 
       MatchStartingEvent ms =
           jsonMapper.readValue(

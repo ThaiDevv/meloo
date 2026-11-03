@@ -1,0 +1,14 @@
+{
+  "type": "about:blank",
+  "title": "Validation Failed",
+  "status": 400,
+  "code": "VALIDATION_FAILED",
+  "detail": "playlistId and filter are mutually exclusive. Provide either playlistId or filter, not both.",
+  "instance": "/api/v1/rooms",
+  "invalidParams": [
+    {
+      "name": "filter",
+      "reason": "Cannot be used together with playlistId"
+    }
+  ]
+}

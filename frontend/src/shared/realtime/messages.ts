@@ -67,6 +67,13 @@ export interface RoomPlayerSummary {
   score: number
 }
 
+export interface SoloFilter {
+  genreCodes?: string[]
+  countryCodes?: string[]
+  decades?: number[]
+  artistIds?: string[]
+}
+
 export interface RoomResponse {
   roomId: string
   code: string | null
@@ -79,6 +86,7 @@ export interface RoomResponse {
   playerCount: number
   players: RoomPlayerSummary[]
   playlistId: string | null
+  filter?: SoloFilter | null
   createdAt: string
 }
 
@@ -101,6 +109,7 @@ export interface SettingsCommand {
   roundCount?: 5 | 10 | 15
   maxPlayers?: number
   playlistId?: string | null
+  filter?: SoloFilter | null
 }
 
 export interface KickCommand {
@@ -182,6 +191,7 @@ export interface RoomSettingsChangedEvent {
   roundCount: 5 | 10 | 15
   maxPlayers: number
   playlistId: string | null
+  filter?: SoloFilter | null
   serverTime: string
 }
 

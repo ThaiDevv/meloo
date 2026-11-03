@@ -810,14 +810,20 @@ export interface components {
             players: components["schemas"]["RoomPlayerSummary"][];
             /** Format: uuid */
             playlistId?: string | null;
+            filter?: components["schemas"]["SoloFilter"];
             /** Format: date-time */
             createdAt: string;
         };
         CreateRoomRequest: {
             /** @enum {string} */
             roomType: "PRIVATE_ROOM" | "PUBLIC_ROOM";
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description Predefined playlist ID. Mutually exclusive with `filter`: sending both returns 400 (`VALIDATION_FAILED`). Omitted or empty along with `filter` means the whole catalog.
+             */
             playlistId?: string | null;
+            /** @description Catalog filter criteria. Mutually exclusive with `playlistId`: sending both returns 400 (`VALIDATION_FAILED`). Omitted or empty along with `playlistId` means the whole catalog. */
+            filter?: components["schemas"]["SoloFilter"];
             /**
              * @default 10
              * @enum {integer}
@@ -832,9 +838,23 @@ export interface components {
         };
         /** @description Matchmaking preferences. Matches existing quick room with compatible filter (BR-13). */
         QuickMatchRequest: {
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description Predefined playlist ID. Mutually exclusive with `filter`: sending both returns 400 (`VALIDATION_FAILED`).
+             */
             playlistId?: string | null;
+            /** @description Catalog filter criteria. Mutually exclusive with `playlistId`: sending both returns 400 (`VALIDATION_FAILED`). */
             filter?: components["schemas"]["SoloFilter"];
+            /**
+             * @deprecated
+             * @description Deprecated. Use filter.genreCodes instead.
+             */
+            genreCodes?: string[];
+            /**
+             * @deprecated
+             * @description Deprecated. Use filter.decades instead.
+             */
+            decades?: number[];
         };
         PublicRoomItem: {
             /** Format: uuid */
@@ -1576,7 +1596,15 @@ export interface operations {
                     "application/json": components["schemas"]["RoomResponse"];
                 };
             };
-            400: components["responses"]["ValidationFailed"];
+            /** @description Validation failed (`VALIDATION_FAILED`), such as when both `playlistId` and `filter` are provided. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             /** @description The playlist was not found (`PLAYLIST_NOT_FOUND`). */
@@ -1588,7 +1616,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description The playlist has too few valid tracks for the chosen round count (`NOT_ENOUGH_TRACKS`, BR-09). */
+            /** @description The playlist or filter has too few valid tracks for the chosen round count (`NOT_ENOUGH_TRACKS`, BR-09). */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -1704,7 +1732,15 @@ export interface operations {
                     "application/json": components["schemas"]["RoomResponse"];
                 };
             };
-            400: components["responses"]["ValidationFailed"];
+            /** @description Validation failed (`VALIDATION_FAILED`), such as when both `playlistId` and `filter` are provided. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             /** @description The playlist was not found (`PLAYLIST_NOT_FOUND`). */
@@ -1716,7 +1752,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description The playlist has too few valid tracks for the chosen round count (`NOT_ENOUGH_TRACKS`, BR-09). */
+            /** @description The playlist or filter has too few valid tracks for the chosen round count (`NOT_ENOUGH_TRACKS`, BR-09). */
             422: {
                 headers: {
                     [name: string]: unknown;

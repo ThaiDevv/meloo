@@ -1,0 +1,9 @@
+{
+  "type": "about:blank",
+  "title": "Not enough tracks",
+  "status": 422,
+  "code": "NOT_ENOUGH_TRACKS",
+  "detail": "The chosen music filter or playlist matches too few tracks for the requested round count.",
+  "instance": "/api/v1/rooms",
+  "missingTracks": 3
+}

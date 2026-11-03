@@ -120,6 +120,7 @@ Ngày truy cập mọi nguồn: 19/10/2026.
 16. Nhật ký chơi thử và kiểm chứng trực tiếp:
    - Thái chơi thử trực tiếp SongTrivia, SongPop và Kahoot! ngày 19/10/2026: SongTrivia không có voice, không có nhạc Việt; SongPop không có playlist nhạc Việt; Kahoot! tìm thấy quiz nhạc Việt do người dùng tạo trong Discover.
    - Kiểm chứng trực tiếp giao diện và tính năng web musci.io (https://musci.io/vi/guess-the-song) ngày 02/11/2026: xác nhận chỉ có giao diện chơi 1 người (10 câu hỏi, 15 giây/câu, trắc nghiệm 1 trong 4), không thấy tạo phòng hay multiplayer, không thấy voice, bài hát mẫu đều là nghệ sĩ quốc tế.
+   - Bằng chứng ảnh chụp màn hình kiểm chứng các đối thủ (SongTrivia, SongPop, Kahoot!, musci.io) được đính kèm tại báo cáo bằng chứng kiểm chứng BIZ-09 trong phiên làm việc và mô tả PR #67.
 
 Nguồn của cột Meloo: tài liệu "Meloo — Kế hoạch dự án" của Thái, mục "Phạm vi sản phẩm" và "Luật chơi & quy tắc nghiệp vụ" (BR-01…BR-29). Tài liệu này nằm ngoài repo; các mã BR sẽ kiểm lại được khi `docs/srs/02-business-rules.md` được đưa vào ở ticket SRS.
 

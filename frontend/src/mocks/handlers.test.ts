@@ -195,6 +195,23 @@ describe('MSW mock server', () => {
       })
     })
 
+    it('synchronizes playlistId with GET /api/v1/solo/matches/active', async () => {
+      const createRes = await apiClient.POST('/api/v1/solo/matches', {
+        body: {
+          mode: 'PRACTICE',
+          roundCount: 10,
+          playlistId: VALID_PLAYLIST_ID,
+        },
+      })
+      expect(createRes.response.status).toBe(201)
+      expect(createRes.data?.playlistId).toBe(VALID_PLAYLIST_ID)
+
+      const activeRes = await apiClient.GET('/api/v1/solo/matches/active')
+      expect(activeRes.response.status).toBe(200)
+      expect(activeRes.data?.matchId).toBe(createRes.data?.matchId)
+      expect(activeRes.data?.playlistId).toBe(VALID_PLAYLIST_ID)
+    })
+
     it('returns 409 SOLO_MATCH_IN_PROGRESS when a match is already running', async () => {
       const first = await apiClient.POST('/api/v1/solo/matches', {
         body: { mode: 'RANKED', roundCount: 10 },

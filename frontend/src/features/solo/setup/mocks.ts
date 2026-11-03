@@ -12,11 +12,14 @@ type CreateSoloMatchRequest = components['schemas']['CreateSoloMatchRequest']
 const PROBLEM = { 'Content-Type': 'application/problem+json' }
 const KNOWN_PLAYLIST_IDS = new Set(listPlaylistsExample.items.map((p) => p.id))
 
+let activePlaylistId: string | null = null
+
 /**
  * Resets the single-player mock state for tests (both setup and play).
  * Analogous to resetAuthMock().
  */
 export function resetSoloMock(): void {
+  activePlaylistId = null
   resetSoloPlayMock()
 }
 
@@ -83,10 +86,37 @@ export const soloSetupHandlers = [
       )
     }
 
-    // If 201, attach playlistId if provided
-    if (response.status === 201 && body.playlistId) {
+    // If 201, synchronize active playlistId and attach playlistId to match response
+    if (response.status === 201) {
+      activePlaylistId = body.playlistId ?? null
+      if (body.playlistId) {
+        const match = (await response.json()) as Record<string, unknown>
+        return HttpResponse.json({ ...match, playlistId: body.playlistId }, { status: 201 })
+      }
+    }
+
+    return response
+  }),
+
+  http.get('*/api/v1/solo/matches/active', async ({ request }) => {
+    const playGetActiveHandler = soloMatchHandlers[1] as unknown as {
+      resolver: (info: {
+        request: Request
+        params: Record<string, string>
+        cookies: Record<string, string>
+      }) => Promise<Response>
+    }
+
+    const response = await playGetActiveHandler.resolver({
+      request,
+      params: {},
+      cookies: {},
+    })
+
+    // Synchronize playlistId onto active match if present
+    if (response.status === 200 && activePlaylistId) {
       const match = (await response.json()) as Record<string, unknown>
-      return HttpResponse.json({ ...match, playlistId: body.playlistId }, { status: 201 })
+      return HttpResponse.json({ ...match, playlistId: activePlaylistId }, { status: 200 })
     }
 
     return response

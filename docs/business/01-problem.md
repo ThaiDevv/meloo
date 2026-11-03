@@ -89,14 +89,14 @@ Bảng rút gọn từ BIZ-04/BIZ-09 (`02-competitors.md`, mục 3), gồm cả 
 
 | Tiêu chí | Meloo | SongTrivia | SongPop [S4] | Musci.io [S5] | Kahoot! | Heardle (đã đóng) [S2] |
 |---|---|---|---|---|---|---|
-| Chơi trên web, không cài app | Có | Có | Không: chỉ có app di động | Có | Có (web và app) | Có |
-| Chơi nhiều người realtime | Phòng 2–5 người | Có: phòng mời bằng link hoặc mã | Có: đấu 1-1, phòng riêng trên app | Không: chỉ chơi đơn (1 người) [S6] | Có: phiên do host mở, tối đa 10 người (miễn phí) | Không [S2][S3] |
-| Voice trong phòng | Có (phòng riêng) | Không (chơi thử); có chat chữ | Không: chỉ có chat chữ trên app [S6] | Không [S6] | Không: phải dùng Zoom/Discord ngoài [S6] | Không |
+| Chơi trên web, không cài app | Có | Có | Không thấy bản web (chỉ thấy app [S4]) | Có | Có (web và app) | Có |
+| Chơi nhiều người realtime | Phòng 2–5 người | Có: phòng mời bằng link hoặc mã | Có: đấu 1-1, phòng riêng trên app | Không thấy: chỉ chơi đơn (1 người) [S6] | Có: phiên do host mở, tối đa 10 người (miễn phí) | Không thấy [S2][S3] |
+| Voice trong phòng | Có (phòng riêng) | Không (chơi thử); có chat chữ | Không thấy voice; chỉ có chat trên app [S6] | Không thấy [S6] | Không thấy voice tích hợp (dùng Zoom/Discord ngoài) [S6] | Không thấy |
 | Giao diện tiếng Việt | Có | Không | Không | Có | Có | Không thấy |
-| Kho nhạc Việt | Có | Không (chơi thử) | Không có playlist nhạc Việt (chơi thử) | Không: chỉ có nghệ sĩ quốc tế [S6] | Có quiz nhạc Việt do user tạo (chơi thử) | Không thấy |
+| Kho nhạc Việt | Có | Không (chơi thử) | Không có playlist nhạc Việt (chơi thử) | Không thấy: chỉ có nghệ sĩ quốc tế [S6] | Có quiz nhạc Việt do user tạo (chơi thử) | Không thấy |
 | Nghe mở dần nhiều mức | 5 mức (2 → 30 giây) | Không thấy | Không thấy | Không: phát đoạn 30 giây | Không thấy | Có: 1 → 16 giây |
 | Cách đoán | Gõ tìm trên toàn kho, có gợi ý | Trả lời nhanh; có chế độ gõ có gợi ý | Chọn 1 trong 4 | Chọn 1 trong 4 | Chọn đáp án trong quiz soạn sẵn | Gõ tên bài |
-| Thử thách hằng ngày | Có | Có | Không thấy | Không có [S6] | Không thấy | Có |
+| Thử thách hằng ngày | Có | Có | Không thấy | Không thấy [S6] | Không thấy | Có |
 
 Kahoot! là nền tảng quiz chung, không phải game đoán nhạc, nhưng là đối thủ duy nhất trong bảng vừa có tiếng Việt vừa có nội dung nhạc Việt. Khác biệt của Meloo so với Kahoot! nằm ở luật nghe mở dần và kho bài lọc theo ca sĩ, thập niên, không nằm ở nhạc Việt (BIZ-04, mục 4.1 và 4.3).
 
@@ -134,7 +134,7 @@ Nói rõ trước để tránh bị hỏi "sao không làm X":
 
 ## 9. Câu hỏi bảo vệ
 
-1. **"Đã có SongTrivia, SongPop, Kahoot, sao còn làm Meloo?"** SongTrivia gần nhất: chơi trên web, có phòng realtime, nhưng không có tiếng Việt; khi chơi thử không có nhạc Việt và không có voice (chỉ có chat chữ). SongPop là app, không có tiếng Việt, không có playlist nhạc Việt, không có voice, chơi trắc nghiệm 1 trong 4. Kahoot có tiếng Việt và có cả quiz nhạc Việt trong Discover do người dùng tạo, nhưng là quiz chung: mỗi quiz là bộ câu soạn sẵn, không có voice tích hợp (phải mở thêm Zoom/Discord) và không có cơ chế nghe mở dần theo mức điểm. Musci.io có tiếng Việt nhưng chỉ chơi đơn một mình và không có nhạc Việt. Meloo nhắm vào khoảng trống: nhóm bạn Việt, mở bằng link, nhạc Việt, có voice, nghe mở dần. Chi tiết và nguồn kiểm chứng đối thủ ở mục 6 và BIZ-04/BIZ-09 (`02-competitors.md`).
+1. **"Đã có SongTrivia, SongPop, Kahoot, sao còn làm Meloo?"** SongTrivia gần nhất: chơi trên web, có phòng realtime, nhưng không có tiếng Việt; khi chơi thử không có nhạc Việt và không có voice (chỉ có chat chữ). SongPop là app, không có tiếng Việt, không có playlist nhạc Việt, không thấy voice, chơi trắc nghiệm 1 trong 4. Kahoot có tiếng Việt và có cả quiz nhạc Việt trong Discover do người dùng tạo, nhưng là quiz chung: mỗi quiz là bộ câu soạn sẵn, không thấy voice tích hợp (phải mở thêm Zoom/Discord) và không thấy cơ chế nghe mở dần theo mức điểm. Musci.io có tiếng Việt nhưng kiểm chứng cho thấy chỉ chơi đơn một mình và không thấy nhạc Việt. Meloo nhắm vào khoảng trống: nhóm bạn Việt, mở bằng link, nhạc Việt, có voice, nghe mở dần. Chi tiết và nguồn kiểm chứng đối thủ ở mục 6 và BIZ-04/BIZ-09 (`02-competitors.md`).
 2. **"Làm sao biết người dùng cần cái này?"** Ban đầu là giả thuyết (mục 4). Em kiểm chứng bằng khảo sát với ngưỡng đặt trước, sau đó bằng số liệu beta thật (mục 7).
 3. **"Nếu khảo sát cho kết quả ngược lại thì sao?"** Em báo cáo đúng kết quả và điều chỉnh trọng tâm, ví dụ đổi bộ đề mặc định hoặc nhấn mạnh chế độ chơi đơn. Kiểm chứng giả thuyết chính là mục đích của bước này.
 4. **"Bản quyền nhạc?"** Chỉ dùng đoạn preview 30 giây mà nền tảng âm nhạc cung cấp công khai qua API. Đường dẫn audio là token mờ, hết hạn sau thời gian ngắn, không chứa tên bài.
@@ -161,4 +161,4 @@ Ngày truy cập: 19/10/2026.
 - [S3] dot.la, "Spotify Shuts Down Heardle, Signaling the Waning of the 'Wordle Craze'", 17/04/2023. https://dot.la/spotify-heardle-shut-down-2659860389.html
 - [S4] App Store, "SongPop® - Guess The Song". https://apps.apple.com/us/app/-/id1528066727
 - [S5] Musci.io, "Đoán bài hát". https://musci.io/vi/guess-the-song
-- [S6] Kết quả chơi thử và kiểm chứng trực tiếp đối thủ (SongTrivia, SongPop, Kahoot!, musci.io), chốt ngày 19/10/2026 và 02/11/2026 (chi tiết tại `02-competitors.md`).
+- [S6] Nhật ký chơi thử và kiểm chứng trực tiếp đối thủ (Thái chơi thử SongTrivia, SongPop, Kahoot! ngày 19/10/2026; kiểm chứng web musci.io ngày 02/11/2026, chi tiết tại `02-competitors.md`).

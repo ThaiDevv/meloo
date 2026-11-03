@@ -32,6 +32,7 @@ public final class SoloDtoMapper {
     dto.setRanked(match.isRanked());
     dto.setRoundCount(SoloMatchDto.RoundCountEnum.fromValue(match.roundCount()));
     dto.setFilter(match.filterDto());
+    dto.setPlaylistId(match.playlistId());
     dto.setTotalScore(match.calculateTotalScore());
     dto.setComboStreak(match.comboTracker().currentStreak());
     dto.setStartedAt(match.startedAt().atOffset(ZoneOffset.UTC));

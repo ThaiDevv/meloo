@@ -26,7 +26,7 @@ Record nằm ở `com.meloo.<module>.events` của module phát; listener `@Appl
 | `mode` | `PRACTICE` hoặc `RANKED` (theo hợp đồng CT-01; chuyển từ BE-PROG-01 sang BE-SOLO-01/BE-ROOM-02) |
 | `ranked` | BR-23 |
 | `status` | `FINISHED` hoặc `ABANDONED` (chơi đơn quá 30 phút; chỉ vòng đã xong) |
-| `roundCount`, `playlistId`, `filter`, `startedAt`, `endedAt` | `filter`: chuỗi JSON biểu diễn SoloFilter (hoặc `null` nếu không có bộ lọc); `playlistId`: `null` với `mode=RANKED` nghĩa là bộ chuẩn; điền khi catalog có API tra id theo code (việc điền thuộc MEL-141 sau khi MEL-145 xong) |
+| `roundCount`, `playlistId`, `filter`, `startedAt`, `endedAt` | `filter`: chuỗi JSON biểu diễn SoloFilter (hoặc `null` nếu không có bộ lọc); `playlistId`: id bộ đề (với `mode=RANKED` là id của bộ chuẩn "standard", tra qua `CatalogService.findPlaylistByCode("standard")`; với `PRACTICE` là `playlistId` người chơi chọn hoặc `null` nếu chọn theo bộ lọc) |
 | `rounds[]` | `roundNo`, `trackId`, `trackTitle`, `artistName`, `provider`, `providerTrackId` (sau khi thay bài nếu có) |
 | `players[]` | `userId`, `nickname`, `isGuest`, `totalScore`, `rank`, `correctCount`, `correctTimeMs`, và `results[]` theo vòng |
 | `results[]` | `roundNo`, `outcome`, `correctLevel`, `baseScore`, `comboPercent`, `speedBonus`, `roundScore`, `wrongCount`, `answerTimeMs` |

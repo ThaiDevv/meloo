@@ -3,6 +3,7 @@ package com.meloo.game.solo;
 import com.meloo.audio.api.AudioPreparationResult;
 import com.meloo.audio.api.AudioService;
 import com.meloo.catalog.api.CatalogService;
+import com.meloo.catalog.api.PlaylistInfo;
 import com.meloo.catalog.api.TrackFilter;
 import com.meloo.catalog.api.TrackInfo;
 import com.meloo.game.domain.GuessEvaluation;
@@ -115,6 +116,31 @@ public class SoloGameService {
       throw new ApiException(
           HttpStatus.BAD_REQUEST, "VALIDATION_FAILED", "Filter is only allowed for PRACTICE mode");
     }
+    if (ranked && request.getPlaylistId() != null) {
+      throw new ApiException(
+          HttpStatus.BAD_REQUEST,
+          "VALIDATION_FAILED",
+          "Playlist is only allowed for PRACTICE mode");
+    }
+    if (!ranked && request.getFilter() != null && request.getPlaylistId() != null) {
+      throw new ApiException(
+          HttpStatus.BAD_REQUEST,
+          "VALIDATION_FAILED",
+          "filter and playlistId are mutually exclusive");
+    }
+
+    UUID playlistId = request.getPlaylistId();
+    if (!ranked && playlistId != null) {
+      catalogService
+          .findPlaylistById(playlistId)
+          .filter(PlaylistInfo::enabled)
+          .orElseThrow(
+              () ->
+                  new ApiException(
+                      HttpStatus.NOT_FOUND,
+                      "PLAYLIST_NOT_FOUND",
+                      "The playlist was not found or has been disabled."));
+    }
 
     // 1. Kiểm tra nhanh trong khóa xem người dùng đã có trận đang chơi chưa (BR-23)
     synchronized (matchManager.getUserLock(userId)) {
@@ -140,6 +166,9 @@ public class SoloGameService {
       candidateTracks =
           catalogService.selectRandomTracksByPlaylistCode(
               STANDARD_PLAYLIST_CODE, roundCount, Set.of());
+    } else if (playlistId != null) {
+      candidateTracks =
+          catalogService.selectRandomTracksByPlaylist(playlistId, roundCount, Set.of());
     } else {
       // PRACTICE: nếu bộ lọc rỗng thì chọn từ toàn bộ kho nhạc
       candidateTracks =
@@ -164,7 +193,7 @@ public class SoloGameService {
             mode,
             ranked,
             roundCount,
-            null,
+            playlistId,
             trackFilter,
             request.getFilter(),
             candidateTracks,
@@ -702,6 +731,10 @@ public class SoloGameService {
       list =
           catalogService.selectRandomTracksByPlaylistCode(
               STANDARD_PLAYLIST_CODE, 1, match.excludedTrackIds());
+    } else if (match.playlistId() != null) {
+      list =
+          catalogService.selectRandomTracksByPlaylist(
+              match.playlistId(), 1, match.excludedTrackIds());
     } else {
       list =
           catalogService.selectRandomTracks(
@@ -775,6 +808,14 @@ public class SoloGameService {
               totalCorrectTimeMs,
               playerResults);
 
+      UUID playlistId =
+          match.mode() == SoloModeDto.RANKED
+              ? catalogService
+                  .findPlaylistByCode(STANDARD_PLAYLIST_CODE)
+                  .map(PlaylistInfo::id)
+                  .orElse(null)
+              : match.playlistId();
+
       MatchFinished event =
           new MatchFinished(
               UUID.randomUUID(),
@@ -784,7 +825,7 @@ public class SoloGameService {
               match.isRanked(),
               match.toMatchEndStatus(),
               match.roundCount(),
-              match.playlistId(),
+              playlistId,
               serializeFilter(match.filterDto()),
               match.startedAt(),
               match.endedAt() != null ? match.endedAt() : clock.instant(),

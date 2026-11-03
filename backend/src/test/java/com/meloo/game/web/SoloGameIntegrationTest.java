@@ -22,6 +22,7 @@ import com.meloo.IntegrationTest;
 import com.meloo.audio.api.AudioPreparationResult;
 import com.meloo.audio.api.AudioService;
 import com.meloo.catalog.api.CatalogService;
+import com.meloo.catalog.api.PlaylistInfo;
 import com.meloo.catalog.api.TrackInfo;
 import com.meloo.game.events.MatchEndStatus;
 import com.meloo.game.events.MatchFinished;
@@ -194,6 +195,7 @@ class SoloGameIntegrationTest extends IntegrationTest {
 
   private final Map<UUID, TrackInfo> tracksById = new ConcurrentHashMap<>();
   private final List<TrackInfo> standardTracks = new ArrayList<>();
+  private final UUID standardPlaylistId = UUID.randomUUID();
 
   @BeforeEach
   void setUp() {
@@ -251,6 +253,12 @@ class SoloGameIntegrationTest extends IntegrationTest {
               }
               return result;
             });
+
+    when(catalogService.findPlaylistByCode("standard"))
+        .thenReturn(
+            Optional.of(
+                new PlaylistInfo(
+                    standardPlaylistId, "standard", "Bộ Chuẩn", true, standardTracks.size())));
 
     when(audioService.isRoundPlayable(any())).thenReturn(true);
     when(audioService.prepareRoundAudio(any(), any(), anyString(), anyString()))
@@ -2016,6 +2024,211 @@ class SoloGameIntegrationTest extends IntegrationTest {
                 .with(jwt().jwt(j -> j.subject(playerId.toString()).claim("nickname", "P"))))
         .andExpect(status().isTooManyRequests())
         .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+  }
+
+  @Test
+  @DisplayName(
+      "PRACTICE + playlistId hợp lệ: tạo trận thành công, SoloMatchDto trả playlistId, MatchFinished có playlistId")
+  void testCreateSoloMatch_Practice_WithValidPlaylistId_Success() throws Exception {
+    UUID userId = UUID.randomUUID();
+    UUID playlistId = UUID.randomUUID();
+
+    PlaylistInfo playlistInfo = new PlaylistInfo(playlistId, "vpop-2024", "V-Pop 2024", true, 10);
+    when(catalogService.findPlaylistById(playlistId)).thenReturn(Optional.of(playlistInfo));
+    when(catalogService.selectRandomTracksByPlaylist(eq(playlistId), eq(5), any()))
+        .thenReturn(standardTracks.subList(0, 5));
+
+    CreateSoloMatchRequestDto req = new CreateSoloMatchRequestDto();
+    req.setMode(SoloModeDto.PRACTICE);
+    req.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+    req.setPlaylistId(playlistId);
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                post("/api/v1/solo/matches")
+                    .with(jwt().jwt(j -> j.subject(userId.toString())))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.mode").value("PRACTICE"))
+            .andExpect(jsonPath("$.ranked").value(false))
+            .andExpect(jsonPath("$.playlistId").value(playlistId.toString()))
+            .andExpect(jsonPath("$.filter").doesNotExist())
+            .andReturn();
+
+    UUID matchId =
+        UUID.fromString(JsonPath.read(result.getResponse().getContentAsString(), "$.matchId"));
+
+    // Bỏ cuộc để kết thúc trận và kiểm tra MatchFinished
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches/{matchId}/abandon", matchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString()))))
+        .andExpect(status().isOk());
+
+    await()
+        .atMost(Duration.ofSeconds(3))
+        .untilAsserted(() -> assertThat(testListener.findFinishedEvent(matchId)).isPresent());
+    MatchFinished event = testListener.findFinishedEvent(matchId).get();
+    assertThat(event.playlistId()).isEqualTo(playlistId);
+    assertThat(event.ranked()).isFalse();
+  }
+
+  @Test
+  @DisplayName("PRACTICE có cả filter và playlistId: 400 VALIDATION_FAILED (AC 2)")
+  void testCreateSoloMatch_Practice_WithBothFilterAndPlaylistId_Throws400() throws Exception {
+    UUID userId = UUID.randomUUID();
+    UUID playlistId = UUID.randomUUID();
+
+    CreateSoloMatchRequestDto req = new CreateSoloMatchRequestDto();
+    req.setMode(SoloModeDto.PRACTICE);
+    req.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+    req.setPlaylistId(playlistId);
+    req.setFilter(new SoloFilterDto().genreCodes(List.of("pop")));
+
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches")
+                .with(jwt().jwt(j -> j.subject(userId.toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+  }
+
+  @Test
+  @DisplayName("RANKED kèm playlistId: 400 VALIDATION_FAILED (AC 2)")
+  void testCreateSoloMatch_Ranked_WithPlaylistId_Throws400() throws Exception {
+    UUID userId = UUID.randomUUID();
+    UUID playlistId = UUID.randomUUID();
+
+    CreateSoloMatchRequestDto req = new CreateSoloMatchRequestDto();
+    req.setMode(SoloModeDto.RANKED);
+    req.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+    req.setPlaylistId(playlistId);
+
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches")
+                .with(jwt().jwt(j -> j.subject(userId.toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+  }
+
+  @Test
+  @DisplayName("Bộ đề không tồn tại: 404 PLAYLIST_NOT_FOUND (AC 3, AC 8)")
+  void testCreateSoloMatch_Practice_WithNonExistentPlaylistId_Throws404() throws Exception {
+    UUID userId = UUID.randomUUID();
+    UUID playlistId = UUID.randomUUID();
+
+    when(catalogService.findPlaylistById(playlistId)).thenReturn(Optional.empty());
+
+    CreateSoloMatchRequestDto req = new CreateSoloMatchRequestDto();
+    req.setMode(SoloModeDto.PRACTICE);
+    req.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+    req.setPlaylistId(playlistId);
+
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches")
+                .with(jwt().jwt(j -> j.subject(userId.toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("PLAYLIST_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("Bộ đề bị tắt (enabled=false): 404 PLAYLIST_NOT_FOUND (AC 3, AC 8)")
+  void testCreateSoloMatch_Practice_WithDisabledPlaylistId_Throws404() throws Exception {
+    UUID userId = UUID.randomUUID();
+    UUID playlistId = UUID.randomUUID();
+
+    PlaylistInfo disabledPlaylist = new PlaylistInfo(playlistId, "disabled", "Disabled", false, 10);
+    when(catalogService.findPlaylistById(playlistId)).thenReturn(Optional.of(disabledPlaylist));
+
+    CreateSoloMatchRequestDto req = new CreateSoloMatchRequestDto();
+    req.setMode(SoloModeDto.PRACTICE);
+    req.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+    req.setPlaylistId(playlistId);
+
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches")
+                .with(jwt().jwt(j -> j.subject(userId.toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("PLAYLIST_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName(
+      "Bộ đề thiếu bài (chỉ có bài đã bật, BR-27): 422 NOT_ENOUGH_TRACKS kèm missingTracks (AC 3, AC 4)")
+  void testCreateSoloMatch_Practice_WithNotEnoughTracks_Throws422() throws Exception {
+    UUID userId = UUID.randomUUID();
+    UUID playlistId = UUID.randomUUID();
+
+    PlaylistInfo playlistInfo = new PlaylistInfo(playlistId, "short-list", "Short List", true, 3);
+    when(catalogService.findPlaylistById(playlistId)).thenReturn(Optional.of(playlistInfo));
+    // Yêu cầu 5 vòng nhưng playlist chỉ trả về 3 bài
+    when(catalogService.selectRandomTracksByPlaylist(eq(playlistId), eq(5), any()))
+        .thenReturn(standardTracks.subList(0, 3));
+
+    CreateSoloMatchRequestDto req = new CreateSoloMatchRequestDto();
+    req.setMode(SoloModeDto.PRACTICE);
+    req.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+    req.setPlaylistId(playlistId);
+
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches")
+                .with(jwt().jwt(j -> j.subject(userId.toString())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+        .andExpect(status().isUnprocessableEntity())
+        .andExpect(jsonPath("$.code").value("NOT_ENOUGH_TRACKS"))
+        .andExpect(jsonPath("$.missingTracks").value(2));
+  }
+
+  @Test
+  @DisplayName(
+      "Trận RANKED: MatchFinished.playlistId = id bộ standard tra qua CatalogService.findPlaylistByCode (AC 7)")
+  void testRankedMatch_FinishedEvent_ContainsStandardPlaylistId() throws Exception {
+    UUID userId = UUID.randomUUID();
+
+    CreateSoloMatchRequestDto req = new CreateSoloMatchRequestDto();
+    req.setMode(SoloModeDto.RANKED);
+    req.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+
+    MvcResult res =
+        mockMvc
+            .perform(
+                post("/api/v1/solo/matches")
+                    .with(jwt().jwt(j -> j.subject(userId.toString())))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.mode").value("RANKED"))
+            .andExpect(jsonPath("$.ranked").value(true))
+            .andExpect(jsonPath("$.playlistId").doesNotExist())
+            .andReturn();
+
+    UUID matchId =
+        UUID.fromString(JsonPath.read(res.getResponse().getContentAsString(), "$.matchId"));
+
+    // Hết hạn trận RANKED bằng cách tua thời gian -> expire inactive match
+    testClock.advance(Duration.ofMinutes(35));
+    soloGameService.expireInactiveMatches();
+
+    await()
+        .atMost(Duration.ofSeconds(3))
+        .untilAsserted(() -> assertThat(testListener.findFinishedEvent(matchId)).isPresent());
+    MatchFinished event = testListener.findFinishedEvent(matchId).get();
+    assertThat(event.playlistId()).isEqualTo(standardPlaylistId);
   }
 
   private static void assertNoNullAnywhere(String json) {

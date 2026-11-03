@@ -324,4 +324,32 @@ class SoloMatchTest {
       assertThat(manager.getUserLock(UUID.randomUUID())).isNotNull();
     }
   }
+
+  @Test
+  @DisplayName("Khởi tạo SoloMatch với playlistId trong chế độ PRACTICE")
+  void testPracticeMatchWithPlaylistId() {
+    UUID matchId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+    UUID playlistId = UUID.randomUUID();
+    Instant now = Instant.parse("2026-10-29T12:00:00Z");
+
+    SoloMatch match =
+        new SoloMatch(
+            matchId,
+            userId,
+            "Thái",
+            false,
+            SoloModeDto.PRACTICE,
+            false,
+            5,
+            playlistId,
+            null,
+            null,
+            List.of(),
+            now);
+
+    assertThat(match.playlistId()).isEqualTo(playlistId);
+    assertThat(match.mode()).isEqualTo(SoloModeDto.PRACTICE);
+    assertThat(match.isRanked()).isFalse();
+  }
 }

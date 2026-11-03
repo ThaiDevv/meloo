@@ -27,15 +27,18 @@
       "standard": "Standard set",
       "wholeCatalog": "Whole catalog",
       "filters": "{{n}} selected",
+      "noPlaylist": "No playlist chosen",
       "ranked": "Ranked",
       "practice": "Not ranked"
     },
     "start": "Start match",
     "starting": "Creating match…",
+    "playlistRequired": "Pick a playlist to start the match.",
     "errors": {
       "inProgress": "You already have a match in progress. Finish that one first.",
       "resume": "Resume",
       "notEnoughTracks": "This music does not have enough songs for {{n}} rounds ({{missing}} short). Remove a filter or pick fewer rounds.",
+      "playlistNotFound": "This playlist is no longer available. The playlist list has been refreshed, please choose another.",
       "rateLimited": "You are going too fast. Wait a moment and try again.",
       "unknown": "Could not create the match. Please try again."
     }

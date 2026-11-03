@@ -7,6 +7,7 @@ type CreateSoloMatchRequest = components['schemas']['CreateSoloMatchRequest']
 export type CreateSoloMatchFailure =
   | { reason: 'in-progress'; matchId: string }
   | { reason: 'not-enough-tracks'; missingTracks: number }
+  | { reason: 'playlist-not-found' }
   | { reason: 'unauthorized' | 'rate-limited' | 'rejected' | 'unknown' }
 
 export class CreateSoloMatchError extends Error {
@@ -27,6 +28,7 @@ function failureOf(status: number, error: unknown): CreateSoloMatchFailure {
       return { reason: 'not-enough-tracks', missingTracks: error.missingTracks }
     }
   }
+  if (status === 404) return { reason: 'playlist-not-found' }
   if (status === 401 || status === 403) return { reason: 'unauthorized' }
   if (status === 429) return { reason: 'rate-limited' }
   if (status === 400) return { reason: 'rejected' }

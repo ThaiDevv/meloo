@@ -31,10 +31,7 @@ export function MatchIntro({ match, onStart, onExit }: MatchIntroProps) {
   const round = match.currentRound
   const resuming = round.roundNo > 1 || round.level > 1 || match.totalScore > 0
   const count = filterCount(match.filter)
-  const music =
-    count === 0
-      ? t('play.music.wholeCatalog')
-      : t('play.music.filters', { n: count })
+  const music = count === 0 ? t('play.music.wholeCatalog') : t('play.music.filters', { n: count })
   const notice = 'practice'
 
   return (

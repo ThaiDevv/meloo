@@ -339,6 +339,10 @@ export interface PlayerRankChange {
   rankPoints: number
 }
 
+/**
+ * Broadcast only in QUICK_MATCH rooms, immediately following MATCH_FINISHED
+ * for the same matchId (BR-13, BR-24).
+ */
 export interface RankUpdatedEvent {
   type: 'RANK_UPDATED'
   matchId: string

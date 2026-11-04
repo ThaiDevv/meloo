@@ -39,8 +39,7 @@ export function SoloSetupPage() {
   const [music, setMusic] = useState<MusicSelection>(EMPTY_SELECTION)
   const [failure, setFailure] = useState<CreateSoloMatchFailure | null>(null)
 
-  const isPlaylistUnselected =
-    music.source === 'playlist' && !music.playlistId
+  const isPlaylistUnselected = music.source === 'playlist' && !music.playlistId
   const canStart = !create.isPending && !isPlaylistUnselected
 
   const filterCount = countFilterValues(music.filter)
@@ -67,7 +66,11 @@ export function SoloSetupPage() {
     setFailure(null)
     const body =
       music.source === 'playlist'
-        ? { mode: 'PRACTICE' as const, roundCount, ...(music.playlistId && { playlistId: music.playlistId }) }
+        ? {
+            mode: 'PRACTICE' as const,
+            roundCount,
+            ...(music.playlistId && { playlistId: music.playlistId }),
+          }
         : {
             mode: 'PRACTICE' as const,
             roundCount,
@@ -159,17 +162,12 @@ export function SoloSetupPage() {
               <h2 id="summary-heading" className="text-base font-semibold">
                 {t('setup.summary.heading')}
               </h2>
-              <Badge tone="neutral">
-                {t('setup.summary.practice')}
-              </Badge>
+              <Badge tone="neutral">{t('setup.summary.practice')}</Badge>
             </div>
             <VinylDisc accent fast={create.isPending} className="w-20 shrink-0 text-foreground" />
           </div>
           <dl className="space-y-3">
-            <SummaryRow
-              term={t('setup.mode.legend')}
-              detail={t('setup.mode.practice.title')}
-            />
+            <SummaryRow term={t('setup.mode.legend')} detail={t('setup.mode.practice.title')} />
             <SummaryRow
               term={t('setup.rounds.legend')}
               detail={t('setup.rounds.option', { n: roundCount })}

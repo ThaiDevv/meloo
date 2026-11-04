@@ -1805,7 +1805,7 @@ components:
       properties:
         code:
           type: string
-          pattern: '^[A-HJ-NP-Z2-9]{6}$'
+          pattern: '^[A-HJ-KM-NP-Z2-9]{6}$'
           description: 6 uppercase alphanumeric characters excluding 0, O, 1, I, L (BR-11).
     QuickMatchRequest:
       type: object

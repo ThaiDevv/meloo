@@ -460,28 +460,35 @@ components:
 
     SettingsCommand:
       summary: Change room settings (host only, BR-12)
+      description: |
+        Cập nhật cài đặt phòng (chỉ chủ phòng, BR-12). Áp dụng cơ chế cập nhật từng phần (partial update): trường nào vắng mặt trong payload nghĩa là giữ nguyên giá trị hiện tại.
+        Khi chuyển bộ nhạc từ playlist sang filter (chỉ gửi `filter`), server sẽ áp dụng filter mới và tự động xóa `playlistId`. Ngược lại khi chuyển từ filter sang playlist (chỉ gửi `playlistId`), server sẽ áp dụng playlist mới và tự động xóa `filter`. Gửi đồng thời cả `playlistId` và `filter` sẽ bị từ chối với lỗi `VALIDATION_FAILED`.
       payload:
         type: object
         properties:
           roundCount:
             type: integer
             enum: [5, 10, 15]
+            description: Số vòng chơi (BR-09). Vắng mặt nghĩa là giữ nguyên.
           maxPlayers:
             type: integer
             minimum: 2
             maximum: 5
+            description: Số người chơi tối đa (2-5, BR-11). Vắng mặt nghĩa là giữ nguyên.
           playlistId:
             type: [string, 'null']
             format: uuid
             description: |
-              Predefined playlist ID. Mutually exclusive with `filter`: sending both returns error.
+              Predefined playlist ID. Mutually exclusive with `filter`: sending both returns error. Vắng mặt nghĩa là giữ nguyên; gửi giá trị mới sẽ xóa `filter`.
           filter:
             $ref: '#/components/schemas/SoloFilter'
             description: |
-              Catalog filter criteria. Mutually exclusive with `playlistId`: sending both returns error.
+              Catalog filter criteria. Mutually exclusive with `playlistId`: sending both returns error. Vắng mặt nghĩa là giữ nguyên; gửi giá trị mới sẽ xóa `playlistId`.
         examples:
           - $ref: './examples/room/command.settings.json'
           - $ref: './examples/room/command.settings.filter.json'
+          - $ref: './examples/room/command.settings.partial.json'
+          - $ref: './examples/room/command.settings.switch-to-filter.json'
 
     KickCommand:
       summary: Kick player from room (host only; player cannot re-enter, BR-12)
@@ -641,6 +648,8 @@ components:
           newHostId:
             type: [string, 'null']
             format: uuid
+            description: |
+              ID của chủ phòng mới (BR-12). Chỉ khác null khi chủ phòng rời và quyền được chuyển cho người vào sớm nhất; bằng null khi thành viên thường rời hoặc phòng ghép trận.
           reason:
             type: string
             enum: [VOLUNTARY, DISCONNECTED, TIMEOUT]
@@ -826,6 +835,9 @@ components:
 
     ReturnToLobbyEvent:
       summary: Room returns to lobby after match completion to play again (BR-12)
+      description: |
+        Phòng quay về sảnh chờ sau khi trận kết thúc để chơi tiếp (BR-12).
+        Sự kiện này KHÔNG đặt lại `isReady` của người chơi; trạng thái sẵn sàng của tất cả người chơi trong phòng được giữ nguyên như trước khi bắt đầu trận.
       payload:
         type: object
         required: [type, serverTime]
@@ -1171,7 +1183,13 @@ components:
             const: ERROR
           code:
             type: string
-            enum: [ROOM_NOT_FOUND, ROOM_FULL, NOT_IN_ROOM, NOT_HOST, NOT_ROOM_HOST, ROOM_NOT_LOBBY, ROOM_CANNOT_START, NOT_ENOUGH_TRACKS, INVALID_STATE, ALREADY_READY, INVALID_ROUND_NO, INVALID_LEVEL, INVALID_TRACK, CHAT_ANSWER_LEAK, CHAT_PROHIBITED_WORD, RATE_LIMITED, INTERNAL_ERROR]
+            enum: [ROOM_NOT_FOUND, ROOM_FULL, NOT_IN_ROOM, NOT_HOST, NOT_ROOM_HOST, ROOM_NOT_LOBBY, ROOM_CANNOT_START, NOT_ENOUGH_TRACKS, INVALID_STATE, ALREADY_READY, INVALID_ROUND_NO, INVALID_LEVEL, INVALID_TRACK, CHAT_ANSWER_LEAK, CHAT_PROHIBITED_WORD, RATE_LIMITED, INTERNAL_ERROR, FORBIDDEN, INVALID_COMMAND, VALIDATION_FAILED]
+            description: |
+              Error code string.
+              Common codes from backend room coordinator (BE-ROOM-01 / MEL-55):
+              - `FORBIDDEN`: Action not permitted for current user (e.g. non-host attempting to update settings or kick player, BR-12).
+              - `INVALID_COMMAND`: Command not supported by room type or invalid context (e.g. ready/settings/kick in quick match, or trying to kick oneself, BR-12, BR-13).
+              - `VALIDATION_FAILED`: Command payload validation failed (e.g. invalid maxPlayers 2-5, invalid roundCount 5/10/15, or providing both playlistId and filter).
           message:
             type: string
             description: Message for server logging and diagnostics. Clients should localize user-facing text based on code.
@@ -1191,6 +1209,9 @@ components:
             format: date-time
         examples:
           - $ref: './examples/room/queue.error.json'
+          - $ref: './examples/room/queue.error.forbidden.json'
+          - $ref: './examples/room/queue.error.invalid-command.json'
+          - $ref: './examples/room/queue.error.validation-failed.json'
 
     ResyncStateMessage:
       summary: Full room snapshot delivered to a player upon resync or join (BR-14)

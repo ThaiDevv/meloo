@@ -1,0 +1,7 @@
+{
+  "type": "ERROR",
+  "code": "INVALID_COMMAND",
+  "message": "Phòng ghép trận không hỗ trợ sẵn sàng (BR-12, BR-13)",
+  "detail": null,
+  "serverTime": "2026-10-29T10:02:31Z"
+}

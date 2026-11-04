@@ -1,0 +1,7 @@
+{
+  "type": "ERROR",
+  "code": "VALIDATION_FAILED",
+  "message": "Số người tối đa không hợp lệ (phải từ 2-5 và không nhỏ hơn số người hiện tại)",
+  "detail": null,
+  "serverTime": "2026-10-29T10:02:31Z"
+}

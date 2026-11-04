@@ -433,6 +433,51 @@ describe('as the host (AC3, BR-12)', () => {
     vi.useRealTimers()
   })
 
+  it('does not add a "no answer" notice when the server answered with an error', async () => {
+    const ready = room({ players: [host(), player({ isReady: true })] })
+    answerJoin(joinOk(ready))
+    renderLobby('/r/MEL889')
+    await goLive(ready)
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bắt đầu' }))
+    act(() => {
+      kit.latest().emit('/user/queue/errors', {
+        type: 'ERROR',
+        code: 'ROOM_CANNOT_START',
+        message: 'x',
+        detail: null,
+        startFailureReason: 'NOT_ALL_READY',
+        serverTime: SERVER_TIME,
+      })
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Ẩn thông báo lỗi' }))
+    act(() => {
+      vi.advanceTimersByTime(10_000)
+    })
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    vi.useRealTimers()
+  })
+
+  it('does not say "no answer" after a countdown that started and was then stopped', async () => {
+    const ready = room({ players: [host(), player({ isReady: true })] })
+    answerJoin(joinOk(ready))
+    renderLobby('/r/MEL889')
+    await goLive(ready)
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bắt đầu' }))
+    lobbyEvent({ type: 'MATCH_STARTING', countdownSeconds: 5 })
+    lobbyEvent({ type: 'MATCH_COUNTDOWN_STOPPED', reason: 'PLAYER_LEFT' })
+    act(() => {
+      vi.advanceTimersByTime(10_000)
+    })
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    vi.useRealTimers()
+  })
+
   it('cannot start alone', async () => {
     answerJoin(joinOk(room({ players: [host()] })))
     renderLobby('/r/MEL889')

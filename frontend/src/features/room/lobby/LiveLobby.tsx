@@ -43,8 +43,7 @@ export function LiveLobby({ initialRoom }: { initialRoom: RoomResponse }) {
   const lastError = useRoomStore((state) => state.lastError)
   const dismissError = useRoomStore((state) => state.dismissError)
   const [kicking, setKicking] = useState<RoomPlayerSummary | null>(null)
-  const [startedAt, setStartedAt] = useState<number | null>(null)
-  const [startNoReply, setStartNoReply] = useState(false)
+  const [start, setStart] = useState<'idle' | 'waiting' | 'noReply'>('idle')
 
   // The store may still hold another room for one render, before the hook opens this one.
   const room = stored?.roomId === initialRoom.roomId ? stored : initialRoom
@@ -67,20 +66,20 @@ export function LiveLobby({ initialRoom }: { initialRoom: RoomResponse }) {
 
   // "Start" is answered by a countdown or an error. Neither within a few seconds means the server did
   // not act on it (for instance it does not handle the command yet): say so instead of staying silent.
+  // Any answer ends the wait for good, so a later countdown stop or a dismissed error cannot revive it.
+  if ((counting || lastError) && start !== 'idle') setStart('idle')
   useEffect(() => {
-    if (startedAt === null || counting) return undefined
+    if (start !== 'waiting') return undefined
     const timer = setTimeout(() => {
-      setStartNoReply(true)
-      setStartedAt(null)
+      setStart('noReply')
     }, START_REPLY_MS)
     return () => {
       clearTimeout(timer)
     }
-  }, [startedAt, counting])
-  const noReply = startNoReply && !counting && !lastError
+  }, [start])
   const dismiss = () => {
     dismissError()
-    setStartNoReply(false)
+    setStart('idle')
   }
 
   const canSend = link === 'live' || link === 'syncing'
@@ -114,7 +113,9 @@ export function LiveLobby({ initialRoom }: { initialRoom: RoomResponse }) {
             {t('lobby.inProgress')}
           </p>
         ) : null}
-        {noReply ? <LobbyAlert text={t('errors.startNoReply')} onDismiss={dismiss} /> : null}
+        {start === 'noReply' ? (
+          <LobbyAlert text={t('errors.startNoReply')} onDismiss={dismiss} />
+        ) : null}
         {lastError ? <LobbyAlert text={errorText(lastError, t)} onDismiss={dismiss} /> : null}
       </div>
 
@@ -180,8 +181,7 @@ export function LiveLobby({ initialRoom }: { initialRoom: RoomResponse }) {
               }}
               onStart={() => {
                 dismiss()
-                if (send('start', {})) setStartedAt(Date.now())
-                else setStartNoReply(true)
+                setStart(send('start', {}) ? 'waiting' : 'noReply')
               }}
               onLeave={leave}
             />

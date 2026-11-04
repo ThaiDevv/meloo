@@ -3,6 +3,7 @@ package com.meloo.chat.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.meloo.IntegrationTest;
+import com.meloo.chat.api.ReportStatus;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

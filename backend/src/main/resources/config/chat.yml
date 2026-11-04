@@ -1,1 +1,7 @@
 # Configuration owned by the chat module.
+meloo:
+  chat:
+    rate-limit-interval: 1s
+    max-message-length: 200
+    banned-words-cache-ttl: 5m
+    max-history-per-room: 50

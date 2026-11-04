@@ -493,6 +493,21 @@ describe('as the host (AC3, BR-12)', () => {
     expect(await screen.findByText('3', { selector: '[role="timer"]' })).toBeInTheDocument()
   })
 
+  it('keeps the host controls when a guest leaves and the server sends no new host', async () => {
+    answerJoin(joinOk())
+    renderLobby('/r/MEL889')
+    await goLive()
+
+    lobbyEvent({ type: 'PLAYER_LEFT', userId: GUEST_ID, newHostId: null, reason: 'DISCONNECTED' })
+
+    await waitFor(() => {
+      expect(screen.queryByText('PlayerTwo')).not.toBeInTheDocument()
+    })
+    expect(screen.getByRole('button', { name: 'Bắt đầu' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'M E L 8 8 9' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Đổi bộ nhạc' })).toBeInTheDocument()
+  })
+
   it('shows the host handover when the host leaves', async () => {
     signIn(GUEST_ID, 'PlayerTwo')
     answerJoin(joinOk())

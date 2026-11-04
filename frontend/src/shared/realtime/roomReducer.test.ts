@@ -55,6 +55,29 @@ describe('reduceRoomMessage: players', () => {
     expect(next.room?.playerCount).toBe(1)
   })
 
+  it('keeps the host when someone else leaves with a null newHostId, as the contract example does', () => {
+    const next = apply(inLobby, {
+      type: 'PLAYER_LEFT',
+      userId: GUEST_ID,
+      newHostId: null,
+      reason: 'DISCONNECTED',
+      serverTime: SERVER_TIME,
+    })
+    expect(next.room?.hostId).toBe(HOST_ID)
+    expect(next.room?.players).toEqual([expect.objectContaining({ userId: HOST_ID, isHost: true })])
+  })
+
+  it('leaves no host when the host leaves and the server names nobody', () => {
+    const next = apply(inLobby, {
+      type: 'PLAYER_LEFT',
+      userId: HOST_ID,
+      newHostId: null,
+      reason: 'TIMEOUT',
+      serverTime: SERVER_TIME,
+    })
+    expect(next.room?.hostId).toBeNull()
+  })
+
   it('never promotes anyone in a room without a host (matchmaking)', () => {
     const quick: RoomData = {
       ...EMPTY_ROOM_DATA,
@@ -201,6 +224,20 @@ describe('reduceRoomMessage: snapshots and noise', () => {
     })
     expect(next.room?.roundCount).toBe(5)
     expect(next).toMatchObject({ phase: 'LOBBY', countdown: null, matchStarting: false })
+  })
+
+  it('marks a snapshot taken during the countdown as "this match is starting for me"', () => {
+    const next = apply(inLobby, {
+      type: 'RESYNC_STATE',
+      room: room(),
+      roomPhase: 'COUNTDOWN',
+      currentRound: null,
+      scores: [],
+      lastRoundAnswer: null,
+      lastRoundResults: null,
+      serverTime: SERVER_TIME,
+    })
+    expect(next).toMatchObject({ phase: 'COUNTDOWN', matchStarting: true })
   })
 
   it('stores the last error of a command', () => {

@@ -75,7 +75,11 @@ export function reduceRoomMessage(
         phase: message.roomPhase,
         // A snapshot is the whole truth: whatever transient countdown we held may be stale.
         countdown: message.roomPhase === 'LOBBY' ? null : data.countdown,
-        matchStarting: message.roomPhase !== 'LOBBY' ? data.matchStarting : false,
+        // Reloading during the countdown still means "I am in this match".
+        matchStarting:
+          message.roomPhase === 'COUNTDOWN'
+            ? true
+            : message.roomPhase !== 'LOBBY' && data.matchStarting,
       }
     case 'ERROR':
       return { lastError: message }
@@ -134,8 +138,13 @@ export function reduceRoomMessage(
       return { room: withPlayers(room, [...others, message.user]) }
     }
     case 'PLAYER_LEFT': {
+      // The contract does not say what a null `newHostId` means, and its own example sends null
+      // when a guest leaves. So null keeps the current host, unless the host is the one leaving.
       // A room without a host (quick match) stays that way instead of promoting someone.
-      const hostId = room.hostId === null ? null : message.newHostId
+      const hostId =
+        room.hostId === null
+          ? null
+          : (message.newHostId ?? (message.userId === room.hostId ? null : room.hostId))
       const players = room.players
         .filter((player) => player.userId !== message.userId)
         .map((player) => ({ ...player, isHost: hostId !== null && player.userId === hostId }))

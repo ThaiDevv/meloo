@@ -44,7 +44,12 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,6 +57,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
+import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.simp.stomp.StompCommand;
+import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
+import org.springframework.messaging.simp.user.SimpSession;
+import org.springframework.messaging.simp.user.SimpSubscription;
+import org.springframework.messaging.simp.user.SimpUser;
+import org.springframework.messaging.simp.user.SimpUserRegistry;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 class RoomLobbyServiceTest {
@@ -510,6 +522,130 @@ class RoomLobbyServiceTest {
               ApiException apiEx = (ApiException) ex;
               assertThat(apiEx.status()).isEqualTo(org.springframework.http.HttpStatus.BAD_REQUEST);
               assertThat(apiEx.code()).isEqualTo("VALIDATION_FAILED");
+            });
+  }
+
+  @Test
+  @DisplayName(
+      "Nhiều thread cùng gọi quick match với cùng filter đồng thời đều ghép chung một phòng (M1)")
+  void concurrentQuickMatchWithSameFilterJoinsSameRoom() throws Exception {
+    int threadCount = 4;
+    ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+    CountDownLatch startLatch = new CountDownLatch(1);
+    List<CompletableFuture<RoomResponseDto>> futures = new ArrayList<>();
+
+    QuickMatchRequestDto req = new QuickMatchRequestDto();
+    SoloFilterDto filter = new SoloFilterDto();
+    filter.setGenreCodes(List.of("ROCK"));
+    req.setFilter(filter);
+
+    for (int i = 0; i < threadCount; i++) {
+      UUID u = UUID.randomUUID();
+      String name = "P" + i;
+      futures.add(
+          CompletableFuture.supplyAsync(
+              () -> {
+                try {
+                  startLatch.await();
+                } catch (InterruptedException e) {
+                  Thread.currentThread().interrupt();
+                }
+                return service.quickMatch(u, name, null, false, req);
+              },
+              executor));
+    }
+
+    startLatch.countDown();
+    CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+    executor.shutdown();
+
+    UUID expectedRoomId = futures.get(0).join().getRoomId();
+    for (CompletableFuture<RoomResponseDto> f : futures) {
+      assertThat(f.join().getRoomId()).isEqualTo(expectedRoomId);
+    }
+
+    RoomSession s = service.getRoom(expectedRoomId).orElseThrow();
+    assertThat(s.playerCount()).isEqualTo(threadCount);
+  }
+
+  @Test
+  @DisplayName(
+      "Quick match cập nhật descriptor trong RoomRegistry hoàn tất trước khi trả response (M3)")
+  void quickMatchUpdatesDescriptorInRegistryBeforeReturning() {
+    UUID u1 = UUID.randomUUID();
+    UUID u2 = UUID.randomUUID();
+
+    QuickMatchRequestDto req = new QuickMatchRequestDto();
+    SoloFilterDto filter = new SoloFilterDto();
+    filter.setGenreCodes(List.of("JAZZ"));
+    req.setFilter(filter);
+
+    RoomResponseDto r1 = service.quickMatch(u1, "P1", null, false, req);
+    assertThat(roomRegistry.find(r1.getRoomId())).isPresent();
+    assertThat(roomRegistry.find(r1.getRoomId()).get().hasMember(u1)).isTrue();
+
+    RoomResponseDto r2 = service.quickMatch(u2, "P2", null, false, req);
+    assertThat(r2.getRoomId()).isEqualTo(r1.getRoomId());
+    assertThat(roomRegistry.find(r1.getRoomId()).get().hasMember(u2)).isTrue();
+  }
+
+  @Test
+  @DisplayName(
+      "Kick người chơi chỉ gửi UNSUBSCRIBE cho room bị kick, không gửi DISCONNECT session (M2)")
+  void kickPlayerOnlyUnsubscribesRoomTopicAndDoesNotDisconnectSession() {
+    SimpUserRegistry mockRegistry = mock(SimpUserRegistry.class);
+    MessageChannel mockChannel = mock(MessageChannel.class);
+    RoomLobbyService testService =
+        new RoomLobbyService(
+            roomRegistry,
+            eventPublisher,
+            catalogService,
+            codeGenerator,
+            properties,
+            clock,
+            mockRegistry,
+            mockChannel);
+
+    UUID hostId = UUID.randomUUID();
+    UUID targetUserId = UUID.randomUUID();
+
+    CreateRoomRequestDto req = new CreateRoomRequestDto(RoomTypeEnum.PUBLIC_ROOM);
+    req.setRoundCount(RoundCountEnum.NUMBER_10);
+    req.setMaxPlayers(5);
+    RoomResponseDto created = testService.createRoom(hostId, "Host", null, false, req);
+    UUID roomId = created.getRoomId();
+
+    testService.joinRoomByCode(targetUserId, "Target", null, false, created.getCode());
+
+    SimpUser mockUser = mock(SimpUser.class);
+    SimpSession mockSession = mock(SimpSession.class);
+    SimpSubscription roomSub = mock(SimpSubscription.class);
+    SimpSubscription otherRoomSub = mock(SimpSubscription.class);
+
+    when(mockRegistry.getUser(targetUserId.toString())).thenReturn(mockUser);
+    when(mockUser.getSessions()).thenReturn(Set.of(mockSession));
+    when(mockSession.getId()).thenReturn("sess-42");
+    when(roomSub.getId()).thenReturn("sub-target-room");
+    when(roomSub.getDestination()).thenReturn("/topic/rooms/" + roomId + "/lobby");
+    when(otherRoomSub.getId()).thenReturn("sub-other-room");
+    when(otherRoomSub.getDestination()).thenReturn("/topic/rooms/" + UUID.randomUUID() + "/lobby");
+    when(mockSession.getSubscriptions()).thenReturn(Set.of(roomSub, otherRoomSub));
+
+    testService.handleKick(roomId, hostId, new KickCommand(targetUserId));
+
+    await()
+        .atMost(2, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              ArgumentCaptor<org.springframework.messaging.Message<?>> captor =
+                  ArgumentCaptor.forClass(org.springframework.messaging.Message.class);
+              verify(mockChannel, times(1)).send(captor.capture());
+
+              StompHeaderAccessor accessor = StompHeaderAccessor.wrap(captor.getValue());
+              assertThat(accessor.getCommand()).isEqualTo(StompCommand.UNSUBSCRIBE);
+              assertThat(accessor.getSessionId()).isEqualTo("sess-42");
+              assertThat(accessor.getSubscriptionId()).isEqualTo("sub-target-room");
+              assertThat(accessor.getDestination()).isEqualTo("/topic/rooms/" + roomId + "/lobby");
             });
   }
 }

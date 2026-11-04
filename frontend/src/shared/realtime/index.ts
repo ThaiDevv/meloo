@@ -1,8 +1,5 @@
-import { Client } from '@stomp/stompjs'
-
-/** Build a STOMP client; connection and message types arrive with CT-02 / FE-ROOM tickets. */
-export function createStompClient(
-  brokerURL: string = import.meta.env.VITE_WS_URL ?? '/ws',
-): Client {
-  return new Client({ brokerURL, reconnectDelay: 3000 })
-}
+export { useRoomRealtime, type RoomRealtime } from './useRoomRealtime'
+export { useRoomStore } from './roomStore'
+export type { RoomCommands, RoomTopic } from './commands'
+export type { RoomLink, RoomPhase } from './roomReducer'
+export { createStompClient } from './stompClient'

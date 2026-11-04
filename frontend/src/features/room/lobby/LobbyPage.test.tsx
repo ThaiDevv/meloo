@@ -1,4 +1,4 @@
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -397,6 +397,40 @@ describe('as the host (AC3, BR-12)', () => {
     })
     await user.click(screen.getByRole('button', { name: 'Bắt đầu' }))
     expect(kit.latest().commands('start')).toEqual([{}])
+  })
+
+  it('says so when the server neither counts down nor answers after "start"', async () => {
+    const ready = room({ players: [host(), player({ isReady: true })] })
+    answerJoin(joinOk(ready))
+    renderLobby('/r/MEL889')
+    await goLive(ready)
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bắt đầu' }))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    act(() => {
+      vi.advanceTimersByTime(5_000)
+    })
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Máy chủ chưa phản hồi lệnh bắt đầu')
+    vi.useRealTimers()
+  })
+
+  it('stays quiet when the countdown answers "start"', async () => {
+    const ready = room({ players: [host(), player({ isReady: true })] })
+    answerJoin(joinOk(ready))
+    renderLobby('/r/MEL889')
+    await goLive(ready)
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bắt đầu' }))
+    lobbyEvent({ type: 'MATCH_STARTING', countdownSeconds: 5 })
+    act(() => {
+      vi.advanceTimersByTime(10_000)
+    })
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    vi.useRealTimers()
   })
 
   it('cannot start alone', async () => {

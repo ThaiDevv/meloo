@@ -175,6 +175,7 @@
       "NOT_ENOUGH_PLAYERS": "Cần ít nhất 2 người đang kết nối để bắt đầu.",
       "NOT_ALL_READY": "Vẫn còn người chưa sẵn sàng.",
       "NOT_ENOUGH_TRACKS": "Bộ nhạc này chưa đủ bài cho số vòng đã chọn (thiếu {{n}} bài). Hãy đổi bộ nhạc hoặc chọn ít vòng hơn."
-    }
+    },
+    "startNoReply": "Máy chủ chưa phản hồi lệnh bắt đầu. Hãy thử lại sau ít giây."
   }
 }

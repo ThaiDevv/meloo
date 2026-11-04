@@ -175,6 +175,7 @@
       "NOT_ENOUGH_PLAYERS": "At least 2 connected players are needed to start.",
       "NOT_ALL_READY": "Some players are not ready yet.",
       "NOT_ENOUGH_TRACKS": "This music set does not have enough tracks for the chosen rounds ({{n}} short). Change the music or pick fewer rounds."
-    }
+    },
+    "startNoReply": "The server did not answer the start command. Try again in a few seconds."
   }
 }

@@ -14,7 +14,11 @@ import { MatchCountdown, SoloHint } from './components/MatchCountdown'
 import { PlayerList } from './components/PlayerList'
 import { RoomCode } from './components/RoomCode'
 import { SettingsPanel } from './components/SettingsPanel'
+import { errorText } from './model/errorText'
 import { canStart, hasHost, notReady, roleOf } from './model/rules'
+
+/** How long the host waits for the server to answer "start" before being told it did not. */
+const START_REPLY_MS = 5_000
 
 const ROOM_TYPE_KEY = {
   PRIVATE_ROOM: 'lobby.type.private',
@@ -39,6 +43,8 @@ export function LiveLobby({ initialRoom }: { initialRoom: RoomResponse }) {
   const lastError = useRoomStore((state) => state.lastError)
   const dismissError = useRoomStore((state) => state.dismissError)
   const [kicking, setKicking] = useState<RoomPlayerSummary | null>(null)
+  const [startedAt, setStartedAt] = useState<number | null>(null)
+  const [startNoReply, setStartNoReply] = useState(false)
 
   // The store may still hold another room for one render, before the hook opens this one.
   const room = stored?.roomId === initialRoom.roomId ? stored : initialRoom
@@ -58,6 +64,24 @@ export function LiveLobby({ initialRoom }: { initialRoom: RoomResponse }) {
     }
     seenRounds.current = roundPrepareCount
   }, [roundPrepareCount, matchStarting, navigate, room.code, room.roomId])
+
+  // "Start" is answered by a countdown or an error. Neither within a few seconds means the server did
+  // not act on it (for instance it does not handle the command yet): say so instead of staying silent.
+  useEffect(() => {
+    if (startedAt === null || counting) return undefined
+    const timer = setTimeout(() => {
+      setStartNoReply(true)
+      setStartedAt(null)
+    }, START_REPLY_MS)
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [startedAt, counting])
+  const noReply = startNoReply && !counting && !lastError
+  const dismiss = () => {
+    dismissError()
+    setStartNoReply(false)
+  }
 
   const canSend = link === 'live' || link === 'syncing'
   const commandsEnabled = canSend && !counting && !inProgress
@@ -90,7 +114,8 @@ export function LiveLobby({ initialRoom }: { initialRoom: RoomResponse }) {
             {t('lobby.inProgress')}
           </p>
         ) : null}
-        {lastError ? <LobbyAlert error={lastError} onDismiss={dismissError} /> : null}
+        {noReply ? <LobbyAlert text={t('errors.startNoReply')} onDismiss={dismiss} /> : null}
+        {lastError ? <LobbyAlert text={errorText(lastError, t)} onDismiss={dismiss} /> : null}
       </div>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_28rem] lg:items-start lg:gap-12">
@@ -154,8 +179,9 @@ export function LiveLobby({ initialRoom }: { initialRoom: RoomResponse }) {
                 send('ready', { ready })
               }}
               onStart={() => {
-                dismissError()
-                send('start', {})
+                dismiss()
+                if (send('start', {})) setStartedAt(Date.now())
+                else setStartNoReply(true)
               }}
               onLeave={leave}
             />

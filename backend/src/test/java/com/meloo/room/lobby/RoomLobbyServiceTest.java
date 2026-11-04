@@ -23,6 +23,7 @@ import com.meloo.generated.model.RoomResponseDto;
 import com.meloo.generated.model.RoomStatusDto;
 import com.meloo.generated.model.RoomTypeDto;
 import com.meloo.generated.model.SoloFilterDto;
+import com.meloo.room.api.RoomDescriptor;
 import com.meloo.room.api.message.ErrorMessage;
 import com.meloo.room.api.message.KickCommand;
 import com.meloo.room.api.message.PlayerJoinedEvent;
@@ -646,6 +647,38 @@ class RoomLobbyServiceTest {
               assertThat(accessor.getSessionId()).isEqualTo("sess-42");
               assertThat(accessor.getSubscriptionId()).isEqualTo("sub-target-room");
               assertThat(accessor.getDestination()).isEqualTo("/topic/rooms/" + roomId + "/lobby");
+            });
+  }
+
+  @Test
+  @DisplayName(
+      "Join và kick tuần tự trong actor đảm bảo descriptor không bị ghi đè thành viên bị kick (M1 vòng 3)")
+  void joinAndKickSequentiallyMaintainsCorrectDescriptorMembership() {
+    UUID hostId = UUID.randomUUID();
+    UUID userB = UUID.randomUUID();
+    UUID userA = UUID.randomUUID();
+
+    CreateRoomRequestDto req = new CreateRoomRequestDto(RoomTypeEnum.PUBLIC_ROOM);
+    req.setRoundCount(RoundCountEnum.NUMBER_10);
+    req.setMaxPlayers(5);
+    RoomResponseDto created = service.createRoom(hostId, "Host", null, false, req);
+    UUID roomId = created.getRoomId();
+
+    service.joinRoomByCode(userB, "UserB", null, false, created.getCode());
+    assertThat(roomRegistry.find(roomId).orElseThrow().hasMember(userB)).isTrue();
+
+    // User A joins and User B is kicked
+    service.joinRoomByCode(userA, "UserA", null, false, created.getCode());
+    service.handleKick(roomId, hostId, new KickCommand(userB));
+
+    await()
+        .atMost(2, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              RoomDescriptor descriptor = roomRegistry.find(roomId).orElseThrow();
+              assertThat(descriptor.hasMember(hostId)).isTrue();
+              assertThat(descriptor.hasMember(userA)).isTrue();
+              assertThat(descriptor.hasMember(userB)).isFalse();
             });
   }
 }

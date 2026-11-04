@@ -337,34 +337,32 @@ public class RoomLobbyService {
             try {
               RoomPlayer player =
                   new RoomPlayer(userId, nickname, avatarUrl, false, true, isGuest, true, 0, now);
-              Boolean joined =
+              CompletableFuture<Void> updateFuture =
                   await(
                       actor.submit(
                           () -> {
                             if (existingSession.hasMember(userId)) {
-                              return false;
+                              return CompletableFuture.completedFuture(null);
                             }
                             if (existingSession.playerCount() >= existingSession.maxPlayers()
                                 || existingSession.status() != RoomStatusDto.LOBBY) {
                               return null;
                             }
                             existingSession.addPlayer(player);
-                            return true;
+                            RoomDescriptor updated =
+                                new RoomDescriptor(
+                                    existingSession.roomId(),
+                                    existingSession.allMemberIds(),
+                                    existingSession.isPrivate());
+                            return roomRegistry.update(updated);
                           }));
 
-              if (Boolean.TRUE.equals(joined)) {
-                RoomDescriptor updated =
-                    new RoomDescriptor(
-                        existingSession.roomId(),
-                        existingSession.allMemberIds(),
-                        existingSession.isPrivate());
-                await(roomRegistry.update(updated));
+              if (updateFuture != null) {
+                await(updateFuture);
                 eventPublisher.publish(
                     existingSession.roomId(),
                     RoomTopic.LOBBY,
                     new PlayerJoinedEvent(player.toPayload(), now));
-                return existingSession.toResponseDto();
-              } else if (Boolean.FALSE.equals(joined)) {
                 return existingSession.toResponseDto();
               }
             } catch (Exception ignored) {
@@ -451,18 +449,20 @@ public class RoomLobbyService {
                         "ROOM_NOT_FOUND",
                         "Phòng không tồn tại hoặc đã đóng"));
 
-    RoomPlayer newlyJoined =
+    JoinResult joinResult =
         await(actor.submit(() -> doJoin(session, actor, userId, nickname, avatarUrl, isGuest)));
 
-    if (newlyJoined != null) {
-      await(
-          roomRegistry.update(
-              new RoomDescriptor(session.roomId(), session.allMemberIds(), session.isPrivate())));
+    if (joinResult.updateFuture() != null) {
+      await(joinResult.updateFuture());
+    }
 
+    if (joinResult.player() != null) {
       Instant now = clock.instant();
       if (session.status() == RoomStatusDto.LOBBY) {
         eventPublisher.publish(
-            session.roomId(), RoomTopic.LOBBY, new PlayerJoinedEvent(newlyJoined.toPayload(), now));
+            session.roomId(),
+            RoomTopic.LOBBY,
+            new PlayerJoinedEvent(joinResult.player().toPayload(), now));
       } else if (session.status() == RoomStatusDto.PLAYING) {
         List<RoomPlayerSummaryPayload> waitingPayloads =
             session.waitingPlayers().stream().map(RoomPlayer::toPayload).toList();
@@ -474,7 +474,10 @@ public class RoomLobbyService {
     return session.toResponseDto();
   }
 
-  private @Nullable RoomPlayer doJoin(
+  private record JoinResult(
+      @Nullable RoomPlayer player, @Nullable CompletableFuture<Void> updateFuture) {}
+
+  private JoinResult doJoin(
       RoomSession session,
       RoomActor actor,
       UUID userId,
@@ -494,7 +497,7 @@ public class RoomLobbyService {
 
     Optional<RoomPlayer> existingOpt = session.findPlayer(userId);
     if (existingOpt.isPresent()) {
-      return null;
+      return new JoinResult(null, null);
     }
 
     if (session.isFull()) {
@@ -505,7 +508,12 @@ public class RoomLobbyService {
     RoomPlayer player =
         new RoomPlayer(userId, nickname, avatarUrl, false, false, isGuest, false, 0, now);
     session.addPlayer(player);
-    return player;
+
+    RoomDescriptor descriptor =
+        new RoomDescriptor(session.roomId(), session.allMemberIds(), session.isPrivate());
+    CompletableFuture<Void> updateFuture = roomRegistry.update(descriptor);
+
+    return new JoinResult(player, updateFuture);
   }
 
   /** Xử lý lệnh sẵn sàng / hủy sẵn sàng (/app/rooms/{roomId}/ready). */

@@ -1,27 +1,26 @@
 # Đặc tả use case: Chơi đơn
 
-> Ticket: MEL-29 (DOC-02) · Tổng quan, tác nhân, danh mục và truy vết: `00-tong-quan.md` · Sơ đồ: `docs/uml/usecase/uc-02-choi-don.png`
+> Ticket: MEL-29 (DOC-02), cập nhật MEL-149 · Tổng quan, tác nhân, danh mục và truy vết: `00-tong-quan.md` · Sơ đồ: `docs/uml/usecase/uc-02-choi-don.png`
 
 ### UC-07: Chơi luyện tập
 - Tác nhân chính / phụ: Khách (gồm Người chơi đã đăng nhập) / không có.
 - Tiền điều kiện: Người chơi có phiên (khách hoặc đã đăng nhập). Kho nhạc có đủ bài hợp lệ cho bộ chọn.
-- Hậu điều kiện (thành công / thất bại): Thành công: trận đơn kết thúc, người chơi thấy tổng điểm; trận được lưu vào lịch sử, thống kê và tính huy hiệu. Chỉ trận "Xếp hạng" (bộ chuẩn) của người đã đăng nhập mới vào bảng xếp hạng. Thất bại: trận không bắt đầu (người chơi ở màn hình chọn bộ), hoặc trận bị bỏ dở quá 30 phút và chuyển sang ABANDONED (luồng 4b).
+- Hậu điều kiện (thành công / thất bại): Thành công: trận đơn kết thúc, người chơi thấy tổng điểm; trận được lưu vào lịch sử, thống kê và tính huy hiệu; không tính điểm rank và không vào bảng xếp hạng (quyết định PO 01/11). Thất bại: trận không bắt đầu (người chơi ở màn hình chọn bộ), hoặc trận bị bỏ dở quá 30 phút và chuyển sang ABANDONED (luồng 4b).
 - Luồng chính:
-  1. Người chơi chọn "Chơi đơn". Màn chọn chế độ có hai lựa chọn tách biệt: "Xếp hạng" (bộ chuẩn) và "Luyện tập" (tự chọn bộ lọc).
-  2. "Xếp hạng": hệ thống dùng bộ chuẩn. "Luyện tập": người chơi đặt bộ lọc (thể loại, quốc gia, ca sĩ, thập niên). Cả hai chọn số vòng 5, 10 hoặc 15 (mặc định 10).
+  1. Người chơi chọn "Chơi đơn" (chế độ luyện tập, không tính xếp hạng rank).
+  2. Người chơi chọn bộ bài (dùng bộ chuẩn hoặc đặt bộ lọc: thể loại, quốc gia, ca sĩ, thập niên) và chọn số vòng 5, 10 hoặc 15 (mặc định 10).
   3. Hệ thống kiểm tra kho nhạc đủ bài hợp lệ và chọn các bài, không lặp.
-  4. Với mỗi vòng, người chơi đoán bài hát (UC-08, include). Chơi đơn không giới hạn thời gian mỗi vòng nên không có thưởng tốc độ; có điểm và combo ở cả hai lựa chọn.
+  4. Với mỗi vòng, người chơi đoán bài hát (UC-08, include). Chơi đơn không giới hạn thời gian mỗi vòng nên không có thưởng tốc độ; có điểm cơ bản và combo; không ảnh hưởng điểm rank.
   5. Sau mỗi vòng, hệ thống hiển thị đáp án, điểm vòng, combo hiện tại, nguồn nhạc và link nghe đầy đủ trên nền tảng gốc.
   6. Hết số vòng, hệ thống hiển thị tổng điểm.
   7. Hệ thống lưu trận vào lịch sử và thống kê cá nhân, tính huy hiệu.
 - Luồng phụ và ngoại lệ:
   - 3a. Bộ chọn không đủ bài cho số vòng đã chọn: hệ thống không cho bắt đầu và báo còn thiếu bao nhiêu bài; người chơi đổi bộ lọc hoặc giảm số vòng.
   - 4a. Đoạn nhạc lỗi giữa trận (do server xác nhận): vòng được thay bằng bài khác, không ai bị trừ điểm.
-  - 4b. Người chơi bỏ dở (đóng tab, mất mạng): server giữ trận 30 phút. Mở lại trong thời gian đó thì chơi tiếp đúng vòng và đúng mức nghe đã mở, không được đổi sang bài khác. Quá 30 phút thì trận chuyển sang ABANDONED: lưu lịch sử các vòng đã xong, vòng đang dở được 0 điểm, trận không tính vào bảng xếp hạng kể cả khi chơi bộ chuẩn. (Quyết định PO 22/10 (mục 5, #3))
-  - 7a. Lựa chọn "Luyện tập": trận không lên bảng xếp hạng nhưng vẫn có điểm, combo, lịch sử, thống kê và huy hiệu. (Quyết định PO 22/10 (mục 5, #1))
-  - 7b. Người chơi là khách: điểm không vào bảng xếp hạng.
+  - 4b. Người chơi bỏ dở (đóng tab, mất mạng): server giữ trận 30 phút. Mở lại trong thời gian đó thì chơi tiếp đúng vòng và đúng mức nghe đã mở, không được đổi sang bài khác. Quá 30 phút thì trận chuyển sang ABANDONED: lưu lịch sử các vòng đã xong, vòng đang dở được 0 điểm, không tính điểm rank. (Quyết định PO 22/10 (mục 5, #3))
+  - 7a. Chơi đơn là chế độ luyện tập, không tính điểm rank và không lên bảng xếp hạng nhưng vẫn có điểm, combo, lịch sử, thống kê và huy hiệu. (Quyết định PO 01/11)
 - Quy tắc nghiệp vụ: BR-01 → BR-09, BR-20, BR-23, BR-27, BR-29.
-- Yêu cầu liên quan: FR-07, FR-13, FR-14, NFR-04.
+- Yêu cầu liên quan: FR-07, FR-13, NFR-04.
 
 ### UC-08: Đoán bài hát trong vòng
 - Tác nhân chính / phụ: Khách (người chơi đang ở trong vòng) / Hệ thống API nhạc.

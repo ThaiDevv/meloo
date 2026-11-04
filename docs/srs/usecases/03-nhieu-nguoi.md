@@ -1,6 +1,6 @@
 # Đặc tả use case: Chơi nhiều người và giao tiếp
 
-> Ticket: MEL-29 (DOC-02) · Tổng quan, tác nhân, danh mục và truy vết: `00-tong-quan.md` · Sơ đồ: `docs/uml/usecase/uc-03-nhieu-nguoi.png`
+> Ticket: MEL-29 (DOC-02), cập nhật MEL-149 · Tổng quan, tác nhân, danh mục và truy vết: `00-tong-quan.md` · Sơ đồ: `docs/uml/usecase/uc-03-nhieu-nguoi.png`
 
 ### UC-12: Tạo phòng
 - Tác nhân chính / phụ: Chủ phòng (Khách hoặc Người chơi đã đăng nhập đang tạo phòng) / không có.
@@ -43,23 +43,24 @@
 - Yêu cầu liên quan: FR-09, NFR-11 (từ lúc mở link đến khi thấy sảnh ≤ 3 giây, p95).
 
 ### UC-15: Ghép trận nhanh
-- Tác nhân chính / phụ: Khách (gồm Người chơi đã đăng nhập) / không có.
-- Tiền điều kiện: Người chơi có phiên (khách cũng chơi được).
-- Hậu điều kiện (thành công / thất bại): Thành công: người chơi ở trong phòng ghép trận và trận tự bắt đầu (UC-18). Thất bại: người chơi rời hàng chờ trước khi trận bắt đầu và không bị tính trận.
+- Tác nhân chính / phụ: Người chơi đã đăng nhập / không có. (Khách không được vào ghép trận nhanh; muốn chơi rank phải đăng nhập).
+- Tiền điều kiện: Người chơi đã đăng nhập (UC-02).
+- Hậu điều kiện (thành công / thất bại): Thành công: người chơi ở trong phòng ghép trận 2–5 người và trận tự bắt đầu (UC-18), kết quả tính điểm rank theo thứ hạng. Thất bại: người chơi rời hàng chờ trước khi trận bắt đầu và không bị trừ điểm rank.
 - Luồng chính:
-  1. Người chơi chọn "Ghép trận nhanh" và bộ lọc.
+  1. Người chơi (đã đăng nhập) chọn "Ghép trận nhanh" và bộ lọc.
   2. Hệ thống tìm phòng ghép trận đang chờ và hợp bộ lọc; không có thì tạo phòng ghép trận mới. Hệ thống không đưa người chơi vào phòng công khai tự tạo.
   3. Người chơi vào sảnh chờ của phòng ghép trận.
   4. Khi có người thứ 2, hệ thống bắt đầu đếm ngược 30 giây; thêm người không đặt lại đếm ngược.
   5. Hết đếm ngược, hoặc khi đủ số người tối đa của phòng, trận tự bắt đầu (UC-18).
 - Luồng phụ và ngoại lệ:
+  - 1a. Người chơi là khách: hệ thống từ chối và yêu cầu đăng nhập để chơi chế độ xếp hạng, chuyển sang UC-02. (Quyết định PO 01/11)
   - 4a. Chờ 60 giây vẫn chỉ có một mình: hệ thống gợi ý chơi đơn (UC-07) hoặc "Tạo phòng riêng và mời bạn" (người chơi rời hàng chờ, UC-12 cùng bộ lọc, trận không tính xếp hạng). Người chơi vẫn chờ tiếp được.
   - 4b. Đang đếm ngược mà số người còn kết nối giảm xuống dưới 2: đếm ngược dừng. Khi lại có người thứ 2, đếm lại đủ 30 giây. (Quyết định PO 22/10 (mục 5, #5))
   - 5b. Lúc hết đếm ngược, hệ thống kiểm tra lại số người đang kết nối; nếu dưới 2 thì không bắt đầu trận và quay về trạng thái chờ. (Quyết định PO 22/10 (mục 5, #5))
   - 5a. Hết trận, ai ở lại sảnh thì đếm ngược lại như bước 4 (UC-20).
   - Ghi chú: phòng ghép trận không có chủ phòng, không có nút sẵn sàng, không mời người ra, không hiện trong danh sách phòng công khai và không vào được bằng mã hay link.
-  - Ghi chú: khách chơi được nhưng điểm không vào bảng xếp hạng; người đã đăng nhập trong cùng trận vẫn được tính.
-- Quy tắc nghiệp vụ: BR-12, BR-13, BR-20, BR-23.
+  - Ghi chú: ghép trận nhanh là trận xếp hạng duy nhất, tính điểm rank theo thứ hạng (BR-24); chỉ người đã đăng nhập mới được tham gia.
+- Quy tắc nghiệp vụ: BR-12, BR-13, BR-20, BR-23, BR-24.
 - Yêu cầu liên quan: FR-10, NFR-02.
 
 ### UC-17: Bắt đầu trận
@@ -81,26 +82,26 @@
 - Yêu cầu liên quan: FR-09, NFR-08.
 
 ### UC-18: Chơi trận nhiều người
-- Tác nhân chính / phụ: Khách (người chơi trong phòng, gồm Người chơi đã đăng nhập) / Hệ thống API nhạc.
+- Tác nhân chính / phụ: Khách (người chơi trong phòng, gồm Người chơi đã đăng nhập; ghép trận nhanh chỉ có Người chơi đã đăng nhập) / Hệ thống API nhạc.
 - Tiền điều kiện: Trận đã bắt đầu từ UC-17 (phòng tự tạo) hoặc UC-15 (phòng ghép trận).
 - Hậu điều kiện (thành công / thất bại): Thành công: trận kết thúc, người thắng được công bố, trận được lưu vào lịch sử và thống kê của từng người (kể cả phòng tự tạo); phòng về sảnh. Thất bại: trận kết thúc sớm tính theo điểm hiện tại (mục 2c).
 - Luồng chính:
   1. Hệ thống bắt đầu vòng và chạy đồng hồ 45 giây theo giờ server.
   2. Mỗi người chơi đoán bài hát (UC-08, include) và tự mở mức nghe của mình; chỉ đồng hồ là chung.
-  3. Khi có người đoán đúng, cả phòng thấy "<tên> đúng ở mức 5s" nhưng không thấy đáp án; bảng điểm cập nhật trực tiếp.
+  3. Khi có người đoán đúng, cả phòng thấy "<tên> đúng ở mức 5s" và điểm mới của người đó, nhưng không thấy đáp án; bảng điểm cập nhật trực tiếp.
   4. Vòng kết thúc khi hết 45 giây, hoặc sớm hơn khi mọi người đã đoán đúng hoặc hết lượt.
   5. Hệ thống hiển thị đáp án, điểm từng người, bảng điểm, nguồn nhạc và link nghe đầy đủ trên nền tảng gốc.
   6. Lặp bước 1–5 đến hết số vòng.
   7. Hệ thống công bố người thắng: tổng điểm cao nhất; hòa thì ai có tổng thời gian trả lời đúng ít hơn (mili giây, theo đồng hồ server).
-  8. Hệ thống lưu trận vào lịch sử và đưa phòng về sảnh để chơi tiếp (UC-20). Trận xếp hạng của người đã đăng nhập vào bảng xếp hạng (UC-24).
+  8. Hệ thống lưu trận vào lịch sử và đưa phòng về sảnh để chơi tiếp (UC-20). Nếu là trận ghép trận nhanh: hệ thống tính cộng/trừ điểm rank theo thứ hạng và số người trong trận (bảng cố định BR-24), áp dụng sàn 0 và hiển thị số điểm thay đổi thực tế trên bảng tổng kết, cập nhật bảng xếp hạng chính (UC-24).
 - Luồng phụ và ngoại lệ:
   - 2a. Người chơi mất kết nối: hệ thống giữ chỗ 30 giây và trận không dừng. Vào lại kịp thì chơi tiếp ở vòng hiện tại với mức nghe đã mở; vòng bị lỡ được 0 điểm.
-  - 2b. Quá 30 giây không vào lại: coi như rời phòng, điểm đã có vẫn giữ.
-  - 2c. Phòng chỉ còn 1 người: trận kết thúc sớm và tính theo điểm hiện tại.
+  - 2b. Quá 30 giây không vào lại hoặc chủ động rời phòng: coi như rời phòng, tính là hạng chót của trận khi tính điểm rank (nếu là trận ghép trận nhanh; BR-14, BR-24), điểm trận đã có vẫn giữ.
+  - 2c. Phòng chỉ còn 1 người: trận kết thúc sớm, người còn lại xếp trên người đã rời và tính điểm rank theo thứ hạng (BR-14, BR-24).
   - 2d. Đoạn nhạc lỗi (do server xác nhận): vòng được thay bằng bài khác, không ai bị trừ điểm.
   - 2e. Lượt đoán đến sát lúc hết giờ: phân xử theo lúc server nhận so với mốc 45.000 ms, không theo thứ tự xử lý trong hàng đợi phòng.
   - 3a. Trong vòng, người chơi nhắn tin (UC-21): tin chứa tên bài đáp án bị chặn.
-- Quy tắc nghiệp vụ: BR-01 → BR-10, BR-14, BR-16, BR-23, BR-27, BR-29.
+- Quy tắc nghiệp vụ: BR-01 → BR-10, BR-13, BR-14, BR-16, BR-20, BR-23, BR-24, BR-27, BR-29.
 - Yêu cầu liên quan: FR-09, FR-13, NFR-02, NFR-07, NFR-08.
 
 ### UC-21: Nhắn tin trong phòng

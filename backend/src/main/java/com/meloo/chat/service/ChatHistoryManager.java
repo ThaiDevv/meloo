@@ -32,13 +32,34 @@ public class ChatHistoryManager {
     if (roomId == null || message == null) {
       return;
     }
-    if (roomHistories.size() > 100) {
-      Instant threshold = Instant.now().minus(Duration.ofMinutes(30));
-      roomHistories.entrySet().removeIf(e -> e.getValue().lastAccessed().isBefore(threshold));
+    cleanupInactiveRooms();
+    roomHistories.compute(
+        roomId,
+        (k, existing) -> {
+          RoomHistoryHolder holder =
+              existing != null ? existing : new RoomHistoryHolder(maxHistoryPerRoom);
+          holder.add(message);
+          return holder;
+        });
+  }
+
+  void cleanupInactiveRooms() {
+    if (roomHistories.size() <= 100) {
+      return;
     }
-    roomHistories
-        .computeIfAbsent(roomId, k -> new RoomHistoryHolder(maxHistoryPerRoom))
-        .add(message);
+    Instant threshold = Instant.now().minus(Duration.ofMinutes(30));
+    for (UUID rid : roomHistories.keySet()) {
+      roomHistories.computeIfPresent(
+          rid,
+          (k, holder) -> {
+            synchronized (holder) {
+              if (holder.lastAccessed().isBefore(threshold)) {
+                return null;
+              }
+              return holder;
+            }
+          });
+    }
   }
 
   public Optional<ChatContextMessage> findMessage(UUID roomId, UUID messageId) {
@@ -68,6 +89,19 @@ public class ChatHistoryManager {
 
   public void clearAll() {
     roomHistories.clear();
+  }
+
+  int getTrackedRoomCount() {
+    return roomHistories.size();
+  }
+
+  void markRoomStaleForTest(UUID roomId, Instant staleTime) {
+    RoomHistoryHolder holder = roomHistories.get(roomId);
+    if (holder != null) {
+      synchronized (holder) {
+        holder.setLastAccessed(staleTime);
+      }
+    }
   }
 
   private static class RoomHistoryHolder {
@@ -110,8 +144,12 @@ public class ChatHistoryManager {
       return new ArrayList<>(messages.subList(startIndex, targetIndex));
     }
 
-    Instant lastAccessed() {
+    synchronized Instant lastAccessed() {
       return lastAccessed;
+    }
+
+    synchronized void setLastAccessed(Instant instant) {
+      this.lastAccessed = instant;
     }
   }
 }

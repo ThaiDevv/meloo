@@ -39,6 +39,8 @@ public class ChatService {
   private final SimpMessagingTemplate messagingTemplate;
   private final @Nullable NamedParameterJdbcTemplate jdbcTemplate;
   private final ConcurrentHashMap<UUID, String> nicknameCache = new ConcurrentHashMap<>();
+  private static final int STRIPE_COUNT = 256;
+  private final Object[] roomLocks = new Object[STRIPE_COUNT];
 
   public ChatService(
       Optional<ActiveRoundQuery> activeRoundQuery,
@@ -57,6 +59,9 @@ public class ChatService {
     this.historyManager = Objects.requireNonNull(historyManager, "historyManager");
     this.messagingTemplate = Objects.requireNonNull(messagingTemplate, "messagingTemplate");
     this.jdbcTemplate = jdbcTemplate;
+    for (int i = 0; i < STRIPE_COUNT; i++) {
+      this.roomLocks[i] = new Object();
+    }
   }
 
   @ApplicationModuleListener
@@ -109,15 +114,25 @@ public class ChatService {
     // 5. Message passed all filters -> broadcast
     String senderNickname = resolveNickname(senderId);
     UUID messageId = UUID.randomUUID();
-    Instant now = Instant.now();
 
-    historyManager.recordMessage(
-        roomId, new ChatContextMessage(messageId, senderId, senderNickname, content, now));
+    synchronized (getRoomLock(roomId)) {
+      Instant now = Instant.now();
+      historyManager.recordMessage(
+          roomId, new ChatContextMessage(messageId, senderId, senderNickname, content, now));
 
-    ChatMessageEvent event =
-        new ChatMessageEvent(messageId, senderId, senderNickname, content, now, now);
+      ChatMessageEvent event =
+          new ChatMessageEvent(messageId, senderId, senderNickname, content, now, now);
 
-    messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/chat", event);
+      messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/chat", event);
+    }
+  }
+
+  private Object getRoomLock(UUID roomId) {
+    if (roomId == null) {
+      return this;
+    }
+    int hash = roomId.hashCode() & 0x7fffffff;
+    return roomLocks[hash % STRIPE_COUNT];
   }
 
   public String resolveNickname(UUID userId) {

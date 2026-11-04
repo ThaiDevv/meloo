@@ -3,6 +3,7 @@ package com.meloo.chat.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -13,8 +14,14 @@ import com.meloo.chat.api.ChatMessageEvent;
 import com.meloo.chat.config.ChatProperties;
 import com.meloo.room.api.ActiveRoundQuery;
 import java.time.Duration;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -194,5 +201,66 @@ class ChatServiceTest {
         .convertAndSendToUser(eq(senderId.toString()), eq("/queue/errors"), errorCaptor.capture());
 
     assertThat(errorCaptor.getValue().code()).isEqualTo("CHAT_PROHIBITED_WORD");
+  }
+
+  @Test
+  @DisplayName(
+      "Serializes recordMessage and broadcast per room to guarantee context ordering (M1 fix)")
+  void serializesRecordAndBroadcastPerRoom() throws InterruptedException {
+    UUID roomId = UUID.randomUUID();
+    UUID user1 = UUID.randomUUID();
+    UUID user2 = UUID.randomUUID();
+    when(activeRoundQuery.findActiveAnswerTitle(roomId)).thenReturn(Optional.empty());
+    when(bannedWordService.containsBannedWord(any())).thenReturn(false);
+
+    List<ChatMessageEvent> broadcastList = new CopyOnWriteArrayList<>();
+    CountDownLatch firstEnteredLatch = new CountDownLatch(1);
+    CountDownLatch releaseFirstLatch = new CountDownLatch(1);
+
+    doAnswer(
+            invocation -> {
+              ChatMessageEvent event = invocation.getArgument(1);
+              broadcastList.add(event);
+              if (event.content().equals("msg from user 1")) {
+                firstEnteredLatch.countDown();
+                releaseFirstLatch.await(2, TimeUnit.SECONDS);
+              }
+              return null;
+            })
+        .when(messagingTemplate)
+        .convertAndSend(eq("/topic/rooms/" + roomId + "/chat"), any(ChatMessageEvent.class));
+
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    executor.submit(() -> chatService.processMessage(roomId, user1, "msg from user 1"));
+
+    // Wait until user 1 is inside the critical section (convertAndSend is invoked)
+    boolean firstEntered = firstEnteredLatch.await(2, TimeUnit.SECONDS);
+    assertThat(firstEntered).isTrue();
+
+    // Now submit user 2's message while user 1 is still holding the room lock
+    executor.submit(() -> chatService.processMessage(roomId, user2, "msg from user 2"));
+
+    // User 2 cannot complete or record before user 1 releases lock
+    Thread.sleep(100);
+    assertThat(broadcastList).hasSize(1);
+    assertThat(broadcastList.get(0).content()).isEqualTo("msg from user 1");
+
+    // Release user 1
+    releaseFirstLatch.countDown();
+    executor.shutdown();
+    boolean completed = executor.awaitTermination(5, TimeUnit.SECONDS);
+    assertThat(completed).isTrue();
+
+    // Both messages are now broadcast in exact order: user 1 then user 2
+    assertThat(broadcastList).hasSize(2);
+    assertThat(broadcastList.get(0).content()).isEqualTo("msg from user 1");
+    assertThat(broadcastList.get(1).content()).isEqualTo("msg from user 2");
+
+    // Context for user 2 must contain user 1's message
+    UUID msg2Id = broadcastList.get(1).messageId();
+    List<com.meloo.chat.api.ChatContextMessage> preceding =
+        historyManager.findPrecedingContext(roomId, msg2Id, 5);
+    assertThat(preceding).hasSize(1);
+    assertThat(preceding.get(0).messageId()).isEqualTo(broadcastList.get(0).messageId());
   }
 }

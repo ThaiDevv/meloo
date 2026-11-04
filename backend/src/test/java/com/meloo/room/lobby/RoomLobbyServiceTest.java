@@ -18,8 +18,10 @@ import com.meloo.generated.model.CreateRoomRequestDto;
 import com.meloo.generated.model.CreateRoomRequestDto.RoomTypeEnum;
 import com.meloo.generated.model.CreateRoomRequestDto.RoundCountEnum;
 import com.meloo.generated.model.PublicRoomPageDto;
+import com.meloo.generated.model.QuickMatchRequestDto;
 import com.meloo.generated.model.RoomResponseDto;
 import com.meloo.generated.model.RoomStatusDto;
+import com.meloo.generated.model.RoomTypeDto;
 import com.meloo.generated.model.SoloFilterDto;
 import com.meloo.room.api.message.ErrorMessage;
 import com.meloo.room.api.message.KickCommand;
@@ -412,5 +414,102 @@ class RoomLobbyServiceTest {
     PublicRoomPageDto page = service.listPublicRooms(0, 10);
     assertThat(page.getTotalItems()).isEqualTo(2);
     assertThat(page.getItems()).hasSize(2);
+  }
+
+  @Test
+  @DisplayName(
+      "Khi host rời lúc players rỗng nhưng waitingPlayers có người thì host chuyển cho người vào sớm nhất trong waitingPlayers (M3)")
+  void hostLeavesWithEmptyPlayersTransfersToEarliestWaitingPlayer() {
+    UUID hostId = UUID.randomUUID();
+    RoomResponseDto created =
+        service.createRoom(
+            hostId, "Host", null, false, new CreateRoomRequestDto(RoomTypeEnum.PRIVATE_ROOM));
+
+    RoomSession session = service.getRoom(created.getRoomId()).orElseThrow();
+    session.setStatus(RoomStatusDto.PLAYING);
+
+    UUID w1 = UUID.randomUUID();
+    UUID w2 = UUID.randomUUID();
+    RoomPlayer waiter1 =
+        new RoomPlayer(
+            w1, "Waiter1", null, false, false, false, false, 0, clock.instant().plusSeconds(10));
+    RoomPlayer waiter2 =
+        new RoomPlayer(
+            w2, "Waiter2", null, false, false, false, false, 0, clock.instant().plusSeconds(20));
+    session.addPlayer(waiter1);
+    session.addPlayer(waiter2);
+
+    service.handleLeave(created.getRoomId(), hostId);
+
+    await()
+        .atMost(5, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              RoomSession s = service.getRoom(created.getRoomId()).orElseThrow();
+              assertThat(s.hostId()).isEqualTo(w1);
+              assertThat(s.findPlayer(w1).get().isHost()).isTrue();
+            });
+  }
+
+  @Test
+  @DisplayName(
+      "Quick match tạo phòng mới có caller là thành viên với isReady=true và isHost=false (M1)")
+  void quickMatchCreatesNewRoomWithCallerAsFirstPlayer() {
+    UUID userId = UUID.randomUUID();
+    RoomResponseDto res = service.quickMatch(userId, "QMPlayer", null, false, null);
+
+    assertThat(res.getRoomType()).isEqualTo(RoomTypeDto.QUICK_MATCH);
+    assertThat(res.getHostId()).isNull();
+    assertThat(res.getPlayerCount()).isEqualTo(1);
+    assertThat(res.getPlayers()).hasSize(1);
+    assertThat(res.getPlayers().get(0).getUserId()).isEqualTo(userId);
+    assertThat(res.getPlayers().get(0).getIsHost()).isFalse();
+    assertThat(res.getPlayers().get(0).getIsReady()).isTrue();
+
+    RoomSession s = service.getRoom(res.getRoomId()).orElseThrow();
+    assertThat(s.hasMember(userId)).isTrue();
+  }
+
+  @Test
+  @DisplayName("2 người cùng gọi quick match với cùng filter thì ghép vào chung một phòng (M1)")
+  void twoCallersWithSameFilterJoinSameQuickMatchRoom() {
+    UUID u1 = UUID.randomUUID();
+    UUID u2 = UUID.randomUUID();
+
+    QuickMatchRequestDto req = new QuickMatchRequestDto();
+    SoloFilterDto filter = new SoloFilterDto();
+    filter.setGenreCodes(List.of("POP"));
+    req.setFilter(filter);
+
+    RoomResponseDto r1 = service.quickMatch(u1, "P1", null, false, req);
+    RoomResponseDto r2 = service.quickMatch(u2, "P2", null, false, req);
+
+    assertThat(r2.getRoomId()).isEqualTo(r1.getRoomId());
+    assertThat(r2.getPlayerCount()).isEqualTo(2);
+
+    RoomSession s = service.getRoom(r1.getRoomId()).orElseThrow();
+    assertThat(s.playerCount()).isEqualTo(2);
+    assertThat(s.hasMember(u1)).isTrue();
+    assertThat(s.hasMember(u2)).isTrue();
+  }
+
+  @Test
+  @DisplayName("Quick match gửi cả playlistId và filter bị từ chối 400 VALIDATION_FAILED (M1)")
+  void quickMatchWithBothPlaylistAndFilterThrows400() {
+    UUID userId = UUID.randomUUID();
+    QuickMatchRequestDto req = new QuickMatchRequestDto();
+    req.setPlaylistId(UUID.randomUUID());
+    SoloFilterDto filter = new SoloFilterDto();
+    filter.setGenreCodes(List.of("POP"));
+    req.setFilter(filter);
+
+    assertThatThrownBy(() -> service.quickMatch(userId, "P1", null, false, req))
+        .isInstanceOf(ApiException.class)
+        .satisfies(
+            ex -> {
+              ApiException apiEx = (ApiException) ex;
+              assertThat(apiEx.status()).isEqualTo(org.springframework.http.HttpStatus.BAD_REQUEST);
+              assertThat(apiEx.code()).isEqualTo("VALIDATION_FAILED");
+            });
   }
 }

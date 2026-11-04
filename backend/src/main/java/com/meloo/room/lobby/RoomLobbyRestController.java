@@ -58,9 +58,12 @@ public class RoomLobbyRestController implements RoomApi {
   }
 
   @Override
-  public ResponseEntity<RoomResponseDto> quickMatch(QuickMatchRequestDto quickMatchRequestDto) {
+  public ResponseEntity<RoomResponseDto> quickMatch(
+      @Nullable QuickMatchRequestDto quickMatchRequestDto) {
     UserPrincipal user = getCurrentUser();
-    RoomResponseDto room = roomLobbyService.createQuickMatchRoom(null, null, null, null);
+    RoomResponseDto room =
+        roomLobbyService.quickMatch(
+            user.userId(), user.nickname(), user.avatarUrl(), user.isGuest(), quickMatchRequestDto);
     return ResponseEntity.ok(room);
   }
 

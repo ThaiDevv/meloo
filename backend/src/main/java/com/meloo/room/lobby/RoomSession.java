@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +20,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
+import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -228,15 +230,18 @@ public final class RoomSession {
    */
   public Optional<UUID> removePlayer(UUID userId) {
     cancelDisconnectTimer(userId);
-    boolean wasInPlayers = players.removeIf(p -> p.userId().equals(userId));
+    players.removeIf(p -> p.userId().equals(userId));
     waitingPlayers.removeIf(p -> p.userId().equals(userId));
 
-    if (wasInPlayers && Objects.equals(hostId, userId)) {
-      if (!players.isEmpty()) {
-        RoomPlayer earliest = players.get(0);
-        earliest.setHost(true);
-        this.hostId = earliest.userId();
-        return Optional.of(earliest.userId());
+    if (Objects.equals(hostId, userId)) {
+      Optional<RoomPlayer> earliest =
+          Stream.concat(players.stream(), waitingPlayers.stream())
+              .min(Comparator.comparing(RoomPlayer::joinedAt));
+      if (earliest.isPresent()) {
+        RoomPlayer newHost = earliest.get();
+        newHost.setHost(true);
+        this.hostId = newHost.userId();
+        return Optional.of(newHost.userId());
       } else {
         this.hostId = null;
         return Optional.empty();

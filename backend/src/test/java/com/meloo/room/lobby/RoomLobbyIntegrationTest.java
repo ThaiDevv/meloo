@@ -18,8 +18,10 @@ import com.meloo.generated.model.CreateRoomRequestDto;
 import com.meloo.generated.model.CreateRoomRequestDto.RoomTypeEnum;
 import com.meloo.generated.model.CreateRoomRequestDto.RoundCountEnum;
 import com.meloo.generated.model.JoinRoomRequestDto;
+import com.meloo.generated.model.QuickMatchRequestDto;
 import com.meloo.generated.model.RoomResponseDto;
 import com.meloo.generated.model.RoomStatusDto;
+import com.meloo.generated.model.SoloFilterDto;
 import com.meloo.room.api.RoomDescriptor;
 import com.meloo.room.api.message.KickCommand;
 import com.meloo.room.api.message.LeaveCommand;
@@ -354,6 +356,11 @@ class RoomLobbyIntegrationTest extends IntegrationTest {
               assertThat(eventJson).contains(player2Id.toString());
             });
 
+    // Host sends subsequent event; kicked player must NOT receive it (M2)
+    hostSession.send("/app/rooms/" + created.getRoomId() + "/ready", new ReadyCommand(true));
+    String unexpectedEvent = lobbyEvents.poll();
+    assertThat(unexpectedEvent).isNull();
+
     // Player 2 tries to rejoin by code
     JoinRoomRequestDto joinReq = new JoinRoomRequestDto(created.getCode());
     mockMvc
@@ -511,6 +518,32 @@ class RoomLobbyIntegrationTest extends IntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.totalItems").isNumber())
         .andExpect(jsonPath("$.items").isArray());
+  }
+
+  @Test
+  @DisplayName(
+      "REST API: Quick match tạo phòng có caller là thành viên với isReady=true (BR-13, M1)")
+  void restApiQuickMatch() throws Exception {
+    UUID callerId = UUID.randomUUID();
+    QuickMatchRequestDto req = new QuickMatchRequestDto();
+    SoloFilterDto filter = new SoloFilterDto();
+    filter.setDecades(List.of(1990));
+    req.setFilter(filter);
+
+    mockMvc
+        .perform(
+            post("/api/v1/rooms/quick-match")
+                .with(
+                    jwt().jwt(j -> j.subject(callerId.toString()).claim("nickname", "QuickCaller")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.roomType").value("QUICK_MATCH"))
+        .andExpect(jsonPath("$.hostId").doesNotExist())
+        .andExpect(jsonPath("$.playerCount").value(1))
+        .andExpect(jsonPath("$.players[0].userId").value(callerId.toString()))
+        .andExpect(jsonPath("$.players[0].isHost").value(false))
+        .andExpect(jsonPath("$.players[0].isReady").value(true));
   }
 
   private StompEventCollector subscribeLobby(StompSession session, UUID roomId) {

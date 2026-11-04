@@ -7,6 +7,7 @@ import com.meloo.catalog.api.TrackInfo;
 import com.meloo.generated.model.CreateRoomRequestDto;
 import com.meloo.generated.model.PublicRoomItemDto;
 import com.meloo.generated.model.PublicRoomPageDto;
+import com.meloo.generated.model.QuickMatchRequestDto;
 import com.meloo.generated.model.RoomResponseDto;
 import com.meloo.generated.model.RoomStatusDto;
 import com.meloo.generated.model.RoomTypeDto;
@@ -45,8 +46,17 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.atomic.AtomicReference;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
+import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.simp.stomp.StompCommand;
+import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
+import org.springframework.messaging.simp.user.SimpSession;
+import org.springframework.messaging.simp.user.SimpSubscription;
+import org.springframework.messaging.simp.user.SimpUser;
+import org.springframework.messaging.simp.user.SimpUserRegistry;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Service;
 
 /**
@@ -63,6 +73,8 @@ public class RoomLobbyService {
   private final RoomCodeGenerator codeGenerator;
   private final RoomLobbyProperties properties;
   private final Clock clock;
+  private final @Nullable SimpUserRegistry simpUserRegistry;
+  private final @Nullable MessageChannel clientInboundChannel;
 
   private final ConcurrentMap<UUID, RoomSession> roomsById = new ConcurrentHashMap<>();
   private final ConcurrentMap<String, UUID> roomsByCode = new ConcurrentHashMap<>();
@@ -73,9 +85,37 @@ public class RoomLobbyService {
       RoomEventPublisher eventPublisher,
       CatalogService catalogService,
       RoomCodeGenerator codeGenerator,
+      RoomLobbyProperties properties,
+      @org.springframework.beans.factory.annotation.Autowired(required = false)
+          @Nullable SimpUserRegistry simpUserRegistry,
+      @org.springframework.beans.factory.annotation.Autowired(required = false)
+          @org.springframework.beans.factory.annotation.Qualifier("clientInboundChannel") @Nullable MessageChannel clientInboundChannel) {
+    this(
+        roomRegistry,
+        eventPublisher,
+        catalogService,
+        codeGenerator,
+        properties,
+        Clock.systemUTC(),
+        simpUserRegistry,
+        clientInboundChannel);
+  }
+
+  RoomLobbyService(
+      RoomRegistry roomRegistry,
+      RoomEventPublisher eventPublisher,
+      CatalogService catalogService,
+      RoomCodeGenerator codeGenerator,
       RoomLobbyProperties properties) {
     this(
-        roomRegistry, eventPublisher, catalogService, codeGenerator, properties, Clock.systemUTC());
+        roomRegistry,
+        eventPublisher,
+        catalogService,
+        codeGenerator,
+        properties,
+        Clock.systemUTC(),
+        null,
+        null);
   }
 
   RoomLobbyService(
@@ -85,12 +125,27 @@ public class RoomLobbyService {
       RoomCodeGenerator codeGenerator,
       RoomLobbyProperties properties,
       Clock clock) {
+    this(
+        roomRegistry, eventPublisher, catalogService, codeGenerator, properties, clock, null, null);
+  }
+
+  RoomLobbyService(
+      RoomRegistry roomRegistry,
+      RoomEventPublisher eventPublisher,
+      CatalogService catalogService,
+      RoomCodeGenerator codeGenerator,
+      RoomLobbyProperties properties,
+      Clock clock,
+      @Nullable SimpUserRegistry simpUserRegistry,
+      @Nullable MessageChannel clientInboundChannel) {
     this.roomRegistry = Objects.requireNonNull(roomRegistry, "roomRegistry must not be null");
     this.eventPublisher = Objects.requireNonNull(eventPublisher, "eventPublisher must not be null");
     this.catalogService = Objects.requireNonNull(catalogService, "catalogService must not be null");
     this.codeGenerator = Objects.requireNonNull(codeGenerator, "codeGenerator must not be null");
     this.properties = Objects.requireNonNull(properties, "properties must not be null");
     this.clock = Objects.requireNonNull(clock, "clock must not be null");
+    this.simpUserRegistry = simpUserRegistry;
+    this.clientInboundChannel = clientInboundChannel;
   }
 
   /**
@@ -218,6 +273,137 @@ public class RoomLobbyService {
     RoomConnectionHandler handler = createConnectionHandler(roomId, session);
     roomRegistry.register(descriptor, handler);
     return session.toResponseDto();
+  }
+
+  /**
+   * Ghép trận nhanh hoặc tạo phòng ghép trận mới (BR-13, OpenAPI /api/v1/rooms/quick-match).
+   *
+   * @param userId ID người chơi gọi API
+   * @param nickname Biệt danh
+   * @param avatarUrl Avatar nếu có
+   * @param isGuest Người chơi có phải tài khoản khách không
+   * @param request Tuỳ chọn ghép trận (playlistId hoặc filter)
+   * @return Phòng ghép trận đã tham gia hoặc vừa tạo
+   */
+  public RoomResponseDto quickMatch(
+      UUID userId,
+      String nickname,
+      @Nullable String avatarUrl,
+      boolean isGuest,
+      @Nullable QuickMatchRequestDto request) {
+    Instant now = clock.instant();
+
+    UUID playlistId = null;
+    RoomFilterPayload filterPayload = null;
+    if (request != null) {
+      boolean hasPlaylist = request.getPlaylistId() != null;
+      boolean hasFilter =
+          request.getFilter() != null
+              || (request.getGenreCodes() != null && !request.getGenreCodes().isEmpty())
+              || (request.getDecades() != null && !request.getDecades().isEmpty());
+      if (hasPlaylist && hasFilter) {
+        throw new ApiException(
+            HttpStatus.BAD_REQUEST,
+            "VALIDATION_FAILED",
+            "playlistId and filter are mutually exclusive");
+      }
+      playlistId = request.getPlaylistId();
+      if (request.getFilter() != null) {
+        filterPayload = toFilterPayload(request.getFilter());
+      } else if ((request.getGenreCodes() != null && !request.getGenreCodes().isEmpty())
+          || (request.getDecades() != null && !request.getDecades().isEmpty())) {
+        filterPayload =
+            new RoomFilterPayload(request.getGenreCodes(), null, request.getDecades(), null);
+      }
+    }
+
+    int roundCount = properties.defaultRoundCount();
+    validateTracks(playlistId, filterPayload, roundCount);
+
+    // Matchmaking: Tìm phòng QUICK_MATCH đang ở LOBBY còn chỗ và khớp bộ lọc/playlist
+    AtomicReference<RoomResponseDto> matchedRef = new AtomicReference<>();
+    for (RoomSession existingSession : roomsById.values()) {
+      if (existingSession.isQuickMatch()
+          && existingSession.status() == RoomStatusDto.LOBBY
+          && existingSession.playerCount() < existingSession.maxPlayers()
+          && !existingSession.isBanned(userId)
+          && Objects.equals(existingSession.playlistId(), playlistId)
+          && matchesFilter(existingSession.filter(), filterPayload)) {
+
+        RoomActor actor = roomRegistry.actor(existingSession.roomId()).orElse(null);
+        if (actor != null) {
+          try {
+            RoomResponseDto matched =
+                await(
+                    actor.submit(
+                        () -> {
+                          if (existingSession.hasMember(userId)) {
+                            return existingSession.toResponseDto();
+                          }
+                          if (existingSession.playerCount() >= existingSession.maxPlayers()
+                              || existingSession.status() != RoomStatusDto.LOBBY) {
+                            return null;
+                          }
+                          RoomPlayer player =
+                              new RoomPlayer(
+                                  userId, nickname, avatarUrl, false, true, isGuest, true, 0, now);
+                          existingSession.addPlayer(player);
+                          RoomDescriptor updated =
+                              new RoomDescriptor(
+                                  existingSession.roomId(),
+                                  existingSession.allMemberIds(),
+                                  existingSession.isPrivate());
+                          roomRegistry.update(updated);
+                          eventPublisher.publish(
+                              existingSession.roomId(),
+                              RoomTopic.LOBBY,
+                              new PlayerJoinedEvent(player.toPayload(), now));
+                          return existingSession.toResponseDto();
+                        }));
+            if (matched != null) {
+              return matched;
+            }
+          } catch (Exception ignored) {
+            // Phòng thay đổi trạng thái đồng thời, tiếp tục tìm phòng khác
+          }
+        }
+      }
+    }
+
+    // Không có phòng chờ phù hợp: tạo phòng ghép trận mới với người chơi này
+    int mp = properties.maxPlayers();
+    UUID roomId = UUID.randomUUID();
+
+    RoomPlayer player =
+        new RoomPlayer(userId, nickname, avatarUrl, false, true, isGuest, true, 0, now);
+    RoomSession session =
+        new RoomSession(
+            roomId,
+            null,
+            RoomTypeDto.QUICK_MATCH,
+            null,
+            RoomStatusDto.LOBBY,
+            roundCount,
+            mp,
+            playlistId,
+            filterPayload,
+            now);
+    session.addPlayer(player);
+
+    roomsById.put(roomId, session);
+    RoomDescriptor descriptor = new RoomDescriptor(roomId, Set.of(userId), false);
+    RoomConnectionHandler handler = createConnectionHandler(roomId, session);
+    roomRegistry.register(descriptor, handler);
+
+    return session.toResponseDto();
+  }
+
+  private static boolean matchesFilter(
+      @Nullable RoomFilterPayload a, @Nullable RoomFilterPayload b) {
+    if ((a == null || a.isEmpty()) && (b == null || b.isEmpty())) {
+      return true;
+    }
+    return Objects.equals(a, b);
   }
 
   /** Vào phòng bằng mã 6 ký tự hoặc đường dẫn liên kết (BR-11, BR-12, BR-13, BR-15). */
@@ -552,7 +738,37 @@ public class RoomLobbyService {
           roomRegistry.update(
               new RoomDescriptor(roomId, session.allMemberIds(), session.isPrivate()));
           eventPublisher.publish(roomId, RoomTopic.LOBBY, new PlayerKickedEvent(targetUserId, now));
+          revokeRoomSubscriptions(targetUserId, roomId);
         });
+  }
+
+  private void revokeRoomSubscriptions(UUID userId, UUID roomId) {
+    if (simpUserRegistry != null && clientInboundChannel != null) {
+      SimpUser simpUser = simpUserRegistry.getUser(userId.toString());
+      if (simpUser != null) {
+        for (SimpSession session : simpUser.getSessions()) {
+          for (SimpSubscription sub : session.getSubscriptions()) {
+            if (sub.getDestination().startsWith("/topic/rooms/" + roomId)) {
+              StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.UNSUBSCRIBE);
+              accessor.setSessionId(session.getId());
+              accessor.setSubscriptionId(sub.getId());
+              accessor.setDestination(sub.getDestination());
+              accessor.setUser(() -> userId.toString());
+              accessor.setLeaveMutable(true);
+              clientInboundChannel.send(
+                  MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders()));
+            }
+          }
+          StompHeaderAccessor disconnectAccessor =
+              StompHeaderAccessor.create(StompCommand.DISCONNECT);
+          disconnectAccessor.setSessionId(session.getId());
+          disconnectAccessor.setUser(() -> userId.toString());
+          disconnectAccessor.setLeaveMutable(true);
+          clientInboundChannel.send(
+              MessageBuilder.createMessage(new byte[0], disconnectAccessor.getMessageHeaders()));
+        }
+      }
+    }
   }
 
   /** Xử lý lệnh tự nguyện rời phòng (/app/rooms/{roomId}/leave). */

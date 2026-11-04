@@ -274,7 +274,7 @@ Dưới đây là đặc tả chi tiết của 10 Use Case cốt lõi nhất đ�
   1. Người dùng nhấn 'Bắt đầu'.
   1. Frontend gửi yêu cầu `POST /api/v1/auth/guest` kèm biệt danh.
   1. Backend kiểm tra giới hạn tần suất (Rate Limiter) và xác thực tính hợp lệ của biệt danh (độ dài 3–20 ký tự, lọc từ cấm theo BR-22).
-  1. Backend tạo bản ghi `AppUser` loại `GUEST`, sinh Access Token và Refresh Token.
+  1. Backend tạo bản ghi `app_user` loại `GUEST`, sinh Access Token và Refresh Token.
   1. Hệ thống điều hướng người chơi vào màn hình chọn chế độ hoặc sảnh chờ phòng thi đấu.
 - **Luồng ngoại lệ / Rẽ nhánh:** 4a. Biệt danh chứa từ cấm hoặc không đúng định dạng: Hệ thống báo lỗi cụ thể, yêu cầu nhập lại mà không tạo phiên mới.
 
@@ -609,47 +609,38 @@ Lược đồ quan hệ thực thể gồm **21 bảng dữ liệu** được ch
 *Hình 6.1: Mô hình thực thể liên kết (Entity-Relationship Diagram - ERD) cơ sở dữ liệu Meloo*
 
 ### 6.3. Từ điển dữ liệu chi tiết 21 bảng (Data Dictionary)
-Phân định quyền sở hữu bảng và cấu trúc các trường trọng yếu:
+Cấu trúc 21 bảng dữ liệu được chuẩn hóa và đồng bộ 100% với tài liệu thiết kế CSDL DES-01 (`docs/architecture/data/02-tu-dien-du-lieu.md`) và quyết định kiến trúc ADR-003:
 
 #### Phân hệ Định danh & Xác thực (`identity` - Migration V2)
-1. **`app_user` (Người dùng hệ thống):**
-   - `id` (UUID, PK): Mã định danh duy nhất của người dùng hoặc khách.
-   - `nickname` (varchar 30, NOT NULL): Biệt danh hiển thị của người chơi.
-   - `kind` (varchar 20, NOT NULL): Phân loại người dùng (`GUEST` hoặc `REGISTERED`).
-   - `role` (varchar 20, NOT NULL): Vai trò phân quyền (`PLAYER` hoặc `ADMIN`).
-   - `status` (varchar 20, NOT NULL): Trạng thái tài khoản (`ACTIVE`, `LOCKED`).
-   - `created_at`, `updated_at`, `last_active_at` (timestamptz).
-2. **`auth_identity` (Định danh mạng xã hội):**
-   - `id` (UUID, PK), `user_id` (UUID, FK `app_user.id`), `provider` (varchar 20: `GOOGLE`, `FACEBOOK`), `provider_user_id` (varchar 100), `email` (varchar 255).
-3. **`refresh_token` (Phiên làm việc & Token xoay vòng):**
-   - `id` (UUID, PK), `user_id` (UUID, FK `app_user.id`), `token_hash` (varchar 64, NOT NULL), `family_id` (UUID, NOT NULL), `expires_at` (timestamptz), `revoked_at` (timestamptz).
+1. **`app_user` (Người chơi & Quản trị viên):** `id` (uuid, PK), `kind` (varchar 12, not null, check `GUEST`/`REGISTERED`), `role` (varchar 8, not null default `USER`, check `USER`/`ADMIN`), `status` (varchar 8, not null default `ACTIVE`, check `ACTIVE`/`LOCKED`), `nickname` (varchar 20, not null, char_length 3–20, BR-22), `email` (varchar 254, unique, null với khách), `lock_reason` (text, null, bắt buộc khi `LOCKED`), `locked_at` (timestamptz, null), `merged_into_id` (uuid, FK `app_user(id)`, null, BR-21), `last_active_at` (timestamptz, not null default now(), BR-20).
+2. **`auth_identity` (Liên kết nhà cung cấp OAuth):** `id` (uuid, PK), `user_id` (uuid, not null, FK `app_user(id)` on delete cascade), `provider` (varchar 10, not null, check `GOOGLE`/`FACEBOOK`), `provider_subject` (varchar 128, not null). Unique `(provider, provider_subject)`.
+3. **`refresh_token` (Phiên làm việc & Token xoay vòng ADR-005):** `id` (uuid, PK), `user_id` (uuid, not null, FK `app_user(id)` on delete cascade), `family_id` (uuid, not null), `token_hash` (char 64, not null, unique - SHA-256), `expires_at` (timestamptz, not null - 30 ngày), `revoked_at` (timestamptz, null), `replaced_by_id` (uuid, FK `refresh_token(id)`, null).
 
 #### Phân hệ Kho nhạc & Danh mục (`catalog` - Migration V3)
-4. **`artist` (Nghệ sĩ biểu diễn):** `id` (UUID, PK), `name` (varchar 255), `deezer_id` (bigint, Unique), `image_url` (varchar 500).
-5. **`genre` (Thể loại âm nhạc):** `id` (UUID, PK), `name` (varchar 100), `slug` (varchar 100, Unique).
-6. **`track` (Bài hát trong kho):**
-   - `id` (UUID, PK), `title` (varchar 255, NOT NULL), `normalized_title` (varchar 255, NOT NULL - phục vụ tìm kiếm gợi ý), `primary_artist_id` (UUID, FK `artist.id`), `genre_id` (UUID, FK `genre.id`), `preview_url` (varchar 500), `deezer_id` (bigint, Unique), `duration_seconds` (int, default 30).
-7. **`playlist` (Bộ đề thi đấu):** `id` (UUID, PK), `name` (varchar 255), `description` (text), `is_system` (boolean), `is_active` (boolean).
-8. **`playlist_track` (Liên kết bài hát vào bộ đề):** `playlist_id` (UUID, FK), `track_id` (UUID, FK), `position` (int), PK `(playlist_id, track_id)`.
+4. **`artist` (Nghệ sĩ biểu diễn):** `id` (uuid, PK), `name` (varchar 200, not null), `name_normalized` (varchar 200, not null, GIN `gin_trgm_ops`), `provider` (varchar 16, not null: `DEEZER`, `ITUNES`), `provider_artist_id` (varchar 64, not null). Unique `(provider, provider_artist_id)`.
+5. **`genre` (Thể loại âm nhạc):** `id` (uuid, PK), `code` (varchar 40, not null, unique), `name_vi` (varchar 80, not null), `name_en` (varchar 80, not null).
+6. **`track` (Bản thu dùng làm đáp án):** `id` (uuid, PK), `provider` (varchar 16, not null), `provider_track_id` (varchar 64, not null - tuyệt đối không lưu URL preview hay audio trên CSDL theo ADR-003:31), `title` (varchar 300, not null), `title_normalized` (varchar 300, not null, GIN `gin_trgm_ops`, BR-05), `primary_artist_id` (uuid, not null, FK `artist(id)`), `genre_id` (uuid, FK `genre(id)`, null), `country_code` (char 2, null), `release_year` (smallint, null), `popularity_rank` (int, null), `enabled` (boolean, not null default true), `disabled_reason` (varchar 200, null). Unique `(provider, provider_track_id)`.
+7. **`playlist` (Bộ đề thi đấu):** `id` (uuid, PK), `code` (varchar 60, not null, unique), `name_vi` (varchar 120, not null), `name_en` (varchar 120, not null), `kind` (varchar 10, not null, check `STANDARD`/`CURATED`), `enabled` (boolean, not null default true).
+8. **`playlist_track` (Liên kết bài hát vào bộ đề):** `playlist_id` (uuid, PK, FK `playlist(id)` on delete cascade), `track_id` (uuid, PK, FK `track(id)`), `position` (int, not null).
 
 #### Phân hệ Lưu trữ Trận đấu & Tiến trình (`progression` - Migration V4, V6)
-9. **`match` (Lịch sử ván đấu):** `id` (UUID, PK), `mode` (varchar 20: `SOLO`, `ROOM_CUSTOM`, `ROOM_QUICK`), `playlist_id` (UUID, FK), `round_count` (int), `started_at`, `finished_at` (timestamptz).
-10. **`match_player` (Thành viên tham gia trận):** `match_id` (UUID, FK), `user_id` (UUID, FK), `final_score` (int), `rank` (int), `is_winner` (boolean), PK `(match_id, user_id)`.
-11. **`round` (Thông tin từng vòng):** `id` (UUID, PK), `match_id` (UUID, FK), `round_number` (int), `track_id` (UUID, FK `track.id`).
-12. **`round_result` (Kết quả vòng của từng người):** `round_id` (UUID, FK), `user_id` (UUID, FK), `is_correct` (boolean), `solved_level` (int: 1..5), `base_score` (int), `combo_multiplier` (decimal 3,2), `speed_bonus` (int), `total_score` (int), `wrong_count` (int).
-13. **`player_stats` (Chỉ số tích lũy cá nhân):** `user_id` (UUID, PK, FK `app_user.id`), `total_matches` (int), `total_wins` (int), `current_streak` (int), `max_streak` (int), `ranked_score` (int, BR-24), `level` (int), `exp` (bigint).
-14. **`achievement` (Danh mục huy hiệu):** `id` (UUID, PK), `code` (varchar 50, Unique), `name` (varchar 100), `description` (text), `icon_url` (varchar 500).
-15. **`user_achievement` (Huy hiệu người chơi đạt được):** `user_id` (UUID, FK), `achievement_id` (UUID, FK), `unlocked_at` (timestamptz), PK `(user_id, achievement_id)`.
+9. **`match` (Lịch sử ván đấu):** `id` (uuid, PK - khớp `matchId`), `type` (varchar 16, not null, check `SOLO`/`PRIVATE_ROOM`/`PUBLIC_ROOM`/`QUICK_MATCH`, BR-23), `ranked` (boolean, not null, check `status <> 'ABANDONED' or not ranked`), `status` (varchar 10, not null, check `FINISHED`/`ABANDONED`), `round_count` (smallint, not null, check 5/10/15), `playlist_id` (uuid, null, ref `playlist`), `filter` (jsonb, null), `started_at` (timestamptz, not null), `ended_at` (timestamptz, not null).
+10. **`match_player` (Thành viên tham gia trận):** `id` (uuid, PK), `match_id` (uuid, not null, FK `match(id)` on delete cascade), `user_id` (uuid, null, ref `app_user`), `nickname` (varchar 20, not null), `is_guest` (boolean, not null), `total_score` (int, not null), `rank` (smallint, not null, BR-10), `correct_count` (smallint, not null), `correct_time_ms` (bigint, not null), `counts_for_leaderboard` (boolean, not null, BR-20, BR-21), `ended_at` (timestamptz, not null). Unique `(match_id, user_id)`.
+11. **`round` (Thông tin từng vòng):** `id` (uuid, PK), `match_id` (uuid, not null, FK `match(id)` on delete cascade), `round_no` (smallint, not null), `track_id` (uuid, not null, ref `track`), `track_title` (varchar, not null), `artist_name` (varchar, not null - chụp lại lúc đấu). Unique `(match_id, round_no)`.
+12. **`round_result` (Kết quả vòng của từng người):** `id` (uuid, PK), `round_id` (uuid, not null, FK `round(id)` on delete cascade), `match_player_id` (uuid, not null, FK `match_player(id)` on delete cascade), `outcome` (varchar 10, not null, check `CORRECT`/`WRONG_OUT`/`GAVE_UP`/`TIMEOUT`/`MISSED`), `correct_level` (smallint, null, check 1–5), `base_score` (int, not null, BR-02), `combo_percent` (smallint, not null default 0, check 0/10/20, BR-08), `speed_bonus` (int, not null default 0, BR-07), `round_score` (int, not null, = `base_score` × (1 + `combo_percent`/100) + `speed_bonus`), `wrong_count` (smallint, not null default 0), `answer_time_ms` (int, null). Unique `(round_id, match_player_id)`.
+13. **`player_stats` (Chỉ số tích lũy cá nhân):** `user_id` (uuid, PK, ref `app_user`), `is_guest` (boolean, not null), `xp` (int, not null default 0), `matches_played` (int, not null default 0), `matches_won` (int, not null default 0), `rounds_correct` (int, not null default 0).
+14. **`achievement` (Danh mục huy hiệu):** `id` (uuid, PK), `code` (varchar 50, not null, unique), `name_vi` (varchar 100, not null), `name_en` (varchar 100, not null), `description_vi` (text, not null), `description_en` (text, not null), `icon_url` (varchar 500, not null).
+15. **`user_achievement` (Huy hiệu người chơi đạt được):** `id` (uuid, PK), `user_id` (uuid, not null, ref `app_user`), `achievement_id` (uuid, not null, FK `achievement(id)`), `unlocked_at` (timestamptz, not null default now()). Unique `(user_id, achievement_id)`.
 
 #### Phân hệ Thử thách hàng ngày (`daily` - Migration V7)
-16. **`daily_challenge` (Bộ đề theo ngày):** `challenge_date` (date, PK, Giờ VN - BR-25), `track_id` (UUID, FK `track.id`), `created_at` (timestamptz).
-17. **`daily_attempt` (Lượt chơi thử thách của người dùng):** `id` (UUID, PK), `challenge_date` (date, FK), `user_id` (UUID, FK `app_user.id`), `is_correct` (boolean), `solved_level` (int), `duration_ms` (int), `completed_at` (timestamptz), Unique `(challenge_date, user_id)`.
+16. **`daily_challenge` (Bộ đề theo ngày):** `id` (uuid, PK), `challenge_date` (date, not null, unique - Giờ VN, BR-25), `track_id` (uuid, not null, ref `track(id)`), `created_at` (timestamptz, not null default now()).
+17. **`daily_attempt` (Lượt chơi thử thách của người dùng):** `id` (uuid, PK), `daily_challenge_id` (uuid, not null, FK `daily_challenge(id)` on delete cascade), `user_id` (uuid, not null, ref `app_user(id)`), `outcome` (varchar 10, not null, check `CORRECT`/`WRONG_OUT`/`GAVE_UP`/`TIMEOUT`), `correct_level` (smallint, null, check 1–5), `duration_ms` (int, not null), `completed_at` (timestamptz, not null default now()). Unique `(daily_challenge_id, user_id)`.
 
 #### Phân hệ Kiểm duyệt & Giao tiếp (`chat`, `admin` - Migration V5, V8, V9)
-18. **`banned_word` (Từ điển từ ngữ cấm):** `id` (UUID, PK), `word` (varchar 100, Unique, giữ nguyên dấu Unicode NFC).
-19. **`chat_report` (Báo cáo tin nhắn vi phạm):** `id` (UUID, PK), `room_id` (varchar 50), `reporter_id` (UUID, FK), `violator_id` (UUID, FK), `reported_message` (text), `context_messages` (jsonb), `status` (varchar 20: `PENDING`, `RESOLVED`, `DISMISSED`).
-20. **`audit_log` (Nhật ký thao tác quản trị):** `id` (UUID, PK), `admin_id` (UUID, FK), `action` (varchar 100), `target_entity` (varchar 50), `target_id` (varchar 100), `details` (jsonb), `created_at` (timestamptz).
-21. **`analytics_event` (Số liệu đo lường hệ thống):** `id` (UUID, PK), `event_name` (varchar 100), `payload` (jsonb), `created_at` (timestamptz).
+18. **`banned_word` (Từ điển từ ngữ cấm):** `id` (uuid, PK), `word` (varchar 80, not null, unique, check `word = lower(word)` - chữ thường, Unicode NFC, giữ nguyên dấu tiếng Việt, BR-17, BR-22), `created_by` (uuid, null, ref `app_user`).
+19. **`chat_report` (Báo cáo tin nhắn vi phạm):** `id` (uuid, PK), `message_text` (varchar 200, not null), `sender_id` (uuid, not null, ref `app_user`), `sender_nickname` (varchar 20, not null), `reporter_id` (uuid, not null, ref `app_user`), `context` (jsonb, not null default '[]' - 5 tin trước đó), `status` (varchar 10, not null default `OPEN`, check `OPEN`/`DISMISSED`/`ACTIONED`), `handled_by` (uuid, null, ref `app_user`), `handled_at` (timestamptz, null).
+20. **`audit_log` (Nhật ký thao tác quản trị):** `id` (bigint generated always as identity, PK), `actor_id` (uuid, not null, ref `app_user`), `action` (varchar 60, not null), `target_type` (varchar 40, not null), `target_id` (varchar 64, not null), `payload` (jsonb, null), `created_at` (timestamptz, not null default now()).
+21. **`analytics_event` (Số liệu đo lường hệ thống):** `id` (bigint generated always as identity, PK), `event_name` (varchar 60, not null), `session_id` (varchar 64, not null), `user_id` (uuid, null, ref `app_user`), `properties` (jsonb, not null default '{}'), `created_at` (timestamptz, not null default now()).
 
 ### 6.4. Kế hoạch di trú dữ liệu tự động (Flyway Migration Plan V1 → V9)
 Tiến trình di trú schema được phân phiên bản tuần tự rõ ràng qua Flyway:

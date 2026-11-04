@@ -1,3 +1,179 @@
 {
-  "title": "Rooms"
+  "title": "Rooms",
+  "create": {
+    "title": "Create a room",
+    "intro": "Pick the rules, send the code or link to your friends and start when everyone is ready.",
+    "visibility": {
+      "legend": "Who can join",
+      "private": {
+        "title": "Private room",
+        "description": "Joinable with the code or link only."
+      },
+      "public": {
+        "title": "Public room",
+        "description": "Listed with the public rooms, anyone can join."
+      }
+    },
+    "rounds": {
+      "legend": "Rounds",
+      "option": "{{n}} rounds"
+    },
+    "players": {
+      "legend": "Max players",
+      "option": "{{n}} players"
+    },
+    "music": {
+      "heading": "Music"
+    },
+    "summary": {
+      "heading": "Your room",
+      "noPlaylist": "No playlist picked"
+    },
+    "submit": "Create room",
+    "submitting": "Creating room…",
+    "playlistRequired": "Pick a playlist to create the room.",
+    "errors": {
+      "notEnoughTracks": "This music set does not have enough tracks for {{n}} rounds ({{missing}} short). Remove a filter or pick fewer rounds.",
+      "playlistNotFound": "This playlist is no longer available or was turned off. The list has been reloaded, pick another one.",
+      "rateLimited": "You are going too fast. Wait a moment and try again.",
+      "locked": "Your account is locked, so you cannot create a room.",
+      "rejected": "The room settings are not valid. Check them and try again.",
+      "unknown": "Could not create the room. Try again."
+    }
+  },
+  "join": {
+    "label": "Have a room code?",
+    "placeholder": "Enter the code or paste the link",
+    "submit": "Join",
+    "invalid": "A room code is 6 letters and digits, for example MEL889."
+  },
+  "entry": {
+    "joining": "Joining the room…"
+  },
+  "problem": {
+    "retry": "Try again",
+    "createRoom": "Create a room",
+    "home": "Back to home",
+    "invalid-code": {
+      "title": "Invalid room code",
+      "description": "A room code is 6 letters and digits. Check the link or code you were sent."
+    },
+    "not-found": {
+      "title": "Room not found",
+      "description": "This room code does not exist or the room is closed. Ask your friends again or create a new room."
+    },
+    "full": {
+      "title": "This room is full",
+      "description": "The room already has its maximum number of players. Wait for someone to leave or create a new room."
+    },
+    "kicked": {
+      "title": "You were removed from the room",
+      "description": "The host removed you, so you cannot rejoin this room. You can still create a new one."
+    },
+    "locked": {
+      "title": "Account locked",
+      "description": "Your account cannot join any room for now."
+    },
+    "rate-limited": {
+      "title": "You are going too fast",
+      "description": "Wait a moment, then try joining again."
+    },
+    "unknown": {
+      "title": "Could not join the room",
+      "description": "Something went wrong while joining. Try again."
+    }
+  },
+  "lobby": {
+    "title": "Lobby",
+    "sidebar": "Room code, settings and actions",
+    "inProgress": "A match is in progress, you will play from the next one",
+    "type": {
+      "private": "Private room",
+      "public": "Public room",
+      "quick": "Quick match"
+    }
+  },
+  "link": {
+    "connecting": "Connecting to the room…",
+    "reconnecting": "Connection lost, reconnecting. What you see may be out of date."
+  },
+  "players": {
+    "heading": "Players ({{n}}/{{max}})",
+    "you": "(you)",
+    "host": "Host",
+    "guest": "Guest",
+    "ready": "Ready",
+    "notReady": "Not ready",
+    "offline": "Disconnected",
+    "emptySeat": "Empty seat",
+    "waiting": "Waiting for the next match ({{n}})",
+    "kick": "Remove {{name}} from the room"
+  },
+  "code": {
+    "heading": "Room code",
+    "copyCode": "Copy code",
+    "copyLink": "Copy link",
+    "copiedCode": "Room code copied",
+    "copiedLink": "Invite link copied",
+    "copyFailed": "Could not copy",
+    "copyFailedHint": "The browser blocked copying. Select the code and copy it by hand."
+  },
+  "settings": {
+    "heading": "Room settings",
+    "rounds": "Rounds",
+    "players": "Max players",
+    "roundsValue": "{{n}} rounds",
+    "playersValue": "{{n}} players",
+    "music": {
+      "heading": "Music",
+      "playlist": "Chosen playlist",
+      "wholeCatalog": "Whole catalog",
+      "filters": "{{n}} choices",
+      "change": "Change music",
+      "apply": "Apply",
+      "cancel": "Cancel"
+    }
+  },
+  "actions": {
+    "label": "Room actions",
+    "start": "Start",
+    "ready": "Ready",
+    "unready": "Not ready",
+    "leave": "Leave room",
+    "needPlayers": "At least 2 players are needed to start.",
+    "waitingFor": "Waiting for {{names}} to get ready."
+  },
+  "countdown": {
+    "heading": "Match starts in",
+    "unit": "s",
+    "waiting": "Waiting for more players ({{n}}/{{max}}). The countdown starts with 2 players.",
+    "stopped": {
+      "PLAYER_LEFT": "Someone left, so the countdown stopped.",
+      "NOT_ENOUGH_PLAYERS": "Not enough players, so the countdown stopped."
+    },
+    "soloHint": "Waiting a while? You can play solo right now, or create a private room to invite friends (it does not count for the ranking).",
+    "playSolo": "Play solo",
+    "createPrivate": "Create a private room"
+  },
+  "kick": {
+    "title": "Remove {{name}} from the room?",
+    "description": "A removed player cannot rejoin this room.",
+    "cancel": "Cancel",
+    "confirm": "Remove"
+  },
+  "alert": {
+    "dismiss": "Dismiss the error"
+  },
+  "errors": {
+    "notHost": "Only the host can do this.",
+    "notInLobby": "The match has started, so this cannot change now.",
+    "rateLimited": "You are going too fast. Wait a moment and try again.",
+    "alreadyReady": "You are already ready.",
+    "generic": "That did not work. Try again.",
+    "start": {
+      "NOT_ENOUGH_PLAYERS": "At least 2 connected players are needed to start.",
+      "NOT_ALL_READY": "Some players are not ready yet.",
+      "NOT_ENOUGH_TRACKS": "This music set does not have enough tracks for the chosen rounds ({{n}} short). Change the music or pick fewer rounds."
+    }
+  }
 }

@@ -12,6 +12,8 @@ interface RoomState extends RoomData {
    */
   open: (roomId: string, snapshot?: RoomResponse | null) => void
   setLink: (link: RoomLink) => void
+  /** Clears the last error the server sent, once the player has seen it or tries again. */
+  dismissError: () => void
   /** Feeds one server message into the picture. Messages about another room are ignored. */
   receive: (message: ServerRealtimeMessage) => void
   /** Forgets the room, e.g. after the player left it. */
@@ -31,6 +33,9 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   },
   setLink: (link) => {
     set({ link })
+  },
+  dismissError: () => {
+    set({ lastError: null })
   },
   receive: (message) => {
     const state = get()

@@ -1,3 +1,179 @@
 {
-  "title": "Phòng chơi"
+  "title": "Phòng chơi",
+  "create": {
+    "title": "Tạo phòng",
+    "intro": "Chọn luật chơi, gửi mã hoặc link cho bạn bè rồi bắt đầu khi mọi người sẵn sàng.",
+    "visibility": {
+      "legend": "Ai vào được phòng",
+      "private": {
+        "title": "Phòng riêng",
+        "description": "Chỉ vào được bằng mã hoặc link."
+      },
+      "public": {
+        "title": "Phòng công khai",
+        "description": "Hiện trong danh sách phòng, ai cũng tham gia được."
+      }
+    },
+    "rounds": {
+      "legend": "Số vòng",
+      "option": "{{n}} vòng"
+    },
+    "players": {
+      "legend": "Số người tối đa",
+      "option": "{{n}} người"
+    },
+    "music": {
+      "heading": "Bộ nhạc"
+    },
+    "summary": {
+      "heading": "Phòng của bạn",
+      "noPlaylist": "Chưa chọn bộ đề"
+    },
+    "submit": "Tạo phòng",
+    "submitting": "Đang tạo phòng…",
+    "playlistRequired": "Hãy chọn một bộ đề để tạo phòng.",
+    "errors": {
+      "notEnoughTracks": "Bộ nhạc này chưa đủ bài cho {{n}} vòng (thiếu {{missing}} bài). Hãy bỏ bớt bộ lọc hoặc chọn ít vòng hơn.",
+      "playlistNotFound": "Bộ đề này không còn khả dụng hoặc đã bị tắt. Danh sách bộ đề đã được tải lại, hãy chọn một bộ khác.",
+      "rateLimited": "Bạn thao tác quá nhanh. Hãy đợi một chút rồi thử lại.",
+      "locked": "Tài khoản của bạn đang bị khóa nên không tạo được phòng.",
+      "rejected": "Cài đặt phòng chưa hợp lệ. Hãy kiểm tra lại rồi thử tạo lần nữa.",
+      "unknown": "Không tạo được phòng. Hãy thử lại."
+    }
+  },
+  "join": {
+    "label": "Đã có mã phòng?",
+    "placeholder": "Nhập mã hoặc dán link",
+    "submit": "Vào phòng",
+    "invalid": "Mã phòng gồm 6 ký tự chữ và số, ví dụ MEL889."
+  },
+  "entry": {
+    "joining": "Đang vào phòng…"
+  },
+  "problem": {
+    "retry": "Thử lại",
+    "createRoom": "Tạo phòng mới",
+    "home": "Về trang chủ",
+    "invalid-code": {
+      "title": "Mã phòng không hợp lệ",
+      "description": "Mã phòng gồm 6 ký tự chữ và số. Hãy kiểm tra lại link hoặc mã bạn được gửi."
+    },
+    "not-found": {
+      "title": "Không tìm thấy phòng",
+      "description": "Mã phòng này không tồn tại hoặc phòng đã đóng. Hãy hỏi lại bạn bè hoặc tạo phòng mới."
+    },
+    "full": {
+      "title": "Phòng đã đầy",
+      "description": "Phòng này đã đủ số người tối đa. Hãy chờ ai đó rời đi hoặc tạo phòng mới."
+    },
+    "kicked": {
+      "title": "Bạn đã bị mời ra khỏi phòng",
+      "description": "Chủ phòng đã mời bạn ra, nên bạn không vào lại phòng này được. Bạn vẫn có thể tạo phòng mới."
+    },
+    "locked": {
+      "title": "Tài khoản đang bị khóa",
+      "description": "Tài khoản của bạn tạm thời không vào được phòng nào."
+    },
+    "rate-limited": {
+      "title": "Bạn thao tác quá nhanh",
+      "description": "Hãy đợi một chút rồi thử vào phòng lại."
+    },
+    "unknown": {
+      "title": "Không vào được phòng",
+      "description": "Có lỗi xảy ra khi vào phòng. Hãy thử lại."
+    }
+  },
+  "lobby": {
+    "title": "Sảnh chờ",
+    "sidebar": "Mã phòng, cài đặt và thao tác",
+    "inProgress": "Trận đang diễn ra, bạn sẽ chơi từ trận sau",
+    "type": {
+      "private": "Phòng riêng",
+      "public": "Phòng công khai",
+      "quick": "Ghép trận nhanh"
+    }
+  },
+  "link": {
+    "connecting": "Đang kết nối với phòng…",
+    "reconnecting": "Mất kết nối, đang kết nối lại. Thông tin có thể chưa mới nhất."
+  },
+  "players": {
+    "heading": "Người chơi ({{n}}/{{max}})",
+    "you": "(bạn)",
+    "host": "Chủ phòng",
+    "guest": "Khách",
+    "ready": "Sẵn sàng",
+    "notReady": "Chưa sẵn sàng",
+    "offline": "Mất kết nối",
+    "emptySeat": "Chỗ trống",
+    "waiting": "Chờ trận sau ({{n}})",
+    "kick": "Mời {{name}} ra khỏi phòng"
+  },
+  "code": {
+    "heading": "Mã phòng",
+    "copyCode": "Sao chép mã",
+    "copyLink": "Sao chép link",
+    "copiedCode": "Đã sao chép mã phòng",
+    "copiedLink": "Đã sao chép link mời",
+    "copyFailed": "Không sao chép được",
+    "copyFailedHint": "Trình duyệt chặn việc sao chép. Hãy bôi đen mã và sao chép thủ công."
+  },
+  "settings": {
+    "heading": "Cài đặt phòng",
+    "rounds": "Số vòng",
+    "players": "Số người tối đa",
+    "roundsValue": "{{n}} vòng",
+    "playersValue": "{{n}} người",
+    "music": {
+      "heading": "Bộ nhạc",
+      "playlist": "Bộ đề đã chọn",
+      "wholeCatalog": "Toàn bộ kho nhạc",
+      "filters": "{{n}} lựa chọn",
+      "change": "Đổi bộ nhạc",
+      "apply": "Áp dụng",
+      "cancel": "Hủy"
+    }
+  },
+  "actions": {
+    "label": "Thao tác trong phòng",
+    "start": "Bắt đầu",
+    "ready": "Sẵn sàng",
+    "unready": "Bỏ sẵn sàng",
+    "leave": "Rời phòng",
+    "needPlayers": "Cần ít nhất 2 người để bắt đầu.",
+    "waitingFor": "Đang chờ {{names}} sẵn sàng."
+  },
+  "countdown": {
+    "heading": "Trận bắt đầu sau",
+    "unit": "giây",
+    "waiting": "Đang chờ thêm người chơi ({{n}}/{{max}}). Đủ 2 người, đếm ngược sẽ bắt đầu.",
+    "stopped": {
+      "PLAYER_LEFT": "Có người rời đi nên đếm ngược đã dừng.",
+      "NOT_ENOUGH_PLAYERS": "Chưa đủ người nên đếm ngược đã dừng."
+    },
+    "soloHint": "Chờ lâu chưa có ai? Bạn có thể chơi đơn ngay, hoặc tạo phòng riêng để mời bạn bè (không tính xếp hạng).",
+    "playSolo": "Chơi đơn",
+    "createPrivate": "Tạo phòng riêng"
+  },
+  "kick": {
+    "title": "Mời {{name}} ra khỏi phòng?",
+    "description": "Người bị mời ra sẽ không vào lại phòng này được.",
+    "cancel": "Hủy",
+    "confirm": "Mời ra"
+  },
+  "alert": {
+    "dismiss": "Ẩn thông báo lỗi"
+  },
+  "errors": {
+    "notHost": "Chỉ chủ phòng làm được việc này.",
+    "notInLobby": "Trận đã bắt đầu nên không đổi được lúc này.",
+    "rateLimited": "Bạn thao tác quá nhanh. Hãy đợi một chút rồi thử lại.",
+    "alreadyReady": "Bạn đã sẵn sàng rồi.",
+    "generic": "Thao tác chưa thực hiện được. Hãy thử lại.",
+    "start": {
+      "NOT_ENOUGH_PLAYERS": "Cần ít nhất 2 người đang kết nối để bắt đầu.",
+      "NOT_ALL_READY": "Vẫn còn người chưa sẵn sàng.",
+      "NOT_ENOUGH_TRACKS": "Bộ nhạc này chưa đủ bài cho số vòng đã chọn (thiếu {{n}} bài). Hãy đổi bộ nhạc hoặc chọn ít vòng hơn."
+    }
+  }
 }

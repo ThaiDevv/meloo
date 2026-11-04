@@ -5,10 +5,10 @@ Harness là bộ agent và skill nằm ngay trong repo. Claude Code và Codex t�
 | Thành phần | Vị trí | Dùng cho |
 |---|---|---|
 | Luật chung | `AGENTS.md` (Codex đọc trực tiếp; Claude đọc qua `CLAUDE.md`) | Mọi phiên |
-| Skill | `.claude/skills/` (Codex thấy qua symlink `.agents/skills/`) | `meloo-ticket`, `meloo-review` và 7 skill chuyên môn |
+| Skill | `.claude/skills/` (Codex thấy qua symlink `.agents/skills/`) | `meloo-ticket`, `meloo-review`, bộ ba điều phối (`meloo-orchestra`, `meloo-dispatch`, `meloo-review-dispatch`) và 7 skill chuyên môn |
 | Agent Claude | `.claude/agents/` | `meloo-reviewer` (opus), `meloo-qa` (sonnet), `meloo-verifier` (sonnet) |
 | Agent Codex | `.codex/agents/` | Ba agent tương đương |
-| Chặn cứng | `.claude/settings.json`, `.codex/rules/meloo.rules` | Cấm merge, force push, push lên main, ghi Jira, đọc `.env` |
+| Chặn cứng | `.claude/settings.json`, `.codex/rules/meloo.rules` | Cấm merge, force push, push lên main, ghi Jira, đọc `.env`, cấm `orchestration reset`, cấm `worktree rm` |
 | Jira chỉ đọc | `.mcp.json` (Claude), `.codex/config.toml` (Codex) | Agent tự đọc ticket |
 | Review sâu | `.claude/workflows/meloo-deep-review.js` | Ticket rủi ro cao (tùy chọn) |
 
@@ -20,9 +20,16 @@ Hai skill `meloo-ticket` và `meloo-review` thay cho hai prompt Agent Brief và 
    - Claude Code: mở phiên trong repo, đồng ý dùng server `atlassian` của `.mcp.json`, gõ `/mcp` rồi đăng nhập Atlassian.
    - Codex: khi được hỏi có tin cậy (trust) thư mục dự án không thì chọn Yes, rồi chạy `codex mcp login atlassian`.
    - Đừng thêm server Atlassian ở cấp người dùng (user scope): bản đó không bị chặn công cụ ghi.
-3. Kiểm tra: trong Claude gõ `/` phải thấy `meloo-ticket`, `meloo-review`; trong Codex gõ `/skills` phải thấy các skill `meloo-*`.
+3. Kiểm tra: trong Claude gõ `/` phải thấy `meloo-ticket`, `meloo-review`, `meloo-orchestra`; trong Codex gõ `/skills` phải thấy các skill `meloo-*`.
 4. Tùy chọn: trong Claude Code vào `/config`, bật Dynamic workflows để review sâu chạy bằng `/meloo-deep-review`. Không bật thì skill tự chạy bằng subagent.
 5. Thiếu symlink `.agents/skills/` (VD sau khi chép tay) thì chạy `bash .claude/skills/meloo-ticket/scripts/link-agent-skills.sh`.
+
+## Bộ kỹ năng điều phối tự động (Orca Orchestration)
+| Skill | Cách gọi | Nhiệm vụ |
+|---|---|---|
+| `meloo-dispatch` | `/meloo-dispatch` · `$meloo-dispatch` | Đọc ticket In Progress, mỗi ticket một worktree mới, khởi động agent chạy `meloo-ticket`, chờ tới khi có PR |
+| `meloo-review-dispatch` | `/meloo-review-dispatch` · `$meloo-review-dispatch` | Mở tab agent reviewer trong worktree của PR, cho chạy `meloo-review`, chờ kết luận |
+| `meloo-orchestra` | `/meloo-orchestra` · `$meloo-orchestra` | Cả hai, cộng tự giao vòng sửa theo review (tối đa 2 vòng), tới khi PR sạch |
 
 ## Một ngày làm việc
 | Bước | Bạn làm | Gõ trong Orca |

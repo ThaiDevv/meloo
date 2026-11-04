@@ -77,3 +77,26 @@ prefix_rule(
     justification = "Reviewer đăng nhận xét bằng gh pr comment; approve là việc của Thái.",
     match = ["gh pr review 12 --approve"],
 )
+
+prefix_rule(
+    pattern = ["orca-ide", "orchestration", "reset"],
+    decision = "forbidden",
+    justification = "Cấm reset orchestration để tránh mất phiên điều phối.",
+    match = ["orca-ide orchestration reset"],
+)
+
+prefix_rule(
+    pattern = ["orca-ide", "orchestration"],
+    decision = "allow",
+    justification = "Cho phép điều phối công việc qua Orca orchestration.",
+    match = ["orca-ide orchestration status"],
+    not_match = ["orca-ide status"],
+)
+
+prefix_rule(
+    pattern = ["orca-ide", "worktree", "rm"],
+    decision = "forbidden",
+    justification = "Cấm xóa worktree để tránh mất mã nguồn chưa commit.",
+    match = ["orca-ide worktree rm feat/MEL-1"],
+)
+

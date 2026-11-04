@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   EMPTY_SELECTION,
   MusicPicker,
+  VinylDisc,
   countFilterValues,
   type MusicSelection,
 } from '@/shared/music-picker'
@@ -20,15 +21,6 @@ type RoundCount = 5 | 10 | 15
 
 const ROUND_COUNTS: RoundCount[] = [5, 10, 15]
 const PLAYER_COUNTS = [2, 3, 4, 5]
-
-function SummaryRow({ term, detail }: { term: string; detail: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-4">
-      <dt className="text-sm text-muted-foreground">{term}</dt>
-      <dd className="text-right font-semibold">{detail}</dd>
-    </div>
-  )
-}
 
 function FailureNotice({ failure, roundCount }: { failure: RoomFailure; roundCount: RoundCount }) {
   const { t } = useTranslation('room')
@@ -108,18 +100,19 @@ export function CreateRoomPage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-10 lg:py-14">
-      <header className="max-w-2xl space-y-3">
-        <h1 className="font-display text-[clamp(2rem,6vw,3.25rem)] leading-none font-extrabold tracking-[-0.03em] text-balance">
+      <header className="max-w-2xl space-y-4">
+        <h1 className="font-display text-[clamp(2.5rem,8vw,4.5rem)] leading-none font-extrabold tracking-[-0.03em] text-balance">
           {t('create.title')}
         </h1>
         <p className="text-lg">{t('create.intro')}</p>
       </header>
 
-      <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-14">
+      <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_26rem] lg:items-start lg:gap-14">
         <div className="space-y-10">
           <ChoiceGroup
             legend={t('create.visibility.legend')}
             name="visibility"
+            large
             value={visibility}
             onChange={setVisibility}
             options={[
@@ -138,6 +131,7 @@ export function CreateRoomPage() {
           <ChoiceGroup
             legend={t('create.rounds.legend')}
             name="rounds"
+            large
             value={roundCount}
             onChange={setRoundCount}
             compact
@@ -146,13 +140,17 @@ export function CreateRoomPage() {
           <ChoiceGroup
             legend={t('create.players.legend')}
             name="players"
+            large
             value={maxPlayers}
             onChange={setMaxPlayers}
             compact
             options={PLAYER_COUNTS.map((n) => ({ value: n, title: String(n) }))}
           />
           <section aria-labelledby="music-heading" className="space-y-4">
-            <h2 id="music-heading" className="text-base font-semibold">
+            <h2
+              id="music-heading"
+              className="font-display text-2xl font-extrabold tracking-[-0.02em]"
+            >
               {t('create.music.heading')}
             </h2>
             <MusicPicker value={music} onChange={setMusic} />
@@ -160,44 +158,56 @@ export function CreateRoomPage() {
         </div>
 
         <div className="space-y-8 lg:sticky lg:top-20">
-          <aside aria-labelledby="summary-heading" className="space-y-5 rounded-2xl bg-surface p-5">
-            <h2 id="summary-heading" className="text-base font-semibold">
+          <aside
+            aria-labelledby="summary-heading"
+            className="relative space-y-6 overflow-hidden rounded-2xl bg-primary p-6 text-primary-foreground"
+          >
+            <VinylDisc className="absolute -top-6 -right-6 w-36 text-primary-foreground" />
+            <h2 id="summary-heading" className="text-base font-semibold opacity-80">
               {t('create.summary.heading')}
             </h2>
-            <dl className="space-y-3">
-              <SummaryRow
-                term={t('create.visibility.legend')}
-                detail={t(
-                  visibility === 'PRIVATE_ROOM'
-                    ? 'create.visibility.private.title'
-                    : 'create.visibility.public.title',
-                )}
-              />
-              <SummaryRow
-                term={t('create.rounds.legend')}
-                detail={t('create.rounds.option', { n: roundCount })}
-              />
-              <SummaryRow
-                term={t('create.players.legend')}
-                detail={t('create.players.option', { n: maxPlayers })}
-              />
-              <SummaryRow term={t('create.music.heading')} detail={musicSummary} />
+            <dl className="space-y-6">
+              <div>
+                <dt className="sr-only">{t('create.visibility.legend')}</dt>
+                <dd className="font-display text-3xl leading-tight font-extrabold tracking-[-0.02em]">
+                  {t(
+                    visibility === 'PRIVATE_ROOM'
+                      ? 'create.visibility.private.title'
+                      : 'create.visibility.public.title',
+                  )}
+                </dd>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <dt className="text-sm opacity-80">{t('create.rounds.legend')}</dt>
+                  <dd className="font-display text-3xl font-extrabold">
+                    {t('create.rounds.option', { n: roundCount })}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm opacity-80">{t('create.players.legend')}</dt>
+                  <dd className="font-display text-3xl font-extrabold">
+                    {t('create.players.option', { n: maxPlayers })}
+                  </dd>
+                </div>
+              </div>
+              <div>
+                <dt className="text-sm opacity-80">{t('create.music.heading')}</dt>
+                <dd className="text-xl font-bold">{musicSummary}</dd>
+              </div>
             </dl>
             <div className="space-y-2">
               <Button
-                className="w-full"
+                className="h-14 w-full bg-primary-foreground text-base text-primary"
                 disabled={create.isPending || incomplete}
                 aria-describedby={incomplete ? 'playlist-required-hint' : undefined}
                 onClick={submit}
               >
-                <Plus aria-hidden="true" className="size-4" strokeWidth={2} />
+                <Plus aria-hidden="true" className="size-5" strokeWidth={2} />
                 {create.isPending ? t('create.submitting') : t('create.submit')}
               </Button>
               {incomplete ? (
-                <p
-                  id="playlist-required-hint"
-                  className="text-center text-xs text-muted-foreground"
-                >
+                <p id="playlist-required-hint" className="text-center text-sm opacity-80">
                   {t('create.playlistRequired')}
                 </p>
               ) : null}

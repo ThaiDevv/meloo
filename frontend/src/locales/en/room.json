@@ -43,7 +43,7 @@
   },
   "join": {
     "label": "Have a room code?",
-    "placeholder": "Enter the code or paste the link",
+    "placeholder": "Code or link",
     "submit": "Join",
     "invalid": "A room code is 6 letters and digits, for example MEL889."
   },

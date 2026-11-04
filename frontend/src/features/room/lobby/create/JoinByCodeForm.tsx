@@ -24,8 +24,8 @@ export function JoinByCodeForm() {
   }
 
   return (
-    <form onSubmit={submit} noValidate className="space-y-3">
-      <label htmlFor={id} className="block text-base font-semibold">
+    <form onSubmit={submit} noValidate className="space-y-4 rounded-2xl bg-surface p-6">
+      <label htmlFor={id} className="block font-display text-2xl font-extrabold tracking-[-0.02em]">
         {t('join.label')}
       </label>
       <div className="flex gap-2">
@@ -38,13 +38,13 @@ export function JoinByCodeForm() {
           placeholder={t('join.placeholder')}
           aria-invalid={invalid}
           aria-describedby={invalid ? `${id}-error` : undefined}
-          className="font-medium tracking-widest uppercase placeholder:tracking-normal placeholder:normal-case"
+          className="h-14 text-lg font-semibold tracking-widest uppercase placeholder:text-base placeholder:font-normal placeholder:tracking-normal placeholder:normal-case"
           onChange={(event) => {
             setValue(event.target.value)
             setInvalid(false)
           }}
         />
-        <Button type="submit" variant="outline">
+        <Button type="submit" variant="outline" className="h-14 px-6 text-base">
           {t('join.submit')}
         </Button>
       </div>

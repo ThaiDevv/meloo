@@ -43,7 +43,7 @@
   },
   "join": {
     "label": "Đã có mã phòng?",
-    "placeholder": "Nhập mã hoặc dán link",
+    "placeholder": "Mã hoặc link",
     "submit": "Vào phòng",
     "invalid": "Mã phòng gồm 6 ký tự chữ và số, ví dụ MEL889."
   },

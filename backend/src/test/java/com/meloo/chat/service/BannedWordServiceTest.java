@@ -67,7 +67,8 @@ class BannedWordServiceTest {
         "v-l", // dấu gạch ngang lách viết tắt
         "v l", // dấu cách lách viết tắt
         "đ   ị   t", // dấu cách từng ký tự
-        "d i t" // không dấu và cách từng ký tự
+        "d i t", // không dấu và cách từng ký tự
+        "khốn n ạ n" // cách chữ từng phần trong cụm từ cấm
       })
   @DisplayName(
       "Detects evasion tricks for banned words: no accents, spaces, case, punctuation (BR-17)")

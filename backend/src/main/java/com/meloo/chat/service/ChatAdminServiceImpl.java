@@ -194,11 +194,11 @@ public class ChatAdminServiceImpl implements ChatAdminApi {
   @Override
   @Transactional(readOnly = true)
   public List<ChatReportDto> listReports(@Nullable ReportStatus status) {
-    List<ChatReport> reports = chatReportRepository.findAll();
-    return reports.stream()
-        .filter(r -> status == null || r.getStatus() == status)
-        .map(this::toDto)
-        .toList();
+    List<ChatReport> reports =
+        status != null
+            ? chatReportRepository.findByStatusOrderByCreatedAtDesc(status)
+            : chatReportRepository.findAllByOrderByCreatedAtDesc();
+    return reports.stream().map(this::toDto).toList();
   }
 
   @Override

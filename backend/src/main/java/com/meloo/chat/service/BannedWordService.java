@@ -55,7 +55,8 @@ public class BannedWordService {
 
     for (BannedWordEntry entry : entries) {
       // Subsequence match on raw tokens (e.g. "ngu", or multi-word phrase "khốn nạn")
-      if (containsSubsequence(rawTokens, entry.tokens())) {
+      if (containsSubsequence(rawTokens, entry.tokens())
+          || containsSubsequence(collapsedTokens, entry.tokens())) {
         return true;
       }
       // Check collapsed raw tokens (e.g. "đ.m" -> ["đ", "m"] collapsed to "đm", or "đ ị t" ->
@@ -69,7 +70,8 @@ public class BannedWordService {
       // If the banned word had NO diacritics (e.g. "ngu"), we do NOT match against stripped text
       // to avoid false positives on valid words like "ngủ" (sleep) or "ngũ".
       if (entry.hasDiacritics()) {
-        if (containsSubsequence(strippedTokens, entry.strippedTokens())) {
+        if (containsSubsequence(strippedTokens, entry.strippedTokens())
+            || containsSubsequence(collapsedStrippedTokens, entry.strippedTokens())) {
           return true;
         }
         if (collapsedStrippedTokens.contains(entry.strippedCompacted())) {

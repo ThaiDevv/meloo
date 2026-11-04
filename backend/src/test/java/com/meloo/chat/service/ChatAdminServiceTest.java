@@ -19,6 +19,7 @@ import com.meloo.chat.persistence.ChatReportRepository;
 import com.meloo.shared.api.ApiException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -165,6 +166,35 @@ class ChatAdminServiceTest {
     assertThat(handled.status()).isEqualTo(ReportStatus.ACTIONED);
     assertThat(handled.handledBy()).isEqualTo(adminId);
     assertThat(handled.handledAt()).isNotNull();
+  }
+
+  @Test
+  @DisplayName("Lists reports ordered by created_at desc with optional status filter")
+  void listReports() {
+    ChatReport r1 =
+        ChatReport.builder()
+            .id(UUID.randomUUID())
+            .messageText("msg1")
+            .senderId(UUID.randomUUID())
+            .senderNickname("u1")
+            .reporterId(UUID.randomUUID())
+            .status(ReportStatus.OPEN)
+            .context("[]")
+            .createdAt(Instant.now())
+            .build();
+
+    when(chatReportRepository.findByStatusOrderByCreatedAtDesc(ReportStatus.OPEN))
+        .thenReturn(List.of(r1));
+    when(chatReportRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(r1));
+
+    List<ChatReportDto> filtered = adminService.listReports(ReportStatus.OPEN);
+    assertThat(filtered).hasSize(1);
+    assertThat(filtered.get(0).status()).isEqualTo(ReportStatus.OPEN);
+    verify(chatReportRepository).findByStatusOrderByCreatedAtDesc(ReportStatus.OPEN);
+
+    List<ChatReportDto> all = adminService.listReports(null);
+    assertThat(all).hasSize(1);
+    verify(chatReportRepository).findAllByOrderByCreatedAtDesc();
   }
 
   @Test

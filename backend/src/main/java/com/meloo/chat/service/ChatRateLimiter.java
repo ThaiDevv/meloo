@@ -39,13 +39,19 @@ public class ChatRateLimiter {
           .removeIf(e -> Duration.between(e.getValue(), now).toSeconds() > 60);
     }
 
-    Instant last = lastMessageTimes.get(userId);
-    if (last != null && Duration.between(last, now).compareTo(interval) < 0) {
-      return false;
-    }
+    java.util.concurrent.atomic.AtomicBoolean acquired =
+        new java.util.concurrent.atomic.AtomicBoolean(false);
+    lastMessageTimes.compute(
+        userId,
+        (k, last) -> {
+          if (last == null || Duration.between(last, now).compareTo(interval) >= 0) {
+            acquired.set(true);
+            return now;
+          }
+          return last;
+        });
 
-    lastMessageTimes.put(userId, now);
-    return true;
+    return acquired.get();
   }
 
   void reset() {

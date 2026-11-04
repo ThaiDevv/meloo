@@ -278,7 +278,20 @@ describe('as a member (AC3)', () => {
 
     expect(screen.getByText('Chưa sẵn sàng')).toBeInTheDocument()
     lobbyEvent({ type: 'PLAYER_READY_CHANGED', userId: GUEST_ID, isReady: true })
-    expect(await screen.findByText('Sẵn sàng', { selector: 'span' })).toBeInTheDocument()
+    const row = screen.getByText('PlayerTwo').closest('li')
+    expect(row).not.toBeNull()
+    if (!row) return
+    expect(await within(row).findByText('Sẵn sàng')).toBeInTheDocument()
+  })
+
+  it('shows a player score only when it is above zero', async () => {
+    const scored = room({ players: [host({ score: 1240 }), player({ score: 0 })] })
+    answerJoin(joinOk(scored))
+    renderLobby('/r/MEL889')
+    await goLive(scored)
+
+    expect(screen.getByText('1.240 điểm')).toBeInTheDocument()
+    expect(screen.getAllByText(/điểm$/)).toHaveLength(1)
   })
 
   it('follows people who join, leave and lose their connection', async () => {
@@ -555,6 +568,19 @@ describe('a matchmaking room without a host (BR-13)', () => {
     lobbyEvent({ type: 'MATCH_COUNTDOWN_STOPPED', reason: 'PLAYER_LEFT' })
     expect(await screen.findByText('Có người rời đi nên đếm ngược đã dừng.')).toBeInTheDocument()
     expect(screen.queryByRole('timer')).not.toBeInTheDocument()
+  })
+
+  it('does not offer the solo hint in a room with a host, even if the event arrives', async () => {
+    answerJoin(joinOk())
+    renderLobby('/r/MEL889')
+    await goLive()
+
+    lobbyEvent({ type: 'MATCH_SOLO_SUGGESTION', message: 'gợi ý' })
+
+    await waitFor(() => {
+      expect(useRoomStore.getState().soloSuggestion).toBe('gợi ý')
+    })
+    expect(screen.queryByRole('link', { name: 'Chơi đơn' })).not.toBeInTheDocument()
   })
 
   it('offers solo play or a private room after the 60 s hint', async () => {

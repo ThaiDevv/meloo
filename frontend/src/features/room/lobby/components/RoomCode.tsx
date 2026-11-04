@@ -57,7 +57,7 @@ export function RoomCode({ code }: { code: string }) {
       </p>
       <div className="flex flex-wrap gap-2">
         <Button
-          className="bg-primary-foreground text-primary"
+          className="bg-primary-foreground text-primary focus-visible:outline-primary-foreground"
           onClick={() => {
             void copy('code')
           }}
@@ -71,7 +71,7 @@ export function RoomCode({ code }: { code: string }) {
         </Button>
         <Button
           variant="outline"
-          className="border-primary-foreground/50 text-primary-foreground hover:bg-primary-foreground/10"
+          className="border-primary-foreground/50 text-primary-foreground hover:bg-primary-foreground/10 focus-visible:outline-primary-foreground"
           onClick={() => {
             void copy('link')
           }}

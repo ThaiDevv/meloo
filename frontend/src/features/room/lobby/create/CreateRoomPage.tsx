@@ -198,7 +198,7 @@ export function CreateRoomPage() {
             </dl>
             <div className="space-y-2">
               <Button
-                className="h-14 w-full bg-primary-foreground text-base text-primary"
+                className="h-14 w-full bg-primary-foreground text-base text-primary focus-visible:outline-primary-foreground"
                 disabled={create.isPending || incomplete}
                 aria-describedby={incomplete ? 'playlist-required-hint' : undefined}
                 onClick={submit}

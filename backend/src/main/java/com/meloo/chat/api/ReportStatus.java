@@ -1,4 +1,4 @@
-package com.meloo.chat.persistence;
+package com.meloo.chat.api;
 
 public enum ReportStatus {
   OPEN,

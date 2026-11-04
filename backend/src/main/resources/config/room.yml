@@ -4,3 +4,10 @@ meloo:
     realtime:
       heartbeat-interval: 10s
       scheduler-pool-size: 4
+    lobby:
+      min-players: 2
+      max-players: 5
+      default-round-count: 10
+      idle-timeout: 10m
+      disconnect-timeout: 30s
+

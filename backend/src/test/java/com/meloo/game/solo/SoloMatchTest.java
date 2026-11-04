@@ -41,8 +41,8 @@ class SoloMatchTest {
             userId,
             "Thái",
             false,
-            SoloModeDto.RANKED,
-            true,
+            SoloModeDto.PRACTICE,
+            false,
             5,
             null,
             null,
@@ -54,8 +54,8 @@ class SoloMatchTest {
     assertThat(match.userId()).isEqualTo(userId);
     assertThat(match.nickname()).isEqualTo("Thái");
     assertThat(match.isGuest()).isFalse();
-    assertThat(match.mode()).isEqualTo(SoloModeDto.RANKED);
-    assertThat(match.isRanked()).isTrue();
+    assertThat(match.mode()).isEqualTo(SoloModeDto.PRACTICE);
+    assertThat(match.isRanked()).isFalse();
     assertThat(match.roundCount()).isEqualTo(5);
     assertThat(match.status()).isEqualTo(SoloMatchStatus.IN_PROGRESS);
     assertThat(match.startedAt()).isEqualTo(now);
@@ -149,8 +149,8 @@ class SoloMatchTest {
             userId,
             "Thái",
             false,
-            SoloModeDto.RANKED,
-            true,
+            SoloModeDto.PRACTICE,
+            false,
             5,
             null,
             null,
@@ -158,7 +158,7 @@ class SoloMatchTest {
             List.of(),
             now);
 
-    assertThat(match.isRanked()).isTrue();
+    assertThat(match.isRanked()).isFalse();
 
     Instant abandonTime = now.plusSeconds(300);
     match.abandon(abandonTime);
@@ -175,8 +175,8 @@ class SoloMatchTest {
             userId,
             "Thái",
             false,
-            SoloModeDto.RANKED,
-            true,
+            SoloModeDto.PRACTICE,
+            false,
             5,
             null,
             null,

@@ -69,13 +69,13 @@ function SoloMatchScreen({ matchId }: { matchId: string }) {
 
 /** The same match again. A practice filter is only known while the match is in progress. */
 function replayOfMatch(match: SoloMatch): CreateSoloMatchRequest {
-  return match.mode === 'PRACTICE' && match.filter
+  return match.filter
     ? { mode: match.mode, roundCount: match.roundCount, filter: match.filter }
     : { mode: match.mode, roundCount: match.roundCount }
 }
 
 function replayOfResult(result: MatchResult): CreateSoloMatchRequest | null {
-  return result.mode === 'RANKED' ? { mode: 'RANKED', roundCount: result.roundCount } : null
+  return { mode: 'PRACTICE', roundCount: result.roundCount }
 }
 
 function ActiveMatch({
@@ -121,11 +121,6 @@ function ActiveMatch({
   }
 
   const confirm = () => {
-    // BR-23: a ranked match cannot be abandoned; it waits 30 minutes for the player to come back.
-    if (match.ranked) {
-      leave()
-      return
-    }
     abandon.mutate(undefined, {
       onSuccess: (result) => {
         if (blocker.state === 'blocked') leave()
@@ -172,7 +167,7 @@ function ActiveMatch({
       )}
       <ExitDialog
         open={asking || blocked}
-        ranked={match.ranked}
+        ranked={false}
         busy={abandon.isPending}
         onStay={stay}
         onConfirm={confirm}

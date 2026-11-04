@@ -163,12 +163,11 @@ export interface paths {
         put?: never;
         /**
          * Start a single-player match
-         * @description Any signed-in user, guests included (BR-20). `RANKED` uses the standard set and takes neither filter
-         *     nor playlistId (BR-23). `PRACTICE` allows selecting either a catalog filter (`filter`) or a specific
-         *     playlist (`playlistId`), including the standard set (`STANDARD`), and is never ranked (BR-23).
-         *     `filter` and `playlistId` are mutually exclusive; sending both returns 400 (`VALIDATION_FAILED`).
+         * @description Any signed-in user, guests included (BR-20). Solo matches are practice-only and do not affect rank (BR-23).
+         *     Allows selecting either a catalog filter (`filter`) or a specific playlist (`playlistId`), including the standard
+         *     set (`STANDARD`). `filter` and `playlistId` are mutually exclusive; sending both returns 400 (`VALIDATION_FAILED`).
          *     A user has at most one match in progress: a second call returns 409 with the existing `matchId`, so reloading
-         *     cannot swap a hard song for another. A `PRACTICE` match can be quit with `abandonSoloMatch`.
+         *     cannot swap a hard song for another. A match can be quit with `abandonSoloMatch`.
          */
         post: operations["createSoloMatch"];
         delete?: never;
@@ -338,9 +337,7 @@ export interface paths {
         put?: never;
         /**
          * Quit a practice match
-         * @description The match owner only. Only a `PRACTICE` match can be quit; a `RANKED` match must be finished or left to
-         *     expire after 30 minutes, so a player cannot drop a hard song and redraw (BR-23). The match becomes
-         *     `ABANDONED`, is not ranked, and keeps the rounds already finished.
+         * @description The match owner only. Quitting a match marks it `ABANDONED` and keeps the rounds already finished (BR-23).
          */
         post: operations["abandonSoloMatch"];
         delete?: never;
@@ -453,6 +450,7 @@ export interface paths {
          * Matchmake or create a quick match room
          * @description Finds a pending quick match room matching filters or creates a new one (BR-13).
          *     Quick match rooms have no host (`hostId: null`), no join code, and automatically start after countdown.
+         *     Only signed-in registered users may join quick matches; guest accounts are rejected with 403 `QUICK_MATCH_REQUIRES_ACCOUNT` (BR-13, BR-20).
          */
         post: operations["quickMatch"];
         delete?: never;
@@ -470,7 +468,7 @@ export interface components {
          *     Bao gồm các mã lỗi mặc định HTTP và mã lỗi nghiệp vụ của các module.
          * @enum {string}
          */
-        ErrorCode: "VALIDATION_FAILED" | "UNAUTHORIZED" | "FORBIDDEN" | "NOT_FOUND" | "METHOD_NOT_ALLOWED" | "UNSUPPORTED_MEDIA_TYPE" | "NOT_ACCEPTABLE" | "CONFLICT" | "RATE_LIMITED" | "INTERNAL_ERROR" | "REFRESH_RACE" | "ACCOUNT_LOCKED" | "TRACK_NOT_FOUND" | "PLAYLIST_NOT_FOUND" | "SOLO_MATCH_IN_PROGRESS" | "NO_ACTIVE_MATCH" | "MATCH_NOT_IN_PROGRESS" | "MATCH_NOT_FOUND" | "MATCH_NOT_FINISHED" | "RANKED_MATCH_CANNOT_ABANDON" | "NOT_ENOUGH_TRACKS" | "ROUND_NOT_ACTIVE" | "ROUND_NOT_FOUND" | "ROUND_NOT_FINISHED" | "LISTEN_LEVEL_MAX" | "LISTEN_LEVEL_MISMATCH" | "SKIP_NOT_ALLOWED" | "AUDIO_TOKEN_INVALID" | "AUDIO_TOKEN_EXPIRED" | "RANGE_NOT_SATISFIABLE" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_KICKED" | "NOT_ROOM_HOST" | "ROOM_NOT_LOBBY" | "ROOM_CANNOT_START";
+        ErrorCode: "VALIDATION_FAILED" | "UNAUTHORIZED" | "FORBIDDEN" | "NOT_FOUND" | "METHOD_NOT_ALLOWED" | "UNSUPPORTED_MEDIA_TYPE" | "NOT_ACCEPTABLE" | "CONFLICT" | "RATE_LIMITED" | "INTERNAL_ERROR" | "REFRESH_RACE" | "ACCOUNT_LOCKED" | "TRACK_NOT_FOUND" | "PLAYLIST_NOT_FOUND" | "SOLO_MATCH_IN_PROGRESS" | "NO_ACTIVE_MATCH" | "MATCH_NOT_IN_PROGRESS" | "MATCH_NOT_FOUND" | "MATCH_NOT_FINISHED" | "QUICK_MATCH_REQUIRES_ACCOUNT" | "NOT_ENOUGH_TRACKS" | "ROUND_NOT_ACTIVE" | "ROUND_NOT_FOUND" | "ROUND_NOT_FINISHED" | "LISTEN_LEVEL_MAX" | "LISTEN_LEVEL_MISMATCH" | "SKIP_NOT_ALLOWED" | "AUDIO_TOKEN_INVALID" | "AUDIO_TOKEN_EXPIRED" | "RANGE_NOT_SATISFIABLE" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_KICKED" | "NOT_ROOM_HOST" | "ROOM_NOT_LOBBY" | "ROOM_CANNOT_START";
         /** @description RFC 9457 problem details with a stable `code`. */
         Problem: {
             /**
@@ -555,7 +553,7 @@ export interface components {
             items: components["schemas"]["TrackSuggestion"][];
         };
         /**
-         * @description `STANDARD` is the set used by ranked single play (BR-23).
+         * @description `STANDARD` is the standard curated song set (BR-23).
          * @enum {string}
          */
         PlaylistKind: "STANDARD" | "CURATED";
@@ -599,22 +597,23 @@ export interface components {
             artistIds?: string[];
         };
         /**
-         * @description `RANKED` = standard set; `PRACTICE` = filter or playlist, never ranked (BR-23).
+         * @description Solo play mode. Only `PRACTICE` is available; solo matches do not affect rank (BR-23).
          * @enum {string}
          */
-        SoloMode: "RANKED" | "PRACTICE";
+        SoloMode: "PRACTICE";
         CreateSoloMatchRequest: {
+            /** @default PRACTICE */
             mode: components["schemas"]["SoloMode"];
             /**
              * @description Rounds in the match (BR-09). Defaults to 10 when omitted.
              * @enum {integer}
              */
             roundCount?: 5 | 10 | 15;
-            /** @description Only for `PRACTICE`; sending it with `RANKED` is a 400. Mutually exclusive with `playlistId`: sending both returns 400 (`VALIDATION_FAILED`). Omitted or empty means the whole catalog. */
+            /** @description Catalog filter for practice match. Mutually exclusive with `playlistId`: sending both returns 400 (`VALIDATION_FAILED`). Omitted or empty means the whole catalog. */
             filter?: components["schemas"]["SoloFilter"];
             /**
              * Format: uuid
-             * @description Only for `PRACTICE`. The standard set (`STANDARD`) can also be chosen in `PRACTICE`, in which case the match is still unranked (BR-23). Mutually exclusive with `filter`: sending both returns 400 (`VALIDATION_FAILED`). Sending it with `RANKED` is also a 400.
+             * @description Specific playlist to practice with, including standard set (`STANDARD`) (BR-23). Mutually exclusive with `filter`: sending both returns 400 (`VALIDATION_FAILED`).
              */
             playlistId?: string;
         };
@@ -733,14 +732,17 @@ export interface components {
             /** Format: uuid */
             matchId: string;
             mode: components["schemas"]["SoloMode"];
-            /** @description Whether the match counts for ranking (BR-23). Guests still do not reach the board (BR-20). */
+            /**
+             * @deprecated
+             * @description Deprecated. Always false; solo matches are never ranked (BR-23). Preserved for backwards compatibility.
+             */
             ranked: boolean;
             /** @enum {integer} */
             roundCount: 5 | 10 | 15;
             filter?: components["schemas"]["SoloFilter"];
             /**
              * Format: uuid
-             * @description Playlist chosen when creating the match in `PRACTICE` mode (BR-23). Mutually exclusive with `filter`.
+             * @description Playlist chosen when creating the match (BR-23). Mutually exclusive with `filter`.
              */
             playlistId?: string;
             totalScore: number;
@@ -760,7 +762,10 @@ export interface components {
             /** Format: uuid */
             matchId: string;
             mode: components["schemas"]["SoloMode"];
-            /** @description False for an `ABANDONED` match even in `RANKED` mode (BR-23). */
+            /**
+             * @deprecated
+             * @description Deprecated. Always false; solo matches are never ranked (BR-23). Preserved for backwards compatibility.
+             */
             ranked: boolean;
             status: components["schemas"]["MatchStatus"];
             /** @enum {integer} */
@@ -1461,7 +1466,7 @@ export interface operations {
             400: components["responses"]["ValidationFailed"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
-            /** @description `RANKED_MATCH_CANNOT_ABANDON` (ranked mode) or `MATCH_NOT_IN_PROGRESS`. */
+            /** @description The match is not in progress (`MATCH_NOT_IN_PROGRESS`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1742,7 +1747,15 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
+            /** @description Forbidden. Authenticated registered account required; guests receive `QUICK_MATCH_REQUIRES_ACCOUNT` (BR-13, BR-20). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description The playlist was not found (`PLAYLIST_NOT_FOUND`). */
             404: {
                 headers: {

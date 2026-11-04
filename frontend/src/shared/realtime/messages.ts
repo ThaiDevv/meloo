@@ -54,6 +54,7 @@ export interface PlayerRanking {
   totalScore: number
   correctCount: number
   totalCorrectTimeMs: number
+  left: boolean
 }
 
 export interface RoomPlayerSummary {
@@ -280,6 +281,8 @@ export interface PlayerGuessedEvent {
   nickname: string
   level: 2 | 5 | 10 | 20 | 30
   isCorrect: true
+  roundScore: number
+  totalScore: number
   serverTime: string
 }
 
@@ -330,7 +333,20 @@ export interface MatchFinishedEvent {
   serverTime: string
 }
 
-export type ScoreboardEvent = ScoreboardUpdateEvent | MatchFinishedEvent
+export interface PlayerRankChange {
+  userId: string
+  rankDelta: number
+  rankPoints: number
+}
+
+export interface RankUpdatedEvent {
+  type: 'RANK_UPDATED'
+  matchId: string
+  changes: PlayerRankChange[]
+  serverTime: string
+}
+
+export type ScoreboardEvent = ScoreboardUpdateEvent | MatchFinishedEvent | RankUpdatedEvent
 
 // Chat Topic
 export interface ChatMessageEvent {

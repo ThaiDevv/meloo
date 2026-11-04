@@ -129,7 +129,8 @@ function soloMatch(match: MockMatch): SoloMatch {
   return {
     matchId: match.matchId,
     mode: match.mode,
-    ranked: match.mode === 'RANKED',
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
+    ranked: false,
     roundCount: match.roundCount,
     ...(match.filter && { filter: match.filter }),
     totalScore: match.totalScore,
@@ -144,7 +145,8 @@ function close(match: MockMatch, status: Schemas['MatchStatus']): MatchResult {
   const result: MatchResult = {
     matchId: match.matchId,
     mode: match.mode,
-    ranked: match.mode === 'RANKED' && status === 'FINISHED',
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
+    ranked: false,
     status,
     roundCount: match.roundCount,
     totalScore: match.totalScore,
@@ -219,7 +221,7 @@ export const soloMatchHandlers = [
       matchId: crypto.randomUUID(),
       mode: body.mode,
       roundCount: body.roundCount ?? 10,
-      ...(body.mode === 'PRACTICE' && body.filter && { filter: body.filter }),
+      ...(body.filter && { filter: body.filter }),
       totalScore: 0,
       comboStreak: 0,
       startedAt: new Date().toISOString(),
@@ -308,9 +310,6 @@ export const soloMatchHandlers = [
   http.post(`${api}/solo/matches/:matchId/abandon`, ({ params }) => {
     const match = openRound(String(params.matchId))
     if (match instanceof Response) return match
-    if (match.mode === 'RANKED') {
-      return problem(409, 'RANKED_MATCH_CANNOT_ABANDON', 'Ranked match cannot be abandoned')
-    }
     return HttpResponse.json(close(match, 'ABANDONED'))
   }),
 

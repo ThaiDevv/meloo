@@ -27,7 +27,7 @@ tags:
   - name: catalog
     description: Track search, playlists and filter values.
   - name: game
-    description: Single-player matches (ranked and practice).
+    description: Single-player matches (practice).
   - name: audio
     description: Stream audio preview clips using opaque HMAC tokens (ADR-008).
   - name: room
@@ -229,12 +229,11 @@ paths:
       operationId: createSoloMatch
       summary: Start a single-player match
       description: |
-        Any signed-in user, guests included (BR-20). `RANKED` uses the standard set and takes neither filter
-        nor playlistId (BR-23). `PRACTICE` allows selecting either a catalog filter (`filter`) or a specific
-        playlist (`playlistId`), including the standard set (`STANDARD`), and is never ranked (BR-23).
-        `filter` and `playlistId` are mutually exclusive; sending both returns 400 (`VALIDATION_FAILED`).
+        Any signed-in user, guests included (BR-20). Solo matches are practice-only and do not affect rank (BR-23).
+        Allows selecting either a catalog filter (`filter`) or a specific playlist (`playlistId`), including the standard
+        set (`STANDARD`). `filter` and `playlistId` are mutually exclusive; sending both returns 400 (`VALIDATION_FAILED`).
         A user has at most one match in progress: a second call returns 409 with the existing `matchId`, so reloading
-        cannot swap a hard song for another. A `PRACTICE` match can be quit with `abandonSoloMatch`.
+        cannot swap a hard song for another. A match can be quit with `abandonSoloMatch`.
       requestBody:
         required: true
         content:
@@ -242,8 +241,6 @@ paths:
             schema:
               $ref: '#/components/schemas/CreateSoloMatchRequest'
             examples:
-              ranked:
-                externalValue: ./examples/game/create-solo-match.request.ranked.json
               practice:
                 externalValue: ./examples/game/create-solo-match.request.practice.json
               practicePlaylist:
@@ -603,9 +600,7 @@ paths:
       operationId: abandonSoloMatch
       summary: Quit a practice match
       description: |
-        The match owner only. Only a `PRACTICE` match can be quit; a `RANKED` match must be finished or left to
-        expire after 30 minutes, so a player cannot drop a hard song and redraw (BR-23). The match becomes
-        `ABANDONED`, is not ranked, and keeps the rounds already finished.
+        The match owner only. Quitting a match marks it `ABANDONED` and keeps the rounds already finished (BR-23).
       parameters:
         - $ref: '#/components/parameters/MatchId'
       responses:
@@ -625,7 +620,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
-          description: '`RANKED_MATCH_CANNOT_ABANDON` (ranked mode) or `MATCH_NOT_IN_PROGRESS`.'
+          description: The match is not in progress (`MATCH_NOT_IN_PROGRESS`).
           content:
             application/problem+json:
               schema:
@@ -954,6 +949,7 @@ paths:
       description: |
         Finds a pending quick match room matching filters or creates a new one (BR-13).
         Quick match rooms have no host (`hostId: null`), no join code, and automatically start after countdown.
+        Only signed-in registered users may join quick matches; guest accounts are rejected with 403 `QUICK_MATCH_REQUIRES_ACCOUNT` (BR-13, BR-20).
       security:
         - bearerAuth: []
       requestBody:
@@ -995,7 +991,18 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          description: Forbidden. Authenticated registered account required; guests receive `QUICK_MATCH_REQUIRES_ACCOUNT` (BR-13, BR-20).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                accountLocked:
+                  summary: Account is locked (BR-28)
+                  externalValue: ./examples/audio/problem.forbidden.403.json
+                quickMatchRequiresAccount:
+                  summary: Guest accounts cannot join quick matches (BR-13, BR-20)
+                  externalValue: ./examples/room/problem.quick-match-requires-account.403.json
         '404':
           description: The playlist was not found (`PLAYLIST_NOT_FOUND`).
           content:
@@ -1147,7 +1154,7 @@ components:
         - MATCH_NOT_IN_PROGRESS
         - MATCH_NOT_FOUND
         - MATCH_NOT_FINISHED
-        - RANKED_MATCH_CANNOT_ABANDON
+        - QUICK_MATCH_REQUIRES_ACCOUNT
         - NOT_ENOUGH_TRACKS
         - ROUND_NOT_ACTIVE
         - ROUND_NOT_FOUND
@@ -1320,7 +1327,7 @@ components:
     PlaylistKind:
       type: string
       enum: [STANDARD, CURATED]
-      description: '`STANDARD` is the set used by ranked single play (BR-23).'
+      description: '`STANDARD` is the standard curated song set (BR-23).'
     Playlist:
       type: object
       required: [id, code, nameVi, nameEn, kind, trackCount]
@@ -1429,15 +1436,15 @@ components:
             format: uuid
     SoloMode:
       type: string
-      enum: [RANKED, PRACTICE]
-      description: '`RANKED` = standard set; `PRACTICE` = filter or playlist, never ranked (BR-23).'
+      enum: [PRACTICE]
+      description: 'Solo play mode. Only `PRACTICE` is available; solo matches do not affect rank (BR-23).'
     CreateSoloMatchRequest:
       type: object
       additionalProperties: false
-      required: [mode]
       properties:
         mode:
           $ref: '#/components/schemas/SoloMode'
+          default: PRACTICE
         roundCount:
           type: integer
           enum: [5, 10, 15]
@@ -1445,12 +1452,12 @@ components:
         filter:
           $ref: '#/components/schemas/SoloFilter'
           description: |
-            Only for `PRACTICE`; sending it with `RANKED` is a 400. Mutually exclusive with `playlistId`: sending both returns 400 (`VALIDATION_FAILED`). Omitted or empty means the whole catalog.
+            Catalog filter for practice match. Mutually exclusive with `playlistId`: sending both returns 400 (`VALIDATION_FAILED`). Omitted or empty means the whole catalog.
         playlistId:
           type: string
           format: uuid
           description: |
-            Only for `PRACTICE`. The standard set (`STANDARD`) can also be chosen in `PRACTICE`, in which case the match is still unranked (BR-23). Mutually exclusive with `filter`: sending both returns 400 (`VALIDATION_FAILED`). Sending it with `RANKED` is also a 400.
+            Specific playlist to practice with, including standard set (`STANDARD`) (BR-23). Mutually exclusive with `filter`: sending both returns 400 (`VALIDATION_FAILED`).
     AudioClip:
       type: object
       description: One listening level as an opaque URL (ADR-008). Never parse it.
@@ -1626,7 +1633,8 @@ components:
           $ref: '#/components/schemas/SoloMode'
         ranked:
           type: boolean
-          description: Whether the match counts for ranking (BR-23). Guests still do not reach the board (BR-20).
+          deprecated: true
+          description: Deprecated. Always false; solo matches are never ranked (BR-23). Preserved for backwards compatibility.
         roundCount:
           type: integer
           enum: [5, 10, 15]
@@ -1636,7 +1644,7 @@ components:
           type: string
           format: uuid
           description: |
-            Playlist chosen when creating the match in `PRACTICE` mode (BR-23). Mutually exclusive with `filter`.
+            Playlist chosen when creating the match (BR-23). Mutually exclusive with `filter`.
         totalScore:
           type: integer
           minimum: 0
@@ -1666,7 +1674,8 @@ components:
           $ref: '#/components/schemas/SoloMode'
         ranked:
           type: boolean
-          description: False for an `ABANDONED` match even in `RANKED` mode (BR-23).
+          deprecated: true
+          description: Deprecated. Always false; solo matches are never ranked (BR-23). Preserved for backwards compatibility.
         status:
           $ref: '#/components/schemas/MatchStatus'
         roundCount:

@@ -1,7 +1,7 @@
 {
   "matchId": "0f6e1b92-5a3c-4d77-8e21-9b4a7c3d5e60",
-  "mode": "RANKED",
-  "ranked": true,
+  "mode": "PRACTICE",
+  "ranked": false,
   "status": "FINISHED",
   "roundCount": 5,
   "totalScore": 3500,

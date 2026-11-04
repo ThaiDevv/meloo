@@ -1,0 +1,52 @@
+{
+  "type": "MATCH_FINISHED",
+  "matchId": "55555555-6666-7777-8888-999999999999",
+  "rankings": [
+    {
+      "rank": 1,
+      "userId": "11111111-2222-3333-4444-555555555555",
+      "nickname": "ThaiPO",
+      "totalScore": 8450,
+      "correctCount": 9,
+      "totalCorrectTimeMs": 62450,
+      "left": false
+    },
+    {
+      "rank": 2,
+      "userId": "22222222-3333-4444-5555-666666666666",
+      "nickname": "PlayerTwo",
+      "totalScore": 6100,
+      "correctCount": 7,
+      "totalCorrectTimeMs": 78200,
+      "left": false
+    },
+    {
+      "rank": 3,
+      "userId": "33333333-4444-5555-6666-777777777777",
+      "nickname": "PlayerThree",
+      "totalScore": 4800,
+      "correctCount": 5,
+      "totalCorrectTimeMs": 95100,
+      "left": false
+    },
+    {
+      "rank": 4,
+      "userId": "44444444-5555-6666-7777-888888888888",
+      "nickname": "PlayerFour",
+      "totalScore": 3200,
+      "correctCount": 4,
+      "totalCorrectTimeMs": 115200,
+      "left": false
+    },
+    {
+      "rank": 5,
+      "userId": "55555555-1111-2222-3333-444444444444",
+      "nickname": "PlayerFive",
+      "totalScore": 800,
+      "correctCount": 1,
+      "totalCorrectTimeMs": 30500,
+      "left": true
+    }
+  ],
+  "serverTime": "2026-10-29T10:14:50Z"
+}

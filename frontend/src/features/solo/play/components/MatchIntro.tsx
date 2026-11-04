@@ -1,7 +1,5 @@
 import { Play } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useSessionStore } from '@/shared/session/store'
-import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/Button'
 import type { SoloFilter, SoloMatch } from '../api/soloMatchApi'
 import { rise } from '../lib/rise'
@@ -30,17 +28,14 @@ function filterCount(filter: SoloFilter | undefined): number {
  */
 export function MatchIntro({ match, onStart, onExit }: MatchIntroProps) {
   const { t, i18n } = useTranslation('solo')
-  const isGuest = useSessionStore((s) => s.role === 'GUEST')
   const round = match.currentRound
   const resuming = round.roundNo > 1 || round.level > 1 || match.totalScore > 0
   const count = filterCount(match.filter)
   const music =
-    match.mode === 'RANKED'
-      ? t('play.music.standard')
-      : count === 0
-        ? t('play.music.wholeCatalog')
-        : t('play.music.filters', { n: count })
-  const notice = match.ranked ? 'ranked' : 'practice'
+    count === 0
+      ? t('play.music.wholeCatalog')
+      : t('play.music.filters', { n: count })
+  const notice = 'practice'
 
   return (
     <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:items-start lg:gap-16">
@@ -66,22 +61,15 @@ export function MatchIntro({ match, onStart, onExit }: MatchIntroProps) {
           role="note"
           aria-labelledby="ranking-notice"
           style={rise(2)}
-          className={cn(
-            'motion-rise mt-8 max-w-xl text-base rounded-2xl p-5 sm:p-6',
-            match.ranked ? 'bg-positive-soft' : 'bg-warning-soft',
-          )}
+          className="motion-rise mt-8 max-w-xl text-base rounded-2xl p-5 sm:p-6 bg-warning-soft"
         >
           <p
             id="ranking-notice"
-            className={cn(
-              'font-display text-xl leading-tight font-extrabold tracking-tight sm:text-2xl',
-              match.ranked ? 'text-positive' : 'text-warning',
-            )}
+            className="font-display text-xl leading-tight font-extrabold tracking-tight sm:text-2xl text-warning"
           >
             {t(`play.intro.${notice}.title`)}
           </p>
           <p className="mt-2">{t(`play.intro.${notice}.body`)}</p>
-          {match.ranked && isGuest ? <p className="mt-3">{t('play.intro.ranked.guest')}</p> : null}
         </div>
 
         <div style={rise(3)} className="motion-rise mt-8 flex flex-wrap items-center gap-3">

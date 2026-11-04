@@ -59,7 +59,6 @@ import tools.jackson.databind.ObjectMapper;
 public class SoloGameService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SoloGameService.class);
-  private static final String STANDARD_PLAYLIST_CODE = "standard";
   private static final int DEFAULT_ROUND_COUNT = 10;
   private static final int MAX_REPLACEMENT_ATTEMPTS = 5;
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -111,18 +110,8 @@ public class SoloGameService {
     Instant now = clock.instant();
 
     SoloModeDto mode = request.getMode() != null ? request.getMode() : SoloModeDto.PRACTICE;
-    boolean ranked = (mode == SoloModeDto.RANKED);
-    if (ranked && request.getFilter() != null) {
-      throw new ApiException(
-          HttpStatus.BAD_REQUEST, "VALIDATION_FAILED", "Filter is only allowed for PRACTICE mode");
-    }
-    if (ranked && request.getPlaylistId() != null) {
-      throw new ApiException(
-          HttpStatus.BAD_REQUEST,
-          "VALIDATION_FAILED",
-          "Playlist is only allowed for PRACTICE mode");
-    }
-    if (!ranked && request.getFilter() != null && request.getPlaylistId() != null) {
+    boolean ranked = false;
+    if (request.getFilter() != null && request.getPlaylistId() != null) {
       throw new ApiException(
           HttpStatus.BAD_REQUEST,
           "VALIDATION_FAILED",
@@ -130,7 +119,7 @@ public class SoloGameService {
     }
 
     UUID playlistId = request.getPlaylistId();
-    if (!ranked && playlistId != null) {
+    if (playlistId != null) {
       catalogService
           .findPlaylistById(playlistId)
           .filter(PlaylistInfo::enabled)
@@ -162,11 +151,7 @@ public class SoloGameService {
 
     // 2. Chọn bài từ catalog ngoài khóa (tránh nghẽn striped lock của người dùng khác)
     List<TrackInfo> candidateTracks;
-    if (ranked) {
-      candidateTracks =
-          catalogService.selectRandomTracksByPlaylistCode(
-              STANDARD_PLAYLIST_CODE, roundCount, Set.of());
-    } else if (playlistId != null) {
+    if (playlistId != null) {
       candidateTracks =
           catalogService.selectRandomTracksByPlaylist(playlistId, roundCount, Set.of());
     } else {
@@ -585,11 +570,6 @@ public class SoloGameService {
     Instant now = clock.instant();
     SoloMatch match = getAndValidateMatch(userId, matchId, now);
 
-    if (match.mode() == SoloModeDto.RANKED) {
-      throw new ApiException(
-          HttpStatus.CONFLICT, "RANKED_MATCH_CANNOT_ABANDON", "Ranked matches cannot be abandoned");
-    }
-
     try {
       synchronized (match) {
         if (match.status() != SoloMatchStatus.IN_PROGRESS) {
@@ -727,11 +707,7 @@ public class SoloGameService {
 
   private @Nullable TrackInfo fetchReplacementTrack(SoloMatch match) {
     List<TrackInfo> list;
-    if (match.mode() == SoloModeDto.RANKED) {
-      list =
-          catalogService.selectRandomTracksByPlaylistCode(
-              STANDARD_PLAYLIST_CODE, 1, match.excludedTrackIds());
-    } else if (match.playlistId() != null) {
+    if (match.playlistId() != null) {
       list =
           catalogService.selectRandomTracksByPlaylist(
               match.playlistId(), 1, match.excludedTrackIds());
@@ -808,13 +784,7 @@ public class SoloGameService {
               totalCorrectTimeMs,
               playerResults);
 
-      UUID playlistId =
-          match.mode() == SoloModeDto.RANKED
-              ? catalogService
-                  .findPlaylistByCode(STANDARD_PLAYLIST_CODE)
-                  .map(PlaylistInfo::id)
-                  .orElse(null)
-              : match.playlistId();
+      UUID playlistId = match.playlistId();
 
       MatchFinished event =
           new MatchFinished(

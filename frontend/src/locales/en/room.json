@@ -107,7 +107,8 @@
     "offline": "Disconnected",
     "emptySeat": "Empty seat",
     "waiting": "Waiting for the next match ({{n}})",
-    "kick": "Remove {{name}} from the room"
+    "kick": "Remove {{name}} from the room",
+    "score": "{{n}} pts"
   },
   "code": {
     "heading": "Room code",

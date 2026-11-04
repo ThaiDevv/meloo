@@ -107,7 +107,8 @@
     "offline": "Mất kết nối",
     "emptySeat": "Chỗ trống",
     "waiting": "Chờ trận sau ({{n}})",
-    "kick": "Mời {{name}} ra khỏi phòng"
+    "kick": "Mời {{name}} ra khỏi phòng",
+    "score": "{{n}} điểm"
   },
   "code": {
     "heading": "Mã phòng",

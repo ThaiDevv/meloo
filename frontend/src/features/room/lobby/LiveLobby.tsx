@@ -10,7 +10,7 @@ import { ConnectionBanner } from './components/ConnectionBanner'
 import { KickDialog } from './components/KickDialog'
 import { LobbyActions } from './components/LobbyActions'
 import { LobbyAlert } from './components/LobbyAlert'
-import { MatchCountdown } from './components/MatchCountdown'
+import { MatchCountdown, SoloHint } from './components/MatchCountdown'
 import { PlayerList } from './components/PlayerList'
 import { RoomCode } from './components/RoomCode'
 import { SettingsPanel } from './components/SettingsPanel'
@@ -77,7 +77,7 @@ export function LiveLobby({ initialRoom }: { initialRoom: RoomResponse }) {
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-8 lg:py-12">
       <header className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <h1 className="font-display text-3xl font-extrabold tracking-[-0.02em]">
+        <h1 className="font-display text-4xl leading-none font-extrabold tracking-[-0.03em] sm:text-5xl">
           {t('lobby.title')}
         </h1>
         <Badge>{t(ROOM_TYPE_KEY[room.roomType])}</Badge>
@@ -93,10 +93,13 @@ export function LiveLobby({ initialRoom }: { initialRoom: RoomResponse }) {
         {lastError ? <LobbyAlert error={lastError} onDismiss={dismissError} /> : null}
       </div>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:gap-12">
+      <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_28rem] lg:items-start lg:gap-12">
         <div className="space-y-8">
-          <section aria-labelledby="players-heading" className="space-y-2">
-            <h2 id="players-heading" className="text-base font-semibold">
+          <section aria-labelledby="players-heading" className="space-y-4">
+            <h2
+              id="players-heading"
+              className="font-display text-2xl font-extrabold tracking-[-0.02em]"
+            >
               {t('players.heading', { n: room.players.length, max: room.maxPlayers })}
             </h2>
             <PlayerList
@@ -122,47 +125,47 @@ export function LiveLobby({ initialRoom }: { initialRoom: RoomResponse }) {
           <RoomChat roomId={room.roomId} />
         </div>
 
-        <aside
-          aria-label={t('lobby.sidebar')}
-          className="space-y-8 rounded-2xl bg-surface p-5 lg:sticky lg:top-20"
-        >
-          <MatchCountdown
-            seconds={countdown}
-            stoppedReason={stoppedReason}
-            matchmaking={
-              role === 'automatic'
-                ? {
-                    players: room.players.length,
-                    max: room.maxPlayers,
-                    soloSuggestion,
-                  }
-                : undefined
-            }
-          />
-          {role !== 'automatic' && room.code ? <RoomCode code={room.code} /> : null}
-          <LobbyActions
-            role={actionRole}
-            self={inProgress ? null : self}
-            canStart={canStart(room)}
-            waitingFor={notReady(room).map((player) => player.nickname)}
-            playerCount={room.players.filter((player) => player.isConnected).length}
-            enabled={commandsEnabled}
-            onReady={(ready) => {
-              dismissError()
-              send('ready', { ready })
-            }}
-            onStart={() => {
-              dismissError()
-              send('start', {})
-            }}
-            onLeave={leave}
-          />
-          <SettingsPanel
-            room={room}
-            editable={role === 'host' && !counting && !inProgress}
-            canSend={canSend}
-            onChange={changeSettings}
-          />
+        <aside aria-label={t('lobby.sidebar')} className="space-y-6 lg:sticky lg:top-20">
+          {counting || role === 'automatic' || room.code ? (
+            <div className="space-y-8 rounded-2xl bg-primary p-6 text-primary-foreground">
+              <MatchCountdown
+                seconds={countdown}
+                stoppedReason={stoppedReason}
+                matchmaking={
+                  role === 'automatic'
+                    ? { players: room.players.length, max: room.maxPlayers }
+                    : undefined
+                }
+              />
+              {role !== 'automatic' && room.code ? <RoomCode code={room.code} /> : null}
+            </div>
+          ) : null}
+          {role === 'automatic' && soloSuggestion ? <SoloHint /> : null}
+          <div className="space-y-8 rounded-2xl bg-surface p-5">
+            <LobbyActions
+              role={actionRole}
+              self={inProgress ? null : self}
+              canStart={canStart(room)}
+              waitingFor={notReady(room).map((player) => player.nickname)}
+              playerCount={room.players.filter((player) => player.isConnected).length}
+              enabled={commandsEnabled}
+              onReady={(ready) => {
+                dismissError()
+                send('ready', { ready })
+              }}
+              onStart={() => {
+                dismissError()
+                send('start', {})
+              }}
+              onLeave={leave}
+            />
+            <SettingsPanel
+              room={room}
+              editable={role === 'host' && !counting && !inProgress}
+              canSend={canSend}
+              onChange={changeSettings}
+            />
+          </div>
         </aside>
       </div>
 

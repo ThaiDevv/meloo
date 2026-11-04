@@ -23,7 +23,7 @@ function SummaryRow({ term, detail }: { term: string; detail: string }) {
   return (
     <div className="flex items-baseline justify-between gap-4">
       <dt className="text-sm text-muted-foreground">{term}</dt>
-      <dd className="text-right font-semibold">{detail}</dd>
+      <dd className="text-right text-lg font-bold">{detail}</dd>
     </div>
   )
 }

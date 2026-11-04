@@ -45,7 +45,11 @@ export function LobbyActions({
     <section aria-label={t('actions.label')} className="space-y-3">
       {role === 'host' ? (
         <>
-          <Button className="w-full" disabled={!enabled || !canStart} onClick={onStart}>
+          <Button
+            className="h-14 w-full text-base"
+            disabled={!enabled || !canStart}
+            onClick={onStart}
+          >
             <Play aria-hidden="true" className="size-4 fill-current" />
             {t('actions.start')}
           </Button>
@@ -54,7 +58,7 @@ export function LobbyActions({
       ) : null}
       {role === 'member' && self ? (
         <Button
-          className="w-full"
+          className="h-14 w-full text-base"
           variant={self.isReady ? 'outline' : 'default'}
           disabled={!enabled}
           aria-pressed={self.isReady}

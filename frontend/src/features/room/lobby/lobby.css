@@ -1,0 +1,11 @@
+/* The only motion the lobby adds: a ready player's record turns. Reduced motion keeps it still. */
+@keyframes lobby-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .lobby-disc-spin {
+    animation: lobby-spin 3.2s linear infinite;
+  }
+}

@@ -43,22 +43,21 @@ export function RoomCode({ code }: { code: string }) {
   }
 
   return (
-    <section aria-labelledby="room-code-heading" className="space-y-3">
-      <h2 id="room-code-heading" className="text-sm font-medium text-muted-foreground">
+    <section aria-labelledby="room-code-heading" className="space-y-4">
+      <h2 id="room-code-heading" className="text-base font-semibold opacity-80">
         {t('code.heading')}
       </h2>
       <p
         role="img"
         aria-label={code.split('').join(' ')}
-        className="num font-display text-[clamp(2.5rem,12vw,3.75rem)] leading-none font-extrabold tracking-[0.14em] text-foreground select-all"
+        className="num font-display text-[clamp(2.75rem,14vw,4.75rem)] leading-none font-extrabold tracking-[0.12em] select-all"
       >
         <span>{code.slice(0, 3)}</span>
-        <span className="ml-[0.35em]">{code.slice(3)}</span>
+        <span className="ml-[0.3em]">{code.slice(3)}</span>
       </p>
       <div className="flex flex-wrap gap-2">
         <Button
-          variant="outline"
-          size="sm"
+          className="bg-primary-foreground text-primary"
           onClick={() => {
             void copy('code')
           }}
@@ -72,7 +71,7 @@ export function RoomCode({ code }: { code: string }) {
         </Button>
         <Button
           variant="outline"
-          size="sm"
+          className="border-primary-foreground/50 text-primary-foreground hover:bg-primary-foreground/10"
           onClick={() => {
             void copy('link')
           }}

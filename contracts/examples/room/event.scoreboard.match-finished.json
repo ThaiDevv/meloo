@@ -8,7 +8,8 @@
       "nickname": "ThaiPO",
       "totalScore": 8450,
       "correctCount": 9,
-      "totalCorrectTimeMs": 62450
+      "totalCorrectTimeMs": 62450,
+      "left": false
     },
     {
       "rank": 2,
@@ -16,7 +17,8 @@
       "nickname": "PlayerTwo",
       "totalScore": 3200,
       "correctCount": 4,
-      "totalCorrectTimeMs": 115200
+      "totalCorrectTimeMs": 115200,
+      "left": false
     }
   ],
   "serverTime": "2026-10-29T10:14:50Z"

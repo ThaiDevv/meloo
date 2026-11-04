@@ -223,6 +223,8 @@ channels:
         $ref: '#/components/messages/ScoreboardUpdateEvent'
       matchFinished:
         $ref: '#/components/messages/MatchFinishedEvent'
+      rankUpdated:
+        $ref: '#/components/messages/RankUpdatedEvent'
 
   chatTopic:
     address: /topic/rooms/{roomId}/chat
@@ -393,12 +395,16 @@ operations:
 
   receiveScoreboardEvents:
     action: receive
-    description: Receive round scores and match end ranking.
+    description: >-
+      Receive round scores, match end ranking, and rank point updates.
+      In QUICK_MATCH rooms, MATCH_FINISHED is broadcast first, followed immediately
+      by RANK_UPDATED for the same matchId.
     channel:
       $ref: '#/channels/scoreboardTopic'
     messages:
       - $ref: '#/channels/scoreboardTopic/messages/scoreboardUpdate'
       - $ref: '#/channels/scoreboardTopic/messages/matchFinished'
+      - $ref: '#/channels/scoreboardTopic/messages/rankUpdated'
 
   receiveChatEvents:
     action: receive
@@ -924,10 +930,10 @@ components:
           - $ref: './examples/room/event.round.player-gave-up.json'
 
     PlayerGuessedEvent:
-      summary: Broadcast that a player guessed correctly with level, NO answer leaked (BR-07)
+      summary: Broadcast that a player guessed correctly with level, round score and total score, NO answer leaked (BR-07)
       payload:
         type: object
-        required: [type, userId, nickname, level, isCorrect, serverTime]
+        required: [type, userId, nickname, level, isCorrect, roundScore, totalScore, serverTime]
         properties:
           type:
             type: string
@@ -943,6 +949,14 @@ components:
           isCorrect:
             type: boolean
             const: true
+          roundScore:
+            type: integer
+            minimum: 0
+            description: Points earned by the player in this round (BR-07, BR-10).
+          totalScore:
+            type: integer
+            minimum: 0
+            description: Updated total score of the player after adding roundScore (BR-07).
           serverTime:
             type: string
             format: date-time
@@ -1040,6 +1054,9 @@ components:
 
     MatchFinishedEvent:
       summary: Final match results with rankings and tie-break milliseconds (BR-10)
+      description: >-
+        Broadcast when all rounds complete. In QUICK_MATCH rooms, this event is followed
+        immediately by RANK_UPDATED for the same matchId.
       payload:
         type: object
         required: [type, matchId, rankings, serverTime]
@@ -1059,6 +1076,33 @@ components:
             format: date-time
         examples:
           - $ref: './examples/room/event.scoreboard.match-finished.json'
+          - $ref: './examples/room/event.scoreboard.match-finished.2p.json'
+          - $ref: './examples/room/event.scoreboard.match-finished.5p.json'
+
+    RankUpdatedEvent:
+      summary: Rank points delta and new totals for quick-match participants (BR-13, BR-24)
+      description: >-
+        Broadcast only in QUICK_MATCH rooms. Must be sent immediately after MATCH_FINISHED
+        for the same matchId, so clients receive final game positions before rank point adjustments.
+      payload:
+        type: object
+        required: [type, matchId, changes, serverTime]
+        properties:
+          type:
+            type: string
+            const: RANK_UPDATED
+          matchId:
+            type: string
+            format: uuid
+          changes:
+            type: array
+            items:
+              $ref: '#/components/schemas/PlayerRankChange'
+          serverTime:
+            type: string
+            format: date-time
+        examples:
+          - $ref: './examples/room/event.scoreboard.rank-updated.json'
 
     ChatMessageEvent:
       summary: In-room chat broadcast (BR-16, BR-17)
@@ -1383,7 +1427,7 @@ components:
     PlayerRanking:
       type: object
       description: Final match standings; ties broken by total milliseconds to answer (BR-10).
-      required: [rank, userId, nickname, totalScore, correctCount, totalCorrectTimeMs]
+      required: [rank, userId, nickname, totalScore, correctCount, totalCorrectTimeMs, left]
       properties:
         rank:
           type: integer
@@ -1403,6 +1447,26 @@ components:
           type: integer
           minimum: 0
           description: Sum of answer timestamps in ms from round start; lower is better in tie breaks.
+        left:
+          type: boolean
+          default: false
+          description: Whether the player left the match early (or disconnected >30s); players who left are ranked last (BR-14).
+
+    PlayerRankChange:
+      type: object
+      description: Rank delta and updated rank points for a participant in a QUICK_MATCH (BR-24).
+      required: [userId, rankDelta, rankPoints]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        rankDelta:
+          type: integer
+          description: Actual rank points delta applied after enforcing floor 0 (e.g. -5, +20, 0) (BR-24).
+        rankPoints:
+          type: integer
+          minimum: 0
+          description: Updated total rank points after applying rankDelta; floor is 0 (BR-24).
 
     ActiveRoundState:
       type: object

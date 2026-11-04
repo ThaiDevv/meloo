@@ -28,11 +28,6 @@ export const soloSetupHandlers = [
     const rawBody: unknown = await request.json()
     const body = (rawBody && typeof rawBody === 'object' ? rawBody : {}) as CreateSoloMatchRequest
 
-    // BR-23: RANKED cannot take a filter or playlistId (400 VALIDATION_FAILED)
-    if (body.mode === 'RANKED' && (body.filter || body.playlistId)) {
-      return HttpResponse.json(validationExample, { status: 400, headers: PROBLEM })
-    }
-
     // BR-23: filter and playlistId are mutually exclusive (400 VALIDATION_FAILED)
     if (body.filter && body.playlistId) {
       return HttpResponse.json(validationExample, { status: 400, headers: PROBLEM })
@@ -43,11 +38,9 @@ export const soloSetupHandlers = [
       return HttpResponse.json(playlistNotFoundExample, { status: 404, headers: PROBLEM })
     }
 
-    // Deterministic trigger: PRACTICE mode + kpop genre + 15 rounds -> 422 NOT_ENOUGH_TRACKS
+    // Deterministic trigger: kpop genre + 15 rounds -> 422 NOT_ENOUGH_TRACKS
     const isNotEnoughTracks =
-      body.mode === 'PRACTICE' &&
-      body.roundCount === 15 &&
-      Boolean(body.filter?.genreCodes?.includes('kpop'))
+      body.roundCount === 15 && Boolean(body.filter?.genreCodes?.includes('kpop'))
 
     if (isNotEnoughTracks) {
       return HttpResponse.json(notEnoughTracksExample, { status: 422, headers: PROBLEM })

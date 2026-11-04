@@ -15,7 +15,7 @@ describe('shareText', () => {
   it('gives the score, songs right, longest combo and the level of every round', () => {
     expect(shareText(result, t, 'vi')).toBe(
       [
-        'Meloo · Chơi đơn xếp hạng',
+        'Meloo · Chơi đơn luyện tập',
         '3.500 điểm · đúng 4/5 bài · combo dài nhất 2',
         'Vòng 1: Đúng ở 5s',
         'Vòng 2: Đúng ở 2s',

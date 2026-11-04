@@ -63,8 +63,8 @@ class MatchEventsTest {
             eventId,
             matchId,
             MatchType.SOLO,
-            "RANKED",
-            true,
+            "PRACTICE",
+            false,
             MatchEndStatus.FINISHED,
             10,
             playlistId,
@@ -77,8 +77,8 @@ class MatchEventsTest {
     assertThat(event.eventId()).isEqualTo(eventId);
     assertThat(event.matchId()).isEqualTo(matchId);
     assertThat(event.type()).isEqualTo(MatchType.SOLO);
-    assertThat(event.mode()).isEqualTo("RANKED");
-    assertThat(event.ranked()).isTrue();
+    assertThat(event.mode()).isEqualTo("PRACTICE");
+    assertThat(event.ranked()).isFalse();
     assertThat(event.status()).isEqualTo(MatchEndStatus.FINISHED);
     assertThat(event.roundCount()).isEqualTo(10);
     assertThat(event.playlistId()).isEqualTo(playlistId);

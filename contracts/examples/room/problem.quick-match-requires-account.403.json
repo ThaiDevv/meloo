@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Quick match requires registered account",
+  "status": 403,
+  "code": "QUICK_MATCH_REQUIRES_ACCOUNT",
+  "detail": "Guest accounts cannot join quick matches; please register or log in (BR-13, BR-20).",
+  "instance": "/api/v1/rooms/quick-match"
+}

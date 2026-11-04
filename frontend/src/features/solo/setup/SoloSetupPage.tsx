@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { Headphones, Play, Trophy } from 'lucide-react'
+import { Headphones, Play } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
@@ -23,7 +23,7 @@ import {
 } from './api/useCreateSoloMatch'
 import { RadioTiles } from './components/RadioTiles'
 
-type Mode = 'RANKED' | 'PRACTICE'
+type Mode = 'PRACTICE'
 type RoundCount = 5 | 10 | 15
 
 const ROUND_COUNTS: RoundCount[] = [5, 10, 15]
@@ -34,13 +34,12 @@ export function SoloSetupPage() {
   const queryClient = useQueryClient()
   const create = useCreateSoloMatch()
   const playlists = usePlaylists()
-  const [mode, setMode] = useState<Mode>('RANKED')
+  const [mode, setMode] = useState<Mode>('PRACTICE')
   const [roundCount, setRoundCount] = useState<RoundCount>(10)
   const [music, setMusic] = useState<MusicSelection>(EMPTY_SELECTION)
   const [failure, setFailure] = useState<CreateSoloMatchFailure | null>(null)
 
-  const isPlaylistUnselected =
-    mode === 'PRACTICE' && music.source === 'playlist' && !music.playlistId
+  const isPlaylistUnselected = music.source === 'playlist' && !music.playlistId
   const canStart = !create.isPending && !isPlaylistUnselected
 
   const filterCount = countFilterValues(music.filter)
@@ -50,33 +49,33 @@ export function SoloSetupPage() {
       : null
 
   const musicSummary =
-    mode === 'RANKED'
-      ? t('setup.summary.standard')
-      : music.source === 'playlist'
-        ? selectedPlaylist
-          ? i18n.resolvedLanguage === 'vi'
-            ? selectedPlaylist.nameVi
-            : selectedPlaylist.nameEn
-          : music.playlistId
-            ? music.playlistId
-            : t('setup.summary.noPlaylist')
-        : filterCount === 0
-          ? t('setup.summary.wholeCatalog')
-          : t('setup.summary.filters', { n: filterCount })
+    music.source === 'playlist'
+      ? selectedPlaylist
+        ? i18n.resolvedLanguage === 'vi'
+          ? selectedPlaylist.nameVi
+          : selectedPlaylist.nameEn
+        : music.playlistId
+          ? music.playlistId
+          : t('setup.summary.noPlaylist')
+      : filterCount === 0
+        ? t('setup.summary.wholeCatalog')
+        : t('setup.summary.filters', { n: filterCount })
 
   const start = () => {
     if (isPlaylistUnselected) return
     setFailure(null)
     const body =
-      mode === 'RANKED'
-        ? { mode, roundCount }
-        : music.source === 'playlist'
-          ? { mode, roundCount, ...(music.playlistId && { playlistId: music.playlistId }) }
-          : {
-              mode,
-              roundCount,
-              ...(filterCount > 0 && { filter: toSoloFilter(music.filter) }),
-            }
+      music.source === 'playlist'
+        ? {
+            mode: 'PRACTICE' as const,
+            roundCount,
+            ...(music.playlistId && { playlistId: music.playlistId }),
+          }
+        : {
+            mode: 'PRACTICE' as const,
+            roundCount,
+            ...(filterCount > 0 && { filter: toSoloFilter(music.filter) }),
+          }
     create.mutate(body, {
       onSuccess: (match) => {
         void navigate(`/solo/${match.matchId}`)
@@ -122,12 +121,6 @@ export function SoloSetupPage() {
             onChange={setMode}
             options={[
               {
-                value: 'RANKED',
-                title: t('setup.mode.ranked.title'),
-                description: t('setup.mode.ranked.description'),
-                icon: <Trophy className="size-6" strokeWidth={1.75} />,
-              },
-              {
                 value: 'PRACTICE',
                 title: t('setup.mode.practice.title'),
                 description: t('setup.mode.practice.description'),
@@ -156,18 +149,7 @@ export function SoloSetupPage() {
             <h2 id="music-heading" className="text-base font-semibold">
               {t('setup.music.heading')}
             </h2>
-            {mode === 'RANKED' ? (
-              <p className="animate-in fade-in slide-in-from-bottom-2 flex items-start gap-4 rounded-2xl bg-raised px-5 py-4 duration-300 fill-mode-both motion-reduce:animate-none">
-                <Trophy
-                  aria-hidden="true"
-                  className="mt-0.5 size-6 shrink-0 text-primary"
-                  strokeWidth={1.75}
-                />
-                <span>{t('setup.music.rankedNote')}</span>
-              </p>
-            ) : (
-              <MusicPicker value={music} onChange={setMusic} />
-            )}
+            <MusicPicker value={music} onChange={setMusic} />
           </section>
         </div>
 
@@ -180,19 +162,12 @@ export function SoloSetupPage() {
               <h2 id="summary-heading" className="text-base font-semibold">
                 {t('setup.summary.heading')}
               </h2>
-              <Badge tone={mode === 'RANKED' ? 'positive' : 'neutral'}>
-                {t(mode === 'RANKED' ? 'setup.summary.ranked' : 'setup.summary.practice')}
-              </Badge>
+              <Badge tone="neutral">{t('setup.summary.practice')}</Badge>
             </div>
             <VinylDisc accent fast={create.isPending} className="w-20 shrink-0 text-foreground" />
           </div>
           <dl className="space-y-3">
-            <SummaryRow
-              term={t('setup.mode.legend')}
-              detail={t(
-                mode === 'RANKED' ? 'setup.mode.ranked.title' : 'setup.mode.practice.title',
-              )}
-            />
+            <SummaryRow term={t('setup.mode.legend')} detail={t('setup.mode.practice.title')} />
             <SummaryRow
               term={t('setup.rounds.legend')}
               detail={t('setup.rounds.option', { n: roundCount })}

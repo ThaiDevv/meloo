@@ -260,6 +260,27 @@ class SoloGameIntegrationTest extends IntegrationTest {
                 new PlaylistInfo(
                     standardPlaylistId, "standard", "Bộ Chuẩn", true, standardTracks.size())));
 
+    when(catalogService.findPlaylistById(standardPlaylistId))
+        .thenReturn(
+            Optional.of(
+                new PlaylistInfo(
+                    standardPlaylistId, "standard", "Bộ Chuẩn", true, standardTracks.size())));
+
+    when(catalogService.selectRandomTracksByPlaylist(eq(standardPlaylistId), anyInt(), any()))
+        .thenAnswer(
+            invocation -> {
+              int count = invocation.getArgument(1);
+              Set<UUID> excluded = invocation.getArgument(2);
+              List<TrackInfo> result = new ArrayList<>();
+              for (TrackInfo t : standardTracks) {
+                if (!excluded.contains(t.id())) {
+                  result.add(t);
+                  if (result.size() >= count) break;
+                }
+              }
+              return result;
+            });
+
     when(audioService.isRoundPlayable(any())).thenReturn(true);
     when(audioService.prepareRoundAudio(any(), any(), anyString(), anyString()))
         .thenReturn(AudioPreparationResult.success());
@@ -643,13 +664,13 @@ class SoloGameIntegrationTest extends IntegrationTest {
 
   @Test
   @DisplayName(
-      "Trận RANKED quá 30 phút thành ABANDONED: ranked chuyển false, rounds chỉ gồm vòng đã xong (AC 4, 7)")
-  void testRankedMatchExpireAfter30Minutes() throws Exception {
+      "Trận chơi đơn quá 30 phút thành ABANDONED: ranked luôn false, rounds chỉ gồm vòng đã xong (AC 4, 7)")
+  void testSoloMatchExpireAfter30Minutes() throws Exception {
     UUID userId = UUID.randomUUID();
 
-    CreateSoloMatchRequestDto rankedReq = new CreateSoloMatchRequestDto();
-    rankedReq.setMode(SoloModeDto.RANKED);
-    rankedReq.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+    CreateSoloMatchRequestDto soloReq = new CreateSoloMatchRequestDto();
+    soloReq.setMode(SoloModeDto.PRACTICE);
+    soloReq.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
 
     MvcResult createRes =
         mockMvc
@@ -659,22 +680,23 @@ class SoloGameIntegrationTest extends IntegrationTest {
                         jwt()
                             .jwt(
                                 j ->
-                                    j.subject(userId.toString()).claim("nickname", "RankedTester")))
+                                    j.subject(userId.toString())
+                                        .claim("nickname", "PracticeTester")))
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(rankedReq)))
+                    .content(objectMapper.writeValueAsString(soloReq)))
             .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.ranked").value(true))
+            .andExpect(jsonPath("$.ranked").value(false))
             .andReturn();
 
     UUID matchId =
         UUID.fromString(JsonPath.read(createRes.getResponse().getContentAsString(), "$.matchId"));
 
-    // Khẳng định MatchStarted được phát ra với ranked=true, mode=RANKED (AC 4, AC 8)
+    // Khẳng định MatchStarted được phát ra với ranked=false, mode=PRACTICE (AC 4, AC 8)
     await()
         .atMost(Duration.ofSeconds(3))
         .untilAsserted(() -> assertThat(testListener.findStartedEvent(matchId)).isPresent());
     MatchStarted startEvent = testListener.findStartedEvent(matchId).get();
-    assertThat(startEvent.ranked()).isTrue();
+    assertThat(startEvent.ranked()).isFalse();
     assertThat(startEvent.roundCount()).isEqualTo(5);
 
     // Hoàn thành vòng 1
@@ -769,37 +791,13 @@ class SoloGameIntegrationTest extends IntegrationTest {
         .andExpect(jsonPath("$.rounds.length()").value(1))
         .andExpect(jsonPath("$.rounds[0].roundNo").value(1));
 
-    // 2. RANKED match
-    UUID rankedUserId = UUID.randomUUID();
-    CreateSoloMatchRequestDto rankedReq = new CreateSoloMatchRequestDto();
-    rankedReq.setMode(SoloModeDto.RANKED);
-    rankedReq.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
-
-    MvcResult rankedRes =
-        mockMvc
-            .perform(
-                post("/api/v1/solo/matches")
-                    .with(
-                        jwt()
-                            .jwt(
-                                j ->
-                                    j.subject(rankedUserId.toString())
-                                        .claim("nickname", "RankedUser")))
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(rankedReq)))
-            .andExpect(status().isCreated())
-            .andReturn();
-
-    UUID rankedMatchId =
-        UUID.fromString(JsonPath.read(rankedRes.getResponse().getContentAsString(), "$.matchId"));
-
-    // Bỏ trận RANKED trả 409 RANKED_MATCH_CANNOT_ABANDON
+    // Bỏ trận lần 2 khi đã ABANDONED trả 409 MATCH_NOT_IN_PROGRESS
     mockMvc
         .perform(
-            post("/api/v1/solo/matches/{matchId}/abandon", rankedMatchId)
-                .with(jwt().jwt(j -> j.subject(rankedUserId.toString()))))
+            post("/api/v1/solo/matches/{matchId}/abandon", practiceMatchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString()))))
         .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.code").value("RANKED_MATCH_CANNOT_ABANDON"));
+        .andExpect(jsonPath("$.code").value("MATCH_NOT_IN_PROGRESS"));
   }
 
   @Test
@@ -923,14 +921,15 @@ class SoloGameIntegrationTest extends IntegrationTest {
   }
 
   @Test
-  @DisplayName("Tạo trận RANKED kèm bộ lọc filter ném lỗi 400 Bad Request theo OpenAPI & BR-23")
+  @DisplayName("Tạo trận kèm cả filter và playlistId ném lỗi 400 Bad Request theo OpenAPI & BR-23")
   void testRankedMatchWithFilterThrowsBadRequest400() throws Exception {
     UUID userId = UUID.randomUUID();
 
     CreateSoloMatchRequestDto req = new CreateSoloMatchRequestDto();
-    req.setMode(SoloModeDto.RANKED);
+    req.setMode(SoloModeDto.PRACTICE);
     req.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
     req.setFilter(new SoloFilterDto().genreCodes(List.of("pop")));
+    req.setPlaylistId(UUID.randomUUID());
 
     mockMvc
         .perform(
@@ -1213,12 +1212,12 @@ class SoloGameIntegrationTest extends IntegrationTest {
 
   @Test
   @DisplayName(
-      "RANKED: Khi chuẩn bị vòng 2 lỗi rồi audio hồi phục -> getActive lấy vòng 2, đoán tiếp thành công, không bị kẹt (M4)")
+      "Khi chuẩn bị vòng 2 lỗi rồi audio hồi phục -> getActive lấy vòng 2, đoán tiếp thành công, không bị kẹt (M4)")
   void testNextRoundPreparationFailureAndRecoveryRanked() throws Exception {
     UUID userId = UUID.randomUUID();
 
     CreateSoloMatchRequestDto req = new CreateSoloMatchRequestDto();
-    req.setMode(SoloModeDto.RANKED);
+    req.setMode(SoloModeDto.PRACTICE);
     req.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
 
     MvcResult res =
@@ -1249,14 +1248,6 @@ class SoloGameIntegrationTest extends IntegrationTest {
                         new GuessRequestDto().trackId(standardTracks.get(0).id()))))
         .andExpect(status().isUnprocessableEntity())
         .andExpect(jsonPath("$.code").value("NOT_ENOUGH_TRACKS"));
-
-    // Khẳng định RANKED không thể abandon
-    mockMvc
-        .perform(
-            post("/api/v1/solo/matches/{matchId}/abandon", matchId)
-                .with(jwt().jwt(j -> j.subject(userId.toString()))))
-        .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.code").value("RANKED_MATCH_CANNOT_ABANDON"));
 
     // Audio hồi phục
     when(audioService.prepareRoundAudio(any(), any(), anyString(), anyString()))
@@ -2098,14 +2089,15 @@ class SoloGameIntegrationTest extends IntegrationTest {
   }
 
   @Test
-  @DisplayName("RANKED kèm playlistId: 400 VALIDATION_FAILED (AC 2)")
+  @DisplayName("PRACTICE kèm cả filter và playlistId: 400 VALIDATION_FAILED (AC 2)")
   void testCreateSoloMatch_Ranked_WithPlaylistId_Throws400() throws Exception {
     UUID userId = UUID.randomUUID();
     UUID playlistId = UUID.randomUUID();
 
     CreateSoloMatchRequestDto req = new CreateSoloMatchRequestDto();
-    req.setMode(SoloModeDto.RANKED);
+    req.setMode(SoloModeDto.PRACTICE);
     req.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+    req.setFilter(new SoloFilterDto().genreCodes(List.of("pop")));
     req.setPlaylistId(playlistId);
 
     mockMvc
@@ -2195,14 +2187,14 @@ class SoloGameIntegrationTest extends IntegrationTest {
   }
 
   @Test
-  @DisplayName(
-      "Trận RANKED: MatchFinished.playlistId = id bộ standard tra qua CatalogService.findPlaylistByCode (AC 7)")
+  @DisplayName("Trận chơi đơn theo playlist: MatchFinished.playlistId = id playlist (AC 7)")
   void testRankedMatch_FinishedEvent_ContainsStandardPlaylistId() throws Exception {
     UUID userId = UUID.randomUUID();
 
     CreateSoloMatchRequestDto req = new CreateSoloMatchRequestDto();
-    req.setMode(SoloModeDto.RANKED);
+    req.setMode(SoloModeDto.PRACTICE);
     req.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+    req.setPlaylistId(standardPlaylistId);
 
     MvcResult res =
         mockMvc
@@ -2212,15 +2204,15 @@ class SoloGameIntegrationTest extends IntegrationTest {
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(req)))
             .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.mode").value("RANKED"))
-            .andExpect(jsonPath("$.ranked").value(true))
-            .andExpect(jsonPath("$.playlistId").doesNotExist())
+            .andExpect(jsonPath("$.mode").value("PRACTICE"))
+            .andExpect(jsonPath("$.ranked").value(false))
+            .andExpect(jsonPath("$.playlistId").value(standardPlaylistId.toString()))
             .andReturn();
 
     UUID matchId =
         UUID.fromString(JsonPath.read(res.getResponse().getContentAsString(), "$.matchId"));
 
-    // Hết hạn trận RANKED bằng cách tua thời gian -> expire inactive match
+    // Hết hạn trận bằng cách tua thời gian -> expire inactive match
     testClock.advance(Duration.ofMinutes(35));
     soloGameService.expireInactiveMatches();
 

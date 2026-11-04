@@ -68,7 +68,7 @@ function renderAt(path: string) {
   return router
 }
 
-async function createMatch(mode: 'RANKED' | 'PRACTICE' = 'RANKED', roundCount: 5 | 10 = 5) {
+async function createMatch(mode: 'PRACTICE' = 'PRACTICE', roundCount: 5 | 10 = 5) {
   const { data } = await apiClient.POST('/api/v1/solo/matches', { body: { mode, roundCount } })
   if (!data) throw new Error('create failed')
   return data.matchId
@@ -116,14 +116,14 @@ afterEach(() => {
 })
 
 describe('SoloPlayPage', () => {
-  it('plays a ranked match from the intro to the summary, every figure from the server', async () => {
+  it('plays a practice match from the intro to the summary, every figure from the server', async () => {
     const user = userEvent.setup()
-    const matchId = await createMatch('RANKED', 5)
+    const matchId = await createMatch('PRACTICE', 5)
     renderAt(`/solo/${matchId}`)
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Trận xếp hạng' })).toBeVisible()
-    expect(screen.getByRole('note')).toHaveTextContent('Trận này tính xếp hạng')
-    expect(screen.getByText('5 vòng · Bộ chuẩn')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Trận luyện tập' })).toBeVisible()
+    expect(screen.getByRole('note')).toHaveTextContent('Trận này không tính xếp hạng')
+    expect(screen.getByText('5 vòng · Toàn bộ kho nhạc')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Vào vòng 1' }))
 
     // Rounds 1–3 right at 2s: 1.000, then +10%, then +20% (BR-08).
@@ -146,12 +146,12 @@ describe('SoloPlayPage', () => {
     await next(user)
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Tổng kết trận xếp hạng' }),
+      await screen.findByRole('heading', { level: 1, name: 'Tổng kết trận luyện tập' }),
     ).toBeVisible()
     expect(screen.getByTestId('match-total')).toHaveTextContent('3.900')
     expect(screen.getByText('Đúng 4/5 bài')).toBeInTheDocument()
     expect(screen.getByText('Combo dài nhất 3 vòng')).toBeInTheDocument()
-    expect(screen.getByText('Đã tính vào xếp hạng')).toBeInTheDocument()
+    expect(screen.getByText('Không tính xếp hạng')).toBeInTheDocument()
 
     const items = screen.getAllByRole('listitem').filter((li) => li.textContent.includes('Vòng'))
     expect(items).toHaveLength(5)
@@ -197,10 +197,10 @@ describe('SoloPlayPage', () => {
     expect(screen.getByText('10 vòng · Toàn bộ kho nhạc')).toBeInTheDocument()
   })
 
-  it('tells a guest that a ranked score reaches the board after signing in (BR-20)', async () => {
+  it('warns a guest that a solo match is not ranked (BR-23)', async () => {
     useSessionStore.getState().setRole('GUEST')
     renderAt(`/solo/${await createMatch()}`)
-    expect(await screen.findByRole('note')).toHaveTextContent('Khi đăng nhập')
+    expect(await screen.findByRole('note')).toHaveTextContent('Trận này không tính xếp hạng')
   })
 
   it('resumes a match at the round the server kept', async () => {
@@ -216,44 +216,19 @@ describe('SoloPlayPage', () => {
     expect(screen.getByTestId('round')).toHaveTextContent('round 2/5 level 1 total 1000')
   })
 
-  it('asks before leaving a ranked match and leaves without abandoning it', async () => {
-    const user = userEvent.setup()
-    const abandon = vi.fn()
-    server.use(
-      http.post('*/api/v1/solo/matches/:matchId/abandon', () => {
-        abandon()
-        return HttpResponse.json({}, { status: 500 })
-      }),
-    )
-    const router = renderAt(`/solo/${await createMatch()}`)
-    await user.click(await screen.findByRole('button', { name: 'Vào vòng 1' }))
-    await user.click(screen.getByRole('button', { name: 'Thoát' }))
-
-    const dialog = screen.getByRole('dialog', { name: 'Rời trận xếp hạng?' })
-    expect(dialog).toHaveTextContent('30 phút')
-    await user.click(within(dialog).getByRole('button', { name: 'Ở lại chơi' }))
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Thoát' }))
-    await user.click(screen.getByRole('button', { name: 'Rời trận' }))
-    expect(await screen.findByText('home page')).toBeInTheDocument()
-    expect(router.state.location.pathname).toBe('/')
-    expect(abandon).not.toHaveBeenCalled()
-  })
-
   it('asks before a link in the app takes the player away mid-match', async () => {
     const user = userEvent.setup()
     const router = renderAt(`/solo/${await createMatch()}`)
     await user.click(await screen.findByRole('button', { name: 'Vào vòng 1' }))
     await user.click(screen.getByRole('link', { name: 'Trang chủ' }))
 
-    expect(await screen.findByRole('dialog', { name: 'Rời trận xếp hạng?' })).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: 'Bỏ trận luyện tập?' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Ở lại chơi' }))
     expect(router.state.location.pathname).toMatch(/^\/solo\//)
     expect(screen.getByTestId('game-round')).toBeInTheDocument()
 
     await user.click(screen.getByRole('link', { name: 'Trang chủ' }))
-    await user.click(await screen.findByRole('button', { name: 'Rời trận' }))
+    await user.click(await screen.findByRole('button', { name: 'Bỏ trận' }))
     expect(await screen.findByText('home page')).toBeInTheDocument()
   })
 
@@ -297,7 +272,7 @@ describe('SoloPlayPage', () => {
     ).toBeVisible()
   })
 
-  it('reminds a guest on a ranked summary that the score reaches the board after signing in', async () => {
+  it('does not show guest rank reminder on solo summary as solo is not ranked (BR-23)', async () => {
     useSessionStore.getState().setRole('GUEST')
     server.use(
       http.get('*/api/v1/solo/matches/active', () =>
@@ -307,13 +282,16 @@ describe('SoloPlayPage', () => {
     )
     renderAt(`/solo/${resultExample.matchId}`)
     expect(
-      await screen.findByText('Bạn đang chơi bằng khách: điểm sẽ lên bảng khi bạn đăng nhập.'),
+      await screen.findByRole('heading', { level: 1, name: 'Tổng kết trận luyện tập' }),
     ).toBeInTheDocument()
+    expect(
+      screen.queryByText('Bạn đang chơi bằng khách: điểm sẽ lên bảng khi bạn đăng nhập.'),
+    ).not.toBeInTheDocument()
   })
 
   it('plays again with the same settings in a fresh match', async () => {
     const user = userEvent.setup()
-    const router = renderAt(`/solo/${await createMatch('RANKED', 5)}`)
+    const router = renderAt(`/solo/${await createMatch('PRACTICE', 5)}`)
     await user.click(await screen.findByRole('button', { name: 'Vào vòng 1' }))
     for (const answer of ANSWERS) {
       await guess(user, answer)
@@ -324,7 +302,7 @@ describe('SoloPlayPage', () => {
 
     expect(await screen.findByRole('button', { name: 'Vào vòng 1' })).toBeInTheDocument()
     expect(router.state.location.pathname).not.toBe(first)
-    expect(screen.getByText('5 vòng · Bộ chuẩn')).toBeInTheDocument()
+    expect(screen.getByText('5 vòng · Toàn bộ kho nhạc')).toBeInTheDocument()
   }, 15_000)
 
   it('shares the result without song titles, by clipboard when there is no share sheet', async () => {
@@ -337,7 +315,7 @@ describe('SoloPlayPage', () => {
       http.get('*/api/v1/solo/matches/:matchId/result', () => HttpResponse.json(resultExample)),
     )
     renderAt(`/solo/${resultExample.matchId}`)
-    await screen.findByRole('heading', { level: 1, name: 'Tổng kết trận xếp hạng' })
+    await screen.findByRole('heading', { level: 1, name: 'Tổng kết trận luyện tập' })
     vi.stubGlobal('navigator', { userAgent: navigator.userAgent, clipboard: { writeText } })
     await user.click(screen.getByRole('button', { name: 'Chia sẻ' }))
 

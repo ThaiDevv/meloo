@@ -81,9 +81,7 @@ export function MatchPlay({ match, onExit, onFinished }: MatchPlayProps) {
       <div className="flex items-center justify-between gap-4">
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
           <h1 className="text-base font-semibold">{t(`play.mode.${match.mode}`)}</h1>
-          <p className="text-sm text-muted-foreground">
-            {match.ranked ? t('play.music.standard') : t('play.status.practice')}
-          </p>
+          <p className="text-sm text-muted-foreground">{t('play.status.practice')}</p>
         </div>
         <Button variant="ghost" size="sm" className="-mr-3.5" onClick={onExit}>
           <X aria-hidden="true" className="size-4" strokeWidth={2} />

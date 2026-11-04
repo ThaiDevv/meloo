@@ -11,7 +11,7 @@ beforeEach(() => {
   resetSoloPlayMock()
 })
 
-async function create(mode: 'RANKED' | 'PRACTICE' = 'RANKED', roundCount: 5 | 10 | 15 = 5) {
+async function create(mode: 'PRACTICE' = 'PRACTICE', roundCount: 5 | 10 | 15 = 5) {
   const { data } = await apiClient.POST('/api/v1/solo/matches', { body: { mode, roundCount } })
   if (!data) throw new Error('create failed')
   return data
@@ -33,13 +33,14 @@ function listenMore(matchId: string, roundNo: number, expectedLevel?: number) {
 describe('single-play mock server', () => {
   it('creates a match with round 1 open and keeps it as the active one', async () => {
     const match = await create()
-    expect(match.ranked).toBe(true)
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
+    expect(match.ranked).toBe(false)
     expect(match.currentRound).toMatchObject({ roundNo: 1, level: 1, listenSeconds: 2 })
     expect(match.currentRound.audio.url).not.toContain(A1)
     const { data } = await apiClient.GET('/api/v1/solo/matches/active')
     expect(data?.matchId).toBe(match.matchId)
 
-    const again = await apiClient.POST('/api/v1/solo/matches', { body: { mode: 'RANKED' } })
+    const again = await apiClient.POST('/api/v1/solo/matches', { body: { mode: 'PRACTICE' } })
     expect(again.response.status).toBe(409)
     expect(again.error).toMatchObject({ matchId: match.matchId })
   })
@@ -105,17 +106,11 @@ describe('single-play mock server', () => {
     const { data } = await apiClient.GET('/api/v1/solo/matches/{matchId}/result', {
       params: { path: { matchId } },
     })
-    expect(data).toMatchObject({ status: 'FINISHED', ranked: true, correctCount: 5 })
+    expect(data).toMatchObject({ status: 'FINISHED', ranked: false, correctCount: 5 })
     expect(data?.rounds).toHaveLength(5)
   })
 
-  it('abandons a practice match but never a ranked one (BR-23)', async () => {
-    const ranked = await create('RANKED')
-    const refused = await apiClient.POST('/api/v1/solo/matches/{matchId}/abandon', {
-      params: { path: { matchId: ranked.matchId } },
-    })
-    expect(refused.error).toMatchObject({ code: 'RANKED_MATCH_CANNOT_ABANDON' })
-
+  it('abandons a practice match (BR-23)', async () => {
     resetSoloPlayMock()
     const practice = await create('PRACTICE')
     await guess(practice.matchId, 1, A1)

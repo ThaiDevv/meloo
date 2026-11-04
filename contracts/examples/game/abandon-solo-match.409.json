@@ -1,8 +1,8 @@
 {
   "type": "about:blank",
-  "title": "Ranked match cannot be abandoned",
+  "title": "Match not in progress",
   "status": 409,
-  "code": "RANKED_MATCH_CANNOT_ABANDON",
-  "detail": "Finish the ranked match or wait for it to expire.",
+  "code": "MATCH_NOT_IN_PROGRESS",
+  "detail": "The match has already finished or expired.",
   "instance": "/api/v1/solo/matches/0f6e1b92-5a3c-4d77-8e21-9b4a7c3d5e60/abandon"
 }

@@ -75,12 +75,13 @@ describe('MSW mock server', () => {
   })
 
   describe('POST /api/v1/solo/matches (solo match creation)', () => {
-    it('rejects RANKED mode with filter with 400 VALIDATION_FAILED', async () => {
+    it('rejects match with both filter and playlistId with 400 VALIDATION_FAILED', async () => {
       const { response, error } = await apiClient.POST('/api/v1/solo/matches', {
         body: {
-          mode: 'RANKED',
+          mode: 'PRACTICE',
           roundCount: 10,
           filter: { genreCodes: ['kpop'] },
+          playlistId: VALID_PLAYLIST_ID,
         },
       })
       expect(response.status).toBe(400)
@@ -90,18 +91,17 @@ describe('MSW mock server', () => {
       })
     })
 
-    it('rejects RANKED mode with playlistId with 400 VALIDATION_FAILED', async () => {
-      const { response, error } = await apiClient.POST('/api/v1/solo/matches', {
+    it('defaults mode to PRACTICE when creating a match', async () => {
+      const { data, response } = await apiClient.POST('/api/v1/solo/matches', {
         body: {
-          mode: 'RANKED',
+          mode: 'PRACTICE',
           roundCount: 10,
-          playlistId: VALID_PLAYLIST_ID,
         },
       })
-      expect(response.status).toBe(400)
-      expect(error).toMatchObject({
-        status: 400,
-        code: 'VALIDATION_FAILED',
+      expect(response.status).toBe(201)
+      expect(data).toMatchObject({
+        mode: 'PRACTICE',
+        ranked: false,
       })
     })
 
@@ -152,14 +152,14 @@ describe('MSW mock server', () => {
       })
     })
 
-    it('creates a RANKED match with 201 and valid body', async () => {
+    it('creates a PRACTICE match with 201 and valid body', async () => {
       const { data, response } = await apiClient.POST('/api/v1/solo/matches', {
-        body: { mode: 'RANKED', roundCount: 10 },
+        body: { mode: 'PRACTICE', roundCount: 10 },
       })
       expect(response.status).toBe(201)
       expect(data).toMatchObject({
-        mode: 'RANKED',
-        ranked: true,
+        mode: 'PRACTICE',
+        ranked: false,
         roundCount: 10,
         totalScore: 0,
         comboStreak: 0,
@@ -225,13 +225,13 @@ describe('MSW mock server', () => {
 
     it('returns 409 SOLO_MATCH_IN_PROGRESS when a match is already running', async () => {
       const first = await apiClient.POST('/api/v1/solo/matches', {
-        body: { mode: 'RANKED', roundCount: 10 },
+        body: { mode: 'PRACTICE', roundCount: 10 },
       })
       expect(first.response.status).toBe(201)
       const firstMatchId = first.data?.matchId
 
       const second = await apiClient.POST('/api/v1/solo/matches', {
-        body: { mode: 'RANKED', roundCount: 10 },
+        body: { mode: 'PRACTICE', roundCount: 10 },
       })
       expect(second.response.status).toBe(409)
       expect(second.error).toMatchObject({
@@ -243,7 +243,7 @@ describe('MSW mock server', () => {
 
     it('resets match state with resetSoloMock() allowing a new match to be created', async () => {
       const first = await apiClient.POST('/api/v1/solo/matches', {
-        body: { mode: 'RANKED', roundCount: 10 },
+        body: { mode: 'PRACTICE', roundCount: 10 },
       })
       expect(first.response.status).toBe(201)
 

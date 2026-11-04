@@ -48,7 +48,7 @@ function captureCreate(
 const problem = { 'Content-Type': 'application/problem+json' }
 
 describe('SoloSetupPage', () => {
-  it('starts a ranked match of 10 rounds by default, without a filter', async () => {
+  it('starts a match of 10 rounds by default, without a filter', async () => {
     const user = userEvent.setup()
     const bodies = captureCreate()
     renderPage()
@@ -57,7 +57,7 @@ describe('SoloSetupPage', () => {
     await user.click(screen.getByRole('button', { name: 'Vào trận' }))
 
     expect(await screen.findByText('match page')).toBeInTheDocument()
-    expect(bodies).toEqual([{ mode: 'RANKED', roundCount: 10 }])
+    expect(bodies).toEqual([{ mode: 'PRACTICE', roundCount: 10 }])
   })
 
   it('offers 5, 10 and 15 rounds', async () => {
@@ -72,7 +72,7 @@ describe('SoloSetupPage', () => {
     await user.click(screen.getByRole('button', { name: 'Vào trận' }))
 
     await screen.findByText('match page')
-    expect(bodies).toEqual([{ mode: 'RANKED', roundCount: 15 }])
+    expect(bodies).toEqual([{ mode: 'PRACTICE', roundCount: 15 }])
   })
 
   it('sends the chosen filter in practice mode', async () => {
@@ -80,8 +80,7 @@ describe('SoloSetupPage', () => {
     const bodies = captureCreate()
     renderPage()
 
-    expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('radio', { name: /Luyện tập/ }))
+    expect(screen.getByRole('tablist')).toBeInTheDocument()
     await user.click(await screen.findByRole('button', { name: 'K-pop' }))
     await user.click(screen.getByRole('button', { name: 'Hàn Quốc' }))
     await user.click(screen.getByRole('button', { name: 'Vào trận' }))

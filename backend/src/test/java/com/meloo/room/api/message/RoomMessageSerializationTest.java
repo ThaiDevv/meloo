@@ -267,11 +267,11 @@ class RoomMessageSerializationTest {
 
     @Test
     @DisplayName(
-        "PlayerGuessedEvent (BR-07) broadcasts '<name> guessed at level Xs' without answer")
+        "PlayerGuessedEvent (BR-07) broadcasts '<name> guessed at level Xs' with scores without answer")
     void playerGuessedEventDoesNotContainAnswer() throws Exception {
       Instant now = Instant.now();
       UUID userId = UUID.randomUUID();
-      PlayerGuessedEvent event = new PlayerGuessedEvent(userId, "ThaiPO", 5, true, now);
+      PlayerGuessedEvent event = new PlayerGuessedEvent(userId, "ThaiPO", 5, true, 850, 2150, now);
 
       String json = jsonMapper.writeValueAsString(event);
       assertThat(json).doesNotContain("trackId");
@@ -282,6 +282,8 @@ class RoomMessageSerializationTest {
       assertThat(deserialized.nickname()).isEqualTo("ThaiPO");
       assertThat(deserialized.level()).isEqualTo(5);
       assertThat(deserialized.isCorrect()).isTrue();
+      assertThat(deserialized.roundScore()).isEqualTo(850);
+      assertThat(deserialized.totalScore()).isEqualTo(2150);
     }
 
     @Test
@@ -352,8 +354,8 @@ class RoomMessageSerializationTest {
 
       List<PlayerRankingPayload> rankings =
           List.of(
-              new PlayerRankingPayload(1, user1, "FastUser", 8000, 8, 42000L),
-              new PlayerRankingPayload(2, user2, "SlowUser", 8000, 8, 56000L));
+              new PlayerRankingPayload(1, user1, "FastUser", 8000, 8, 42000L, false),
+              new PlayerRankingPayload(2, user2, "SlowUser", 8000, 8, 56000L, true));
 
       MatchFinishedEvent event = new MatchFinishedEvent(matchId, rankings, now);
       String json = jsonMapper.writeValueAsString(event);
@@ -362,7 +364,35 @@ class RoomMessageSerializationTest {
       assertThat(deserialized.type()).isEqualTo("MATCH_FINISHED");
       assertThat(deserialized.rankings()).hasSize(2);
       assertThat(deserialized.rankings().get(0).totalCorrectTimeMs()).isEqualTo(42000L);
+      assertThat(deserialized.rankings().get(0).left()).isFalse();
       assertThat(deserialized.rankings().get(1).totalCorrectTimeMs()).isEqualTo(56000L);
+      assertThat(deserialized.rankings().get(1).left()).isTrue();
+    }
+
+    @Test
+    @DisplayName("RankUpdatedEvent serializes correctly for quick-match participants (BR-24)")
+    void testRankUpdatedEvent() throws Exception {
+      Instant now = Instant.now();
+      UUID matchId = UUID.randomUUID();
+      UUID user1 = UUID.randomUUID();
+      UUID user2 = UUID.randomUUID();
+
+      List<PlayerRankChangePayload> changes =
+          List.of(
+              new PlayerRankChangePayload(user1, 20, 120),
+              new PlayerRankChangePayload(user2, -5, 0));
+
+      RankUpdatedEvent event = new RankUpdatedEvent(matchId, changes, now);
+      String json = jsonMapper.writeValueAsString(event);
+      RankUpdatedEvent deserialized = jsonMapper.readValue(json, RankUpdatedEvent.class);
+
+      assertThat(deserialized.type()).isEqualTo("RANK_UPDATED");
+      assertThat(deserialized.matchId()).isEqualTo(matchId);
+      assertThat(deserialized.changes()).hasSize(2);
+      assertThat(deserialized.changes().get(0).rankDelta()).isEqualTo(20);
+      assertThat(deserialized.changes().get(0).rankPoints()).isEqualTo(120);
+      assertThat(deserialized.changes().get(1).rankDelta()).isEqualTo(-5);
+      assertThat(deserialized.changes().get(1).rankPoints()).isEqualTo(0);
     }
   }
 
@@ -700,6 +730,8 @@ class RoomMessageSerializationTest {
               readJson("event.round.player-guessed.json"), PlayerGuessedEvent.class);
       assertThat(pge.type()).isEqualTo("PLAYER_GUESSED");
       assertThat(pge.isCorrect()).isTrue();
+      assertThat(pge.roundScore()).isEqualTo(850);
+      assertThat(pge.totalScore()).isEqualTo(2150);
 
       RoundTrackReplacedEvent rtr =
           jsonMapper.readValue(
@@ -730,6 +762,29 @@ class RoomMessageSerializationTest {
           jsonMapper.readValue(
               readJson("event.scoreboard.match-finished.json"), MatchFinishedEvent.class);
       assertThat(mfe.type()).isEqualTo("MATCH_FINISHED");
+      assertThat(mfe.rankings().getFirst().left()).isFalse();
+
+      MatchFinishedEvent mfe2p =
+          jsonMapper.readValue(
+              readJson("event.scoreboard.match-finished.2p.json"), MatchFinishedEvent.class);
+      assertThat(mfe2p.type()).isEqualTo("MATCH_FINISHED");
+      assertThat(mfe2p.rankings()).hasSize(2);
+      assertThat(mfe2p.rankings().get(1).left()).isTrue();
+
+      MatchFinishedEvent mfe5p =
+          jsonMapper.readValue(
+              readJson("event.scoreboard.match-finished.5p.json"), MatchFinishedEvent.class);
+      assertThat(mfe5p.type()).isEqualTo("MATCH_FINISHED");
+      assertThat(mfe5p.rankings()).hasSize(5);
+      assertThat(mfe5p.rankings().get(4).left()).isTrue();
+
+      RankUpdatedEvent rue =
+          jsonMapper.readValue(
+              readJson("event.scoreboard.rank-updated.json"), RankUpdatedEvent.class);
+      assertThat(rue.type()).isEqualTo("RANK_UPDATED");
+      assertThat(rue.changes()).hasSize(5);
+      assertThat(rue.changes().get(4).rankDelta()).isEqualTo(-5);
+      assertThat(rue.changes().get(4).rankPoints()).isEqualTo(0);
 
       ChatMessageEvent cme =
           jsonMapper.readValue(readJson("event.chat.message.json"), ChatMessageEvent.class);

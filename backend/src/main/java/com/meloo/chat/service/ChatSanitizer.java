@@ -24,33 +24,41 @@ public class ChatSanitizer {
 
   public ValidationResult validate(String content) {
     if (content == null || content.isBlank()) {
-      return ValidationResult.rejected("CHAT_MESSAGE_EMPTY", "Tin nhắn không được để trống");
+      return ValidationResult.rejected(
+          "INVALID_STATE", "Tin nhắn không được để trống", "CHAT_MESSAGE_EMPTY");
     }
 
     String trimmed = content.trim();
     if (trimmed.length() > maxMessageLength) {
       return ValidationResult.rejected(
-          "CHAT_MESSAGE_TOO_LONG",
-          "Tin nhắn vượt quá độ dài tối đa cho phép (" + maxMessageLength + " ký tự)");
+          "INVALID_STATE",
+          "Tin nhắn vượt quá độ dài tối đa cho phép (" + maxMessageLength + " ký tự)",
+          "CHAT_MESSAGE_TOO_LONG");
     }
 
     if (HTML_TAG_PATTERN.matcher(trimmed).find()) {
       return ValidationResult.rejected(
-          "CHAT_HTML_NOT_ALLOWED", "Tin nhắn chỉ là văn bản thuần, không nhận HTML");
+          "INVALID_STATE",
+          "Tin nhắn chỉ là văn bản thuần, không nhận HTML",
+          "CHAT_HTML_NOT_ALLOWED");
     }
 
     return ValidationResult.accepted(trimmed);
   }
 
   public record ValidationResult(
-      boolean valid, String sanitizedContent, String errorCode, String errorMessage) {
+      boolean valid,
+      String sanitizedContent,
+      String errorCode,
+      String errorMessage,
+      String detail) {
 
     public static ValidationResult accepted(String content) {
-      return new ValidationResult(true, content, null, null);
+      return new ValidationResult(true, content, null, null, null);
     }
 
-    public static ValidationResult rejected(String errorCode, String errorMessage) {
-      return new ValidationResult(false, null, errorCode, errorMessage);
+    public static ValidationResult rejected(String errorCode, String errorMessage, String detail) {
+      return new ValidationResult(false, null, errorCode, errorMessage, detail);
     }
   }
 }

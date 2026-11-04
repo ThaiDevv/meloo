@@ -75,14 +75,15 @@ public class ChatService {
     // 1. Validate length and reject HTML
     ChatSanitizer.ValidationResult sanitization = sanitizer.validate(rawContent);
     if (!sanitization.valid()) {
-      sendPrivateError(senderId, sanitization.errorCode(), sanitization.errorMessage());
+      sendPrivateError(
+          senderId, sanitization.errorCode(), sanitization.errorMessage(), sanitization.detail());
       return;
     }
     String content = sanitization.sanitizedContent();
 
     // 2. Check rate limit (1 msg/sec/user)
     if (!rateLimiter.tryAcquire(senderId)) {
-      sendPrivateError(senderId, "CHAT_RATE_LIMITED", "Bạn chỉ có thể gửi 1 tin mỗi giây (BR-16)");
+      sendPrivateError(senderId, "RATE_LIMITED", "Bạn chỉ có thể gửi 1 tin mỗi giây (BR-16)");
       return;
     }
 
@@ -99,7 +100,9 @@ public class ChatService {
     // 4. Check banned words (BR-17)
     if (bannedWordService.containsBannedWord(content)) {
       sendPrivateError(
-          senderId, "CHAT_BANNED_WORD", "Tin nhắn bị chặn do chứa từ ngữ không phù hợp (BR-17)");
+          senderId,
+          "CHAT_PROHIBITED_WORD",
+          "Tin nhắn bị chặn do chứa từ ngữ không phù hợp (BR-17)");
       return;
     }
 
@@ -146,9 +149,13 @@ public class ChatService {
     nicknameCache.put(userId, nickname);
   }
 
-  private void sendPrivateError(UUID userId, String code, String message) {
+  private void sendPrivateError(UUID userId, String code, String message, @Nullable String detail) {
     Instant now = Instant.now();
-    ChatErrorMessage err = new ChatErrorMessage(code, message, null, now);
+    ChatErrorMessage err = new ChatErrorMessage(code, message, detail, now);
     messagingTemplate.convertAndSendToUser(userId.toString(), "/queue/errors", err);
+  }
+
+  private void sendPrivateError(UUID userId, String code, String message) {
+    sendPrivateError(userId, code, message, null);
   }
 }

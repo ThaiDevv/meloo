@@ -96,7 +96,8 @@ class ChatServiceTest {
     verify(messagingTemplate)
         .convertAndSendToUser(eq(senderId.toString()), eq("/queue/errors"), errorCaptor.capture());
 
-    assertThat(errorCaptor.getValue().code()).isEqualTo("CHAT_MESSAGE_TOO_LONG");
+    assertThat(errorCaptor.getValue().code()).isEqualTo("INVALID_STATE");
+    assertThat(errorCaptor.getValue().detail()).isEqualTo("CHAT_MESSAGE_TOO_LONG");
   }
 
   @Test
@@ -114,7 +115,8 @@ class ChatServiceTest {
     verify(messagingTemplate)
         .convertAndSendToUser(eq(senderId.toString()), eq("/queue/errors"), errorCaptor.capture());
 
-    assertThat(errorCaptor.getValue().code()).isEqualTo("CHAT_HTML_NOT_ALLOWED");
+    assertThat(errorCaptor.getValue().code()).isEqualTo("INVALID_STATE");
+    assertThat(errorCaptor.getValue().detail()).isEqualTo("CHAT_HTML_NOT_ALLOWED");
   }
 
   @Test
@@ -137,7 +139,7 @@ class ChatServiceTest {
     verify(messagingTemplate)
         .convertAndSendToUser(eq(senderId.toString()), eq("/queue/errors"), errorCaptor.capture());
 
-    assertThat(errorCaptor.getValue().code()).isEqualTo("CHAT_RATE_LIMITED");
+    assertThat(errorCaptor.getValue().code()).isEqualTo("RATE_LIMITED");
   }
 
   @Test
@@ -191,6 +193,6 @@ class ChatServiceTest {
     verify(messagingTemplate)
         .convertAndSendToUser(eq(senderId.toString()), eq("/queue/errors"), errorCaptor.capture());
 
-    assertThat(errorCaptor.getValue().code()).isEqualTo("CHAT_BANNED_WORD");
+    assertThat(errorCaptor.getValue().code()).isEqualTo("CHAT_PROHIBITED_WORD");
   }
 }

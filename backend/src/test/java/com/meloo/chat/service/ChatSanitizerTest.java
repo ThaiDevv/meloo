@@ -39,7 +39,8 @@ class ChatSanitizerTest {
     String str201 = "a".repeat(201);
     ChatSanitizer.ValidationResult failResult = sanitizer.validate(str201);
     assertThat(failResult.valid()).isFalse();
-    assertThat(failResult.errorCode()).isEqualTo("CHAT_MESSAGE_TOO_LONG");
+    assertThat(failResult.errorCode()).isEqualTo("INVALID_STATE");
+    assertThat(failResult.detail()).isEqualTo("CHAT_MESSAGE_TOO_LONG");
   }
 
   @Test
@@ -48,6 +49,8 @@ class ChatSanitizerTest {
     assertThat(sanitizer.validate(null).valid()).isFalse();
     assertThat(sanitizer.validate("").valid()).isFalse();
     assertThat(sanitizer.validate("   ").valid()).isFalse();
+    assertThat(sanitizer.validate("").errorCode()).isEqualTo("INVALID_STATE");
+    assertThat(sanitizer.validate("").detail()).isEqualTo("CHAT_MESSAGE_EMPTY");
   }
 
   @ParameterizedTest
@@ -68,7 +71,8 @@ class ChatSanitizerTest {
   void rejectsHtmlTags(String content) {
     ChatSanitizer.ValidationResult result = sanitizer.validate(content);
     assertThat(result.valid()).isFalse();
-    assertThat(result.errorCode()).isEqualTo("CHAT_HTML_NOT_ALLOWED");
+    assertThat(result.errorCode()).isEqualTo("INVALID_STATE");
+    assertThat(result.detail()).isEqualTo("CHAT_HTML_NOT_ALLOWED");
   }
 
   @ParameterizedTest

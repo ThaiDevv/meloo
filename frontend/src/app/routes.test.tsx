@@ -19,8 +19,6 @@ function renderAt(path: string) {
 const routes: [path: string, ticket: string][] = [
   ['/auth/callback', 'FE-AUTH-02'],
   ['/daily', 'FE-DAILY-01'],
-  ['/rooms/new', 'FE-ROOM-01'],
-  ['/r/ABCD', 'FE-ROOM-01'],
   ['/r/ABCD/play', 'FE-ROOM-02'],
   ['/rooms', 'FE-ROOM-03'],
   ['/quick-match', 'FE-ROOM-03'],
@@ -57,6 +55,18 @@ describe('app routes', () => {
     cleanup()
     renderAt('/solo')
     expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Chơi đơn')
+  })
+
+  it('serves the room creation screen at /rooms/new and the lobby entry at /r/:code', async () => {
+    renderAt('/rooms/new')
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Tạo phòng')
+    cleanup()
+    // ABCD is not a room code, so the lobby answers without calling the server.
+    renderAt('/r/ABCD')
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(
+      'Mã phòng không hợp lệ',
+    )
+    expect(screen.queryByTestId('placeholder')).not.toBeInTheDocument()
   })
 
   it('serves the single-play screen at /solo/:matchId', async () => {

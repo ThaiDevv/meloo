@@ -1,0 +1,7 @@
+{
+  "type": "ERROR",
+  "code": "FORBIDDEN",
+  "message": "Chỉ chủ phòng mới có quyền chỉnh cài đặt (BR-12)",
+  "detail": null,
+  "serverTime": "2026-10-29T10:02:31Z"
+}

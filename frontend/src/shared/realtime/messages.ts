@@ -395,6 +395,9 @@ export interface ErrorMessage {
     | 'CHAT_PROHIBITED_WORD'
     | 'RATE_LIMITED'
     | 'INTERNAL_ERROR'
+    | 'FORBIDDEN'
+    | 'INVALID_COMMAND'
+    | 'VALIDATION_FAILED'
   message: string
   detail: string | null
   startFailureReason?: 'NOT_ENOUGH_PLAYERS' | 'NOT_ALL_READY' | 'NOT_ENOUGH_TRACKS' | null

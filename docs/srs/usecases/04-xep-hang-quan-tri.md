@@ -1,6 +1,6 @@
 # Đặc tả use case: Xếp hạng và quản trị
 
-> Ticket: MEL-29 (DOC-02) · Tổng quan, tác nhân, danh mục và truy vết: `00-tong-quan.md` · Sơ đồ: `docs/uml/usecase/uc-04-xep-hang.png`, `docs/uml/usecase/uc-05-quan-tri.png`
+> Ticket: MEL-29 (DOC-02), cập nhật MEL-149 · Tổng quan, tác nhân, danh mục và truy vết: `00-tong-quan.md` · Sơ đồ: `docs/uml/usecase/uc-04-xep-hang.png`, `docs/uml/usecase/uc-05-quan-tri.png`
 
 ### UC-24: Xem bảng xếp hạng
 - Tác nhân chính / phụ: Khách (gồm Người chơi đã đăng nhập) / không có.
@@ -8,16 +8,16 @@
 - Hậu điều kiện (thành công / thất bại): Thành công: người chơi thấy bảng đã chọn. Thất bại: người chơi thấy thông báo lỗi tải bảng và thử lại được.
 - Luồng chính:
   1. Người chơi mở "Xếp hạng".
-  2. Người chơi chọn bảng: tuần, toàn thời gian hoặc theo ngày.
+  2. Người chơi chọn bảng: Bảng xếp hạng chính (toàn thời gian theo điểm rank) hoặc Bảng theo ngày (thử thách ngày). (Bỏ bảng tuần theo quyết định PO 01/11).
   3. Hệ thống hiển thị danh sách xếp theo quy tắc của bảng và vị trí của người chơi nếu có.
 - Luồng phụ và ngoại lệ:
-  - 3a. Bảng tuần và toàn thời gian xếp theo tổng điểm các trận xếp hạng; bằng điểm thì ai đạt mức điểm đó trước xếp trên.
-  - 3b. Bảng tuần reset lúc 00:00 thứ Hai giờ Việt Nam.
-  - 3c. Bảng theo ngày là bảng thử thách ngày: xếp theo mức đoán đúng (2 giây cao nhất), rồi theo thời gian; không đoán ra thì xếp cuối.
-  - 3d. Người chơi là khách: xem được bảng nhưng không có tên trên bảng; hệ thống nhắc "Đăng nhập để đưa điểm lên bảng xếp hạng". Điểm của khách không vào bảng. (Quyết định PO 22/10 (mục 5, #2))
+  - 3a. Bảng xếp hạng chính xếp theo điểm rank (tích lũy từ ghép trận nhanh); bằng điểm thì ai đạt mức điểm đó trước xếp trên.
+  - 3b. Điểm rank bắt đầu từ 0, có sàn 0 (không xuống dưới 0); cộng/trừ theo bảng cố định ở BR-24; điểm hiển thị sau khi kết thúc trận là số thay đổi thực tế sau khi áp sàn.
+  - 3c. Bảng theo ngày là bảng thử thách ngày: xếp theo mức đoán đúng (2 giây cao nhất), rồi theo thời gian; không đoán ra thì xếp cuối. Thử thách ngày không cộng điểm rank.
+  - 3d. Người chơi là khách: xem được bảng nhưng không có tên trên bảng (khách không chơi ghép trận nhanh nên không có điểm rank); hệ thống nhắc "Đăng nhập để chơi ghép trận nhanh và đưa điểm lên bảng xếp hạng". (Quyết định PO 01/11)
   - 3e. Bảng chưa có ai: hệ thống hiển thị bảng trống.
-  - Ghi chú: chỉ trận xếp hạng (chơi đơn bộ chuẩn, thử thách ngày, ghép trận nhanh) được tính; phòng tự tạo thì không.
-- Quy tắc nghiệp vụ: BR-20, BR-21, BR-23, BR-24, BR-25.
+  - Ghi chú: chỉ ghép trận nhanh (2–5 người, BR-13) tính điểm rank; chơi đơn và phòng tự tạo không tính điểm rank.
+- Quy tắc nghiệp vụ: BR-13, BR-20, BR-21, BR-23, BR-24, BR-25.
 - Yêu cầu liên quan: FR-14.
 
 ### UC-28: Quản lý kho nhạc và bộ đề

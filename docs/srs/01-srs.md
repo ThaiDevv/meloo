@@ -1,7 +1,7 @@
 # Đặc tả yêu cầu phần mềm (SRS) Meloo — v1
 
-> Ticket: MEL-28 (DOC-01) · Trạng thái: **đã chốt ngày 22/10/2026**
-> Nguồn: tài liệu "Meloo — Kế hoạch dự án & Quy trình làm việc" (mục Phạm vi sản phẩm, Kiến trúc & công nghệ, Phụ lục A) và `docs/business/01-problem.md` (BIZ-02). Các NFR-10 → NFR-15 được bổ sung ngày 22/10 theo tiêu chí trải nghiệm người chơi.
+> Ticket: MEL-28 (DOC-01), cập nhật MEL-149 · Trạng thái: **đã chốt ngày 22/10/2026, cập nhật luật xếp hạng ngày 01/11/2026**
+> Nguồn: tài liệu "Meloo — Kế hoạch dự án & Quy trình làm việc" (mục Phạm vi sản phẩm, Kiến trúc & công nghệ, Phụ lục A) và `docs/business/01-problem.md` (BIZ-02). Các NFR-10 → NFR-15 được bổ sung ngày 22/10 theo tiêu chí trải nghiệm người chơi. Cập nhật luật xếp hạng mới ngày 01/11 theo quyết định của PO (MEL-149): FR-01, FR-02, FR-07, FR-10, FR-14.
 > Quy tắc nghiệp vụ nằm ở `02-business-rules.md` (mã BR-xx). Thuật ngữ ở `03-glossary.md`.
 
 ## 1. Giới thiệu
@@ -58,8 +58,8 @@ Mỗi dòng kiểm chứng được bằng Acceptance Criteria ở ticket Jira t
 
 | Mã | Yêu cầu | Ưu tiên | Sprint | BR |
 |---|---|---|---|---|
-| FR-01 | Hệ thống cho phép chơi ngay mọi chế độ mà không cần đăng ký (khách), bằng biệt danh. | Must | S1 | BR-20, BR-22 |
-| FR-02 | Hệ thống cho phép đăng nhập Google và gộp lịch sử, thống kê, huy hiệu, điểm xếp hạng của khách vào tài khoản. | Must | S4 | BR-21 |
+| FR-01 | Hệ thống cho phép chơi ngay mà không cần đăng ký (khách) cho chơi đơn và phòng tự tạo, bằng biệt danh (ghép trận nhanh tính rank yêu cầu đăng nhập). | Must | S1 | BR-20, BR-22 |
+| FR-02 | Hệ thống cho phép đăng nhập Google và gộp lịch sử, thống kê, huy hiệu của khách vào tài khoản. | Must | S4 | BR-21 |
 | FR-03 | Hệ thống cho phép đăng nhập Facebook và xóa tài khoản. | Should | S5 | BR-21 |
 | FR-04 | Hệ thống có hồ sơ người chơi. | Must | S4 | — |
 
@@ -74,7 +74,7 @@ Mỗi dòng kiểm chứng được bằng Acceptance Criteria ở ticket Jira t
 
 | Mã | Yêu cầu | Ưu tiên | Sprint | BR |
 |---|---|---|---|---|
-| FR-07 | Chơi đơn có hai lựa chọn: Xếp hạng (bộ chuẩn) và Luyện tập (bộ lọc tự chọn). Người chơi nghe đoạn nhạc theo bộ lọc: nghe đoạn nhạc mở dần 5 mức, nghe lại, nghe thêm hoặc bỏ qua, đoán bằng ô gợi ý, được tính điểm theo mức đoán đúng kèm combo; sau mỗi vòng thấy nguồn nhạc và link nghe đầy đủ. | Must | S2 | BR-01 → BR-09, BR-27, BR-29 |
+| FR-07 | Chơi đơn là chế độ luyện tập (tự chọn bộ lọc hoặc bộ bài). Người chơi nghe đoạn nhạc theo bộ lọc: nghe đoạn nhạc mở dần 5 mức, nghe lại, nghe thêm hoặc bỏ qua, đoán bằng ô gợi ý, được tính điểm theo mức đoán đúng kèm combo (không tính điểm rank); sau mỗi vòng thấy nguồn nhạc và link nghe đầy đủ. | Must | S2 | BR-01 → BR-09, BR-23, BR-27, BR-29 |
 | FR-08 | Người chơi làm thử thách hằng ngày (một bài chung mỗi ngày) và chia sẻ kết quả không lộ tên bài. | Should | S4 | BR-07, BR-25 |
 
 ### 3.4 Chơi nhiều người
@@ -82,7 +82,7 @@ Mỗi dòng kiểm chứng được bằng Acceptance Criteria ở ticket Jira t
 | Mã | Yêu cầu | Ưu tiên | Sprint | BR |
 |---|---|---|---|---|
 | FR-09 | Người chơi tạo phòng riêng (vào bằng mã hoặc link mời) hoặc phòng công khai (hiện trong danh sách phòng), chờ ở sảnh, chơi trận thời gian thực, xem bảng điểm trực tiếp, xem công bố người thắng rồi chơi lại trong cùng phòng. Chủ phòng mời được người khác ra khỏi phòng. Người vào lúc trận đang chạy chờ ở sảnh. | Must | S3 | BR-07 → BR-12, BR-14, BR-15 |
-| FR-10 | Người chơi, kể cả khách, vào phòng công khai từ danh sách, hoặc ghép trận nhanh vào phòng ghép trận, có đếm ngược và gợi ý khi chờ lâu. | Must | S4 | BR-11, BR-13, BR-20 |
+| FR-10 | Người chơi (kể cả khách) vào phòng công khai từ danh sách; người chơi đã đăng nhập ghép trận nhanh vào phòng ghép trận 2–5 người tính điểm rank, có đếm ngược và gợi ý khi chờ lâu. | Must | S4 | BR-11, BR-13, BR-20, BR-24 |
 
 ### 3.5 Giao tiếp
 
@@ -96,7 +96,7 @@ Mỗi dòng kiểm chứng được bằng Acceptance Criteria ở ticket Jira t
 | Mã | Yêu cầu | Ưu tiên | Sprint | BR |
 |---|---|---|---|---|
 | FR-13 | Hệ thống lưu lịch sử trận, hồ sơ, thống kê cá nhân cho mọi trận, kể cả phòng tự tạo. | Must | S4 | BR-23 |
-| FR-14 | Hệ thống có bảng xếp hạng tuần và toàn thời gian theo tổng điểm trận xếp hạng, và bảng theo ngày của thử thách ngày. | Must | S4 | BR-20, BR-21, BR-23 → BR-25 |
+| FR-14 | Hệ thống có bảng xếp hạng chính toàn thời gian theo điểm rank (tích lũy từ ghép trận nhanh), và bảng theo ngày của thử thách ngày (không cộng điểm rank; bỏ bảng tuần). | Must | S4 | BR-13, BR-20, BR-21, BR-23 → BR-25 |
 | FR-15 | Hệ thống có huy hiệu thành tích. | Should | S5 | BR-23, BR-26 |
 
 ### 3.7 Quản trị

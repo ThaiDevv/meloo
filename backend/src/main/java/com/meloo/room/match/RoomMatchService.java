@@ -308,7 +308,7 @@ public class RoomMatchService implements ActiveRoundQuery {
               change.roomId(),
               RoomTopic.ROUND,
               new MatchEarlyEndedEvent(
-                  "NOT_ENOUGH_PLAYERS",
+                  "ONLY_ONE_PLAYER_REMAINED",
                   remaining.getFirst().lobbyPlayer.userId(),
                   clock.instant()));
         finishMatch(match);
@@ -568,11 +568,6 @@ public class RoomMatchService implements ActiveRoundQuery {
             track.providerTrackId()));
     match.phase = "ROUND_REVEAL";
     activeAnswers.remove(match.room.roomId());
-    Participant tokenRecipient =
-        match.players.values().stream()
-            .filter(p -> !p.left())
-            .findFirst()
-            .orElse(match.players.values().iterator().next());
     match.answer =
         new RoundAnswerPayload(
             track.id(),
@@ -580,7 +575,7 @@ public class RoomMatchService implements ActiveRoundQuery {
             track.artistName(),
             null,
             track.coverUrl(),
-            clip(match, tokenRecipient, 5).url());
+            "https://www.deezer.com/track/" + track.providerTrackId());
     match.lastResults = List.copyOf(results);
     boolean last = early || match.roundNo == match.room.roundCount();
     messages.publish(

@@ -183,6 +183,12 @@ class RoomMatchServiceTest {
     barrier();
     assertThat(last(RoundEndEvent.class).answer().trackTitle())
         .isEqualTo(tracks.getFirst().title());
+    assertThat(last(RoundEndEvent.class).answer().previewFullUrl())
+        .isEqualTo("https://www.deezer.com/track/fake-0");
+    service.resync(room.roomId(), guest);
+    barrier();
+    assertThat(last(ResyncStateMessage.class).lastRoundAnswer().previewFullUrl())
+        .isEqualTo("https://www.deezer.com/track/fake-0");
   }
 
   @Test
@@ -315,6 +321,7 @@ class RoomMatchServiceTest {
             .findFirst()
             .orElseThrow();
     assertThat(room.hostId()).isEqualTo(guest);
+    assertThat(last(MatchEarlyEndedEvent.class).reason()).isEqualTo("ONLY_ONE_PLAYER_REMAINED");
     assertThat(event.roomId()).isEqualTo(room.roomId());
     assertThat(event.players()).extracting(p -> p.userId()).containsExactly(guest, host);
     assertThat(event.players().getLast().left()).isTrue();

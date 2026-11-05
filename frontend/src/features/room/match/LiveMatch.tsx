@@ -46,8 +46,8 @@ function resultFor(reveal: Reveal, me: string | null, state: MatchState): RoundR
     roundNo: reveal.roundNo,
     outcome: mine?.outcome ?? 'MISSED',
     ...(mine?.correctLevel != null ? { correctLevel: levelIndex(mine.correctLevel) } : {}),
-    baseScore: (mine?.baseScore ?? 0) as RoundResult['baseScore'],
-    comboPercent: (mine?.comboPercent ?? 0) as RoundResult['comboPercent'],
+    baseScore: toBase(mine?.baseScore ?? 0),
+    comboPercent: toCombo(mine?.comboPercent ?? 0),
     speedBonus: mine?.speedBonus ?? 0,
     roundScore: mine?.roundScore ?? 0,
     wrongCount: mine?.wrongCount ?? 0,
@@ -62,6 +62,16 @@ function resultFor(reveal: Reveal, me: string | null, state: MatchState): RoundR
       ...(answer.coverUrl ? { coverUrl: answer.coverUrl } : {}),
     },
   }
+}
+
+function toBase(value: number): RoundResult['baseScore'] {
+  return value === 200 || value === 400 || value === 600 || value === 800 || value === 1000
+    ? value
+    : 0
+}
+
+function toCombo(value: number): RoundResult['comboPercent'] {
+  return value === 10 || value === 20 ? value : 0
 }
 
 /** The server says the level in seconds (2, 5, 10, 20, 30); the shared round screen counts 1 to 5. */
@@ -181,7 +191,7 @@ export function LiveMatch({ initialRoom }: { initialRoom: RoomResponse }) {
       ? {
           matchId: roomId,
           roundNo: state.roundNo,
-          roundCount: state.totalRounds as RoundState['roundCount'],
+          roundCount: state.totalRounds,
           level: levelIndex(clip.level),
           listenSeconds: clip.level,
           canListenMore: clip.level < 30,

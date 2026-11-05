@@ -43,7 +43,7 @@ export type Notice =
 export interface MatchState {
   phase: MatchPhase
   roundNo: number
-  totalRounds: number | null
+  totalRounds: 5 | 10 | 15 | null
   /** The newest clip of each round: clips come on a private queue and may beat ROUND_PREPARE. */
   clips: Record<number, Clip>
   timer: { endsAt: string; serverTime: string } | null

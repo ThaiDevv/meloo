@@ -19,7 +19,6 @@ function renderAt(path: string) {
 const routes: [path: string, ticket: string][] = [
   ['/auth/callback', 'FE-AUTH-02'],
   ['/daily', 'FE-DAILY-01'],
-  ['/r/ABCD/play', 'FE-ROOM-02'],
   ['/rooms', 'FE-ROOM-03'],
   ['/quick-match', 'FE-ROOM-03'],
   ['/profile', 'FE-PROF-01'],

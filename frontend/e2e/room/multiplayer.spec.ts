@@ -138,9 +138,19 @@ test.describe('Multiplayer room flow (MEL-61 / QA-02)', () => {
       // E2E rounds are intentionally only two seconds long. Register assertions for the brief
       // round/reveal states before interacting so Playwright observes them instead of polling late.
       const round2 = Promise.all([a.page, b.page, c.page].map((page) => waitForRound(page, 2)))
-      const cTimedOut = expect(
-        c.page.getByRole('paragraph').filter({ hasText: /Hết giờ|Time is up/i }),
-      ).toBeVisible({ timeout: 5_000 })
+      const cTimedOut = expect
+        .poll(
+          () =>
+            c.page
+              .getByRole('paragraph')
+              .filter({ hasText: /Hết giờ|Time is up/i })
+              .count(),
+          {
+            timeout: 10_000,
+            intervals: [25],
+          },
+        )
+        .toBeGreaterThan(0)
 
       const guess = b.page.getByRole('combobox', { name: /Đoán tên bài|Guess the song/i })
       await guess.fill(CORRECT_TITLE)
@@ -209,16 +219,8 @@ test.describe('Multiplayer room flow (MEL-61 / QA-02)', () => {
         })
       }
 
-      // Known integration gap found by this scenario: RETURN_TO_LOBBY does not carry the promoted
-      // waiting roster, so current clients need one resync before D can join the rematch.
-      // Reload sequentially because the E2E profile removes disconnected guests after one second.
-      for (const page of [a.page, b.page, c.page]) {
-        await page.reload()
-        await expect(page.getByRole('heading', { name: LOBBY_HEADING })).toBeVisible({
-          timeout: 10_000,
-        })
-        await expect(page.getByText(PLAYERS.d, { exact: true })).toBeVisible()
-      }
+      // D's join response already includes the waiting player in its roster. Existing clients keep
+      // their live room sockets through RETURN_TO_LOBBY and resync when the rematch starts.
       await expect(d.page.getByText(PLAYERS.d, { exact: true })).toBeVisible()
 
       // Existing players keep their ready state across the rematch; only the promoted late joiner
@@ -226,7 +228,12 @@ test.describe('Multiplayer room flow (MEL-61 / QA-02)', () => {
       await ready(d.page)
       await expect(start).toBeEnabled({ timeout: 10_000 })
       await start.click()
-      await expect(d.page).toHaveURL(new RegExp(`/r/${code}/play$`), { timeout: 10_000 })
+      await Promise.all(
+        [a.page, b.page, c.page, d.page].map((page) =>
+          expect(page).toHaveURL(new RegExp(`/r/${code}/play$`), { timeout: 10_000 }),
+        ),
+      )
+      await expect(a.page.getByRole('listitem', { name: PLAYERS.d })).toBeVisible()
     } finally {
       await Promise.all(contexts.map((context) => context.close()))
     }

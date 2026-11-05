@@ -1,0 +1,19 @@
+{
+  "title": "Trò chuyện trong phòng",
+  "messages": "Tin nhắn trong phòng",
+  "empty": "Chưa có tin nhắn. Cùng trò chuyện nào!",
+  "input": "Tin nhắn",
+  "send": "Gửi",
+  "limit": "{{count}}/200 ký tự · tối đa 1 tin mỗi giây",
+  "connecting": "Đang kết nối lại trò chuyện… Chờ kết nối để gửi tin.",
+  "sendFailed": "Chưa gửi được tin. Nội dung vẫn được giữ lại, hãy thử khi đã kết nối.",
+  "dismiss": "Đóng cảnh báo",
+  "report": "Báo cáo",
+  "reportMessage": "Báo cáo tin nhắn của {{name}}",
+  "reportUnavailable": "Tính năng báo cáo tin nhắn chưa khả dụng.",
+  "errors": {
+    "CHAT_ANSWER_LEAK": "Tin nhắn bị chặn vì chứa đáp án của vòng đang chơi.",
+    "CHAT_PROHIBITED_WORD": "Tin nhắn bị chặn vì chứa từ bị cấm.",
+    "RATE_LIMITED": "Bạn gửi quá nhanh. Chờ ít nhất một giây rồi gửi lại."
+  }
+}

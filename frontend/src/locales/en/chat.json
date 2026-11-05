@@ -1,0 +1,19 @@
+{
+  "title": "Room chat",
+  "messages": "Room messages",
+  "empty": "No messages yet. Start the conversation!",
+  "input": "Message",
+  "send": "Send",
+  "limit": "{{count}}/200 characters · at most 1 message per second",
+  "connecting": "Reconnecting to chat… Wait for the connection to send messages.",
+  "sendFailed": "Message was not sent. Your text is saved; try again once connected.",
+  "dismiss": "Dismiss warning",
+  "report": "Report",
+  "reportMessage": "Report message from {{name}}",
+  "reportUnavailable": "Message reporting is not available yet.",
+  "errors": {
+    "CHAT_ANSWER_LEAK": "Message blocked because it contains the current round’s answer.",
+    "CHAT_PROHIBITED_WORD": "Message blocked because it contains a prohibited word.",
+    "RATE_LIMITED": "You are sending too fast. Wait at least one second before trying again."
+  }
+}

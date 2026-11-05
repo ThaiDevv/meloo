@@ -20,6 +20,7 @@ import {
   room,
 } from '@/shared/realtime/testing/fixtures'
 import { FakeAudioContext } from '../../game-core/mocks/fakeAudioContext'
+import { SnippetPlayer } from '../../game-core/audio/snippetPlayer'
 import { MatchPage } from './MatchPage'
 
 vi.mock('@/features/chat', () => ({
@@ -47,7 +48,7 @@ function playing(base: RoomResponse = room()): RoomResponse {
   return { ...base, status: 'PLAYING', currentRound: 2 }
 }
 
-function renderMatch(initial: RoomResponse = playing()) {
+function renderMatch(initial: RoomResponse = playing(), seeded = true) {
   useAuthStore.setState({
     accessToken: 'test-token',
     user: {
@@ -63,7 +64,11 @@ function renderMatch(initial: RoomResponse = playing()) {
   return render(
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={client}>
-        <MemoryRouter initialEntries={[{ pathname: `/r/${code}/play`, state: { room: initial } }]}>
+        <MemoryRouter
+          initialEntries={[
+            { pathname: `/r/${code}/play`, state: seeded ? { room: initial } : undefined },
+          ]}
+        >
           <Routes>
             <Route path="/r/:code/play" element={<MatchPage />} />
             <Route path="/r/:code" element={<p>trang sảnh</p>} />
@@ -491,5 +496,78 @@ describe('losing the connection', () => {
       expect(screen.queryByText(/Mất kết nối, đang kết nối lại/)).not.toBeInTheDocument()
     })
     expect(await screen.findByRole('heading', { name: /Cắt Đôi Nỗi Sầu/ })).toBeInTheDocument()
+  })
+})
+
+describe('regressions of review round 1', () => {
+  it('frees "Nghe thêm" after a reconnect that swallowed the reply (M1)', async () => {
+    renderMatch()
+    await goLive()
+    const user = userEvent.setup()
+    await screen.findByText('Vòng 2 / 10')
+    await user.click(screen.getByRole('button', { name: /nghe thêm/i }))
+    expect(screen.getByRole('button', { name: /nghe thêm/i })).toBeDisabled()
+    act(() => {
+      kit.latest().drop()
+    })
+    act(() => {
+      kit.latest().connect()
+    })
+    act(() => {
+      kit.latest().emit(PRIVATE, snapshot(playing(), 'ROUND_IN_PROGRESS'))
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /nghe thêm/i })).toBeEnabled()
+    })
+  })
+
+  it('reopens a quick match from its room id after a reload (M2)', async () => {
+    const quick = playing(quickMatchRoom({ players: [host({ isHost: false }), player()] }))
+    renderMatch(quick, false)
+    expect(screen.queryByText('Mã phòng không hợp lệ')).not.toBeInTheDocument()
+    await goLive(quick)
+    // The match screen mounts once the room is known and asks for its own snapshot.
+    await waitFor(() => {
+      expect(kit.latest().commands('resync').length).toBeGreaterThan(1)
+    })
+    act(() => {
+      kit.latest().emit(PRIVATE, snapshot(quick, 'ROUND_IN_PROGRESS'))
+    })
+    expect(await screen.findByText('Vòng 2 / 10')).toBeInTheDocument()
+  })
+
+  it('confirms "prepared" only once the clip is loaded, and again for a new prepare (M4)', async () => {
+    let finish: () => void = () => undefined
+    const load = vi.spyOn(SnippetPlayer.prototype, 'load').mockImplementation(
+      () =>
+        new Promise<AudioBuffer>((resolve) => {
+          finish = () => {
+            resolve({} as AudioBuffer)
+          }
+        }),
+    )
+    renderMatch()
+    await goLive(playing(), 'ROUND_PREPARE')
+    await waitFor(() => {
+      expect(load).toHaveBeenCalledWith('/api/v1/audio/r2')
+    })
+    expect(kit.latest().commands('prepared')).toHaveLength(0)
+    await act(async () => {
+      finish()
+      await Promise.resolve()
+    })
+    await waitFor(() => {
+      expect(kit.latest().commands('prepared')).toEqual([{ roundNo: 2 }])
+    })
+    // The same round is prepared again after a track swap (BR-27): confirm again.
+    emit(ROUND, { type: 'ROUND_PREPARE', roundNo: 2, totalRounds: 10, timeoutMs: 5000 })
+    await act(async () => {
+      finish()
+      await Promise.resolve()
+    })
+    await waitFor(() => {
+      expect(kit.latest().commands('prepared')).toHaveLength(2)
+    })
+    load.mockRestore()
   })
 })

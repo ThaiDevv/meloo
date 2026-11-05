@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { RoomChat } from '@/features/chat'
 import { GameRound, RoundReveal } from '@/features/game-core'
+import { SnippetPlayer } from '@/features/game-core/audio/snippetPlayer'
 import type { RoundResult, RoundState } from '@/features/game-core'
 import { useTrackSearch } from '@/features/solo/play/api/soloMatchApi'
 import { useAuthStore } from '@/shared/api/authStore'
@@ -153,15 +154,28 @@ export function LiveMatch({ initialRoom }: { initialRoom: RoomResponse }) {
     }
   }, [backToLobby, navigate, room])
 
-  // Tell the server the round's clip is in hand, so the round can start for everyone.
-  const prepared = useRef(0)
+  // Tell the server the round's clip is really in hand: fetched and decoded here first, so the round
+  // clock does not start while this player is still downloading. A new clip, a new prepare or a fresh
+  // snapshot (after a reconnect) asks for the confirmation again.
   const clip = state.clips[state.roundNo]
+  const clipUrl = clip?.url
   useEffect(() => {
-    if (state.phase === 'prepare' && clip && prepared.current !== state.roundNo) {
-      prepared.current = state.roundNo
-      send('prepared', { roundNo: state.roundNo })
+    if (state.phase !== 'prepare' || !clipUrl) return undefined
+    const player = new SnippetPlayer()
+    let cancelled = false
+    player
+      .load(clipUrl)
+      .then(() => {
+        if (!cancelled) send('prepared', { roundNo: state.roundNo })
+      })
+      .catch(() => {
+        // The server starts the round on its own deadline; the clip is retried when it plays.
+      })
+    return () => {
+      cancelled = true
+      player.dispose()
     }
-  }, [state.phase, state.roundNo, clip, send])
+  }, [state.phase, state.roundNo, state.syncs, clipUrl, send])
 
   // Quick match: the rank points come a moment after the final table; wait for them, but not forever.
   const quick = room.roomType === 'QUICK_MATCH'

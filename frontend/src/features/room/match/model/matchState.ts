@@ -55,7 +55,7 @@ export interface MatchState {
   /** Who guessed right this round, oldest first. */
   guessed: Guessed[]
   gaveUp: string[]
-  scores: Record<string, { totalScore: number; comboStreak: number }>
+  scores: Record<string, { totalScore: number; comboStreak: number; rank?: number }>
   /** Everyone seen in the room, so a player who left keeps a card marked "left". */
   roster: Record<string, RoomPlayerSummary>
   reveal: Reveal | null
@@ -65,6 +65,8 @@ export interface MatchState {
   rankChanges: PlayerRankChange[] | null
   /** Counts answers from the server (reply, error), so the screen knows its last action was handled. */
   replies: number
+  /** Counts snapshots and ROUND_PREPAREs, so the screen re-confirms `prepared` after either. */
+  syncs: number
 }
 
 export const INITIAL_MATCH: MatchState = {
@@ -86,6 +88,7 @@ export const INITIAL_MATCH: MatchState = {
   rankings: null,
   rankChanges: null,
   replies: 0,
+  syncs: 0,
 }
 
 export type MatchAction =
@@ -124,7 +127,7 @@ function nextNoticeId(state: MatchState): number {
 }
 
 function scoresOf(
-  list: readonly { userId: string; totalScore: number; comboStreak?: number }[],
+  list: readonly { userId: string; totalScore: number; comboStreak?: number; rank?: number }[],
   previous: MatchState['scores'],
 ): MatchState['scores'] {
   const next = { ...previous }
@@ -132,6 +135,8 @@ function scoresOf(
     next[item.userId] = {
       totalScore: item.totalScore,
       comboStreak: item.comboStreak ?? previous[item.userId]?.comboStreak ?? 0,
+      // The place is the server's call (BR-10); events that carry no place keep the last one.
+      rank: item.rank ?? previous[item.userId]?.rank,
     }
   }
   return next
@@ -151,6 +156,9 @@ export function reduceMessage(state: MatchState, message: ServerRealtimeMessage)
       const sameRound = currentRound !== null && currentRound.roundNo === state.roundNo
       const base: MatchState = {
         ...state,
+        // A snapshot replaces whatever the screen was waiting to hear back about.
+        replies: state.replies + 1,
+        syncs: state.syncs + 1,
         roster: rosterOf(message.room.players, state.roster),
         scores: scoresOf(message.scores, state.scores),
         totalRounds: currentRound?.totalRounds ?? message.room.roundCount,
@@ -205,6 +213,8 @@ export function reduceMessage(state: MatchState, message: ServerRealtimeMessage)
       return {
         ...state,
         ...freshRound(),
+        replies: state.replies + 1,
+        syncs: state.syncs + 1,
         phase: 'prepare',
         roundNo: message.roundNo,
         totalRounds: message.totalRounds,

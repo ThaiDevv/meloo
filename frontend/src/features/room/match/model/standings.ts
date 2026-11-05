@@ -8,6 +8,8 @@ export interface Standing {
   score: number
   /** Provisional place in this match; players with the same score share it. */
   rank: number
+  /** The place the server last gave this player, when it did. */
+  serverRank?: number
   connected: boolean
   left: boolean
   self: boolean
@@ -39,9 +41,15 @@ export function standingsOf(
       gaveUp: state.gaveUp.includes(player.userId),
     }
   })
-  rows.sort((a, b) => b.score - a.score)
+  // Equal scores are ordered by the place the server gave (BR-10: who answered right sooner).
+  const placeOf = (userId: string) => state.scores[userId]?.rank ?? Number.MAX_SAFE_INTEGER
+  rows.sort((a, b) => b.score - a.score || placeOf(a.userId) - placeOf(b.userId))
   return rows.map((row, index) => {
     const first = rows.findIndex((other) => other.score === row.score)
-    return { ...row, rank: (first === -1 ? index : first) + 1 }
+    return {
+      ...row,
+      rank: (first === -1 ? index : first) + 1,
+      serverRank: state.scores[row.userId]?.rank,
+    }
   })
 }

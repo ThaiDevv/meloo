@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { RoomPlayerSummary, ServerRealtimeMessage } from '@/shared/realtime/messages'
 import { GUEST_ID, HOST_ID, host, player, room } from '@/shared/realtime/testing/fixtures'
 import { INITIAL_MATCH, matchReducer, rosterOf, type MatchState } from './matchState'
+import { finalTable } from './finalTable'
 import { standingsOf } from './standings'
 
 const T = '2026-11-05T10:00:00Z'
@@ -146,7 +147,7 @@ describe('resync', () => {
     expect(state.roundNo).toBe(2)
     expect(state.clips[2]?.url).toBe('/api/v1/audio/r2')
     expect(state.timer?.endsAt).toBe('2026-11-05T10:00:35.000Z')
-    expect(state.scores[HOST_ID]).toEqual({ totalScore: 1013, comboStreak: 2 })
+    expect(state.scores[HOST_ID]).toEqual({ totalScore: 1013, comboStreak: 2, rank: 1 })
   })
 
   it('keeps what happened this round when the snapshot is of the same round', () => {
@@ -204,5 +205,29 @@ describe('standings', () => {
     ])
     expect(table[1]).toMatchObject({ self: true, connected: false, left: false })
     expect(table[2]).toMatchObject({ left: true })
+  })
+})
+
+describe('final table after a reload (M3)', () => {
+  it('keeps the places the server gave to players with equal scores', () => {
+    const players = [host(), player()]
+    const state = apply(withRoster(players), {
+      type: 'RESYNC_STATE',
+      room: room({ players }),
+      roomPhase: 'FINISHED',
+      currentRound: null,
+      scores: [
+        { userId: HOST_ID, nickname: 'ThaiPO', totalScore: 900, comboStreak: 0, rank: 2 },
+        { userId: GUEST_ID, nickname: 'PlayerTwo', totalScore: 900, comboStreak: 0, rank: 1 },
+      ],
+      lastRoundAnswer: null,
+      lastRoundResults: null,
+      serverTime: T,
+    })
+    const table = finalTable(state, standingsOf(state, players, null))
+    expect(table.map((row) => [row.nickname, row.rank])).toEqual([
+      ['PlayerTwo', 1],
+      ['ThaiPO', 2],
+    ])
   })
 })

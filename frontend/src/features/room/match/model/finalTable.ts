@@ -11,8 +11,13 @@ export function finalTable(state: MatchState, standings: readonly Standing[]): P
   if (state.rankings) {
     return state.rankings.map((row) => ({ ...row, left: row.left || gone.has(row.userId) }))
   }
-  return standings.map((player) => ({
-    rank: player.rank,
+  // After a reload the places are the server's; only without them is the order made from the scores.
+  const placed = standings.every((player) => player.serverRank !== undefined)
+  const ordered = placed
+    ? [...standings].sort((a, b) => (a.serverRank ?? 0) - (b.serverRank ?? 0))
+    : standings
+  return ordered.map((player) => ({
+    rank: placed ? (player.serverRank ?? player.rank) : player.rank,
     userId: player.userId,
     nickname: player.nickname,
     totalScore: player.score,

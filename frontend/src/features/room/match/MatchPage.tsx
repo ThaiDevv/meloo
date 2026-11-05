@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { useRoomStore } from '@/shared/realtime'
+import { useRoomRealtime, useRoomStore } from '@/shared/realtime'
 import type { RoomResponse } from '@/shared/realtime/messages'
 import { RoomRequestError, useJoinRoom } from '../lobby/api/roomApi'
 import { JoiningSkeleton } from '../lobby/components/JoiningSkeleton'
@@ -32,7 +32,22 @@ export function MatchPage() {
       ? stored
       : seededRoom(location.state)
   if (known) return <LiveMatch initialRoom={known} />
+  // A quick match has no code: its link carries the room id, and the room comes from the server's snapshot.
+  if (wanted === null && ROOM_ID_PATTERN.test(code)) return <ResyncThenMatch roomId={code} />
   return <JoinThenMatch code={wanted} />
+}
+
+const ROOM_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * Reload of a room without a code: connect to the room by its id and wait for the snapshot. Once the
+ * store holds the room, MatchPage renders the match; if the server refuses, the room is not the player's.
+ */
+function ResyncThenMatch({ roomId }: { roomId: string }) {
+  useRoomRealtime(roomId)
+  const lastError = useRoomStore((s) => s.lastError)
+  if (lastError) return <RoomProblem kind="not-found" />
+  return <JoiningSkeleton />
 }
 
 function JoinThenMatch({ code }: { code: string | null }) {

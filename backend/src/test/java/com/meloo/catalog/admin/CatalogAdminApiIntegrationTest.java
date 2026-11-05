@@ -375,4 +375,63 @@ class CatalogAdminApiIntegrationTest extends IntegrationTest {
         .isInstanceOfSatisfying(
             CatalogAdminException.class, e -> assertThat(e.reason()).isEqualTo(Reason.NOT_FOUND));
   }
+
+  @Test
+  @DisplayName("listPlaylists returns tracks and enabled counts for every playlist")
+  void listPlaylistsBatchesAllPlaylists() {
+    int min = admin.minPlaylistTracks();
+    addToStandard(track("Std", true).getId(), 0);
+    List<UUID> a = tracks(min);
+    List<UUID> b = tracks(min + 1);
+    UUID idA = admin.createPlaylist("a", "A", "A", a).after().id();
+    UUID idB = admin.createPlaylist("b", "B", "B", b).after().id();
+    admin.setTrackEnabled(b.getFirst(), false, null);
+
+    List<AdminPlaylistView> views = admin.listPlaylists();
+
+    assertThat(views).hasSize(3);
+    assertThat(views.getFirst().curated()).isTrue();
+    AdminPlaylistView viewA =
+        views.stream().filter(v -> v.id().equals(idA)).findFirst().orElseThrow();
+    AdminPlaylistView viewB =
+        views.stream().filter(v -> v.id().equals(idB)).findFirst().orElseThrow();
+    assertThat(viewA.trackIds()).containsExactlyElementsOf(a);
+    assertThat(viewA.enabledTrackCount()).isEqualTo(min);
+    assertThat(viewB.trackIds()).containsExactlyElementsOf(b);
+    assertThat(viewB.enabledTrackCount()).isEqualTo(min);
+    AdminPlaylistView std = views.stream().filter(v -> !v.curated()).findFirst().orElseThrow();
+    assertThat(std.trackIds()).hasSize(1);
+  }
+
+  @Test
+  @DisplayName("unknown genre on import and null arguments are rejected as client errors")
+  void invalidArgumentsRejected() {
+    UUID unknownGenre = UUID.randomUUID();
+    assertThatThrownBy(() -> admin.importByQuery("x", 10, unknownGenre, null))
+        .isInstanceOfSatisfying(
+            CatalogAdminException.class, e -> assertThat(e.reason()).isEqualTo(Reason.NOT_FOUND));
+    assertThatThrownBy(() -> admin.importByProviderTrackId("x", unknownGenre, null))
+        .isInstanceOfSatisfying(
+            CatalogAdminException.class, e -> assertThat(e.reason()).isEqualTo(Reason.NOT_FOUND));
+
+    UUID id =
+        admin.createPlaylist("mix", "Mix", "Mix", tracks(admin.minPlaylistTracks())).after().id();
+    UUID trackId = track("T", true).getId();
+    assertThatThrownBy(() -> admin.createPlaylist("n", "N", "N", null))
+        .isInstanceOfSatisfying(
+            CatalogAdminException.class,
+            e -> assertThat(e.reason()).isEqualTo(Reason.INVALID_ARGUMENT));
+    assertThatThrownBy(() -> admin.addTracksToPlaylist(id, null))
+        .isInstanceOfSatisfying(
+            CatalogAdminException.class,
+            e -> assertThat(e.reason()).isEqualTo(Reason.INVALID_ARGUMENT));
+    assertThatThrownBy(() -> admin.removeTracksFromPlaylist(id, null))
+        .isInstanceOfSatisfying(
+            CatalogAdminException.class,
+            e -> assertThat(e.reason()).isEqualTo(Reason.INVALID_ARGUMENT));
+    assertThatThrownBy(() -> admin.updateTrackMetadata(trackId, null))
+        .isInstanceOfSatisfying(
+            CatalogAdminException.class,
+            e -> assertThat(e.reason()).isEqualTo(Reason.INVALID_ARGUMENT));
+  }
 }

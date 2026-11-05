@@ -6,6 +6,7 @@ import com.meloo.catalog.api.CatalogAdminException;
 import com.meloo.catalog.api.CatalogAdminException.Reason;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -41,12 +42,62 @@ class AdminPlaylistOperations {
 
   @Transactional(readOnly = true)
   List<AdminPlaylistView> list() {
-    List<UUID> ids =
-        jdbc.queryForList(
-            "SELECT id FROM playlist ORDER BY kind DESC, created_at, id",
-            new MapSqlParameterSource(),
-            UUID.class);
-    return ids.stream().map(this::view).toList();
+    List<AdminPlaylistView> heads =
+        jdbc.query(
+            "SELECT id, code, name_vi, name_en, kind, enabled FROM playlist"
+                + " ORDER BY kind, created_at, id",
+            (rs, i) ->
+                new AdminPlaylistView(
+                    rs.getObject("id", UUID.class),
+                    rs.getString("code"),
+                    rs.getString("name_vi"),
+                    rs.getString("name_en"),
+                    "CURATED".equals(rs.getString("kind")),
+                    rs.getBoolean("enabled"),
+                    List.of(),
+                    0));
+    if (heads.isEmpty()) {
+      return List.of();
+    }
+    List<UUID> ids = heads.stream().map(AdminPlaylistView::id).toList();
+    MapSqlParameterSource p = new MapSqlParameterSource("ids", ids);
+
+    Map<UUID, List<UUID>> tracksByPlaylist = new HashMap<>();
+    jdbc.query(
+        "SELECT playlist_id, track_id FROM playlist_track WHERE playlist_id IN (:ids)"
+            + " ORDER BY playlist_id, position, track_id",
+        p,
+        rs -> {
+          tracksByPlaylist
+              .computeIfAbsent(rs.getObject("playlist_id", UUID.class), k -> new ArrayList<>())
+              .add(rs.getObject("track_id", UUID.class));
+        });
+    Map<UUID, Integer> enabledByPlaylist = new HashMap<>();
+    jdbc.query(
+        """
+        SELECT pt.playlist_id, count(*) AS cnt
+        FROM playlist_track pt JOIN track t ON t.id = pt.track_id
+        WHERE pt.playlist_id IN (:ids) AND t.enabled = true
+        GROUP BY pt.playlist_id
+        """,
+        p,
+        rs -> {
+          enabledByPlaylist.put(rs.getObject("playlist_id", UUID.class), rs.getInt("cnt"));
+        });
+
+    return heads.stream()
+        .map(
+            h ->
+                new AdminPlaylistView(
+                    h.id(),
+                    h.code(),
+                    h.nameVi(),
+                    h.nameEn(),
+                    h.curated(),
+                    h.enabled(),
+                    tracksByPlaylist.getOrDefault(h.id(), List.of()),
+                    enabledByPlaylist.getOrDefault(h.id(), 0)))
+        .toList();
   }
 
   AdminChange<AdminPlaylistView> create(
@@ -57,6 +108,7 @@ class AdminPlaylistOperations {
     }
     checkName(nameVi);
     checkName(nameEn);
+    requireNotNull(trackIds, "trackIds");
     LinkedHashSet<UUID> ids = new LinkedHashSet<>(trackIds);
     requireValidTracks(ids);
     if (ids.size() < minTracks) {
@@ -106,6 +158,7 @@ class AdminPlaylistOperations {
   }
 
   AdminChange<AdminPlaylistView> addTracks(UUID playlistId, Collection<UUID> trackIds) {
+    requireNotNull(trackIds, "trackIds");
     AdminPlaylistView before = lockCurated(playlistId);
     LinkedHashSet<UUID> toAdd = new LinkedHashSet<>(trackIds);
     toAdd.removeAll(before.trackIds());
@@ -115,6 +168,7 @@ class AdminPlaylistOperations {
   }
 
   AdminChange<AdminPlaylistView> removeTracks(UUID playlistId, Collection<UUID> trackIds) {
+    requireNotNull(trackIds, "trackIds");
     AdminPlaylistView before = lockCurated(playlistId);
     if (!trackIds.isEmpty()) {
       jdbc.update(
@@ -162,7 +216,7 @@ class AdminPlaylistOperations {
     if (ids.isEmpty()) {
       return;
     }
-    Map<UUID, Boolean> found = new java.util.HashMap<>();
+    Map<UUID, Boolean> found = new HashMap<>();
     jdbc.query(
         "SELECT id, enabled FROM track WHERE id IN (:ids)",
         new MapSqlParameterSource("ids", ids),
@@ -237,6 +291,12 @@ class AdminPlaylistOperations {
         head.enabled(),
         tracks,
         enabledCount == null ? 0 : enabledCount);
+  }
+
+  private static void requireNotNull(Object value, String name) {
+    if (value == null) {
+      throw new CatalogAdminException(Reason.INVALID_ARGUMENT, name + " must not be null");
+    }
   }
 
   private void checkName(String name) {

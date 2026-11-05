@@ -130,18 +130,12 @@ class AdminTrackOperations {
   }
 
   AdminChange<AdminTrackView> updateMetadata(UUID trackId, TrackMetadataUpdate update) {
+    if (update == null) {
+      throw new CatalogAdminException(Reason.INVALID_ARGUMENT, "update must not be null");
+    }
     AdminTrackView before = lockTrack(trackId);
 
-    if (update.genreId() != null) {
-      Integer genres =
-          jdbc.queryForObject(
-              "SELECT count(*) FROM genre WHERE id = :id",
-              new MapSqlParameterSource("id", update.genreId()),
-              Integer.class);
-      if (genres == null || genres == 0) {
-        throw new CatalogAdminException(Reason.NOT_FOUND, "Genre not found: " + update.genreId());
-      }
-    }
+    requireGenre(update.genreId());
     String country = update.countryCode();
     if (country != null) {
       country = country.strip().toUpperCase(Locale.ROOT);
@@ -166,6 +160,21 @@ class AdminTrackOperations {
             .addValue("year", year)
             .addValue("id", trackId));
     return new AdminChange<>(before, getView(trackId));
+  }
+
+  @Transactional(readOnly = true)
+  void requireGenre(@Nullable UUID genreId) {
+    if (genreId == null) {
+      return;
+    }
+    Integer genres =
+        jdbc.queryForObject(
+            "SELECT count(*) FROM genre WHERE id = :id",
+            new MapSqlParameterSource("id", genreId),
+            Integer.class);
+    if (genres == null || genres == 0) {
+      throw new CatalogAdminException(Reason.NOT_FOUND, "Genre not found: " + genreId);
+    }
   }
 
   @Transactional(readOnly = true)

@@ -67,6 +67,7 @@ class CatalogAdminApiImpl implements CatalogAdminApi {
     if (query == null || query.isBlank()) {
       throw new CatalogAdminException(Reason.INVALID_ARGUMENT, "query must not be blank");
     }
+    tracks.requireGenre(genreId);
     int bounded = Math.max(1, Math.min(limit, MAX_IMPORT_LIMIT));
     return doImport(musicProvider.search(query.strip(), bounded), genreId, defaultCountryCode);
   }
@@ -77,6 +78,7 @@ class CatalogAdminApiImpl implements CatalogAdminApi {
     if (providerTrackId == null || providerTrackId.isBlank()) {
       throw new CatalogAdminException(Reason.INVALID_ARGUMENT, "providerTrackId must not be blank");
     }
+    tracks.requireGenre(genreId);
     ProviderTrack found =
         musicProvider
             .getTrack(providerTrackId.strip())

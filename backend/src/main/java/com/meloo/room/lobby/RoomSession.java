@@ -154,6 +154,12 @@ public final class RoomSession {
     return Collections.unmodifiableList(waitingPlayers);
   }
 
+  /** Promotes waiting members on the room actor without changing host, readiness or timers. */
+  public void promoteWaitingPlayers() {
+    players.addAll(waitingPlayers);
+    waitingPlayers.clear();
+  }
+
   public Set<UUID> bannedUserIds() {
     return Collections.unmodifiableSet(bannedUserIds);
   }

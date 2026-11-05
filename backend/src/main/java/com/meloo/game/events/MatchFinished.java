@@ -25,7 +25,40 @@ public record MatchFinished(
     Instant startedAt,
     Instant endedAt,
     List<RoundSummary> rounds,
-    List<PlayerSummary> players) {
+    List<PlayerSummary> players,
+    @Nullable UUID roomId) {
+
+  /** Compatibility for solo publishers, which have no room. */
+  public MatchFinished(
+      UUID eventId,
+      UUID matchId,
+      MatchType type,
+      String mode,
+      boolean ranked,
+      MatchEndStatus status,
+      int roundCount,
+      @Nullable UUID playlistId,
+      @Nullable String filter,
+      Instant startedAt,
+      Instant endedAt,
+      List<RoundSummary> rounds,
+      List<PlayerSummary> players) {
+    this(
+        eventId,
+        matchId,
+        type,
+        mode,
+        ranked,
+        status,
+        roundCount,
+        playlistId,
+        filter,
+        startedAt,
+        endedAt,
+        rounds,
+        players,
+        null);
+  }
 
   public MatchFinished {
     Objects.requireNonNull(eventId, "eventId must not be null");

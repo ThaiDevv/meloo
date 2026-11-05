@@ -1,5 +1,7 @@
 package com.meloo.game.events;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -17,7 +19,45 @@ public record PlayerSummary(
     int rank,
     int correctCount,
     long correctTimeMs,
-    List<RoundPlayerResult> results) {
+    List<RoundPlayerResult> results,
+    boolean left) {
+
+  /** Compatibility for participants who completed a solo match. */
+  public PlayerSummary(
+      @Nullable UUID userId,
+      String nickname,
+      boolean isGuest,
+      int totalScore,
+      int rank,
+      int correctCount,
+      long correctTimeMs,
+      List<RoundPlayerResult> results) {
+    this(userId, nickname, isGuest, totalScore, rank, correctCount, correctTimeMs, results, false);
+  }
+
+  /** Older Event Publication Registry rows predate the departure flag. */
+  @JsonCreator
+  public static PlayerSummary fromJson(
+      @JsonProperty("userId") @Nullable UUID userId,
+      @JsonProperty("nickname") String nickname,
+      @JsonProperty("isGuest") boolean isGuest,
+      @JsonProperty("totalScore") int totalScore,
+      @JsonProperty("rank") int rank,
+      @JsonProperty("correctCount") int correctCount,
+      @JsonProperty("correctTimeMs") long correctTimeMs,
+      @JsonProperty("results") List<RoundPlayerResult> results,
+      @JsonProperty("left") @Nullable Boolean left) {
+    return new PlayerSummary(
+        userId,
+        nickname,
+        isGuest,
+        totalScore,
+        rank,
+        correctCount,
+        correctTimeMs,
+        results,
+        Boolean.TRUE.equals(left));
+  }
 
   public PlayerSummary {
     Objects.requireNonNull(nickname, "nickname must not be null");

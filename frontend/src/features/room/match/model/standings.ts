@@ -45,10 +45,17 @@ export function standingsOf(
   const placeOf = (userId: string) => state.scores[userId]?.rank ?? Number.MAX_SAFE_INTEGER
   rows.sort((a, b) => b.score - a.score || placeOf(a.userId) - placeOf(b.userId))
   return rows.map((row, index) => {
+    const tied = rows.filter((other) => other.score === row.score)
     const first = rows.findIndex((other) => other.score === row.score)
+    // A tie the server has already broken (BR-10) shows its places; otherwise equal scores share one.
+    const places = tied.map((other) => state.scores[other.userId]?.rank)
+    const broken =
+      tied.length > 1 &&
+      places.every((place) => place !== undefined) &&
+      new Set(places).size === tied.length
     return {
       ...row,
-      rank: (first === -1 ? index : first) + 1,
+      rank: (broken ? index : first === -1 ? index : first) + 1,
       serverRank: state.scores[row.userId]?.rank,
     }
   })

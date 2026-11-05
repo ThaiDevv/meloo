@@ -90,6 +90,15 @@ export function LiveMatch({ initialRoom }: { initialRoom: RoomResponse }) {
   const me = useAuthStore((auth) => auth.user?.id ?? null)
   const roomId = initialRoom.roomId
   const [state, dispatch] = useReducer(matchReducer, initialRoom, initialState)
+  // One player for the whole match: it decodes the clip while the round is prepared and the round
+  // screen then plays that same buffer, so nothing is downloaded again once the clock runs.
+  const [player] = useState(() => new SnippetPlayer())
+  useEffect(
+    () => () => {
+      player.dispose()
+    },
+    [player],
+  )
   const [query, setQuery] = useState('')
   const [pendingAt, setPendingAt] = useState<number | null>(null)
   const search = useTrackSearch(query)
@@ -161,7 +170,6 @@ export function LiveMatch({ initialRoom }: { initialRoom: RoomResponse }) {
   const clipUrl = clip?.url
   useEffect(() => {
     if (state.phase !== 'prepare' || !clipUrl) return undefined
-    const player = new SnippetPlayer()
     let cancelled = false
     player
       .load(clipUrl)
@@ -173,9 +181,8 @@ export function LiveMatch({ initialRoom }: { initialRoom: RoomResponse }) {
       })
     return () => {
       cancelled = true
-      player.dispose()
     }
-  }, [state.phase, state.roundNo, state.syncs, clipUrl, send])
+  }, [state.phase, state.roundNo, state.syncs, clipUrl, send, player])
 
   // Quick match: the rank points come a moment after the final table; wait for them, but not forever.
   const quick = room.roomType === 'QUICK_MATCH'
@@ -264,6 +271,7 @@ export function LiveMatch({ initialRoom }: { initialRoom: RoomResponse }) {
     main = (
       <GameRound
         round={round}
+        player={player}
         totalScore={myScore}
         combo={{ streak: me ? (state.scores[me]?.comboStreak ?? 0) : 0 }}
         timer={state.timer ?? undefined}

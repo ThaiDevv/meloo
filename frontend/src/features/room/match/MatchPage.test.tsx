@@ -5,6 +5,8 @@ import { I18nextProvider } from 'react-i18next'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import i18n from '@/i18n'
+import { server } from '@/mocks/server'
+import { gameAudioHandlers } from '../../game-core/mocks'
 import { useAuthStore } from '@/shared/api/authStore'
 import { useRoomStore } from '@/shared/realtime'
 import type { RoomResponse } from '@/shared/realtime/messages'
@@ -569,5 +571,27 @@ describe('regressions of review round 1', () => {
       expect(kit.latest().commands('prepared')).toHaveLength(2)
     })
     load.mockRestore()
+  })
+
+  it('plays the clip it prepared without downloading it again once the round starts (M4)', async () => {
+    server.use(...gameAudioHandlers)
+    const fetched: string[] = []
+    const onStart = ({ request }: { request: Request }) => {
+      if (request.url.includes('/api/v1/audio/')) fetched.push(request.url)
+    }
+    server.events.on('request:start', onStart)
+    renderMatch()
+    await goLive(playing(), 'ROUND_PREPARE')
+    await waitFor(() => {
+      expect(kit.latest().commands('prepared')).toHaveLength(1)
+    })
+    expect(fetched).toHaveLength(1)
+    emit(ROUND, { type: 'ROUND_START', roundNo: 2, durationMs: 45000 })
+    await screen.findByTestId('points-left')
+    await waitFor(() => {
+      expect(FakeAudioContext.instances[0]?.sources.length).toBeGreaterThan(0)
+    })
+    expect(fetched).toHaveLength(1)
+    server.events.removeListener('request:start', onStart)
   })
 })

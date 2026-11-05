@@ -230,4 +230,20 @@ describe('final table after a reload (M3)', () => {
       ['ThaiPO', 2],
     ])
   })
+
+  it('labels the cards with the server places once the server has broken a tie', () => {
+    const players = [host(), player()]
+    const state = apply(withRoster(players), {
+      type: 'SCOREBOARD_UPDATE',
+      scores: [
+        { userId: HOST_ID, nickname: 'ThaiPO', totalScore: 900, comboStreak: 0, rank: 2 },
+        { userId: GUEST_ID, nickname: 'PlayerTwo', totalScore: 900, comboStreak: 0, rank: 1 },
+      ],
+      serverTime: T,
+    })
+    expect(standingsOf(state, players, null).map((row) => [row.nickname, row.rank])).toEqual([
+      ['PlayerTwo', 1],
+      ['ThaiPO', 2],
+    ])
+  })
 })

@@ -55,6 +55,33 @@ public class SoloMatch {
       String nickname,
       boolean isGuest,
       SoloModeDto mode,
+      int roundCount,
+      @Nullable UUID playlistId,
+      @Nullable TrackFilter filter,
+      @Nullable SoloFilterDto filterDto,
+      List<TrackInfo> candidateTracks,
+      Instant startTime) {
+    this(
+        matchId,
+        userId,
+        nickname,
+        isGuest,
+        mode,
+        false,
+        roundCount,
+        playlistId,
+        filter,
+        filterDto,
+        candidateTracks,
+        startTime);
+  }
+
+  public SoloMatch(
+      UUID matchId,
+      UUID userId,
+      String nickname,
+      boolean isGuest,
+      SoloModeDto mode,
       boolean ranked,
       int roundCount,
       @Nullable UUID playlistId,
@@ -67,7 +94,7 @@ public class SoloMatch {
     this.nickname = Objects.requireNonNull(nickname, "nickname must not be null");
     this.isGuest = isGuest;
     this.mode = Objects.requireNonNull(mode, "mode must not be null");
-    this.ranked = ranked;
+    this.ranked = false;
     this.roundCount = roundCount;
     this.playlistId = playlistId;
     this.filter = filter;
@@ -106,7 +133,7 @@ public class SoloMatch {
   }
 
   public boolean isRanked() {
-    return ranked;
+    return false;
   }
 
   public int roundCount() {
@@ -241,6 +268,7 @@ public class SoloMatch {
       return false;
     }
     this.status = SoloMatchStatus.FINISHED;
+    this.ranked = false;
     this.endedAt = now;
     this.lastActivityAt = now;
     return true;

@@ -177,5 +177,55 @@
       "NOT_ENOUGH_TRACKS": "Bộ nhạc này chưa đủ bài cho số vòng đã chọn (thiếu {{n}} bài). Hãy đổi bộ nhạc hoặc chọn ít vòng hơn."
     },
     "startNoReply": "Máy chủ chưa phản hồi lệnh bắt đầu. Hãy thử lại sau ít giây."
+  },
+  "match": {
+    "title": "Trận đấu",
+    "joining": "Đang vào trận…",
+    "prepare": "Chuẩn bị vòng {{n}}/{{total}}…",
+    "sidebar": "Bảng điểm và trò chuyện",
+    "scoreboard": "Bảng điểm",
+    "card": {
+      "toggle": "Xem tên {{name}}",
+      "guessedAt": "đúng ở {{label}}",
+      "gaveUp": "hết lượt",
+      "away": "Mất kết nối",
+      "left": "Đã rời"
+    },
+    "feed": {
+      "guessed": "{{name}} đúng ở {{label}}"
+    },
+    "done": {
+      "correct": "Bạn đúng ở {{label}}!",
+      "out": "Bạn đã hết lượt ở vòng này",
+      "waiting": "Đang chờ những người còn lại…"
+    },
+    "result": {
+      "heading": "Kết quả vòng {{n}}",
+      "player": "Người chơi",
+      "base": "Cơ bản",
+      "combo": "Combo",
+      "speed": "Thưởng tốc độ",
+      "round": "Điểm vòng",
+      "next": "Vòng tiếp theo sau {{n}} giây",
+      "last": "Đang tổng kết trận…"
+    },
+    "notice": {
+      "trackReplaced": "Vòng {{n}} đã đổi sang bài khác vì bài trước không phát được. Vòng chơi lại từ đầu.",
+      "earlyEnded": {
+        "ONLY_ONE_PLAYER_REMAINED": "Trận kết thúc sớm vì chỉ còn 1 người chơi.",
+        "HOST_ABANDONED": "Trận kết thúc sớm vì chủ phòng đã rời đi."
+      }
+    },
+    "podium": {
+      "heading": "Bục vinh danh",
+      "place": "Hạng",
+      "playAgain": "Chơi lại",
+      "newMatch": "Tìm trận mới"
+    },
+    "rank": {
+      "calculating": "Đang tính điểm rank…",
+      "points": "{{n}} điểm rank",
+      "profile": "Xem điểm rank ở hồ sơ"
+    }
   }
 }

@@ -55,6 +55,11 @@ export interface GameRoundProps {
   /** The clip link expired: fetch the round again for a fresh `audio.url`. */
   onAudioExpired?: () => void
   onContinue?: () => void
+  /**
+   * A player that already holds this round's decoded clip (rooms load it while the round is prepared).
+   * The caller owns it and disposes it; without it the screen makes and disposes its own.
+   */
+  player?: SnippetPlayer
 }
 
 /**
@@ -66,12 +71,13 @@ export function GameRound(props: GameRoundProps) {
   const { round, result, totalScore, combo, matchFinished, busy = false, onContinue } = props
   const { t } = useTranslation('game')
   // One player for the whole match: once a tap has unlocked sound, later rounds can start by themselves.
-  const [player] = useState(() => new SnippetPlayer())
+  const [player] = useState(() => props.player ?? new SnippetPlayer())
+  const borrowed = props.player !== undefined
   useEffect(
     () => () => {
-      player.dispose()
+      if (!borrowed) player.dispose()
     },
-    [player],
+    [player, borrowed],
   )
 
   return (

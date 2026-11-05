@@ -177,5 +177,55 @@
       "NOT_ENOUGH_TRACKS": "This music set does not have enough tracks for the chosen rounds ({{n}} short). Change the music or pick fewer rounds."
     },
     "startNoReply": "The server did not answer the start command. Try again in a few seconds."
+  },
+  "match": {
+    "title": "Match",
+    "joining": "Joining the match…",
+    "prepare": "Getting round {{n}}/{{total}} ready…",
+    "sidebar": "Scores and chat",
+    "scoreboard": "Scoreboard",
+    "card": {
+      "toggle": "Show name of {{name}}",
+      "guessedAt": "got it at {{label}}",
+      "gaveUp": "out of turns",
+      "away": "Disconnected",
+      "left": "Left"
+    },
+    "feed": {
+      "guessed": "{{name}} got it at {{label}}"
+    },
+    "done": {
+      "correct": "You got it at {{label}}!",
+      "out": "You are out of turns this round",
+      "waiting": "Waiting for the others…"
+    },
+    "result": {
+      "heading": "Round {{n}} results",
+      "player": "Player",
+      "base": "Base",
+      "combo": "Combo",
+      "speed": "Speed bonus",
+      "round": "Round score",
+      "next": "Next round in {{n}} s",
+      "last": "Wrapping up the match…"
+    },
+    "notice": {
+      "trackReplaced": "Round {{n}} switched to another track because the first one would not play. The round starts over.",
+      "earlyEnded": {
+        "ONLY_ONE_PLAYER_REMAINED": "The match ended early because only 1 player was left.",
+        "HOST_ABANDONED": "The match ended early because the host left."
+      }
+    },
+    "podium": {
+      "heading": "Podium",
+      "place": "Place",
+      "playAgain": "Play again",
+      "newMatch": "Find a new match"
+    },
+    "rank": {
+      "calculating": "Calculating rank points…",
+      "points": "{{n}} rank points",
+      "profile": "See your rank points on your profile"
+    }
   }
 }

@@ -300,6 +300,32 @@ describe('SoloPlayPage', () => {
     expect(screen.getByText('5 vòng · Toàn bộ kho nhạc')).toBeInTheDocument()
   }, 15_000)
 
+  it('plays again with the same rounds and filter', async () => {
+    const user = userEvent.setup()
+    const { data } = await apiClient.POST('/api/v1/solo/matches', {
+      body: { mode: 'PRACTICE', roundCount: 5, filter: { genreCodes: ['kpop'] } },
+    })
+    const bodies: unknown[] = []
+    server.events.on('request:start', ({ request }) => {
+      if (request.method === 'POST' && request.url.endsWith('/api/v1/solo/matches')) {
+        void request
+          .clone()
+          .json()
+          .then((body) => bodies.push(body))
+      }
+    })
+    renderAt(`/solo/${data?.matchId ?? ''}`)
+    await user.click(await screen.findByRole('button', { name: 'Vào vòng 1' }))
+    for (const answer of ANSWERS) {
+      await guess(user, answer)
+      await next(user)
+    }
+    await user.click(await screen.findByRole('button', { name: 'Chơi lại' }))
+    await screen.findByRole('button', { name: 'Vào vòng 1' })
+    server.events.removeAllListeners()
+    expect(bodies).toEqual([{ mode: 'PRACTICE', roundCount: 5, filter: { genreCodes: ['kpop'] } }])
+  }, 15_000)
+
   it('shares the result without song titles, by clipboard when there is no share sheet', async () => {
     const user = userEvent.setup()
     const writeText = vi.fn().mockResolvedValue(undefined)

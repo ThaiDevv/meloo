@@ -75,7 +75,7 @@ describe('SoloSetupPage', () => {
     expect(bodies).toEqual([{ mode: 'PRACTICE', roundCount: 15 }])
   })
 
-  it('sends the chosen filter ', async () => {
+  it('sends the chosen filter', async () => {
     const user = userEvent.setup()
     const bodies = captureCreate()
     renderPage()
@@ -120,7 +120,7 @@ describe('SoloSetupPage', () => {
     expect(within(summary).getByText('Chưa chọn bộ đề')).toBeInTheDocument()
   })
 
-  it('sends playlistId and no filter when starting with a playlist ', async () => {
+  it('sends playlistId and no filter when starting with a playlist', async () => {
     const user = userEvent.setup()
     const bodies = captureCreate()
     renderPage()

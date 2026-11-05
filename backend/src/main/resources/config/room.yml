@@ -10,4 +10,26 @@ meloo:
       default-round-count: 10
       idle-timeout: 10m
       disconnect-timeout: 30s
+    match:
+      prepare-timeout: 5s
+      round-duration: 45s
+      timeout-buffer: 250ms
+      reveal-duration: 5s
+      podium-duration: 10s
+
+---
+spring:
+  config:
+    activate:
+      on-profile: e2e
+meloo:
+  room:
+    lobby:
+      disconnect-timeout: 1s
+    match:
+      prepare-timeout: 200ms
+      round-duration: 2s
+      timeout-buffer: 100ms
+      reveal-duration: 200ms
+      podium-duration: 200ms
 

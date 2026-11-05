@@ -67,6 +67,20 @@ import org.springframework.stereotype.Service;
 @Service
 public class RoomLobbyService {
 
+  private org.springframework.context.ApplicationEventPublisher matchLifecyclePublisher =
+      event -> {};
+
+  @org.springframework.beans.factory.annotation.Autowired
+  void setMatchLifecyclePublisher(org.springframework.context.ApplicationEventPublisher publisher) {
+    this.matchLifecyclePublisher = publisher;
+  }
+
+  private void notifyMatch(
+      UUID roomId, UUID userId, com.meloo.room.match.RoomMembershipChanged.Change change) {
+    matchLifecyclePublisher.publishEvent(
+        new com.meloo.room.match.RoomMembershipChanged(roomId, userId, change));
+  }
+
   private final RoomRegistry roomRegistry;
   private final RoomEventPublisher eventPublisher;
   private final CatalogService catalogService;
@@ -756,6 +770,7 @@ public class RoomLobbyService {
           }
 
           session.kickPlayer(targetUserId);
+          notifyMatch(roomId, targetUserId, com.meloo.room.match.RoomMembershipChanged.Change.LEFT);
           roomRegistry.update(
               new RoomDescriptor(roomId, session.allMemberIds(), session.isPrivate()));
           eventPublisher.publish(roomId, RoomTopic.LOBBY, new PlayerKickedEvent(targetUserId, now));
@@ -797,6 +812,7 @@ public class RoomLobbyService {
           if (!session.hasMember(userId)) return;
           Instant now = clock.instant();
           Optional<UUID> newHostIdOpt = session.removePlayer(userId);
+          notifyMatch(roomId, userId, com.meloo.room.match.RoomMembershipChanged.Change.LEFT);
           roomRegistry.update(
               new RoomDescriptor(roomId, session.allMemberIds(), session.isPrivate()));
 
@@ -863,6 +879,8 @@ public class RoomLobbyService {
               if (playerOpt.isPresent()) {
                 RoomPlayer player = playerOpt.get();
                 player.setConnected(true);
+                notifyMatch(
+                    roomId, userId, com.meloo.room.match.RoomMembershipChanged.Change.CONNECTED);
                 eventPublisher.publish(
                     roomId, RoomTopic.LOBBY, new PlayerConnectionChangedEvent(userId, true, now));
               }
@@ -880,6 +898,8 @@ public class RoomLobbyService {
               if (playerOpt.isPresent()) {
                 RoomPlayer player = playerOpt.get();
                 player.setConnected(false);
+                notifyMatch(
+                    roomId, userId, com.meloo.room.match.RoomMembershipChanged.Change.DISCONNECTED);
                 eventPublisher.publish(
                     roomId, RoomTopic.LOBBY, new PlayerConnectionChangedEvent(userId, false, now));
 
@@ -900,6 +920,7 @@ public class RoomLobbyService {
     if (playerOpt.isPresent() && !playerOpt.get().isConnected()) {
       Instant now = clock.instant();
       Optional<UUID> newHostId = session.removePlayer(userId);
+      notifyMatch(roomId, userId, com.meloo.room.match.RoomMembershipChanged.Change.LEFT);
       roomRegistry.update(new RoomDescriptor(roomId, session.allMemberIds(), session.isPrivate()));
       eventPublisher.publish(
           roomId,

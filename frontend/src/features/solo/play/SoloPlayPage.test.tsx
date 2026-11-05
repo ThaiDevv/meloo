@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent, { type UserEvent } from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { I18nextProvider } from 'react-i18next'
@@ -320,6 +320,35 @@ describe('SoloPlayPage', () => {
       await guess(user, answer)
       await next(user)
     }
+    await user.click(await screen.findByRole('button', { name: 'Chơi lại' }))
+    await screen.findByRole('button', { name: 'Vào vòng 1' })
+    server.events.removeAllListeners()
+    expect(bodies).toEqual([{ mode: 'PRACTICE', roundCount: 5, filter: { genreCodes: ['kpop'] } }])
+  }, 15_000)
+
+  it('plays again with the same filter after the summary is reopened', async () => {
+    const user = userEvent.setup()
+    const { data } = await apiClient.POST('/api/v1/solo/matches', {
+      body: { mode: 'PRACTICE', roundCount: 5, filter: { genreCodes: ['kpop'] } },
+    })
+    const matchId = data?.matchId ?? ''
+    renderAt(`/solo/${matchId}`)
+    await user.click(await screen.findByRole('button', { name: 'Thoát' }))
+    await user.click(await screen.findByRole('button', { name: 'Bỏ trận' }))
+    await screen.findByRole('heading', { level: 1, name: 'Trận luyện tập đã dừng' })
+
+    // Reload: the page only has the stored result now, no SoloMatch in memory.
+    cleanup()
+    const bodies: unknown[] = []
+    server.events.on('request:start', ({ request }) => {
+      if (request.method === 'POST' && request.url.endsWith('/api/v1/solo/matches')) {
+        void request
+          .clone()
+          .json()
+          .then((body) => bodies.push(body))
+      }
+    })
+    renderAt(`/solo/${matchId}`)
     await user.click(await screen.findByRole('button', { name: 'Chơi lại' }))
     await screen.findByRole('button', { name: 'Vào vòng 1' })
     server.events.removeAllListeners()

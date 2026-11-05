@@ -352,4 +352,53 @@ class SoloMatchTest {
     assertThat(match.mode()).isEqualTo(SoloModeDto.PRACTICE);
     assertThat(match.isRanked()).isFalse();
   }
+
+  @Test
+  @DisplayName("Mọi trận chơi đơn luôn có ranked = false, kể cả khi FINISHED (AC 2, BR-23)")
+  void testSoloMatch_AlwaysRankedFalse_EvenWhenFinished() {
+    UUID matchId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+    Instant now = Instant.parse("2026-10-29T12:00:00Z");
+
+    // Thử truyền ranked = true hoặc false vào constructor cũ/mới, match vẫn luôn ranked = false
+    SoloMatch match =
+        new SoloMatch(
+            matchId,
+            userId,
+            "Thái",
+            false,
+            SoloModeDto.PRACTICE,
+            true,
+            5,
+            null,
+            null,
+            null,
+            List.of(),
+            now);
+
+    assertThat(match.isRanked()).isFalse();
+
+    Instant finishTime = now.plusSeconds(180);
+    boolean finished = match.finish(finishTime);
+    assertThat(finished).isTrue();
+    assertThat(match.status()).isEqualTo(SoloMatchStatus.FINISHED);
+    assertThat(match.isRanked()).isFalse();
+    assertThat(match.endedAt()).isEqualTo(finishTime);
+
+    // Constructor mới không cần tham số ranked
+    SoloMatch match2 =
+        new SoloMatch(
+            UUID.randomUUID(),
+            userId,
+            "Thái",
+            false,
+            SoloModeDto.PRACTICE,
+            5,
+            null,
+            null,
+            null,
+            List.of(),
+            now);
+    assertThat(match2.isRanked()).isFalse();
+  }
 }

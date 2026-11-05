@@ -746,7 +746,8 @@ class SoloGameIntegrationTest extends IntegrationTest {
   }
 
   @Test
-  @DisplayName("Bỏ trận PRACTICE giữa chừng: rounds không chứa vòng dở; bỏ trận RANKED trả 409")
+  @DisplayName(
+      "Bỏ trận chơi đơn (PRACTICE) giữa chừng: rounds không chứa vòng dở; bỏ trận thành công với mọi trận active (AC 3)")
   void testAbandonPracticeMatchAndRankedMatch() throws Exception {
     UUID userId = UUID.randomUUID();
 
@@ -2221,6 +2222,97 @@ class SoloGameIntegrationTest extends IntegrationTest {
         .untilAsserted(() -> assertThat(testListener.findFinishedEvent(matchId)).isPresent());
     MatchFinished event = testListener.findFinishedEvent(matchId).get();
     assertThat(event.playlistId()).isEqualTo(standardPlaylistId);
+  }
+
+  @Test
+  @DisplayName(
+      "Tạo trận với mode RANKED không hợp lệ theo hợp đồng mới: trả về 400 VALIDATION_FAILED (AC 1)")
+  void testCreateSoloMatch_InvalidModeRanked_Returns400ValidationFailed() throws Exception {
+    UUID userId = UUID.randomUUID();
+
+    String requestJson =
+        """
+        {
+          "mode": "RANKED",
+          "roundCount": 5
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches")
+                .with(jwt().jwt(j -> j.subject(userId.toString()).claim("nickname", "Tester")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestJson))
+        .andExpect(status().isBadRequest())
+        .andExpect(header().string("Content-Type", "application/problem+json"))
+        .andExpect(jsonPath("$.status").value(400))
+        .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+  }
+
+  @Test
+  @DisplayName("Tạo trận bỏ qua mode: mặc định là PRACTICE và ranked = false (AC 1, AC 2)")
+  void testCreateSoloMatch_DefaultModeIsPracticeAndRankedIsFalse() throws Exception {
+    UUID userId = UUID.randomUUID();
+
+    String requestJson =
+        """
+        {
+          "roundCount": 5
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches")
+                .with(jwt().jwt(j -> j.subject(userId.toString()).claim("nickname", "Tester")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestJson))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.mode").value("PRACTICE"))
+        .andExpect(jsonPath("$.ranked").value(false));
+  }
+
+  @Test
+  @DisplayName(
+      "Trận chơi đơn khi hoàn thành (FINISHED): ranked luôn bằng false cả ở DTO và sự kiện MatchFinished (AC 2)")
+  void testSoloMatch_Finished_RankedIsFalse() throws Exception {
+    UUID userId = UUID.randomUUID();
+
+    CreateSoloMatchRequestDto req = new CreateSoloMatchRequestDto();
+    req.setMode(SoloModeDto.PRACTICE);
+    req.setRoundCount(CreateSoloMatchRequestDto.RoundCountEnum.NUMBER_5);
+
+    MvcResult createRes =
+        mockMvc
+            .perform(
+                post("/api/v1/solo/matches")
+                    .with(jwt().jwt(j -> j.subject(userId.toString()).claim("nickname", "Tester")))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.ranked").value(false))
+            .andReturn();
+
+    UUID matchId =
+        UUID.fromString(JsonPath.read(createRes.getResponse().getContentAsString(), "$.matchId"));
+
+    // Bỏ cuộc để kết thúc trận thành công
+    mockMvc
+        .perform(
+            post("/api/v1/solo/matches/{matchId}/abandon", matchId)
+                .with(jwt().jwt(j -> j.subject(userId.toString()))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("ABANDONED"))
+        .andExpect(jsonPath("$.ranked").value(false));
+
+    await()
+        .atMost(Duration.ofSeconds(3))
+        .untilAsserted(() -> assertThat(testListener.findFinishedEvent(matchId)).isPresent());
+
+    MatchFinished event = testListener.findFinishedEvent(matchId).get();
+    assertThat(event.ranked()).isFalse();
+    assertThat(event.mode()).isEqualTo("PRACTICE");
   }
 
   private static void assertNoNullAnywhere(String json) {

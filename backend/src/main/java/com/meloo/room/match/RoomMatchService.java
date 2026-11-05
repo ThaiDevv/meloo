@@ -24,6 +24,8 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
@@ -33,6 +35,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 /** Coordinates a match exclusively on the existing per-room command queue. */
 @Service
 public class RoomMatchService implements ActiveRoundQuery {
+  private static final Logger log = LoggerFactory.getLogger(RoomMatchService.class);
   private final RoomLobbyService lobby;
   private final RoomRegistry registry;
   private final RoomEventPublisher messages;
@@ -43,6 +46,7 @@ public class RoomMatchService implements ActiveRoundQuery {
   private final Clock clock;
   private final Executor io;
   private final RoomMatchProperties properties;
+  private final RoomMatchIngressTracker ingressTracker;
   private final ConcurrentMap<UUID, RoomMatch> matches = new ConcurrentHashMap<>();
   private final ConcurrentMap<UUID, String> activeAnswers = new ConcurrentHashMap<>();
 
@@ -56,7 +60,8 @@ public class RoomMatchService implements ActiveRoundQuery {
       org.springframework.transaction.PlatformTransactionManager transactionManager,
       @Qualifier("clock") Clock clock,
       @Qualifier("roomMatchIoExecutor") Executor io,
-      RoomMatchProperties properties) {
+      RoomMatchProperties properties,
+      RoomMatchIngressTracker ingressTracker) {
     this.lobby = lobby;
     this.registry = registry;
     this.messages = messages;
@@ -67,6 +72,7 @@ public class RoomMatchService implements ActiveRoundQuery {
     this.clock = clock;
     this.io = io;
     this.properties = properties;
+    this.ingressTracker = ingressTracker;
   }
 
   public void start(UUID roomId, UUID userId) {
@@ -496,11 +502,19 @@ public class RoomMatchService implements ActiveRoundQuery {
     match.timer =
         match.actor.schedule(
             properties.roundDuration().plus(properties.timeoutBuffer()),
-            () -> {
-              if (!current(match, generation, "ROUND_IN_PROGRESS") || !ensurePlayable(match))
-                return;
-              finishRound(match, false);
-            });
+            () -> expireRound(match, generation));
+  }
+
+  private void expireRound(RoomMatch match, long generation) {
+    if (!current(match, generation, "ROUND_IN_PROGRESS")) return;
+    Instant deadline =
+        Objects.requireNonNull(match.roundStartedAt).plus(properties.roundDuration());
+    if (ingressTracker.hasPendingBefore(match.room.roomId(), deadline)) {
+      match.timer =
+          match.actor.schedule(Duration.ofMillis(10), () -> expireRound(match, generation));
+      return;
+    }
+    if (ensurePlayable(match)) finishRound(match, false);
   }
 
   private boolean ensurePlayable(RoomMatch match) {
@@ -639,27 +653,39 @@ public class RoomMatchService implements ActiveRoundQuery {
                       rank.left());
                 })
             .toList();
-    MatchFinished finished =
-        new MatchFinished(
-            UUID.randomUUID(),
-            match.id,
-            MatchType.valueOf(match.room.roomType().name()),
-            match.room.isQuickMatch() ? "RANKED" : "PRACTICE",
-            match.room.isQuickMatch(),
-            MatchEndStatus.FINISHED,
-            match.room.roundCount(),
-            match.room.playlistId(),
-            match.room.filter() == null
-                ? null
-                : tools.jackson.databind.json.JsonMapper.builder()
-                    .build()
-                    .writeValueAsString(match.room.filter()),
-            match.startedAt,
-            clock.instant(),
-            match.rounds,
-            players,
-            match.room.roomId());
-    transaction.executeWithoutResult(status -> events.publishEvent(finished));
+    if (match.pendingFinished == null) {
+      match.pendingFinished =
+          new MatchFinished(
+              UUID.randomUUID(),
+              match.id,
+              MatchType.valueOf(match.room.roomType().name()),
+              match.room.isQuickMatch() ? "RANKED" : "PRACTICE",
+              match.room.isQuickMatch(),
+              MatchEndStatus.FINISHED,
+              match.room.roundCount(),
+              match.room.playlistId(),
+              match.room.filter() == null
+                  ? null
+                  : tools.jackson.databind.json.JsonMapper.builder()
+                      .build()
+                      .writeValueAsString(match.room.filter()),
+              match.startedAt,
+              clock.instant(),
+              match.rounds,
+              players,
+              match.room.roomId());
+    }
+    try {
+      MatchFinished finished = Objects.requireNonNull(match.pendingFinished);
+      transaction.executeWithoutResult(status -> events.publishEvent(finished));
+    } catch (RuntimeException failure) {
+      log.warn(
+          "MatchFinished publication failed; retrying on room actor (roomId={}, exceptionType={})",
+          match.room.roomId(),
+          failure.getClass().getName());
+      match.timer = match.actor.schedule(properties.timeoutBuffer(), () -> publishFinished(match));
+      return;
+    }
     match.published = true;
     match.loading = false;
     match.phase = "FINISHED";

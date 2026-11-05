@@ -9,6 +9,11 @@ import org.springframework.context.annotation.Configuration;
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(RoomMatchProperties.class)
 public class RoomMatchConfiguration {
+  @Bean
+  RoomMatchIngressTracker roomMatchIngressTracker() {
+    return new RoomMatchIngressTracker();
+  }
+
   @Bean(destroyMethod = "close")
   ExecutorService roomMatchIoExecutor() {
     return Executors.newVirtualThreadPerTaskExecutor();

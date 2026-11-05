@@ -26,8 +26,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.*;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.simp.stomp.StompCommand;
+import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
+import org.springframework.messaging.support.ExecutorSubscribableChannel;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionSystemException;
 import org.springframework.transaction.support.SimpleTransactionStatus;
 
 class RoomMatchServiceTest {
@@ -46,6 +52,7 @@ class RoomMatchServiceTest {
   final RoomEventPublisher messages = mock(RoomEventPublisher.class);
   final ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
   final PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
+  final RoomMatchIngressTracker ingressTracker = new RoomMatchIngressTracker();
   final List<Object> events = new CopyOnWriteArrayList<>();
   final List<RoomMessage> sent = new CopyOnWriteArrayList<>();
   final ExecutorService io = Executors.newVirtualThreadPerTaskExecutor();
@@ -153,7 +160,8 @@ class RoomMatchServiceTest {
                 Duration.ofSeconds(45),
                 Duration.ofMillis(250),
                 Duration.ofSeconds(5),
-                Duration.ofSeconds(10)));
+                Duration.ofSeconds(10)),
+            ingressTracker);
   }
 
   @AfterEach
@@ -224,6 +232,119 @@ class RoomMatchServiceTest {
     assertThat(last(RoundEndEvent.class).results())
         .extracting(PlayerRoundResultPayload::outcome)
         .containsExactly("CORRECT", "TIMEOUT");
+  }
+
+  @Test
+  void acceptedIngressWaitsForDelayedInboundExecutorBeforeRoundTimeout() throws Exception {
+    start();
+    CountDownLatch releaseInbound = new CountDownLatch(1);
+    CountDownLatch inboundBlocked = new CountDownLatch(1);
+    ExecutorService inbound = Executors.newSingleThreadExecutor();
+    try {
+      inbound.submit(
+          () -> {
+            inboundBlocked.countDown();
+            try {
+              releaseInbound.await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+            }
+          });
+      assertThat(inboundBlocked.await(5, TimeUnit.SECONDS)).isTrue();
+
+      Instant receivedAt = NOW.plusMillis(44_999);
+      RoomMatchIngress ingress =
+          new RoomMatchIngress(Clock.fixed(receivedAt, ZoneOffset.UTC), ingressTracker);
+      ExecutorSubscribableChannel channel = new ExecutorSubscribableChannel(inbound);
+      channel.addInterceptor(ingress);
+      RoomMatchStompController controller = new RoomMatchStompController(service);
+      channel.subscribe(
+          message -> {
+            StompHeaderAccessor headers =
+                org.springframework.messaging.support.MessageHeaderAccessor.getAccessor(
+                    message, StompHeaderAccessor.class);
+            controller.guess(
+                room.roomId(),
+                new GuessCommand(1, tracks.getFirst().id()),
+                () -> host.toString(),
+                (Instant) Objects.requireNonNull(headers).getHeader(RoomMatchIngress.RECEIVED_AT));
+          });
+      StompHeaderAccessor headers = StompHeaderAccessor.create(StompCommand.SEND);
+      headers.setDestination("/app/rooms/" + room.roomId() + "/guess");
+      headers.setLeaveMutable(true);
+      Message<byte[]> frame =
+          MessageBuilder.createMessage(new byte[0], headers.getMessageHeaders());
+      assertThat(channel.send(frame)).isTrue();
+
+      time.set(NOW.plusMillis(45_250));
+      fireTimer();
+      barrier();
+      assertThat(sent).noneMatch(RoundEndEvent.class::isInstance);
+
+      releaseInbound.countDown();
+      await()
+          .atMost(Duration.ofSeconds(5))
+          .until(() -> sent.stream().anyMatch(PlayerGuessedEvent.class::isInstance));
+      assertThat(last(PlayerGuessedEvent.class).userId()).isEqualTo(host);
+      assertThat(sent)
+          .noneMatch(m -> m instanceof ErrorMessage error && error.code().equals("INVALID_STATE"));
+
+      fireTimer();
+      barrier();
+      assertThat(last(RoundEndEvent.class).results())
+          .extracting(PlayerRoundResultPayload::outcome)
+          .containsExactly("CORRECT", "TIMEOUT");
+    } finally {
+      releaseInbound.countDown();
+      inbound.shutdownNow();
+    }
+  }
+
+  @Test
+  void retriesMatchFinishedCommitWithStableEventAndCompletesLifecycleOnce() throws Exception {
+    room.setRoundCount(1);
+    start();
+    AtomicBoolean failCommit = new AtomicBoolean(true);
+    doAnswer(
+            invocation -> {
+              if (failCommit.getAndSet(false))
+                throw new TransactionSystemException("simulated transient commit failure");
+              return null;
+            })
+        .when(transactionManager)
+        .commit(any());
+
+    service.guess(room.roomId(), host, new GuessCommand(1, tracks.getFirst().id()), NOW);
+    service.guess(room.roomId(), guest, new GuessCommand(1, tracks.getFirst().id()), NOW);
+    barrier();
+
+    assertThat(room.status()).isEqualTo(RoomStatusDto.PLAYING);
+    assertThat(sent).noneMatch(MatchFinishedEvent.class::isInstance);
+    List<MatchFinished> attempts =
+        events.stream()
+            .filter(MatchFinished.class::isInstance)
+            .map(MatchFinished.class::cast)
+            .toList();
+    assertThat(attempts).hasSize(1);
+    UUID eventId = attempts.getFirst().eventId();
+
+    fireTimer();
+    barrier();
+
+    List<MatchFinished> retried =
+        events.stream()
+            .filter(MatchFinished.class::isInstance)
+            .map(MatchFinished.class::cast)
+            .toList();
+    assertThat(retried).hasSize(2).extracting(MatchFinished::eventId).containsOnly(eventId);
+    assertThat(room.status()).isEqualTo(RoomStatusDto.FINISHED);
+    assertThat(sent).filteredOn(MatchFinishedEvent.class::isInstance).hasSize(1);
+
+    fireTimer();
+    barrier();
+    assertThat(room.status()).isEqualTo(RoomStatusDto.LOBBY);
+    assertThat(sent).filteredOn(ReturnToLobbyEvent.class::isInstance).hasSize(1);
+    assertThat(sent).filteredOn(MatchFinishedEvent.class::isInstance).hasSize(1);
   }
 
   @Test

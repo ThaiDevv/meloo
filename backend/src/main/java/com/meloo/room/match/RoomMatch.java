@@ -3,6 +3,7 @@ package com.meloo.room.match;
 import com.meloo.catalog.api.TrackInfo;
 import com.meloo.game.domain.ComboTracker;
 import com.meloo.game.domain.Round;
+import com.meloo.game.events.MatchFinished;
 import com.meloo.game.events.RoundPlayerResult;
 import com.meloo.game.events.RoundSummary;
 import com.meloo.room.api.message.PlayerRoundResultPayload;
@@ -41,6 +42,7 @@ final class RoomMatch {
   @Nullable Instant prepareDeadline;
   @Nullable ScheduledFuture<?> timer;
   @Nullable RoundAnswerPayload answer;
+  @Nullable MatchFinished pendingFinished;
   List<PlayerRoundResultPayload> lastResults = List.of();
   boolean loading = true;
   boolean published;

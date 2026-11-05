@@ -27,6 +27,15 @@ Beta chỉ được xem là hoàn tất khi có đủ bằng chứng thật sau:
 Trạng thái hiện tại: **chưa hoàn tất beta thật**. Nguồn dữ liệu thật:
 `[CẦN SỐ LIỆU: link Google Form, ảnh/chụp màn hình dashboard và ngày beta]`.
 
+### 1.1. Trạng thái nghiệm thu MEL-63
+
+| Yêu cầu | Trạng thái | Điều kiện để đạt |
+|---|---|---|
+| 10–15 người chơi phòng riêng trên production | **Chưa đạt** | Thay danh sách mô phỏng bằng danh sách mã người tham gia và bằng chứng production |
+| Form 5 câu; quan sát trực tiếp 1–2 trận | **Chưa đạt** | Liên kết form gốc, kết quả thật và ghi chú có mốc thời gian |
+| Mỗi lỗi có Bug; tổng hợp 5 góp ý | **Chưa đạt** | Thái tạo Jira cho lỗi đã tái hiện; viết lại góp ý từ phản hồi thật |
+| Báo cáo tại `docs/business/04-beta-feedback.md` | **Đạt** | File có cấu trúc để thay dữ liệu thật |
+
 ## 2. Kế hoạch và người tham gia
 
 ### 2.1. Điều kiện chạy thật

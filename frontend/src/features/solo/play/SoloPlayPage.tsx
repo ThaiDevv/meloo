@@ -67,11 +67,15 @@ function SoloMatchScreen({ matchId }: { matchId: string }) {
   }
 }
 
-/** The same match again. A practice filter is only known while the match is in progress. */
+/** The same match again. The filter or playlist is only known while the match is in progress. */
 function replayOfMatch(match: SoloMatch): CreateSoloMatchRequest {
-  return match.filter
-    ? { mode: match.mode, roundCount: match.roundCount, filter: match.filter }
-    : { mode: match.mode, roundCount: match.roundCount }
+  return {
+    mode: 'PRACTICE',
+    roundCount: match.roundCount,
+    ...(match.playlistId
+      ? { playlistId: match.playlistId }
+      : match.filter && { filter: match.filter }),
+  }
 }
 
 function replayOfResult(result: MatchResult): CreateSoloMatchRequest | null {
@@ -167,7 +171,6 @@ function ActiveMatch({
       )}
       <ExitDialog
         open={asking || blocked}
-        ranked={false}
         busy={abandon.isPending}
         onStay={stay}
         onConfirm={confirm}

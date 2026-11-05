@@ -75,7 +75,7 @@ describe('SoloSetupPage', () => {
     expect(bodies).toEqual([{ mode: 'PRACTICE', roundCount: 15 }])
   })
 
-  it('sends the chosen filter in practice mode', async () => {
+  it('sends the chosen filter', async () => {
     const user = userEvent.setup()
     const bodies = captureCreate()
     renderPage()
@@ -95,7 +95,6 @@ describe('SoloSetupPage', () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.click(screen.getByRole('radio', { name: /Luyện tập/ }))
     const playlistTab = await screen.findByRole('tab', { name: /Bộ đề/ })
     expect(playlistTab).not.toBeDisabled()
 
@@ -121,12 +120,11 @@ describe('SoloSetupPage', () => {
     expect(within(summary).getByText('Chưa chọn bộ đề')).toBeInTheDocument()
   })
 
-  it('sends playlistId and no filter when starting with a playlist in practice mode', async () => {
+  it('sends playlistId and no filter when starting with a playlist', async () => {
     const user = userEvent.setup()
     const bodies = captureCreate()
     renderPage()
 
-    await user.click(screen.getByRole('radio', { name: /Luyện tập/ }))
     await user.click(await screen.findByRole('tab', { name: /Bộ đề/ }))
     await user.click(await screen.findByRole('button', { name: /V-pop thập niên 2010/ }))
     await user.click(screen.getByRole('button', { name: 'Vào trận' }))
@@ -149,7 +147,6 @@ describe('SoloSetupPage', () => {
     })
     try {
       renderPage()
-      await user.click(screen.getByRole('radio', { name: /Practice/ }))
       await user.click(await screen.findByRole('tab', { name: /Playlists/ }))
       await user.click(await screen.findByRole('button', { name: /V-pop of the 2010s/ }))
 
@@ -185,7 +182,6 @@ describe('SoloSetupPage', () => {
     )
     renderPage()
 
-    await user.click(screen.getByRole('radio', { name: /Luyện tập/ }))
     await user.click(await screen.findByRole('tab', { name: /Bộ đề/ }))
     await user.click(await screen.findByRole('button', { name: /V-pop thập niên 2010/ }))
 

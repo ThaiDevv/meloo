@@ -55,14 +55,14 @@ export function MatchSummary({ result, replaying = false, onReplay, onShare }: M
               ? t('play.summary.longestCombo', { count: combo })
               : t('play.summary.noCombo')}
           </li>
-          <li className="font-semibold text-warning">
-            {abandoned
-              ? t('play.summary.abandoned', {
-                  done: result.rounds.length,
-                  total: result.roundCount,
-                })
-              : t('play.summary.unranked')}
-          </li>
+          {abandoned ? (
+            <li className="font-semibold text-warning">
+              {t('play.summary.abandoned', {
+                done: result.rounds.length,
+                total: result.roundCount,
+              })}
+            </li>
+          ) : null}
         </ul>
 
         <div style={rise(3)} className="motion-rise mt-8 flex flex-wrap items-center gap-3">

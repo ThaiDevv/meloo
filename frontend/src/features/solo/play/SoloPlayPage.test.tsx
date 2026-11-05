@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent, { type UserEvent } from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { I18nextProvider } from 'react-i18next'
@@ -122,7 +122,7 @@ describe('SoloPlayPage', () => {
     renderAt(`/solo/${matchId}`)
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Trận luyện tập' })).toBeVisible()
-    expect(screen.getByRole('note')).toHaveTextContent('Trận này không tính xếp hạng')
+    expect(screen.queryByRole('note')).not.toBeInTheDocument()
     expect(screen.getByText('5 vòng · Toàn bộ kho nhạc')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Vào vòng 1' }))
 
@@ -151,7 +151,7 @@ describe('SoloPlayPage', () => {
     expect(screen.getByTestId('match-total')).toHaveTextContent('3.900')
     expect(screen.getByText('Đúng 4/5 bài')).toBeInTheDocument()
     expect(screen.getByText('Combo dài nhất 3 vòng')).toBeInTheDocument()
-    expect(screen.getByText('Không tính xếp hạng')).toBeInTheDocument()
+    expect(screen.queryByText(/xếp hạng/i)).not.toBeInTheDocument()
 
     const items = screen.getAllByRole('listitem').filter((li) => li.textContent.includes('Vòng'))
     expect(items).toHaveLength(5)
@@ -190,17 +190,12 @@ describe('SoloPlayPage', () => {
     })
   })
 
-  it('warns before a practice match that it is not ranked (BR-23)', async () => {
+  it('shows no ranking notice before a match (solo is practice only, BR-23)', async () => {
     renderAt(`/solo/${await createMatch('PRACTICE', 10)}`)
     expect(await screen.findByRole('heading', { level: 1, name: 'Trận luyện tập' })).toBeVisible()
-    expect(screen.getByRole('note')).toHaveTextContent('Trận này không tính xếp hạng')
+    expect(screen.queryByRole('note')).not.toBeInTheDocument()
+    expect(screen.queryByText(/xếp hạng/i)).not.toBeInTheDocument()
     expect(screen.getByText('10 vòng · Toàn bộ kho nhạc')).toBeInTheDocument()
-  })
-
-  it('warns a guest that a solo match is not ranked (BR-23)', async () => {
-    useSessionStore.getState().setRole('GUEST')
-    renderAt(`/solo/${await createMatch()}`)
-    expect(await screen.findByRole('note')).toHaveTextContent('Trận này không tính xếp hạng')
   })
 
   it('resumes a match at the round the server kept', async () => {
@@ -222,7 +217,7 @@ describe('SoloPlayPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Vào vòng 1' }))
     await user.click(screen.getByRole('link', { name: 'Trang chủ' }))
 
-    expect(await screen.findByRole('dialog', { name: 'Bỏ trận luyện tập?' })).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: 'Bỏ trận?' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Ở lại chơi' }))
     expect(router.state.location.pathname).toMatch(/^\/solo\//)
     expect(screen.getByTestId('game-round')).toBeInTheDocument()
@@ -240,12 +235,12 @@ describe('SoloPlayPage', () => {
     await next(user)
     await user.click(screen.getByRole('button', { name: 'Thoát' }))
 
-    const dialog = screen.getByRole('dialog', { name: 'Bỏ trận luyện tập?' })
+    const dialog = screen.getByRole('dialog', { name: 'Bỏ trận?' })
     await user.click(within(dialog).getByRole('button', { name: 'Bỏ trận' }))
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Trận luyện tập đã dừng' }),
     ).toBeVisible()
-    expect(screen.getByText('Dừng sau 1/5 vòng, không tính xếp hạng')).toBeInTheDocument()
+    expect(screen.getByText('Dừng sau 1/5 vòng')).toBeInTheDocument()
     expect(screen.getByTestId('match-total')).toHaveTextContent('1.000')
   })
 
@@ -303,6 +298,61 @@ describe('SoloPlayPage', () => {
     expect(await screen.findByRole('button', { name: 'Vào vòng 1' })).toBeInTheDocument()
     expect(router.state.location.pathname).not.toBe(first)
     expect(screen.getByText('5 vòng · Toàn bộ kho nhạc')).toBeInTheDocument()
+  }, 15_000)
+
+  it('plays again with the same rounds and filter', async () => {
+    const user = userEvent.setup()
+    const { data } = await apiClient.POST('/api/v1/solo/matches', {
+      body: { mode: 'PRACTICE', roundCount: 5, filter: { genreCodes: ['kpop'] } },
+    })
+    const bodies: unknown[] = []
+    server.events.on('request:start', ({ request }) => {
+      if (request.method === 'POST' && request.url.endsWith('/api/v1/solo/matches')) {
+        void request
+          .clone()
+          .json()
+          .then((body) => bodies.push(body))
+      }
+    })
+    renderAt(`/solo/${data?.matchId ?? ''}`)
+    await user.click(await screen.findByRole('button', { name: 'Vào vòng 1' }))
+    for (const answer of ANSWERS) {
+      await guess(user, answer)
+      await next(user)
+    }
+    await user.click(await screen.findByRole('button', { name: 'Chơi lại' }))
+    await screen.findByRole('button', { name: 'Vào vòng 1' })
+    server.events.removeAllListeners()
+    expect(bodies).toEqual([{ mode: 'PRACTICE', roundCount: 5, filter: { genreCodes: ['kpop'] } }])
+  }, 15_000)
+
+  it('plays again with the same filter after the summary is reopened', async () => {
+    const user = userEvent.setup()
+    const { data } = await apiClient.POST('/api/v1/solo/matches', {
+      body: { mode: 'PRACTICE', roundCount: 5, filter: { genreCodes: ['kpop'] } },
+    })
+    const matchId = data?.matchId ?? ''
+    renderAt(`/solo/${matchId}`)
+    await user.click(await screen.findByRole('button', { name: 'Thoát' }))
+    await user.click(await screen.findByRole('button', { name: 'Bỏ trận' }))
+    await screen.findByRole('heading', { level: 1, name: 'Trận luyện tập đã dừng' })
+
+    // Reload: the page only has the stored result now, no SoloMatch in memory.
+    cleanup()
+    const bodies: unknown[] = []
+    server.events.on('request:start', ({ request }) => {
+      if (request.method === 'POST' && request.url.endsWith('/api/v1/solo/matches')) {
+        void request
+          .clone()
+          .json()
+          .then((body) => bodies.push(body))
+      }
+    })
+    renderAt(`/solo/${matchId}`)
+    await user.click(await screen.findByRole('button', { name: 'Chơi lại' }))
+    await screen.findByRole('button', { name: 'Vào vòng 1' })
+    server.events.removeAllListeners()
+    expect(bodies).toEqual([{ mode: 'PRACTICE', roundCount: 5, filter: { genreCodes: ['kpop'] } }])
   }, 15_000)
 
   it('shares the result without song titles, by clipboard when there is no share sheet', async () => {

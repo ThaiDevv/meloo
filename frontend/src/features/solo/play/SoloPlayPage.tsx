@@ -21,6 +21,7 @@ import {
   OtherMatchInProgress,
 } from './components/MatchStates'
 import { MatchSummary } from './components/MatchSummary'
+import { recallReplay, rememberReplay } from './lib/replayStore'
 import { shareResult, shareText } from './lib/share'
 
 export function SoloPlayPage() {
@@ -57,7 +58,7 @@ function SoloMatchScreen({ matchId }: { matchId: string }) {
     case 'other':
       return <OtherMatchInProgress activeMatchId={found.activeMatchId} />
     case 'finished':
-      return <SummaryScreen result={found.result} replay={replayOfResult(found.result)} />
+      return <SummaryScreen result={found.result} replay={recallReplay(found.result.matchId)} />
     case 'active':
       return ended ? (
         <SummaryScreen result={ended} replay={replayOfMatch(found.match)} />
@@ -67,15 +68,15 @@ function SoloMatchScreen({ matchId }: { matchId: string }) {
   }
 }
 
-/** The same match again. A practice filter is only known while the match is in progress. */
+/** The same match again. The filter or playlist is only known while the match is in progress (see replayStore). */
 function replayOfMatch(match: SoloMatch): CreateSoloMatchRequest {
-  return match.filter
-    ? { mode: match.mode, roundCount: match.roundCount, filter: match.filter }
-    : { mode: match.mode, roundCount: match.roundCount }
-}
-
-function replayOfResult(result: MatchResult): CreateSoloMatchRequest | null {
-  return { mode: 'PRACTICE', roundCount: result.roundCount }
+  return {
+    mode: 'PRACTICE',
+    roundCount: match.roundCount,
+    ...(match.playlistId
+      ? { playlistId: match.playlistId }
+      : match.filter && { filter: match.filter }),
+  }
 }
 
 function ActiveMatch({
@@ -87,6 +88,9 @@ function ActiveMatch({
 }) {
   const { t } = useTranslation('solo')
   const navigate = useNavigate()
+  useEffect(() => {
+    rememberReplay(match.matchId, replayOfMatch(match))
+  }, [match])
   const { abandon, result } = useSoloMatchActions(match.matchId)
   const [playing, setPlaying] = useState(false)
   const [asking, setAsking] = useState(false)
@@ -167,7 +171,6 @@ function ActiveMatch({
       )}
       <ExitDialog
         open={asking || blocked}
-        ranked={false}
         busy={abandon.isPending}
         onStay={stay}
         onConfirm={confirm}

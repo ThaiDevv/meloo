@@ -1,35 +1,21 @@
 {
   "title": "Chơi đơn",
   "setup": {
-    "intro": "Chọn chế độ, số vòng và bộ nhạc rồi vào trận.",
-    "mode": {
-      "legend": "Chế độ",
-      "ranked": {
-        "title": "Xếp hạng",
-        "description": "Bộ nhạc chuẩn, điểm tính vào bảng xếp hạng."
-      },
-      "practice": {
-        "title": "Luyện tập",
-        "description": "Tự chọn bộ nhạc, không tính xếp hạng."
-      }
-    },
+    "intro": "Chọn số vòng và bộ nhạc rồi vào trận.",
     "rounds": {
       "legend": "Số vòng",
       "unit": "vòng",
       "option": "{{n}} vòng"
     },
     "music": {
-      "heading": "Bộ nhạc",
-      "rankedNote": "Chế độ xếp hạng luôn dùng bộ nhạc chuẩn. Muốn tự chọn thể loại, ca sĩ hay thập niên, hãy chuyển sang Luyện tập."
+      "heading": "Bộ nhạc"
     },
     "summary": {
       "heading": "Trận của bạn",
       "standard": "Bộ chuẩn",
       "wholeCatalog": "Toàn bộ kho nhạc",
       "filters": "{{n}} lựa chọn",
-      "noPlaylist": "Chưa chọn bộ đề",
-      "ranked": "Tính xếp hạng",
-      "practice": "Không xếp hạng"
+      "noPlaylist": "Chưa chọn bộ đề"
     },
     "start": "Vào trận",
     "starting": "Đang tạo trận…",
@@ -69,7 +55,6 @@
   "play": {
     "loading": "Đang mở trận…",
     "mode": {
-      "RANKED": "Trận xếp hạng",
       "PRACTICE": "Trận luyện tập"
     },
     "rounds": "{{n}} vòng",
@@ -82,15 +67,6 @@
       "progress": "Đang ở vòng {{round}} / {{total}} · {{score}} điểm",
       "start": "Vào vòng 1",
       "resume": "Chơi tiếp vòng {{n}}",
-      "ranked": {
-        "title": "Trận này tính xếp hạng",
-        "body": "Bộ chuẩn, ai cũng nghe cùng một kho nhạc. Trận xếp hạng không bỏ dở được: lỡ rời đi, trận được giữ 30 phút để bạn quay lại chơi tiếp.",
-        "guest": "Bạn đang chơi bằng khách nên điểm chưa lên bảng. Khi đăng nhập, điểm các trận xếp hạng sẽ được gộp và lên bảng."
-      },
-      "practice": {
-        "title": "Trận này không tính xếp hạng",
-        "body": "Bạn tự chọn bộ nhạc nên điểm không lên bảng. Điểm, combo, lịch sử và huy hiệu vẫn được tính."
-      },
       "ladder": {
         "heading": "Nghe càng ít, điểm càng cao",
         "item": "{{label}}: {{points}} điểm",
@@ -99,23 +75,13 @@
         "combo": "Đúng ở 2s hoặc 5s nhiều vòng liền: vòng thứ hai được thêm 10%, từ vòng thứ ba thêm 20% điểm cơ bản."
       }
     },
-    "status": {
-      "practice": "Không xếp hạng"
-    },
     "exit": {
       "button": "Thoát",
       "stay": "Ở lại chơi",
-      "ranked": {
-        "title": "Rời trận xếp hạng?",
-        "body": "Trận xếp hạng không bỏ dở được. Trận được giữ 30 phút: quay lại trong thời gian đó để chơi tiếp đúng vòng này. Quá 30 phút, trận thành bỏ dở và không tính xếp hạng.",
-        "confirm": "Rời trận"
-      },
-      "practice": {
-        "title": "Bỏ trận luyện tập?",
-        "body": "Các vòng đã xong vẫn được lưu. Vòng đang chơi không được tính.",
-        "confirm": "Bỏ trận"
-      },
-      "failed": "Không bỏ được trận. Hãy thử lại."
+      "failed": "Không bỏ được trận. Hãy thử lại.",
+      "title": "Bỏ trận?",
+      "body": "Các vòng đã xong vẫn được lưu. Vòng đang chơi không được tính.",
+      "confirm": "Bỏ trận"
     },
     "errors": {
       "action": "Không gửi được. Kiểm tra kết nối rồi thử lại.",
@@ -135,11 +101,9 @@
     },
     "summary": {
       "title": {
-        "RANKED": "Tổng kết trận xếp hạng",
         "PRACTICE": "Tổng kết trận luyện tập"
       },
       "abandonedTitle": {
-        "RANKED": "Trận xếp hạng đã dừng",
         "PRACTICE": "Trận luyện tập đã dừng"
       },
       "total": "Tổng điểm",
@@ -148,13 +112,11 @@
       "longestCombo_one": "Combo dài nhất {{count}} vòng",
       "longestCombo_other": "Combo dài nhất {{count}} vòng",
       "noCombo": "Chưa có combo",
-      "ranked": "Đã tính vào xếp hạng",
-      "unranked": "Không tính xếp hạng",
-      "abandoned": "Dừng sau {{done}}/{{total}} vòng, không tính xếp hạng",
+      "abandoned": "Dừng sau {{done}}/{{total}} vòng",
       "playAgain": "Chơi lại",
       "starting": "Đang tạo trận…",
       "share": "Chia sẻ",
-      "change": "Đổi chế độ hoặc bộ nhạc",
+      "change": "Đổi số vòng hoặc bộ nhạc",
       "roundsHeading": "Từng vòng",
       "round": "Vòng {{n}}",
       "outcome": {
@@ -171,7 +133,6 @@
     "share": {
       "title": "Kết quả Meloo",
       "headline": {
-        "RANKED": "Meloo · Chơi đơn xếp hạng",
         "PRACTICE": "Meloo · Chơi đơn luyện tập"
       },
       "score": "{{score}} điểm · đúng {{correct}}/{{total}} bài · combo dài nhất {{combo}}",

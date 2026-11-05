@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { Headphones, Play } from 'lucide-react'
+import { Play } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
@@ -14,7 +14,6 @@ import {
   type MusicSelection,
 } from '@/shared/music-picker'
 import { usePlaylists } from '@/shared/music-picker/api/usePlaylists'
-import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
 import {
   CreateSoloMatchError,
@@ -23,7 +22,6 @@ import {
 } from './api/useCreateSoloMatch'
 import { RadioTiles } from './components/RadioTiles'
 
-type Mode = 'PRACTICE'
 type RoundCount = 5 | 10 | 15
 
 const ROUND_COUNTS: RoundCount[] = [5, 10, 15]
@@ -34,7 +32,6 @@ export function SoloSetupPage() {
   const queryClient = useQueryClient()
   const create = useCreateSoloMatch()
   const playlists = usePlaylists()
-  const [mode, setMode] = useState<Mode>('PRACTICE')
   const [roundCount, setRoundCount] = useState<RoundCount>(10)
   const [music, setMusic] = useState<MusicSelection>(EMPTY_SELECTION)
   const [failure, setFailure] = useState<CreateSoloMatchFailure | null>(null)
@@ -115,20 +112,6 @@ export function SoloSetupPage() {
       <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-14">
         <div className="space-y-10">
           <RadioTiles
-            legend={t('setup.mode.legend')}
-            name="mode"
-            value={mode}
-            onChange={setMode}
-            options={[
-              {
-                value: 'PRACTICE',
-                title: t('setup.mode.practice.title'),
-                description: t('setup.mode.practice.description'),
-                icon: <Headphones className="size-6" strokeWidth={1.75} />,
-              },
-            ]}
-          />
-          <RadioTiles
             legend={t('setup.rounds.legend')}
             name="rounds"
             value={roundCount}
@@ -162,12 +145,10 @@ export function SoloSetupPage() {
               <h2 id="summary-heading" className="text-base font-semibold">
                 {t('setup.summary.heading')}
               </h2>
-              <Badge tone="neutral">{t('setup.summary.practice')}</Badge>
             </div>
             <VinylDisc accent fast={create.isPending} className="w-20 shrink-0 text-foreground" />
           </div>
           <dl className="space-y-3">
-            <SummaryRow term={t('setup.mode.legend')} detail={t('setup.mode.practice.title')} />
             <SummaryRow
               term={t('setup.rounds.legend')}
               detail={t('setup.rounds.option', { n: roundCount })}

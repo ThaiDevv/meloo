@@ -29,11 +29,15 @@ describe('HomePage', () => {
 
     const modes = screen.getByRole('region', { name: 'Chọn cách chơi' })
     expect(within(modes).getByRole('link', { name: /Chơi đơn/ })).toHaveAttribute('href', '/solo')
-    for (const title of ['Thử thách ngày', 'Tạo phòng', 'Ghép trận nhanh']) {
+    expect(within(modes).getByRole('link', { name: /Tạo phòng/ })).toHaveAttribute(
+      'href',
+      '/rooms/new',
+    )
+    for (const title of ['Thử thách ngày', 'Ghép trận nhanh']) {
       expect(within(modes).getByText(title)).toBeInTheDocument()
       expect(within(modes).queryByRole('link', { name: new RegExp(title) })).not.toBeInTheDocument()
     }
-    expect(within(modes).getAllByText('Sắp có')).toHaveLength(3)
+    expect(within(modes).getAllByText('Sắp có')).toHaveLength(2)
   })
 
   it('shows the five listening levels with the base score of each (BR-01, BR-02)', () => {
@@ -72,10 +76,11 @@ describe('HomePage', () => {
     for (const counter of container.querySelectorAll('.mh-roll')) {
       expect(counter.closest('[aria-hidden="true"]')).not.toBeNull()
     }
-    // Only the two real links are focusable: the hero action and the solo tile.
+    // Only the three real links are focusable: the hero action, the solo tile, and the room entry.
     expect(screen.getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
       '/solo',
       '/solo',
+      '/rooms/new',
     ])
   })
 
@@ -157,6 +162,10 @@ describe('HomePage', () => {
     renderPage()
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Hear less. Guess faster.')
-    expect(screen.getAllByText('Coming soon')).toHaveLength(3)
+    expect(screen.getByRole('link', { name: /Create a room/ })).toHaveAttribute(
+      'href',
+      '/rooms/new',
+    )
+    expect(screen.getAllByText('Coming soon')).toHaveLength(2)
   })
 })

@@ -38,15 +38,15 @@ export function ListenControls({
   const nextLabel = levelLabel(nextListenSeconds ?? NEXT_SECONDS[level - 1] ?? 30)
 
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="flex flex-wrap gap-3">
       <Button
         variant="outline"
         onClick={onReplay}
         disabled={!canReplay}
-        className="h-auto min-h-11 flex-col gap-0.5 py-2"
+        className="h-auto min-h-11 min-w-44 flex-1 flex-col gap-0.5 px-4 py-2.5 text-center whitespace-normal sm:h-auto"
       >
         <span className="inline-flex items-center gap-2">
-          <Play aria-hidden="true" className="size-4" strokeWidth={2} />
+          <Play aria-hidden="true" className="size-4 shrink-0" strokeWidth={2} />
           {t('controls.replay')}
         </span>
         <span className="text-xs font-normal text-muted-foreground">
@@ -59,10 +59,10 @@ export function ListenControls({
           variant="destructive"
           onClick={onSkip}
           disabled={busy}
-          className="h-auto min-h-11 flex-col gap-0.5 py-2"
+          className="h-auto min-h-11 min-w-44 flex-1 flex-col gap-0.5 px-4 py-2.5 text-center whitespace-normal sm:h-auto"
         >
           <span className="inline-flex items-center gap-2">
-            <SkipForward aria-hidden="true" className="size-4" strokeWidth={2} />
+            <SkipForward aria-hidden="true" className="size-4 shrink-0" strokeWidth={2} />
             {t('controls.skip')}
           </span>
           <span className="text-xs font-normal opacity-80">{t('controls.skipHint')}</span>
@@ -72,10 +72,10 @@ export function ListenControls({
           variant="outline"
           onClick={onListenMore}
           disabled={busy || !canListenMore}
-          className="h-auto min-h-11 flex-col gap-0.5 py-2"
+          className="h-auto min-h-11 min-w-44 flex-1 flex-col gap-0.5 px-4 py-2.5 text-center whitespace-normal sm:h-auto"
         >
           <span className="inline-flex items-center gap-2">
-            <FastForward aria-hidden="true" className="size-4" strokeWidth={2} />
+            <FastForward aria-hidden="true" className="size-4 shrink-0" strokeWidth={2} />
             {t('controls.listenMore')}
           </span>
           <span className="num text-xs font-normal text-muted-foreground">

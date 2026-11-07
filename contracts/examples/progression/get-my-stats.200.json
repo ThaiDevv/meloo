@@ -1,0 +1,17 @@
+{
+  "matchesPlayed": 24,
+  "matchesWon": 15,
+  "winRate": 62.5,
+  "roundsPlayed": 210,
+  "roundsCorrect": 168,
+  "averageCorrectLevel": 2.15,
+  "averageListenSeconds": 6.4,
+  "bestCombo": 7,
+  "rankPoints": 1450,
+  "xp": 3280,
+  "favoriteGenre": {
+    "code": "vpop",
+    "nameVi": "Nhạc trẻ Việt Nam",
+    "nameEn": "V-Pop"
+  }
+}

@@ -70,6 +70,101 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/oauth2/{provider}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Start OAuth2/OIDC login or guest account upgrade
+         * @description Public or guest session (ADR-005). Generates a cryptographic `state` and PKCE `code_verifier`, stores them in a
+         *     short-lived HttpOnly cookie, and redirects (302) the browser to the provider's authorization endpoint (`google`
+         *     or `facebook`). If the caller has a `meloo_refresh` cookie (`Path=/api/v1/auth`) from an active guest session,
+         *     the guest user ID is bound into the OAuth state so that completing login merges the guest's match history, solo
+         *     records and daily challenge history into the registered account (`GuestMerged`, BR-21).
+         */
+        get: operations["startOAuthLogin"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/oauth2/{provider}/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Handle OAuth2 authorization code callback
+         * @description Public (browser redirect from Google or Facebook, ADR-005). Verifies the `state` and PKCE cookie, exchanges
+         *     `code` for tokens/profile, requires a verified email (`email_verified = true`) to auto-link accounts with the
+         *     same email across Google and Facebook, merges guest data (`GuestMerged`, BR-21) when initiated from a guest
+         *     session, sets the `meloo_refresh` HttpOnly cookie, and redirects (302) to the frontend `/auth/callback` route
+         *     (which calls `POST /api/v1/auth/refresh` to obtain the in-memory access token). On provider error, unverified
+         *     email or locked account (`ACCOUNT_LOCKED`, BR-28), redirects (302) to `/auth/callback?error=<code>`.
+         */
+        get: operations["handleOAuthCallback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/oauth2/{provider}/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Link an OAuth2 provider or exchange an authorization code for the current user
+         * @description Signed-in user (guest upgrading to a registered account, or registered user linking an additional provider,
+         *     BR-20, BR-21, ADR-005). Exchanges the OAuth2 authorization `code` and `state`, links the `auth_identity`
+         *     (`GOOGLE` or `FACEBOOK`) to the caller's user (or merges the guest into the existing registered user when the
+         *     verified email matches, emitting `GuestMerged`), rotates the refresh token cookie and returns the updated
+         *     `AuthSession`.
+         */
+        post: operations["linkOAuthProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/oauth2/facebook/data-deletion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Facebook Login data deletion callback
+         * @description Public webhook required by Meta for Facebook Login apps (BE-ID-03). Verifies the HMAC-SHA256 `signed_request`
+         *     using the Facebook app secret, anonymizes/deletes the user linked to that Facebook `user_id` if present, and
+         *     returns a status URL plus `confirmation_code`.
+         */
+        post: operations["handleFacebookDataDeletion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me": {
         parameters: {
             query?: never;
@@ -84,7 +179,14 @@ export interface paths {
         get: operations["getMe"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete the current registered user's account
+         * @description Self-service account deletion for registered users (`REGISTERED`, BR-20, BR-21, BE-ID-03, FE-AUTH-03). Revokes
+         *     all refresh tokens, deletes `auth_identity` links, anonymizes personal data while keeping historical match
+         *     integrity, clears the `meloo_refresh` cookie, and returns 204. Guest sessions cannot call this endpoint and
+         *     receive 403 (`GUEST_CANNOT_DELETE_ACCOUNT`).
+         */
+        delete: operations["deleteMyAccount"];
         options?: never;
         head?: never;
         patch?: never;
@@ -459,6 +561,753 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the current player's profile
+         * @description Any signed-in user (guest or registered). Returns full profile details including `rankPoints` (01/11
+         *     supplement, BR-24), `xp`, `avatarUrl` and linked OAuth providers.
+         */
+        get: operations["getMyProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update the current player's nickname
+         * @description Any signed-in user. Updates the display `nickname` (3-20 characters, validated against the banned-word list per
+         *     BR-22) and returns the updated `UserProfile`.
+         */
+        patch: operations["updateMyProfile"];
+        trace?: never;
+    };
+    "/api/v1/me/matches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the current player's match history
+         * @description Any signed-in user. Lists completed or abandoned matches (`SOLO`, `PRIVATE_ROOM`, `PUBLIC_ROOM`, `QUICK_MATCH`)
+         *     participated in by the caller, newest `endedAt` first.
+         */
+        get: operations["listMyMatches"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/matches/{matchId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get detailed round-by-round history for one of the caller's matches
+         * @description Any signed-in user. Returns full match details, final player standings and round-by-round breakdown including
+         *     revealed song answers (`Answer`) for a finished match that the caller participated in.
+         */
+        get: operations["getMyMatchDetail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get aggregated gameplay statistics for the current player
+         * @description Any signed-in user. Returns aggregated gameplay metrics: matches played/won, win rate, rounds played/correct,
+         *     average correct level, average listen seconds, best combo streak, rank points, XP and favorite genre.
+         */
+        get: operations["getMyStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/achievements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List all achievements and the caller's unlock status
+         * @description Any signed-in user. Returns the catalog of achievements ordered by `sortOrder`, indicating whether the caller
+         *     has unlocked each achievement and when (`unlockedAt`).
+         */
+        get: operations["listMyAchievements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leaderboards/all-time": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the all-time rank points leaderboard
+         * @description Any signed-in user. Lists registered players (`REGISTERED`, active, with at least 1 ranked match, BR-20, BR-24)
+         *     ordered by `rankPoints` descending and tie-broken by earlier `reachedAt`. Includes `myEntry` for the caller when
+         *     applicable. There is no weekly leaderboard (PO decision 01/11).
+         */
+        get: operations["getAllTimeLeaderboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leaderboards/daily": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the daily challenge leaderboard
+         * @description Any signed-in user. Lists players who completed the daily challenge for `date` (defaults to today in
+         *     `Asia/Ho_Chi_Minh`, UTC+7). Ranked by `SOLVED` before `UNSOLVED`, then fewer listen seconds (`correctLevel` 1..5,
+         *     i.e. 2s -> 5s -> 10s -> 20s -> 30s), then smaller `elapsedMs` (BR-25).
+         */
+        get: operations["getDailyLeaderboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/daily/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get today's daily challenge status for the current player
+         * @description Any signed-in user (guest or registered, BR-20, BR-25). Returns today's challenge date (`Asia/Ho_Chi_Minh`,
+         *     reset at 00:00 UTC+7), the caller's attempt `status` (`NOT_STARTED`, `IN_PROGRESS`, `SOLVED`, `UNSOLVED`),
+         *     streak counters, `nextResetAt` and `serverTime`. When `IN_PROGRESS`, includes `round` (`DailyRoundState`, which
+         *     never contains the answer). When `SOLVED` or `UNSOLVED`, includes `result` (`DailyResult` with the revealed
+         *     `answer`).
+         */
+        get: operations["getDailyToday"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/daily/today/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start or resume today's single daily challenge attempt
+         * @description Any signed-in user (BR-25). Starts today's attempt at level 1 (`2s`) with a 5-minute ceiling (`expiresAt`) and
+         *     returns `DailyRoundState`. If the attempt is already `IN_PROGRESS` and not expired, returns the current
+         *     `DailyRoundState` with a fresh audio token so reloading does not lose the attempt. If the caller already
+         *     finished today's challenge (`SOLVED` or `UNSOLVED`), returns 409 (`DAILY_ALREADY_PLAYED`).
+         */
+        post: operations["startDailyAttempt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/daily/today/listen-more": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open the next listening level in today's daily challenge
+         * @description Advances today's in-progress daily attempt to the next level (`2s -> 5s -> 10s -> 20s -> 30s`, BR-01, BR-03,
+         *     BR-25) without counting as a wrong guess, and returns a new `AudioClip` for that level.
+         */
+        post: operations["listenMoreDaily"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/daily/today/skip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Give up on today's daily challenge at the 30-second level
+         * @description Allowed only when today's attempt has reached level 5 (`30s`, BR-04, BR-25). Ends the attempt as `UNSOLVED`
+         *     (`outcome: GAVE_UP`), resets `currentStreak` to 0, reveals the song `answer`, and returns `DailyResult`.
+         */
+        post: operations["skipDaily"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/daily/today/guesses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit a song guess for today's daily challenge
+         * @description Any signed-in user with an `IN_PROGRESS` daily attempt (BR-02, BR-03, BR-05, BR-06, BR-25). Checks `trackId`
+         *     against today's track (exact or normalized title + main artist per BR-05).
+         *     - Correct: ends the attempt as `SOLVED` (`attemptEnded: true`), updates `currentStreak` and `longestStreak`,
+         *       and returns `result` (`DailyResult` with `answer`).
+         *     - Wrong before level 5: opens the next level (`attemptEnded: false`), sets `rightArtist` (BR-06), and returns
+         *       `round` (`DailyRoundState` without the answer).
+         *     - Wrong at level 5 (`30s`): ends the attempt as `UNSOLVED` (`outcome: WRONG_OUT`, `attemptEnded: true`), resets
+         *       `currentStreak` to 0, and returns `result` (`DailyResult` with `answer`).
+         */
+        post: operations["submitDailyGuess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/daily/result": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the completed daily challenge result and spoiler-free share summary
+         * @description Any signed-in user. Returns the caller's completed `DailyResult` for `date` (defaults to today in
+         *     `Asia/Ho_Chi_Minh`), including the 5-slot `levels` array (`CORRECT`, `WRONG`, `UNOPENED`) for the spoiler-free
+         *     share text (`Meloo #YYYY-MM-DD`, BR-25) and the revealed `answer`. Returns 409 (`ROUND_NOT_FINISHED`) if the
+         *     caller has not completed that day's challenge yet.
+         */
+        get: operations["getDailyResult"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/daily/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the current player's daily challenge streak grid history
+         * @description Any signed-in user, guest or registered (29/10 supplement, BR-25). Returns the sparse list of days solved
+         *     (`SOLVED`) by the caller within `[from, to]` (inclusive, `Asia/Ho_Chi_Minh` `yyyy-MM-dd`), sorted ascending by
+         *     `date`, so the home page `StreakGrid` can render the 52-week x 7-day heatmap and color each cell by the solved
+         *     listening level (`2`, `5`, `10`, `20` or `30` seconds). Unsolved or unplayed days are omitted from `items`.
+         *     When `from` and `to` are omitted, defaults to the 280-day (40-week) window ending on `today`. A range exceeding
+         *     366 days or `from > to` is rejected with 400 (`VALIDATION_FAILED`). Never contains any track or answer fields.
+         */
+        get: operations["getDailyHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get administration dashboard KPI summary
+         * @description Requires role `ADMIN` (403 `FORBIDDEN` otherwise). Aggregates operational KPIs across modules: active rooms,
+         *     online players, matches played today, daily challenge players today, open chat reports, enabled/disabled track
+         *     counts, and user counts.
+         */
+        get: operations["getAdminDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/tracks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search and filter catalog tracks for administration
+         * @description Requires role `ADMIN`. Lists catalog tracks (both enabled and disabled, BR-27) with optional search query and
+         *     filters for `enabled`, `genreCode`, `countryCode` and `provider`.
+         */
+        get: operations["listAdminTracks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/tracks/{trackId}/metadata": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update genre, country and release year of a catalog track
+         * @description Requires role `ADMIN` (`CatalogAdminApi.updateTrackMetadata`). Updates curated metadata (`genreCode`,
+         *     `countryCode`, `releaseYear`) and records an admin audit log entry.
+         */
+        put: operations["updateAdminTrackMetadata"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/tracks/{trackId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Enable or disable a catalog track
+         * @description Requires role `ADMIN` (`CatalogAdminApi.setTrackEnabled`, BR-27). Enables or disables a track from being
+         *     selected in new rounds or autocomplete, and records an admin audit log entry.
+         */
+        put: operations["setAdminTrackStatus"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/tracks/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import tracks from a music provider into a playlist
+         * @description Requires role `ADMIN` (`CatalogAdminApi.importFromProvider`). Searches `provider` (`DEEZER` or `ITUNES`) for
+         *     `query`, imports up to `limit` tracks that have a valid preview URL (BR-27), attaches them to `playlistId`, and
+         *     records an admin audit log entry.
+         */
+        post: operations["importAdminTracks"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/playlists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List all playlists for administration
+         * @description Requires role `ADMIN` (`CatalogAdminApi.listPlaylists`). Returns all playlists (both enabled and disabled)
+         *     with their track counts.
+         */
+        get: operations["listAdminPlaylists"];
+        put?: never;
+        /**
+         * Create a new curated or standard playlist
+         * @description Requires role `ADMIN` (`CatalogAdminApi.createPlaylist`). Creates a new playlist and records an admin audit log
+         *     entry.
+         */
+        post: operations["createAdminPlaylist"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/playlists/{playlistId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update a playlist's names, descriptions and enabled status
+         * @description Requires role `ADMIN` (`CatalogAdminApi.updatePlaylist`). Updates localized names, descriptions and `enabled`
+         *     flag of a playlist.
+         */
+        put: operations["updateAdminPlaylist"];
+        post?: never;
+        /**
+         * Delete a curated playlist
+         * @description Requires role `ADMIN` (`CatalogAdminApi.deletePlaylist`). Deletes a curated playlist. The standard playlist
+         *     (`kind: STANDARD`, BR-23) is protected and cannot be deleted (returns 409 `STANDARD_PLAYLIST_PROTECTED`).
+         */
+        delete: operations["deleteAdminPlaylist"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/playlists/{playlistId}/tracks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add tracks to a playlist
+         * @description Requires role `ADMIN` (`CatalogAdminApi.addTracksToPlaylist`). Attaches one or more tracks to the playlist
+         *     (idempotent for tracks already in the playlist) and returns the updated `AdminPlaylist`.
+         */
+        post: operations["addAdminPlaylistTracks"];
+        /**
+         * Remove tracks from a playlist
+         * @description Requires role `ADMIN` (`CatalogAdminApi.removeTracksFromPlaylist`). Removes one or more tracks from the
+         *     playlist and returns the updated `AdminPlaylist`.
+         */
+        delete: operations["removeAdminPlaylistTracks"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search and filter user accounts for administration
+         * @description Requires role `ADMIN` (BE-ID-02, BE-ADM-02). Lists user accounts with optional search (`q` matching nickname or
+         *     email) and filters for `kind` (`GUEST` or `REGISTERED`), `role` (`USER` or `ADMIN`), and account `status`
+         *     (`ACTIVE` or `LOCKED`).
+         */
+        get: operations["listAdminUsers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get detailed user account information for administration
+         * @description Requires role `ADMIN`. Returns detailed account state for a single user.
+         */
+        get: operations["getAdminUser"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users/{userId}/lock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Lock or unlock a user account
+         * @description Requires role `ADMIN` (BR-28, BE-ID-02). Locks (`locked: true`, requiring a non-blank `reason`) or unlocks
+         *     (`locked: false`) a user account, revoking active refresh tokens when locked, and records an admin audit log
+         *     entry. An administrator cannot lock their own account (returns 409 `ADMIN_SELF_ACTION_FORBIDDEN`).
+         */
+        put: operations["updateAdminUserLock"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users/{userId}/role": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change a registered user's role
+         * @description Requires role `ADMIN` (BE-ID-02). Updates a registered user's role (`USER` or `ADMIN`) and records an admin
+         *     audit log entry. An administrator cannot demote their own account (returns 409 `ADMIN_SELF_ACTION_FORBIDDEN`).
+         */
+        put: operations["updateAdminUserRole"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List chat abuse reports for moderation
+         * @description Requires role `ADMIN` (`ChatAdminApi.listReports`, BR-19). Lists chat reports filtered by `status` (defaults to
+         *     `OPEN`).
+         */
+        get: operations["listAdminChatReports"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/reports/{reportId}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resolve a chat report as dismissed or actioned
+         * @description Requires role `ADMIN` (`ChatAdminApi.resolveReport`, BR-19, BR-28). Marks a chat report as `DISMISSED` or
+         *     `ACTIONED`, optionally locks the reported sender's account (`lockSender: true` with `lockReason`), and records
+         *     an admin audit log entry.
+         */
+        post: operations["resolveAdminChatReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/banned-words": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List all banned words
+         * @description Requires role `ADMIN` (`ChatAdminApi.listBannedWords`, BR-17, BR-22). Lists all lowercase banned words and
+         *     phrases used for chat and nickname filtering.
+         */
+        get: operations["listAdminBannedWords"];
+        put?: never;
+        /**
+         * Add a new banned word or phrase
+         * @description Requires role `ADMIN` (`ChatAdminApi.addBannedWord`, BR-17, BR-22). Normalizes `word` to lowercase NFC, adds it
+         *     to the banned word list, refreshes the in-memory matcher and records an admin audit log entry.
+         */
+        post: operations["createAdminBannedWord"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/banned-words/{wordId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update an existing banned word
+         * @description Requires role `ADMIN` (`ChatAdminApi.updateBannedWord`). Updates the text of an existing banned word and
+         *     refreshes the in-memory matcher.
+         */
+        put: operations["updateAdminBannedWord"];
+        post?: never;
+        /**
+         * Delete a banned word
+         * @description Requires role `ADMIN` (`ChatAdminApi.deleteBannedWord`). Deletes a banned word, refreshes the in-memory matcher
+         *     and records an admin audit log entry.
+         */
+        delete: operations["deleteAdminBannedWord"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/daily-schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List scheduled daily challenges within a date range
+         * @description Requires role `ADMIN` (BR-25, BE-DAILY-01). Lists daily challenge track assignments between `from` and `to`
+         *     (`Asia/Ho_Chi_Minh` `yyyy-MM-dd`).
+         */
+        get: operations["listAdminDailySchedule"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/daily-schedule/{challengeDate}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Assign or replace the daily challenge track for a future date
+         * @description Requires role `ADMIN` (BR-25, BE-DAILY-01). Assigns an enabled catalog `trackId` (`source: ADMIN`) to a future
+         *     `challengeDate` (`Asia/Ho_Chi_Minh`) and records an admin audit log entry. Past or currently active dates
+         *     cannot be modified and return 409 (`DAILY_CHALLENGE_LOCKED`).
+         */
+        put: operations["scheduleAdminDailyChallenge"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/audit-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List administration audit log entries
+         * @description Requires role `ADMIN` (BE-ADM-01, BE-ADM-02). Lists immutable `admin_audit_log` entries newest first, with
+         *     optional filters for `actorId`, `action`, `targetType`, `from` and `to`.
+         */
+        get: operations["listAdminAuditLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -468,7 +1317,7 @@ export interface components {
          *     Bao gồm các mã lỗi mặc định HTTP và mã lỗi nghiệp vụ của các module.
          * @enum {string}
          */
-        ErrorCode: "VALIDATION_FAILED" | "UNAUTHORIZED" | "FORBIDDEN" | "NOT_FOUND" | "METHOD_NOT_ALLOWED" | "UNSUPPORTED_MEDIA_TYPE" | "NOT_ACCEPTABLE" | "CONFLICT" | "RATE_LIMITED" | "INTERNAL_ERROR" | "REFRESH_RACE" | "ACCOUNT_LOCKED" | "TRACK_NOT_FOUND" | "PLAYLIST_NOT_FOUND" | "SOLO_MATCH_IN_PROGRESS" | "NO_ACTIVE_MATCH" | "MATCH_NOT_IN_PROGRESS" | "MATCH_NOT_FOUND" | "MATCH_NOT_FINISHED" | "QUICK_MATCH_REQUIRES_ACCOUNT" | "NOT_ENOUGH_TRACKS" | "ROUND_NOT_ACTIVE" | "ROUND_NOT_FOUND" | "ROUND_NOT_FINISHED" | "LISTEN_LEVEL_MAX" | "LISTEN_LEVEL_MISMATCH" | "SKIP_NOT_ALLOWED" | "AUDIO_TOKEN_INVALID" | "AUDIO_TOKEN_EXPIRED" | "RANGE_NOT_SATISFIABLE" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_KICKED" | "NOT_ROOM_HOST" | "ROOM_NOT_LOBBY" | "ROOM_CANNOT_START";
+        ErrorCode: "VALIDATION_FAILED" | "UNAUTHORIZED" | "FORBIDDEN" | "NOT_FOUND" | "METHOD_NOT_ALLOWED" | "UNSUPPORTED_MEDIA_TYPE" | "NOT_ACCEPTABLE" | "CONFLICT" | "RATE_LIMITED" | "INTERNAL_ERROR" | "REFRESH_RACE" | "ACCOUNT_LOCKED" | "TRACK_NOT_FOUND" | "PLAYLIST_NOT_FOUND" | "SOLO_MATCH_IN_PROGRESS" | "NO_ACTIVE_MATCH" | "MATCH_NOT_IN_PROGRESS" | "MATCH_NOT_FOUND" | "MATCH_NOT_FINISHED" | "QUICK_MATCH_REQUIRES_ACCOUNT" | "NOT_ENOUGH_TRACKS" | "ROUND_NOT_ACTIVE" | "ROUND_NOT_FOUND" | "ROUND_NOT_FINISHED" | "LISTEN_LEVEL_MAX" | "LISTEN_LEVEL_MISMATCH" | "SKIP_NOT_ALLOWED" | "AUDIO_TOKEN_INVALID" | "AUDIO_TOKEN_EXPIRED" | "RANGE_NOT_SATISFIABLE" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_KICKED" | "NOT_ROOM_HOST" | "ROOM_NOT_LOBBY" | "ROOM_CANNOT_START" | "OAUTH_STATE_INVALID" | "OAUTH_EMAIL_UNVERIFIED" | "OAUTH_IDENTITY_ALREADY_LINKED" | "GUEST_CANNOT_DELETE_ACCOUNT" | "DAILY_ALREADY_PLAYED" | "DAILY_CHALLENGE_NOT_AVAILABLE" | "DAILY_CHALLENGE_LOCKED" | "STANDARD_PLAYLIST_PROTECTED" | "USER_NOT_FOUND" | "ADMIN_SELF_ACTION_FORBIDDEN" | "REPORT_NOT_FOUND" | "BANNED_WORD_NOT_FOUND" | "BANNED_WORD_ALREADY_EXISTS";
         /** @description RFC 9457 problem details with a stable `code`. */
         Problem: {
             /**
@@ -526,6 +1375,12 @@ export interface components {
              * @description Only for registered users.
              */
             email?: string;
+            /** @description Optional profile picture URL from linked OAuth provider. */
+            avatarUrl?: string | null;
+            /** @description Current competitive rank points (`rank_points`, BR-24). Starts at 1000 for new players. */
+            rankPoints?: number;
+            /** @description Linked OAuth2 providers for registered users (`GOOGLE`, `FACEBOOK`). */
+            linkedProviders?: components["schemas"]["OAuthProvider"][];
             /** Format: date-time */
             createdAt: string;
         };
@@ -878,6 +1733,594 @@ export interface components {
         PublicRoomPage: components["schemas"]["Page"] & {
             items: components["schemas"]["PublicRoomItem"][];
         };
+        /**
+         * @description Lowercase OAuth2 provider slug used in URL paths.
+         * @enum {string}
+         */
+        OAuthProviderSlug: "google" | "facebook";
+        /**
+         * @description OAuth2/OIDC identity provider stored in `auth_identity` (ADR-005).
+         * @enum {string}
+         */
+        OAuthProvider: "GOOGLE" | "FACEBOOK";
+        OAuthLinkRequest: {
+            /** @description Authorization code returned by the OAuth2 provider. */
+            code: string;
+            /** @description Anti-CSRF state parameter returned by the OAuth2 provider. */
+            state: string;
+            /**
+             * Format: uri
+             * @description Optional redirect URI used when requesting the authorization code.
+             */
+            redirectUri?: string;
+        };
+        FacebookDataDeletionRequest: {
+            /** @description Base64url-encoded HMAC-SHA256 signature and payload sent by Meta (`signed_request`). */
+            signed_request: string;
+        };
+        FacebookDataDeletionResponse: {
+            /**
+             * Format: uri
+             * @description Public URL where the user can check the status of their data deletion request.
+             */
+            url: string;
+            /** @description Unique confirmation code for the data deletion request. */
+            confirmation_code: string;
+        };
+        UserProfile: {
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["UserKind"];
+            role: components["schemas"]["UserRole"];
+            nickname: string;
+            /**
+             * Format: email
+             * @description Present for registered users (`REGISTERED`), null for guests.
+             */
+            email?: string | null;
+            /** @description Avatar URL from linked OAuth provider, if available. */
+            avatarUrl?: string | null;
+            /** @description Competitive rank points (`rank_points`, BR-24, 01/11 supplement). Starts at 1000. */
+            rankPoints: number;
+            /** @description Cumulative experience points earned across matches. */
+            xp: number;
+            /** @description OAuth2 providers linked to this account (`GOOGLE`, `FACEBOOK`). */
+            linkedProviders: components["schemas"]["OAuthProvider"][];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        UpdateProfileRequest: {
+            /** @description New display name (BR-22); banned words are rejected with 400 (`VALIDATION_FAILED`). */
+            nickname: string;
+        };
+        /**
+         * @description Match type stored in `match.type`.
+         * @enum {string}
+         */
+        MatchType: "SOLO" | "PRIVATE_ROOM" | "PUBLIC_ROOM" | "QUICK_MATCH";
+        MatchHistoryItem: {
+            /** Format: uuid */
+            matchId: string;
+            type: components["schemas"]["MatchType"];
+            /** @description Present for `SOLO` matches (`PRACTICE`), null for room matches. */
+            mode?: components["schemas"]["SoloMode"] | null;
+            /** @description True when the match counted toward the all-time rank leaderboard (`QUICK_MATCH`, BR-20, BR-24). */
+            ranked: boolean;
+            status: components["schemas"]["MatchStatus"];
+            /** @enum {integer} */
+            roundCount: 5 | 10 | 15;
+            totalScore: number;
+            correctCount: number;
+            /** @description Caller's final placement in the match (1 = winner). */
+            rank: number;
+            /** @description Number of participants in the match. */
+            playerCount: number;
+            /** @description Rank points delta from this match (`QUICK_MATCH`, BR-24), or null if unranked. */
+            rankDelta?: number | null;
+            /** Format: uuid */
+            playlistId?: string | null;
+            /** Format: date-time */
+            startedAt: string;
+            /** Format: date-time */
+            endedAt: string;
+        };
+        MatchHistoryPage: components["schemas"]["Page"] & {
+            items: components["schemas"]["MatchHistoryItem"][];
+        };
+        MatchHistoryPlayer: {
+            /** Format: uuid */
+            userId?: string | null;
+            nickname: string;
+            isGuest: boolean;
+            rank: number;
+            totalScore: number;
+            correctCount: number;
+            /**
+             * Format: int64
+             * @description Total answer time in milliseconds across correct rounds (tie-breaker, BR-15).
+             */
+            correctTimeMs: number;
+            rankDelta?: number | null;
+        };
+        MatchHistoryRound: {
+            roundNo: number;
+            outcome: components["schemas"]["RoundOutcome"];
+            /** @description Level of the correct guess (1..5), or null when not `CORRECT`. */
+            correctLevel?: number | null;
+            /** @description Listening duration in seconds (`2`, `5`, `10`, `20`, `30`) when `outcome` is `CORRECT`, or null. */
+            listenSeconds?: components["schemas"]["DailyListenSeconds"] | null;
+            /** @enum {integer} */
+            baseScore: 0 | 200 | 400 | 600 | 800 | 1000;
+            /** @enum {integer} */
+            comboPercent: 0 | 10 | 20;
+            speedBonus: number;
+            roundScore: number;
+            wrongCount: number;
+            answerTimeMs?: number | null;
+            answer: components["schemas"]["Answer"];
+        };
+        MatchHistoryDetail: components["schemas"]["MatchHistoryItem"] & {
+            players: components["schemas"]["MatchHistoryPlayer"][];
+            rounds: components["schemas"]["MatchHistoryRound"][];
+        };
+        PlayerStats: {
+            matchesPlayed: number;
+            matchesWon: number;
+            /**
+             * Format: double
+             * @description Win percentage (`0.0` to `100.0`).
+             */
+            winRate: number;
+            roundsPlayed: number;
+            roundsCorrect: number;
+            /**
+             * Format: double
+             * @description Average listening level (1..5) across correct rounds, or null if no correct rounds yet.
+             */
+            averageCorrectLevel?: number | null;
+            /**
+             * Format: double
+             * @description Average listening duration in seconds across correct rounds, or null if no correct rounds yet.
+             */
+            averageListenSeconds?: number | null;
+            /** @description Highest combo streak achieved at 2s/5s levels (BR-08). */
+            bestCombo: number;
+            rankPoints: number;
+            xp: number;
+            /** @description Most frequently played/solved genre, or null if not enough data. */
+            favoriteGenre?: components["schemas"]["Genre"] | null;
+        };
+        AchievementItem: {
+            code: string;
+            nameVi: string;
+            nameEn: string;
+            descriptionVi: string;
+            descriptionEn: string;
+            sortOrder: number;
+            unlocked: boolean;
+            /** Format: date-time */
+            unlockedAt?: string | null;
+        };
+        AchievementListResponse: {
+            unlockedCount: number;
+            totalCount: number;
+            items: components["schemas"]["AchievementItem"][];
+        };
+        RankLeaderboardEntry: {
+            rank: number;
+            /** Format: uuid */
+            userId: string;
+            nickname: string;
+            avatarUrl?: string | null;
+            rankPoints: number;
+            matchesPlayed: number;
+            matchesWon: number;
+            /**
+             * Format: date-time
+             * @description Timestamp when the player reached their current `rankPoints` (tie-breaker: earlier ranks higher, BR-24).
+             */
+            reachedAt: string;
+        };
+        RankLeaderboardPage: components["schemas"]["Page"] & {
+            items: components["schemas"]["RankLeaderboardEntry"][];
+            /** @description The caller's own leaderboard entry if they are a registered player with at least 1 ranked match, otherwise null. */
+            myEntry?: components["schemas"]["RankLeaderboardEntry"] | null;
+        };
+        /**
+         * @description Status of the caller's daily challenge attempt for today (BR-25).
+         * @enum {string}
+         */
+        DailyAttemptStatus: "NOT_STARTED" | "IN_PROGRESS" | "SOLVED" | "UNSOLVED";
+        /**
+         * @description Final status of a completed daily challenge attempt.
+         * @enum {string}
+         */
+        DailyCompletionStatus: "SOLVED" | "UNSOLVED";
+        /**
+         * @description Per-level outcome for the 5 listening slots (`2s`, `5s`, `10s`, `20s`, `30s`) used in the spoiler-free share summary (BR-25).
+         * @enum {string}
+         */
+        DailyLevelStatus: "CORRECT" | "WRONG" | "UNOPENED";
+        /**
+         * @description Listening duration in seconds for a level (`2`, `5`, `10`, `20`, `30`, BR-01).
+         * @enum {integer}
+         */
+        DailyListenSeconds: 2 | 5 | 10 | 20 | 30;
+        /** @description An in-progress daily challenge attempt. Deliberately has no answer, track id, title or artist field (NFR-07, BR-25). */
+        DailyRoundState: {
+            /**
+             * Format: date
+             * @description Challenge date (`yyyy-MM-dd` in `Asia/Ho_Chi_Minh`).
+             */
+            challengeDate: string;
+            /** @description Opened listening level, 1 to 5 (BR-01). */
+            level: number;
+            listenSeconds: components["schemas"]["DailyListenSeconds"];
+            /** @description `level` < 5. */
+            canListenMore: boolean;
+            /** @description `level` = 5 (BR-04). */
+            canSkip: boolean;
+            wrongCount: number;
+            audio: components["schemas"]["AudioClip"];
+            /** Format: date-time */
+            startedAt: string;
+            /**
+             * Format: date-time
+             * @description 5-minute ceiling from `startedAt` after which an unfinished attempt becomes `UNSOLVED` (`TIMEOUT`, BR-25).
+             */
+            expiresAt: string;
+            /** Format: date-time */
+            serverTime: string;
+        };
+        /** @description Completed daily challenge result with spoiler-free level slots and revealed song answer (BR-25, BR-29). */
+        DailyResult: {
+            /** Format: date */
+            challengeDate: string;
+            status: components["schemas"]["DailyCompletionStatus"];
+            outcome: components["schemas"]["RoundOutcome"];
+            /** @description Level of the correct guess (1..5) when `status` is `SOLVED`, otherwise null. */
+            correctLevel?: number | null;
+            /** @description Listening duration in seconds (`2`, `5`, `10`, `20`, `30`) when `status` is `SOLVED`, otherwise null. */
+            correctListenSeconds?: components["schemas"]["DailyListenSeconds"] | null;
+            /** @description Five level slots (`2s`, `5s`, `10s`, `20s`, `30s`) for the spoiler-free share summary (`Meloo */
+            levels: components["schemas"]["DailyLevelStatus"][];
+            /**
+             * @description Base score at the solved level (BR-02), or 0 when `UNSOLVED`.
+             * @enum {integer}
+             */
+            score: 0 | 200 | 400 | 600 | 800 | 1000;
+            wrongCount: number;
+            /** @description Total elapsed time in milliseconds from `startedAt` to completion (BR-25). */
+            elapsedMs: number;
+            /** @description Caller's rank on that day's daily leaderboard, if available. */
+            rank?: number | null;
+            /** @description Consecutive days solved (`SOLVED`) up to today (BR-25). */
+            currentStreak: number;
+            /** @description All-time longest consecutive solved-day streak. */
+            longestStreak: number;
+            /**
+             * Format: date-time
+             * @description Next daily reset timestamp (00:00 `Asia/Ho_Chi_Minh`).
+             */
+            nextResetAt: string;
+            answer: components["schemas"]["Answer"];
+        };
+        /** @description Today's daily challenge status. Contains `round` only when `IN_PROGRESS` (never exposing the answer) and `result` only when `SOLVED` or `UNSOLVED`. */
+        DailyTodayResponse: {
+            /** Format: date */
+            challengeDate: string;
+            status: components["schemas"]["DailyAttemptStatus"];
+            currentStreak: number;
+            longestStreak: number;
+            /** Format: date-time */
+            nextResetAt: string;
+            /** Format: date-time */
+            serverTime: string;
+            /** @description Present only when `status` is `IN_PROGRESS`. */
+            round?: components["schemas"]["DailyRoundState"];
+            /** @description Present only when `status` is `SOLVED` or `UNSOLVED`. */
+            result?: components["schemas"]["DailyResult"];
+        };
+        DailyGuessResponse: {
+            correct: boolean;
+            /** @description True only for a wrong guess by the right main artist (BR-06); always false when `correct` is true. */
+            rightArtist: boolean;
+            attemptEnded: boolean;
+            /** @description Present when `attemptEnded` is false (next listening level opened; no answer fields). */
+            round?: components["schemas"]["DailyRoundState"];
+            /** @description Present when `attemptEnded` is true (`SOLVED` or `WRONG_OUT` at 30s). */
+            result?: components["schemas"]["DailyResult"];
+        };
+        DailyLeaderboardEntry: {
+            rank: number;
+            /** Format: uuid */
+            userId: string;
+            nickname: string;
+            avatarUrl?: string | null;
+            status: components["schemas"]["DailyCompletionStatus"];
+            correctLevel?: number | null;
+            listenSeconds?: components["schemas"]["DailyListenSeconds"] | null;
+            /** @enum {integer} */
+            score: 0 | 200 | 400 | 600 | 800 | 1000;
+            elapsedMs: number;
+            /** Format: date-time */
+            completedAt: string;
+        };
+        DailyLeaderboardPage: components["schemas"]["Page"] & {
+            /** Format: date */
+            challengeDate: string;
+            items: components["schemas"]["DailyLeaderboardEntry"][];
+            myEntry?: components["schemas"]["DailyLeaderboardEntry"] | null;
+        };
+        /** @description A single solved day in the caller's daily challenge history (29/10 supplement). Deliberately has no track or answer fields. */
+        DailyHistoryItem: {
+            /**
+             * Format: date
+             * @description Challenge date (`yyyy-MM-dd` in `Asia/Ho_Chi_Minh`).
+             */
+            date: string;
+            /** @description Listening level duration in seconds (`2`, `5`, `10`, `20` or `30`) at which the player solved that day's challenge. */
+            level: components["schemas"]["DailyListenSeconds"];
+        };
+        /** @description Sparse solved-day history for the home page `StreakGrid` (29/10 supplement, BR-25). */
+        DailyHistoryResponse: {
+            /**
+             * Format: date
+             * @description Current challenge date on the server (`yyyy-MM-dd` in `Asia/Ho_Chi_Minh`) so the client aligns the streak grid without clock skew.
+             */
+            today: string;
+            /** @description Sparse list of days where `status = SOLVED` within the requested window, sorted ascending by `date`. Unsolved or unplayed days are omitted. */
+            items: components["schemas"]["DailyHistoryItem"][];
+            /** @description Current consecutive solved-day streak up to `today` (or `yesterday` if `today` is not yet played/failed). */
+            currentStreak: number;
+            /** @description All-time longest consecutive solved-day streak for the caller. */
+            longestStreak: number;
+        };
+        AdminDashboard: {
+            activeRooms: number;
+            onlinePlayers: number;
+            matchesToday: number;
+            dailyPlayersToday: number;
+            openChatReports: number;
+            enabledTracks: number;
+            disabledTracks: number;
+            totalRegisteredUsers: number;
+            totalGuestsToday: number;
+            /** Format: date-time */
+            serverTime: string;
+        };
+        AdminTrack: {
+            /** Format: uuid */
+            id: string;
+            provider: components["schemas"]["MusicProvider"];
+            providerTrackId: string;
+            title: string;
+            /** Format: uuid */
+            primaryArtistId: string;
+            artistName: string;
+            genreCode?: string | null;
+            countryCode?: string | null;
+            releaseYear?: number | null;
+            popularityRank?: number | null;
+            enabled: boolean;
+            disabledReason?: string | null;
+            coverUrl?: string | null;
+            /** Format: date-time */
+            lastPreviewCheckedAt?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AdminTrackPage: components["schemas"]["Page"] & {
+            items: components["schemas"]["AdminTrack"][];
+        };
+        AdminTrackMetadataRequest: {
+            genreCode?: string | null;
+            countryCode?: string | null;
+            releaseYear?: number | null;
+        };
+        AdminTrackStatusRequest: {
+            enabled: boolean;
+            /** @description Reason when disabling a track (`enabled: false`, BR-27). */
+            disabledReason?: string | null;
+        };
+        AdminTrackImportRequest: {
+            /** Format: uuid */
+            playlistId: string;
+            provider: components["schemas"]["MusicProvider"];
+            query: string;
+            /** @default 10 */
+            limit: number;
+        };
+        AdminImportResult: {
+            requested: number;
+            imported: number;
+            updated: number;
+            skippedNoPreview: number;
+            failed: number;
+            errors: string[];
+        };
+        AdminPlaylist: {
+            /** Format: uuid */
+            id: string;
+            code: string;
+            nameVi: string;
+            nameEn: string;
+            descriptionVi?: string | null;
+            descriptionEn?: string | null;
+            kind: components["schemas"]["PlaylistKind"];
+            enabled: boolean;
+            trackCount: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AdminPlaylistListResponse: {
+            items: components["schemas"]["AdminPlaylist"][];
+        };
+        AdminCreatePlaylistRequest: {
+            code: string;
+            nameVi: string;
+            nameEn: string;
+            descriptionVi?: string | null;
+            descriptionEn?: string | null;
+            /** @default CURATED */
+            kind: components["schemas"]["PlaylistKind"];
+            /** @default true */
+            enabled: boolean;
+        };
+        AdminUpdatePlaylistRequest: {
+            nameVi: string;
+            nameEn: string;
+            descriptionVi?: string | null;
+            descriptionEn?: string | null;
+            enabled: boolean;
+        };
+        AdminPlaylistTracksRequest: {
+            trackIds: string[];
+        };
+        /**
+         * @description Account status in `app_user.status` (BR-28).
+         * @enum {string}
+         */
+        UserAccountStatus: "ACTIVE" | "LOCKED";
+        AdminUser: {
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["UserKind"];
+            role: components["schemas"]["UserRole"];
+            status: components["schemas"]["UserAccountStatus"];
+            nickname: string;
+            /** Format: email */
+            email?: string | null;
+            avatarUrl?: string | null;
+            rankPoints: number;
+            linkedProviders: components["schemas"]["OAuthProvider"][];
+            lockReason?: string | null;
+            /** Format: date-time */
+            lockedAt?: string | null;
+            /** Format: date-time */
+            lastActiveAt: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AdminUserPage: components["schemas"]["Page"] & {
+            items: components["schemas"]["AdminUser"][];
+        };
+        AdminUserLockRequest: {
+            locked: boolean;
+            /** @description Required when `locked` is true (BR-28). */
+            reason?: string | null;
+        };
+        AdminUserRoleRequest: {
+            role: components["schemas"]["UserRole"];
+        };
+        /**
+         * @description Moderation state of a chat report (`chat_report.status`).
+         * @enum {string}
+         */
+        ChatReportStatus: "OPEN" | "DISMISSED" | "ACTIONED";
+        /**
+         * @description Target status when resolving a chat report.
+         * @enum {string}
+         */
+        ChatReportResolutionStatus: "DISMISSED" | "ACTIONED";
+        AdminChatReport: {
+            /** Format: uuid */
+            id: string;
+            messageText: string;
+            /** Format: uuid */
+            senderId: string;
+            senderNickname: string;
+            /** Format: uuid */
+            reporterId: string;
+            /** @description Up to 5 preceding chat messages in the room for moderation context (BR-19). */
+            context: string[];
+            status: components["schemas"]["ChatReportStatus"];
+            /** Format: uuid */
+            handledBy?: string | null;
+            /** Format: date-time */
+            handledAt?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AdminChatReportPage: components["schemas"]["Page"] & {
+            items: components["schemas"]["AdminChatReport"][];
+        };
+        AdminResolveChatReportRequest: {
+            status: components["schemas"]["ChatReportResolutionStatus"];
+            /**
+             * @description When true and `status` is `ACTIONED`, also locks the reported sender's account (BR-28).
+             * @default false
+             */
+            lockSender: boolean;
+            /** @description Reason recorded on the sender's account when `lockSender` is true. */
+            lockReason?: string | null;
+        };
+        AdminBannedWord: {
+            /** Format: uuid */
+            id: string;
+            word: string;
+            /** Format: uuid */
+            createdBy?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AdminBannedWordListResponse: {
+            items: components["schemas"]["AdminBannedWord"][];
+        };
+        AdminBannedWordRequest: {
+            /** @description Word or phrase to block (normalized to lowercase NFC, BR-17, BR-22). */
+            word: string;
+        };
+        /**
+         * @description How the daily challenge track was selected (`ADMIN` manual schedule or `AUTO` fallback, BR-25).
+         * @enum {string}
+         */
+        DailyChallengeSource: "ADMIN" | "AUTO";
+        AdminDailyScheduleItem: {
+            /** Format: date */
+            challengeDate: string;
+            /** Format: uuid */
+            trackId: string;
+            title: string;
+            artistName: string;
+            provider: components["schemas"]["MusicProvider"];
+            source: components["schemas"]["DailyChallengeSource"];
+            /** @description True when `challengeDate` is today or in the past in `Asia/Ho_Chi_Minh` and can no longer be edited. */
+            locked: boolean;
+            /** Format: uuid */
+            createdBy?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AdminDailyScheduleResponse: {
+            items: components["schemas"]["AdminDailyScheduleItem"][];
+        };
+        AdminScheduleDailyRequest: {
+            /**
+             * Format: uuid
+             * @description Enabled catalog track UUID to schedule for `challengeDate` (BR-25, BR-27).
+             */
+            trackId: string;
+        };
+        AdminAuditLog: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            actorId: string;
+            actorNickname?: string | null;
+            action: string;
+            targetType: string;
+            targetId?: string | null;
+            /** @description Structured audit metadata (`admin_audit_log.detail` JSONB). */
+            detail: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AdminAuditLogPage: components["schemas"]["Page"] & {
+            items: components["schemas"]["AdminAuditLog"][];
+        };
     };
     responses: {
         /** @description Invalid input (`VALIDATION_FAILED`); `errors` lists the fields. */
@@ -935,6 +2378,20 @@ export interface components {
         MatchId: string;
         /** @description One-based round number within the match. */
         RoundNo: number;
+        /** @description Lowercase OAuth2 provider identifier (`google` or `facebook`). */
+        OAuthProviderPath: components["schemas"]["OAuthProviderSlug"];
+        /** @description Catalog track UUID. */
+        TrackId: string;
+        /** @description Catalog playlist UUID. */
+        PlaylistId: string;
+        /** @description User account UUID. */
+        UserId: string;
+        /** @description Chat report UUID. */
+        ReportId: string;
+        /** @description Banned word UUID. */
+        WordId: string;
+        /** @description Daily challenge date (`yyyy-MM-dd` in `Asia/Ho_Chi_Minh`). */
+        ChallengeDate: string;
     };
     requestBodies: never;
     headers: {
@@ -1023,6 +2480,146 @@ export interface operations {
             400: components["responses"]["ValidationFailed"];
         };
     };
+    startOAuthLogin: {
+        parameters: {
+            query?: {
+                /** @description Optional relative frontend path to redirect to after `/auth/callback` finishes. */
+                returnTo?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Lowercase OAuth2 provider identifier (`google` or `facebook`). */
+                provider: components["parameters"]["OAuthProviderPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirects to the OAuth2 provider authorization URL. */
+            302: {
+                headers: {
+                    /** @description OAuth2 authorization endpoint URL with `client_id`, `redirect_uri`, `response_type=code`, `scope`, `state` and PKCE `code_challenge`. */
+                    Location?: string;
+                    /** @description Short-lived HttpOnly state/PKCE cookie (`SameSite=Lax`, `Path=/api/v1/auth`). */
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["ValidationFailed"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    handleOAuthCallback: {
+        parameters: {
+            query?: {
+                /** @description Authorization code issued by the OAuth2 provider. */
+                code?: string;
+                /** @description Anti-CSRF state parameter echoed back by the OAuth2 provider. */
+                state?: string;
+                /** @description OAuth2 error code when the user denies consent or the provider rejects the request. */
+                error?: string;
+                /** @description Human-readable error description from the OAuth2 provider. */
+                error_description?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Lowercase OAuth2 provider identifier (`google` or `facebook`). */
+                provider: components["parameters"]["OAuthProviderPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirects to the SPA `/auth/callback` (with `Set-Cookie: meloo_refresh` on success, or `?error=...` on failure). */
+            302: {
+                headers: {
+                    /** @description Frontend callback URI (`/auth/callback` or `/auth/callback?error=...`). */
+                    Location?: string;
+                    "Set-Cookie": components["headers"]["RefreshCookie"];
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["ValidationFailed"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    linkOAuthProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Lowercase OAuth2 provider identifier (`google` or `facebook`). */
+                provider: components["parameters"]["OAuthProviderPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OAuthLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description Provider linked (or guest merged) and new session issued. */
+            200: {
+                headers: {
+                    "Set-Cookie": components["headers"]["RefreshCookie"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthSession"];
+                };
+            };
+            /** @description Invalid OAuth code/state (`VALIDATION_FAILED`, `OAUTH_STATE_INVALID`) or unverified provider email (`OAUTH_EMAIL_UNVERIFIED`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description The OAuth identity is already linked to a different account (`OAUTH_IDENTITY_ALREADY_LINKED`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    handleFacebookDataDeletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FacebookDataDeletionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["FacebookDataDeletionRequest"];
+            };
+        };
+        responses: {
+            /** @description Data deletion request accepted. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FacebookDataDeletionResponse"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+        };
+    };
     getMe: {
         parameters: {
             query?: never;
@@ -1043,6 +2640,35 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    deleteMyAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Account deleted and refresh cookie cleared. */
+            204: {
+                headers: {
+                    "Set-Cookie": components["headers"]["RefreshCookie"];
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Account is locked (`ACCOUNT_LOCKED`) or caller is a guest (`GUEST_CANNOT_DELETE_ACCOUNT`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     searchTracks: {
@@ -1775,6 +3401,1364 @@ export interface operations {
                 };
             };
             429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getMyProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current player profile. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserProfile"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    updateMyProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description Profile updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserProfile"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    listMyMatches: {
+        parameters: {
+            query?: {
+                /** @description Zero-based page index. */
+                page?: components["parameters"]["Page"];
+                /** @description Page size. */
+                size?: components["parameters"]["Size"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of historical matches. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchHistoryPage"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getMyMatchDetail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                matchId: components["parameters"]["MatchId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Match detail with round breakdown. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchHistoryDetail"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getMyStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Aggregated player statistics. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerStats"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    listMyAchievements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Achievement catalog with caller's unlock status. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AchievementListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getAllTimeLeaderboard: {
+        parameters: {
+            query?: {
+                /** @description Zero-based page index. */
+                page?: components["parameters"]["Page"];
+                /** @description Page size. */
+                size?: components["parameters"]["Size"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description All-time rank leaderboard page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankLeaderboardPage"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getDailyLeaderboard: {
+        parameters: {
+            query?: {
+                /** @description Challenge date (`yyyy-MM-dd` in `Asia/Ho_Chi_Minh`). Defaults to today when omitted. */
+                date?: string;
+                /** @description Zero-based page index. */
+                page?: components["parameters"]["Page"];
+                /** @description Page size. */
+                size?: components["parameters"]["Size"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Daily challenge leaderboard page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailyLeaderboardPage"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getDailyToday: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Today's daily challenge state. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailyTodayResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description No daily challenge track is available (`DAILY_CHALLENGE_NOT_AVAILABLE`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    startDailyAttempt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Daily attempt started or resumed at current level. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailyRoundState"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description No daily challenge track is available (`DAILY_CHALLENGE_NOT_AVAILABLE`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Today's daily challenge has already been played (`DAILY_ALREADY_PLAYED`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    listenMoreDaily: {
+        parameters: {
+            query?: {
+                /** @description Target level (2..5). Guards against double clicks (`LISTEN_LEVEL_MISMATCH`). */
+                expectedLevel?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Next listening level opened. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailyRoundState"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /**
+             * @description Attempt is not active (`ROUND_NOT_ACTIVE`), already at 30 seconds (`LISTEN_LEVEL_MAX`), or `expectedLevel`
+             *     does not match `level + 1` (`LISTEN_LEVEL_MISMATCH`).
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    skipDaily: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Attempt ended as unsolved (`GAVE_UP`) and answer revealed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailyResult"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Attempt is not active (`ROUND_NOT_ACTIVE`) or not yet at level 5 (`SKIP_NOT_ALLOWED`, BR-04). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    submitDailyGuess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuessRequest"];
+            };
+        };
+        responses: {
+            /** @description Guess evaluated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailyGuessResponse"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description The guessed `trackId` does not exist (`TRACK_NOT_FOUND`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description No active daily attempt (`ROUND_NOT_ACTIVE`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getDailyResult: {
+        parameters: {
+            query?: {
+                /** @description Challenge date (`yyyy-MM-dd` in `Asia/Ho_Chi_Minh`). Defaults to today when omitted. */
+                date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Completed daily challenge result. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailyResult"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description No completed daily challenge attempt found for that date (`NOT_FOUND`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The caller's daily attempt is still in progress or not finished (`ROUND_NOT_FINISHED`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getDailyHistory: {
+        parameters: {
+            query?: {
+                /** @description Start date inclusive (`yyyy-MM-dd` in `Asia/Ho_Chi_Minh`). Defaults to `to - 279 days` (40 weeks). */
+                from?: string;
+                /** @description End date inclusive (`yyyy-MM-dd` in `Asia/Ho_Chi_Minh`). Defaults to `today` in Vietnam time. */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sparse solved-day history and streak counters for the caller. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailyHistoryResponse"];
+                };
+            };
+            /** @description Invalid date format, `from > to`, or date range exceeds 366 days (`VALIDATION_FAILED`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Missing, expired or invalid bearer token (`UNAUTHORIZED`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getAdminDashboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dashboard KPI snapshot. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDashboard"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    listAdminTracks: {
+        parameters: {
+            query?: {
+                /** @description Optional search text matching title or artist name. */
+                q?: string;
+                /** @description Filter by enabled status (BR-27). */
+                enabled?: boolean;
+                /** @description Filter by genre code. */
+                genreCode?: string;
+                /** @description Filter by two-letter ISO 3166-1 alpha-2 country code. */
+                countryCode?: string;
+                /** @description Filter by music provider (`DEEZER` or `ITUNES`). */
+                provider?: components["schemas"]["MusicProvider"];
+                /** @description Zero-based page index. */
+                page?: components["parameters"]["Page"];
+                /** @description Page size. */
+                size?: components["parameters"]["Size"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of catalog tracks. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTrackPage"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    updateAdminTrackMetadata: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Catalog track UUID. */
+                trackId: components["parameters"]["TrackId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminTrackMetadataRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated catalog track. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTrack"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Track not found (`TRACK_NOT_FOUND`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    setAdminTrackStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Catalog track UUID. */
+                trackId: components["parameters"]["TrackId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminTrackStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Track status updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTrack"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Track not found (`TRACK_NOT_FOUND`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    importAdminTracks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminTrackImportRequest"];
+            };
+        };
+        responses: {
+            /** @description Provider import summary. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminImportResult"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Target playlist not found (`PLAYLIST_NOT_FOUND`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listAdminPlaylists: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description All playlists. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPlaylistListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createAdminPlaylist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminCreatePlaylistRequest"];
+            };
+        };
+        responses: {
+            /** @description Playlist created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPlaylist"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Playlist `code` already exists (`CONFLICT`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    updateAdminPlaylist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Catalog playlist UUID. */
+                playlistId: components["parameters"]["PlaylistId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminUpdatePlaylistRequest"];
+            };
+        };
+        responses: {
+            /** @description Playlist updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPlaylist"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Playlist not found (`PLAYLIST_NOT_FOUND`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    deleteAdminPlaylist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Catalog playlist UUID. */
+                playlistId: components["parameters"]["PlaylistId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Playlist deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Playlist not found (`PLAYLIST_NOT_FOUND`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The standard playlist (`STANDARD`) cannot be deleted (`STANDARD_PLAYLIST_PROTECTED`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    addAdminPlaylistTracks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Catalog playlist UUID. */
+                playlistId: components["parameters"]["PlaylistId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminPlaylistTracksRequest"];
+            };
+        };
+        responses: {
+            /** @description Tracks added to playlist. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPlaylist"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Playlist or track not found (`PLAYLIST_NOT_FOUND`, `TRACK_NOT_FOUND`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    removeAdminPlaylistTracks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Catalog playlist UUID. */
+                playlistId: components["parameters"]["PlaylistId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminPlaylistTracksRequest"];
+            };
+        };
+        responses: {
+            /** @description Tracks removed from playlist. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPlaylist"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Playlist not found (`PLAYLIST_NOT_FOUND`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listAdminUsers: {
+        parameters: {
+            query?: {
+                /** @description Search text matching nickname or email. */
+                q?: string;
+                /** @description Filter by user kind. */
+                kind?: components["schemas"]["UserKind"];
+                /** @description Filter by user role. */
+                role?: components["schemas"]["UserRole"];
+                /** @description Filter by account lock status (`ACTIVE` or `LOCKED`). */
+                status?: components["schemas"]["UserAccountStatus"];
+                /** @description Zero-based page index. */
+                page?: components["parameters"]["Page"];
+                /** @description Page size. */
+                size?: components["parameters"]["Size"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of user accounts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUserPage"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getAdminUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description User account UUID. */
+                userId: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description User account detail. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUser"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description User not found (`USER_NOT_FOUND`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    updateAdminUserLock: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description User account UUID. */
+                userId: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminUserLockRequest"];
+            };
+        };
+        responses: {
+            /** @description Account lock status updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUser"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description User not found (`USER_NOT_FOUND`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Administrator cannot lock their own account (`ADMIN_SELF_ACTION_FORBIDDEN`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    updateAdminUserRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description User account UUID. */
+                userId: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminUserRoleRequest"];
+            };
+        };
+        responses: {
+            /** @description User role updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUser"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description User not found (`USER_NOT_FOUND`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Administrator cannot change their own role (`ADMIN_SELF_ACTION_FORBIDDEN`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listAdminChatReports: {
+        parameters: {
+            query?: {
+                /** @description Filter by report status (`OPEN`, `DISMISSED`, `ACTIONED`). Defaults to `OPEN`. */
+                status?: components["schemas"]["ChatReportStatus"];
+                /** @description Zero-based page index. */
+                page?: components["parameters"]["Page"];
+                /** @description Page size. */
+                size?: components["parameters"]["Size"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of chat reports. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminChatReportPage"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    resolveAdminChatReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Chat report UUID. */
+                reportId: components["parameters"]["ReportId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminResolveChatReportRequest"];
+            };
+        };
+        responses: {
+            /** @description Chat report resolved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminChatReport"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Chat report not found (`REPORT_NOT_FOUND`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listAdminBannedWords: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Banned word list. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBannedWordListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createAdminBannedWord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminBannedWordRequest"];
+            };
+        };
+        responses: {
+            /** @description Banned word created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBannedWord"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description The banned word already exists (`BANNED_WORD_ALREADY_EXISTS`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    updateAdminBannedWord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Banned word UUID. */
+                wordId: components["parameters"]["WordId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminBannedWordRequest"];
+            };
+        };
+        responses: {
+            /** @description Banned word updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBannedWord"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Banned word not found (`BANNED_WORD_NOT_FOUND`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Another banned word with the same text already exists (`BANNED_WORD_ALREADY_EXISTS`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    deleteAdminBannedWord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Banned word UUID. */
+                wordId: components["parameters"]["WordId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Banned word deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Banned word not found (`BANNED_WORD_NOT_FOUND`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listAdminDailySchedule: {
+        parameters: {
+            query?: {
+                /** @description Start date inclusive (`yyyy-MM-dd`). */
+                from?: string;
+                /** @description End date inclusive (`yyyy-MM-dd`). */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Scheduled daily challenges. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDailyScheduleResponse"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    scheduleAdminDailyChallenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Daily challenge date (`yyyy-MM-dd` in `Asia/Ho_Chi_Minh`). */
+                challengeDate: components["parameters"]["ChallengeDate"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminScheduleDailyRequest"];
+            };
+        };
+        responses: {
+            /** @description Daily challenge scheduled. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDailyScheduleItem"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Track not found (`TRACK_NOT_FOUND`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Past or active daily challenge cannot be modified (`DAILY_CHALLENGE_LOCKED`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listAdminAuditLogs: {
+        parameters: {
+            query?: {
+                /** @description Filter by administrator user ID. */
+                actorId?: string;
+                /** @description Filter by action code (e.g. `USER_LOCKED`, `TRACK_DISABLED`, `DAILY_SCHEDULED`). */
+                action?: string;
+                /** @description Filter by target resource type (e.g. `USER`, `TRACK`, `PLAYLIST`, `CHAT_REPORT`, `BANNED_WORD`, `DAILY_CHALLENGE`). */
+                targetType?: string;
+                /** @description Filter entries created at or after this UTC timestamp. */
+                from?: string;
+                /** @description Filter entries created at or before this UTC timestamp. */
+                to?: string;
+                /** @description Zero-based page index. */
+                page?: components["parameters"]["Page"];
+                /** @description Page size. */
+                size?: components["parameters"]["Size"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of admin audit log entries. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAuditLogPage"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
 }

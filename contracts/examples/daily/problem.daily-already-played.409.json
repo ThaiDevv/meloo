@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Conflict",
+  "status": 409,
+  "code": "DAILY_ALREADY_PLAYED",
+  "detail": "Today's daily challenge has already been completed.",
+  "instance": "/api/v1/daily/today/start"
+}

@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Conflict",
+  "status": 409,
+  "code": "BANNED_WORD_ALREADY_EXISTS",
+  "detail": "The banned word already exists.",
+  "instance": "/api/v1/admin/banned-words"
+}

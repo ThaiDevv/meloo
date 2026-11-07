@@ -1,0 +1,80 @@
+{
+  "matchId": "8f1d4a70-3b2c-4e19-9a04-6c5d8e2f1b33",
+  "type": "QUICK_MATCH",
+  "mode": null,
+  "ranked": true,
+  "status": "FINISHED",
+  "roundCount": 10,
+  "totalScore": 7420,
+  "correctCount": 8,
+  "rank": 1,
+  "playerCount": 4,
+  "rankDelta": 40,
+  "playlistId": "11111111-1111-4111-8111-111111111101",
+  "startedAt": "2026-10-28T14:00:00Z",
+  "endedAt": "2026-10-28T14:05:12Z",
+  "players": [
+    {
+      "userId": "b41c7d90-2e84-4a3c-9c71-8f21e5b73012",
+      "nickname": "MinhNhac",
+      "isGuest": false,
+      "rank": 1,
+      "totalScore": 7420,
+      "correctCount": 8,
+      "correctTimeMs": 14820,
+      "rankDelta": 40
+    },
+    {
+      "userId": "d92a4c11-5f3b-4e82-9a10-3c8e7b1f2044",
+      "nickname": "LanAnh",
+      "isGuest": false,
+      "rank": 2,
+      "totalScore": 6180,
+      "correctCount": 7,
+      "correctTimeMs": 18200,
+      "rankDelta": 15
+    }
+  ],
+  "rounds": [
+    {
+      "roundNo": 1,
+      "outcome": "CORRECT",
+      "correctLevel": 1,
+      "listenSeconds": 2,
+      "baseScore": 1000,
+      "comboPercent": 0,
+      "speedBonus": 180,
+      "roundScore": 1180,
+      "wrongCount": 0,
+      "answerTimeMs": 1650,
+      "answer": {
+        "trackId": "22222222-2222-4222-8222-222222222201",
+        "title": "Nơi Này Có Anh",
+        "artistName": "Sơn Tùng M-TP",
+        "provider": "DEEZER",
+        "listenUrl": "https://www.deezer.com/track/350123451",
+        "coverUrl": "https://cdn-images.dzcdn.net/images/cover/sample1/250x250-000000-80-0-0.jpg"
+      }
+    },
+    {
+      "roundNo": 2,
+      "outcome": "CORRECT",
+      "correctLevel": 2,
+      "listenSeconds": 5,
+      "baseScore": 800,
+      "comboPercent": 0,
+      "speedBonus": 140,
+      "roundScore": 940,
+      "wrongCount": 1,
+      "answerTimeMs": 3200,
+      "answer": {
+        "trackId": "22222222-2222-4222-8222-222222222202",
+        "title": "See Tình",
+        "artistName": "Hoàng Thùy Linh",
+        "provider": "DEEZER",
+        "listenUrl": "https://www.deezer.com/track/350123452",
+        "coverUrl": "https://cdn-images.dzcdn.net/images/cover/sample2/250x250-000000-80-0-0.jpg"
+      }
+    }
+  ]
+}

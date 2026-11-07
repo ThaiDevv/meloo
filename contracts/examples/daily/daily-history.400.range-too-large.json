@@ -1,0 +1,14 @@
+{
+  "type": "about:blank",
+  "title": "Validation failed",
+  "status": 400,
+  "code": "VALIDATION_FAILED",
+  "detail": "The requested date range exceeds the maximum of 366 days or from is after to.",
+  "instance": "/api/v1/daily/history?from=2025-01-01&to=2026-10-29",
+  "errors": [
+    {
+      "field": "from",
+      "message": "date range between from and to must not exceed 366 days"
+    }
+  ]
+}

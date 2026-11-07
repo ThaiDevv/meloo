@@ -1,0 +1,15 @@
+{
+  "challengeDate": "2026-10-29",
+  "level": 1,
+  "listenSeconds": 2,
+  "canListenMore": true,
+  "canSkip": false,
+  "wrongCount": 0,
+  "audio": {
+    "url": "/api/v1/audio/preview/eyJ2IjoxLCJsc2VjIjoyLCJleHAiOjE3NjE3MjQ5NTB9.c2lnbmF0dXJl",
+    "expiresAt": "2026-10-29T08:02:30Z"
+  },
+  "startedAt": "2026-10-29T08:00:30Z",
+  "expiresAt": "2026-10-29T08:05:30Z",
+  "serverTime": "2026-10-29T08:00:30Z"
+}

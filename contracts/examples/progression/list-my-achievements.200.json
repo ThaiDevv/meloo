@@ -1,0 +1,46 @@
+{
+  "unlockedCount": 3,
+  "totalCount": 8,
+  "items": [
+    {
+      "code": "FIRST_WIN",
+      "nameVi": "Chiến thắng đầu tay",
+      "nameEn": "First Victory",
+      "descriptionVi": "Hoàn thành và đứng hạng 1 trong một trận đấu bất kỳ.",
+      "descriptionEn": "Finish first in any match.",
+      "sortOrder": 1,
+      "unlocked": true,
+      "unlockedAt": "2026-10-21T10:12:00Z"
+    },
+    {
+      "code": "LIGHTNING_EAR",
+      "nameVi": "Đôi tai tia chớp",
+      "nameEn": "Lightning Ear",
+      "descriptionVi": "Đoán đúng bài hát ở ngay mốc 2 giây.",
+      "descriptionEn": "Guess a song correctly at the 2-second level.",
+      "sortOrder": 2,
+      "unlocked": true,
+      "unlockedAt": "2026-10-21T10:15:30Z"
+    },
+    {
+      "code": "COMBO_5",
+      "nameVi": "Chuỗi 5 thần tốc",
+      "nameEn": "5x Speed Combo",
+      "descriptionVi": "Đạt chuỗi combo 5 vòng liên tiếp ở mốc 2s hoặc 5s.",
+      "descriptionEn": "Reach a 5-round combo streak at the 2s or 5s level.",
+      "sortOrder": 3,
+      "unlocked": true,
+      "unlockedAt": "2026-10-25T16:40:00Z"
+    },
+    {
+      "code": "DAILY_STREAK_7",
+      "nameVi": "7 ngày bền bỉ",
+      "nameEn": "7-Day Daily Streak",
+      "descriptionVi": "Giữ chuỗi thắng Thử thách mỗi ngày liên tiếp 7 ngày.",
+      "descriptionEn": "Maintain a 7-day winning streak in the Daily Challenge.",
+      "sortOrder": 4,
+      "unlocked": false,
+      "unlockedAt": null
+    }
+  ]
+}

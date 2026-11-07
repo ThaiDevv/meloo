@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Conflict",
+  "status": 409,
+  "code": "ADMIN_SELF_ACTION_FORBIDDEN",
+  "detail": "An administrator cannot lock or demote their own account.",
+  "instance": "/api/v1/admin/users/99999999-9999-4999-8999-999999999901/lock"
+}

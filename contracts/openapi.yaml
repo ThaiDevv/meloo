@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: Meloo API
-  version: 1.0.0
-  summary: REST contract v1 - authentication, music catalog and single-player rounds.
+  version: 3.0.0
+  summary: REST contract v3 - authentication, OAuth2, music catalog, solo play, rooms, progression, daily challenge and administration.
   description: |
     Source of truth for the REST API (ADR-002). Backend generates Spring interfaces and models from
     this file; frontend generates `schema.gen.ts`. Only `CT-xx` tickets edit it.
@@ -15,15 +15,15 @@ info:
     - Calls need `Authorization: Bearer <accessToken>` unless the operation says `security: []`. Guests have a session too (ADR-005).
 
     **Fairness (NFR-07).** The server decides answers, scores and clocks. Nothing in an in-progress round
-    (`RoundState`, `GuessResponse.round`) names the track, the artist or a track id, and no request carries a score.
-    The answer appears only in `RoundResult.answer`, after the round is over. Audio is delivered through an opaque,
+    (`RoundState`, `GuessResponse.round`, `DailyRoundState`, `DailyTodayResponse.round`) names the track, the artist or a track id, and no request carries a score.
+    The answer appears only in `RoundResult.answer` or `DailyResult.answer`, after the round is over. Audio is delivered through an opaque,
     short-lived URL (`AudioClip.url`) that never contains an id or a title (ADR-008).
 servers:
   - url: /
     description: Same origin as the web app (Vercel rewrites `/api` to the backend; Vite proxies it in development).
 tags:
   - name: identity
-    description: Guest sessions, token refresh, the current user.
+    description: Guest sessions, OAuth2 login and linking, token refresh, the current user and account deletion.
   - name: catalog
     description: Track search, playlists and filter values.
   - name: game
@@ -32,6 +32,12 @@ tags:
     description: Stream audio preview clips using opaque HMAC tokens (ADR-008).
   - name: room
     description: Room creation, joining, public rooms and quick match.
+  - name: progression
+    description: Player profile, match history, statistics, achievements and all-time rank leaderboard.
+  - name: daily
+    description: Daily challenge gameplay, daily result, streak history and daily leaderboard.
+  - name: admin
+    description: Administration endpoints for dashboard KPIs, catalog, playlists, users, chat moderation, banned words, daily schedule and audit logs.
 security:
   - bearerAuth: []
 paths:
@@ -125,6 +131,201 @@ paths:
               $ref: '#/components/headers/RefreshCookie'
         '400':
           $ref: '#/components/responses/ValidationFailed'
+  /api/v1/auth/oauth2/{provider}:
+    get:
+      tags: [identity]
+      operationId: startOAuthLogin
+      summary: Start OAuth2/OIDC login or guest account upgrade
+      description: |
+        Public or guest session (ADR-005). Generates a cryptographic `state` and PKCE `code_verifier`, stores them in a
+        short-lived HttpOnly cookie, and redirects (302) the browser to the provider's authorization endpoint (`google`
+        or `facebook`). If the caller has a `meloo_refresh` cookie (`Path=/api/v1/auth`) from an active guest session,
+        the guest user ID is bound into the OAuth state so that completing login merges the guest's match history, solo
+        records and daily challenge history into the registered account (`GuestMerged`, BR-21).
+      security:
+        - {}
+        - refreshCookie: []
+      parameters:
+        - $ref: '#/components/parameters/OAuthProviderPath'
+        - name: returnTo
+          in: query
+          required: false
+          description: Optional relative frontend path to redirect to after `/auth/callback` finishes.
+          schema:
+            type: string
+            maxLength: 200
+      responses:
+        '302':
+          description: Redirects to the OAuth2 provider authorization URL.
+          headers:
+            Location:
+              description: OAuth2 authorization endpoint URL with `client_id`, `redirect_uri`, `response_type=code`, `scope`, `state` and PKCE `code_challenge`.
+              schema:
+                type: string
+                format: uri
+            Set-Cookie:
+              description: Short-lived HttpOnly state/PKCE cookie (`SameSite=Lax`, `Path=/api/v1/auth`).
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/auth/oauth2/{provider}/callback:
+    get:
+      tags: [identity]
+      operationId: handleOAuthCallback
+      summary: Handle OAuth2 authorization code callback
+      description: |
+        Public (browser redirect from Google or Facebook, ADR-005). Verifies the `state` and PKCE cookie, exchanges
+        `code` for tokens/profile, requires a verified email (`email_verified = true`) to auto-link accounts with the
+        same email across Google and Facebook, merges guest data (`GuestMerged`, BR-21) when initiated from a guest
+        session, sets the `meloo_refresh` HttpOnly cookie, and redirects (302) to the frontend `/auth/callback` route
+        (which calls `POST /api/v1/auth/refresh` to obtain the in-memory access token). On provider error, unverified
+        email or locked account (`ACCOUNT_LOCKED`, BR-28), redirects (302) to `/auth/callback?error=<code>`.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/OAuthProviderPath'
+        - name: code
+          in: query
+          required: false
+          description: Authorization code issued by the OAuth2 provider.
+          schema:
+            type: string
+            maxLength: 2048
+        - name: state
+          in: query
+          required: false
+          description: Anti-CSRF state parameter echoed back by the OAuth2 provider.
+          schema:
+            type: string
+            maxLength: 512
+        - name: error
+          in: query
+          required: false
+          description: OAuth2 error code when the user denies consent or the provider rejects the request.
+          schema:
+            type: string
+            maxLength: 120
+        - name: error_description
+          in: query
+          required: false
+          description: Human-readable error description from the OAuth2 provider.
+          schema:
+            type: string
+            maxLength: 500
+      responses:
+        '302':
+          description: 'Redirects to the SPA `/auth/callback` (with `Set-Cookie: meloo_refresh` on success, or `?error=...` on failure).'
+          headers:
+            Location:
+              description: Frontend callback URI (`/auth/callback` or `/auth/callback?error=...`).
+              schema:
+                type: string
+                format: uri-reference
+            Set-Cookie:
+              $ref: '#/components/headers/RefreshCookie'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/auth/oauth2/{provider}/link:
+    post:
+      tags: [identity]
+      operationId: linkOAuthProvider
+      summary: Link an OAuth2 provider or exchange an authorization code for the current user
+      description: |
+        Signed-in user (guest upgrading to a registered account, or registered user linking an additional provider,
+        BR-20, BR-21, ADR-005). Exchanges the OAuth2 authorization `code` and `state`, links the `auth_identity`
+        (`GOOGLE` or `FACEBOOK`) to the caller's user (or merges the guest into the existing registered user when the
+        verified email matches, emitting `GuestMerged`), rotates the refresh token cookie and returns the updated
+        `AuthSession`.
+      parameters:
+        - $ref: '#/components/parameters/OAuthProviderPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OAuthLinkRequest'
+            examples:
+              default:
+                externalValue: ./examples/identity/link-oauth.request.json
+      responses:
+        '200':
+          description: Provider linked (or guest merged) and new session issued.
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/RefreshCookie'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSession'
+              examples:
+                default:
+                  externalValue: ./examples/identity/link-oauth.200.json
+        '400':
+          description: Invalid OAuth code/state (`VALIDATION_FAILED`, `OAUTH_STATE_INVALID`) or unverified provider email (`OAUTH_EMAIL_UNVERIFIED`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                validationFailed:
+                  summary: Invalid request fields
+                  externalValue: ./examples/common/problem.validation-failed.400.json
+                unverifiedEmail:
+                  summary: OAuth provider did not verify email
+                  externalValue: ./examples/identity/problem.oauth-email-unverified.400.json
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: The OAuth identity is already linked to a different account (`OAUTH_IDENTITY_ALREADY_LINKED`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                alreadyLinked:
+                  externalValue: ./examples/identity/problem.oauth-already-linked.409.json
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/auth/oauth2/facebook/data-deletion:
+    post:
+      tags: [identity]
+      operationId: handleFacebookDataDeletion
+      summary: Facebook Login data deletion callback
+      description: |
+        Public webhook required by Meta for Facebook Login apps (BE-ID-03). Verifies the HMAC-SHA256 `signed_request`
+        using the Facebook app secret, anonymizes/deletes the user linked to that Facebook `user_id` if present, and
+        returns a status URL plus `confirmation_code`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FacebookDataDeletionRequest'
+            examples:
+              default:
+                externalValue: ./examples/identity/facebook-data-deletion.request.json
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FacebookDataDeletionRequest'
+      responses:
+        '200':
+          description: Data deletion request accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FacebookDataDeletionResponse'
+              examples:
+                default:
+                  externalValue: ./examples/identity/facebook-data-deletion.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
   /api/v1/me:
     get:
       tags: [identity]
@@ -140,11 +341,45 @@ paths:
                 $ref: '#/components/schemas/Me'
               examples:
                 default:
+                  summary: Guest user
                   externalValue: ./examples/identity/get-me.200.json
+                registered:
+                  summary: Registered user with OAuth providers and rank points
+                  externalValue: ./examples/identity/get-me.registered.200.json
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+    delete:
+      tags: [identity]
+      operationId: deleteMyAccount
+      summary: Delete the current registered user's account
+      description: |
+        Self-service account deletion for registered users (`REGISTERED`, BR-20, BR-21, BE-ID-03, FE-AUTH-03). Revokes
+        all refresh tokens, deletes `auth_identity` links, anonymizes personal data while keeping historical match
+        integrity, clears the `meloo_refresh` cookie, and returns 204. Guest sessions cannot call this endpoint and
+        receive 403 (`GUEST_CANNOT_DELETE_ACCOUNT`).
+      responses:
+        '204':
+          description: Account deleted and refresh cookie cleared.
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/RefreshCookie'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Account is locked (`ACCOUNT_LOCKED`) or caller is a guest (`GUEST_CANNOT_DELETE_ACCOUNT`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                guestCannotDelete:
+                  summary: Guest accounts cannot self-delete
+                  externalValue: ./examples/identity/problem.guest-cannot-delete-account.403.json
+                accountLocked:
+                  summary: Account is locked (BR-28)
+                  externalValue: ./examples/audio/problem.forbidden.403.json
   /api/v1/tracks/search:
     get:
       tags: [catalog]
@@ -1025,6 +1260,1568 @@ paths:
                   externalValue: ./examples/room/problem.not-enough-tracks.422.json
         '429':
           $ref: '#/components/responses/TooManyRequests'
+  /api/v1/me/profile:
+    get:
+      tags: [progression]
+      operationId: getMyProfile
+      summary: Get the current player's profile
+      description: |
+        Any signed-in user (guest or registered). Returns full profile details including `rankPoints` (01/11
+        supplement, BR-24), `xp`, `avatarUrl` and linked OAuth providers.
+      responses:
+        '200':
+          description: Current player profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+              examples:
+                default:
+                  externalValue: ./examples/progression/get-my-profile.200.json
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    patch:
+      tags: [progression]
+      operationId: updateMyProfile
+      summary: Update the current player's nickname
+      description: |
+        Any signed-in user. Updates the display `nickname` (3-20 characters, validated against the banned-word list per
+        BR-22) and returns the updated `UserProfile`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+            examples:
+              default:
+                externalValue: ./examples/progression/update-my-profile.request.json
+      responses:
+        '200':
+          description: Profile updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+              examples:
+                default:
+                  externalValue: ./examples/progression/update-my-profile.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/me/matches:
+    get:
+      tags: [progression]
+      operationId: listMyMatches
+      summary: List the current player's match history
+      description: |
+        Any signed-in user. Lists completed or abandoned matches (`SOLO`, `PRIVATE_ROOM`, `PUBLIC_ROOM`, `QUICK_MATCH`)
+        participated in by the caller, newest `endedAt` first.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: A page of historical matches.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchHistoryPage'
+              examples:
+                default:
+                  externalValue: ./examples/progression/list-my-matches.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/me/matches/{matchId}:
+    get:
+      tags: [progression]
+      operationId: getMyMatchDetail
+      summary: Get detailed round-by-round history for one of the caller's matches
+      description: |
+        Any signed-in user. Returns full match details, final player standings and round-by-round breakdown including
+        revealed song answers (`Answer`) for a finished match that the caller participated in.
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      responses:
+        '200':
+          description: Match detail with round breakdown.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchHistoryDetail'
+              examples:
+                default:
+                  externalValue: ./examples/progression/get-my-match-detail.200.json
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/me/stats:
+    get:
+      tags: [progression]
+      operationId: getMyStats
+      summary: Get aggregated gameplay statistics for the current player
+      description: |
+        Any signed-in user. Returns aggregated gameplay metrics: matches played/won, win rate, rounds played/correct,
+        average correct level, average listen seconds, best combo streak, rank points, XP and favorite genre.
+      responses:
+        '200':
+          description: Aggregated player statistics.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerStats'
+              examples:
+                default:
+                  externalValue: ./examples/progression/get-my-stats.200.json
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/me/achievements:
+    get:
+      tags: [progression]
+      operationId: listMyAchievements
+      summary: List all achievements and the caller's unlock status
+      description: |
+        Any signed-in user. Returns the catalog of achievements ordered by `sortOrder`, indicating whether the caller
+        has unlocked each achievement and when (`unlockedAt`).
+      responses:
+        '200':
+          description: Achievement catalog with caller's unlock status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AchievementListResponse'
+              examples:
+                default:
+                  externalValue: ./examples/progression/list-my-achievements.200.json
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/leaderboards/all-time:
+    get:
+      tags: [progression]
+      operationId: getAllTimeLeaderboard
+      summary: Get the all-time rank points leaderboard
+      description: |
+        Any signed-in user. Lists registered players (`REGISTERED`, active, with at least 1 ranked match, BR-20, BR-24)
+        ordered by `rankPoints` descending and tie-broken by earlier `reachedAt`. Includes `myEntry` for the caller when
+        applicable. There is no weekly leaderboard (PO decision 01/11).
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: All-time rank leaderboard page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RankLeaderboardPage'
+              examples:
+                default:
+                  externalValue: ./examples/progression/get-all-time-leaderboard.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/leaderboards/daily:
+    get:
+      tags: [daily]
+      operationId: getDailyLeaderboard
+      summary: Get the daily challenge leaderboard
+      description: |
+        Any signed-in user. Lists players who completed the daily challenge for `date` (defaults to today in
+        `Asia/Ho_Chi_Minh`, UTC+7). Ranked by `SOLVED` before `UNSOLVED`, then fewer listen seconds (`correctLevel` 1..5,
+        i.e. 2s -> 5s -> 10s -> 20s -> 30s), then smaller `elapsedMs` (BR-25).
+      parameters:
+        - name: date
+          in: query
+          required: false
+          description: Challenge date (`yyyy-MM-dd` in `Asia/Ho_Chi_Minh`). Defaults to today when omitted.
+          schema:
+            type: string
+            format: date
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Daily challenge leaderboard page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyLeaderboardPage'
+              examples:
+                default:
+                  externalValue: ./examples/daily/get-daily-leaderboard.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/daily/today:
+    get:
+      tags: [daily]
+      operationId: getDailyToday
+      summary: Get today's daily challenge status for the current player
+      description: |
+        Any signed-in user (guest or registered, BR-20, BR-25). Returns today's challenge date (`Asia/Ho_Chi_Minh`,
+        reset at 00:00 UTC+7), the caller's attempt `status` (`NOT_STARTED`, `IN_PROGRESS`, `SOLVED`, `UNSOLVED`),
+        streak counters, `nextResetAt` and `serverTime`. When `IN_PROGRESS`, includes `round` (`DailyRoundState`, which
+        never contains the answer). When `SOLVED` or `UNSOLVED`, includes `result` (`DailyResult` with the revealed
+        `answer`).
+      responses:
+        '200':
+          description: Today's daily challenge state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyTodayResponse'
+              examples:
+                notStarted:
+                  summary: Player has not started today's challenge yet
+                  externalValue: ./examples/daily/get-daily-today.not-started.200.json
+                inProgress:
+                  summary: Attempt in progress (no answer fields)
+                  externalValue: ./examples/daily/get-daily-today.in-progress.200.json
+                solved:
+                  summary: Today's attempt already solved
+                  externalValue: ./examples/daily/get-daily-today.solved.200.json
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: No daily challenge track is available (`DAILY_CHALLENGE_NOT_AVAILABLE`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                notAvailable:
+                  externalValue: ./examples/daily/problem.daily-not-available.404.json
+  /api/v1/daily/today/start:
+    post:
+      tags: [daily]
+      operationId: startDailyAttempt
+      summary: Start or resume today's single daily challenge attempt
+      description: |
+        Any signed-in user (BR-25). Starts today's attempt at level 1 (`2s`) with a 5-minute ceiling (`expiresAt`) and
+        returns `DailyRoundState`. If the attempt is already `IN_PROGRESS` and not expired, returns the current
+        `DailyRoundState` with a fresh audio token so reloading does not lose the attempt. If the caller already
+        finished today's challenge (`SOLVED` or `UNSOLVED`), returns 409 (`DAILY_ALREADY_PLAYED`).
+      responses:
+        '200':
+          description: Daily attempt started or resumed at current level.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyRoundState'
+              examples:
+                default:
+                  externalValue: ./examples/daily/start-daily-attempt.200.json
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: No daily challenge track is available (`DAILY_CHALLENGE_NOT_AVAILABLE`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                notAvailable:
+                  externalValue: ./examples/daily/problem.daily-not-available.404.json
+        '409':
+          description: Today's daily challenge has already been played (`DAILY_ALREADY_PLAYED`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                alreadyPlayed:
+                  externalValue: ./examples/daily/problem.daily-already-played.409.json
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/daily/today/listen-more:
+    post:
+      tags: [daily]
+      operationId: listenMoreDaily
+      summary: Open the next listening level in today's daily challenge
+      description: |
+        Advances today's in-progress daily attempt to the next level (`2s -> 5s -> 10s -> 20s -> 30s`, BR-01, BR-03,
+        BR-25) without counting as a wrong guess, and returns a new `AudioClip` for that level.
+      parameters:
+        - name: expectedLevel
+          in: query
+          required: false
+          description: Target level (2..5). Guards against double clicks (`LISTEN_LEVEL_MISMATCH`).
+          schema:
+            type: integer
+            minimum: 2
+            maximum: 5
+      responses:
+        '200':
+          description: Next listening level opened.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyRoundState'
+              examples:
+                default:
+                  externalValue: ./examples/daily/listen-more-daily.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: |
+            Attempt is not active (`ROUND_NOT_ACTIVE`), already at 30 seconds (`LISTEN_LEVEL_MAX`), or `expectedLevel`
+            does not match `level + 1` (`LISTEN_LEVEL_MISMATCH`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                levelMax:
+                  externalValue: ./examples/game/listen-more.409.level-max.json
+                levelMismatch:
+                  externalValue: ./examples/game/listen-more.409.level-mismatch.json
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/daily/today/skip:
+    post:
+      tags: [daily]
+      operationId: skipDaily
+      summary: Give up on today's daily challenge at the 30-second level
+      description: |
+        Allowed only when today's attempt has reached level 5 (`30s`, BR-04, BR-25). Ends the attempt as `UNSOLVED`
+        (`outcome: GAVE_UP`), resets `currentStreak` to 0, reveals the song `answer`, and returns `DailyResult`.
+      responses:
+        '200':
+          description: Attempt ended as unsolved (`GAVE_UP`) and answer revealed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyResult'
+              examples:
+                default:
+                  externalValue: ./examples/daily/skip-daily.200.json
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Attempt is not active (`ROUND_NOT_ACTIVE`) or not yet at level 5 (`SKIP_NOT_ALLOWED`, BR-04).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                skipNotAllowed:
+                  externalValue: ./examples/game/skip-round.409.json
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/daily/today/guesses:
+    post:
+      tags: [daily]
+      operationId: submitDailyGuess
+      summary: Submit a song guess for today's daily challenge
+      description: |
+        Any signed-in user with an `IN_PROGRESS` daily attempt (BR-02, BR-03, BR-05, BR-06, BR-25). Checks `trackId`
+        against today's track (exact or normalized title + main artist per BR-05).
+        - Correct: ends the attempt as `SOLVED` (`attemptEnded: true`), updates `currentStreak` and `longestStreak`,
+          and returns `result` (`DailyResult` with `answer`).
+        - Wrong before level 5: opens the next level (`attemptEnded: false`), sets `rightArtist` (BR-06), and returns
+          `round` (`DailyRoundState` without the answer).
+        - Wrong at level 5 (`30s`): ends the attempt as `UNSOLVED` (`outcome: WRONG_OUT`, `attemptEnded: true`), resets
+          `currentStreak` to 0, and returns `result` (`DailyResult` with `answer`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GuessRequest'
+            examples:
+              default:
+                externalValue: ./examples/game/submit-guess.request.json
+      responses:
+        '200':
+          description: Guess evaluated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyGuessResponse'
+              examples:
+                wrongContinue:
+                  summary: Wrong guess before level 5; next level opened
+                  externalValue: ./examples/daily/submit-daily-guess.wrong.200.json
+                correctFinished:
+                  summary: Correct guess; attempt ended with answer and shareable result
+                  externalValue: ./examples/daily/submit-daily-guess.correct.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: The guessed `trackId` does not exist (`TRACK_NOT_FOUND`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                trackNotFound:
+                  externalValue: ./examples/game/problem.track-not-found.404.json
+        '409':
+          description: No active daily attempt (`ROUND_NOT_ACTIVE`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                roundNotActive:
+                  externalValue: ./examples/game/submit-guess.409.round-not-active.json
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/daily/result:
+    get:
+      tags: [daily]
+      operationId: getDailyResult
+      summary: Get the completed daily challenge result and spoiler-free share summary
+      description: |
+        Any signed-in user. Returns the caller's completed `DailyResult` for `date` (defaults to today in
+        `Asia/Ho_Chi_Minh`), including the 5-slot `levels` array (`CORRECT`, `WRONG`, `UNOPENED`) for the spoiler-free
+        share text (`Meloo #YYYY-MM-DD`, BR-25) and the revealed `answer`. Returns 409 (`ROUND_NOT_FINISHED`) if the
+        caller has not completed that day's challenge yet.
+      parameters:
+        - name: date
+          in: query
+          required: false
+          description: Challenge date (`yyyy-MM-dd` in `Asia/Ho_Chi_Minh`). Defaults to today when omitted.
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Completed daily challenge result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyResult'
+              examples:
+                default:
+                  externalValue: ./examples/daily/get-daily-result.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: No completed daily challenge attempt found for that date (`NOT_FOUND`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                notFound:
+                  externalValue: ./examples/common/problem.not-found.404.json
+        '409':
+          description: The caller's daily attempt is still in progress or not finished (`ROUND_NOT_FINISHED`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                roundNotFinished:
+                  externalValue: ./examples/game/get-round-result.409.json
+  /api/v1/daily/history:
+    get:
+      tags: [daily]
+      operationId: getDailyHistory
+      summary: Get the current player's daily challenge streak grid history
+      description: |
+        Any signed-in user, guest or registered (29/10 supplement, BR-25). Returns the sparse list of days solved
+        (`SOLVED`) by the caller within `[from, to]` (inclusive, `Asia/Ho_Chi_Minh` `yyyy-MM-dd`), sorted ascending by
+        `date`, so the home page `StreakGrid` can render the 52-week x 7-day heatmap and color each cell by the solved
+        listening level (`2`, `5`, `10`, `20` or `30` seconds). Unsolved or unplayed days are omitted from `items`.
+        When `from` and `to` are omitted, defaults to the 280-day (40-week) window ending on `today`. A range exceeding
+        366 days or `from > to` is rejected with 400 (`VALIDATION_FAILED`). Never contains any track or answer fields.
+      parameters:
+        - name: from
+          in: query
+          required: false
+          description: Start date inclusive (`yyyy-MM-dd` in `Asia/Ho_Chi_Minh`). Defaults to `to - 279 days` (40 weeks).
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          description: End date inclusive (`yyyy-MM-dd` in `Asia/Ho_Chi_Minh`). Defaults to `today` in Vietnam time.
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Sparse solved-day history and streak counters for the caller.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyHistoryResponse'
+              examples:
+                default:
+                  summary: Solved history containing all 5 levels (2, 5, 10, 20, 30), date gaps and active streak
+                  externalValue: ./examples/daily/daily-history.200.json
+        '400':
+          description: Invalid date format, `from > to`, or date range exceeds 366 days (`VALIDATION_FAILED`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                rangeTooLarge:
+                  summary: Date range exceeds 366 days
+                  externalValue: ./examples/daily/daily-history.400.range-too-large.json
+                validationFailed:
+                  summary: Generic validation error
+                  externalValue: ./examples/common/problem.validation-failed.400.json
+        '401':
+          description: Missing, expired or invalid bearer token (`UNAUTHORIZED`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                default:
+                  externalValue: ./examples/daily/daily-history.401.json
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/admin/dashboard:
+    get:
+      tags: [admin]
+      operationId: getAdminDashboard
+      summary: Get administration dashboard KPI summary
+      description: |
+        Requires role `ADMIN` (403 `FORBIDDEN` otherwise). Aggregates operational KPIs across modules: active rooms,
+        online players, matches played today, daily challenge players today, open chat reports, enabled/disabled track
+        counts, and user counts.
+      responses:
+        '200':
+          description: Dashboard KPI snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminDashboard'
+              examples:
+                default:
+                  externalValue: ./examples/admin/get-admin-dashboard.200.json
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/admin/tracks:
+    get:
+      tags: [admin]
+      operationId: listAdminTracks
+      summary: Search and filter catalog tracks for administration
+      description: |
+        Requires role `ADMIN`. Lists catalog tracks (both enabled and disabled, BR-27) with optional search query and
+        filters for `enabled`, `genreCode`, `countryCode` and `provider`.
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Optional search text matching title or artist name.
+          schema:
+            type: string
+            maxLength: 100
+        - name: enabled
+          in: query
+          required: false
+          description: Filter by enabled status (BR-27).
+          schema:
+            type: boolean
+        - name: genreCode
+          in: query
+          required: false
+          description: Filter by genre code.
+          schema:
+            type: string
+            maxLength: 40
+        - name: countryCode
+          in: query
+          required: false
+          description: Filter by two-letter ISO 3166-1 alpha-2 country code.
+          schema:
+            type: string
+            pattern: '^[A-Z]{2}$'
+        - name: provider
+          in: query
+          required: false
+          description: Filter by music provider (`DEEZER` or `ITUNES`).
+          schema:
+            $ref: '#/components/schemas/MusicProvider'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: A page of catalog tracks.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTrackPage'
+              examples:
+                default:
+                  externalValue: ./examples/admin/list-admin-tracks.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/admin/tracks/{trackId}/metadata:
+    put:
+      tags: [admin]
+      operationId: updateAdminTrackMetadata
+      summary: Update genre, country and release year of a catalog track
+      description: |
+        Requires role `ADMIN` (`CatalogAdminApi.updateTrackMetadata`). Updates curated metadata (`genreCode`,
+        `countryCode`, `releaseYear`) and records an admin audit log entry.
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminTrackMetadataRequest'
+            examples:
+              default:
+                externalValue: ./examples/admin/update-admin-track-metadata.request.json
+      responses:
+        '200':
+          description: Updated catalog track.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTrack'
+              examples:
+                default:
+                  externalValue: ./examples/admin/update-admin-track-metadata.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Track not found (`TRACK_NOT_FOUND`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                trackNotFound:
+                  externalValue: ./examples/game/problem.track-not-found.404.json
+  /api/v1/admin/tracks/{trackId}/status:
+    put:
+      tags: [admin]
+      operationId: setAdminTrackStatus
+      summary: Enable or disable a catalog track
+      description: |
+        Requires role `ADMIN` (`CatalogAdminApi.setTrackEnabled`, BR-27). Enables or disables a track from being
+        selected in new rounds or autocomplete, and records an admin audit log entry.
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminTrackStatusRequest'
+            examples:
+              default:
+                externalValue: ./examples/admin/set-admin-track-status.request.json
+      responses:
+        '200':
+          description: Track status updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTrack'
+              examples:
+                default:
+                  externalValue: ./examples/admin/set-admin-track-status.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Track not found (`TRACK_NOT_FOUND`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                trackNotFound:
+                  externalValue: ./examples/game/problem.track-not-found.404.json
+  /api/v1/admin/tracks/import:
+    post:
+      tags: [admin]
+      operationId: importAdminTracks
+      summary: Import tracks from a music provider into a playlist
+      description: |
+        Requires role `ADMIN` (`CatalogAdminApi.importFromProvider`). Searches `provider` (`DEEZER` or `ITUNES`) for
+        `query`, imports up to `limit` tracks that have a valid preview URL (BR-27), attaches them to `playlistId`, and
+        records an admin audit log entry.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminTrackImportRequest'
+            examples:
+              default:
+                externalValue: ./examples/admin/import-admin-tracks.request.json
+      responses:
+        '200':
+          description: Provider import summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminImportResult'
+              examples:
+                default:
+                  externalValue: ./examples/admin/import-admin-tracks.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Target playlist not found (`PLAYLIST_NOT_FOUND`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                playlistNotFound:
+                  externalValue: ./examples/game/problem.playlist-not-found.404.json
+  /api/v1/admin/playlists:
+    get:
+      tags: [admin]
+      operationId: listAdminPlaylists
+      summary: List all playlists for administration
+      description: |
+        Requires role `ADMIN` (`CatalogAdminApi.listPlaylists`). Returns all playlists (both enabled and disabled)
+        with their track counts.
+      responses:
+        '200':
+          description: All playlists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminPlaylistListResponse'
+              examples:
+                default:
+                  externalValue: ./examples/admin/list-admin-playlists.200.json
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [admin]
+      operationId: createAdminPlaylist
+      summary: Create a new curated or standard playlist
+      description: |
+        Requires role `ADMIN` (`CatalogAdminApi.createPlaylist`). Creates a new playlist and records an admin audit log
+        entry.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminCreatePlaylistRequest'
+            examples:
+              default:
+                externalValue: ./examples/admin/create-admin-playlist.request.json
+      responses:
+        '201':
+          description: Playlist created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminPlaylist'
+              examples:
+                default:
+                  externalValue: ./examples/admin/create-admin-playlist.201.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Playlist `code` already exists (`CONFLICT`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/admin/playlists/{playlistId}:
+    put:
+      tags: [admin]
+      operationId: updateAdminPlaylist
+      summary: Update a playlist's names, descriptions and enabled status
+      description: |
+        Requires role `ADMIN` (`CatalogAdminApi.updatePlaylist`). Updates localized names, descriptions and `enabled`
+        flag of a playlist.
+      parameters:
+        - $ref: '#/components/parameters/PlaylistId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUpdatePlaylistRequest'
+            examples:
+              default:
+                externalValue: ./examples/admin/update-admin-playlist.request.json
+      responses:
+        '200':
+          description: Playlist updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminPlaylist'
+              examples:
+                default:
+                  externalValue: ./examples/admin/update-admin-playlist.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Playlist not found (`PLAYLIST_NOT_FOUND`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                playlistNotFound:
+                  externalValue: ./examples/game/problem.playlist-not-found.404.json
+    delete:
+      tags: [admin]
+      operationId: deleteAdminPlaylist
+      summary: Delete a curated playlist
+      description: |
+        Requires role `ADMIN` (`CatalogAdminApi.deletePlaylist`). Deletes a curated playlist. The standard playlist
+        (`kind: STANDARD`, BR-23) is protected and cannot be deleted (returns 409 `STANDARD_PLAYLIST_PROTECTED`).
+      parameters:
+        - $ref: '#/components/parameters/PlaylistId'
+      responses:
+        '204':
+          description: Playlist deleted.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Playlist not found (`PLAYLIST_NOT_FOUND`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                playlistNotFound:
+                  externalValue: ./examples/game/problem.playlist-not-found.404.json
+        '409':
+          description: The standard playlist (`STANDARD`) cannot be deleted (`STANDARD_PLAYLIST_PROTECTED`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                standardProtected:
+                  externalValue: ./examples/admin/problem.standard-playlist-protected.409.json
+  /api/v1/admin/playlists/{playlistId}/tracks:
+    post:
+      tags: [admin]
+      operationId: addAdminPlaylistTracks
+      summary: Add tracks to a playlist
+      description: |
+        Requires role `ADMIN` (`CatalogAdminApi.addTracksToPlaylist`). Attaches one or more tracks to the playlist
+        (idempotent for tracks already in the playlist) and returns the updated `AdminPlaylist`.
+      parameters:
+        - $ref: '#/components/parameters/PlaylistId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminPlaylistTracksRequest'
+            examples:
+              default:
+                externalValue: ./examples/admin/playlist-tracks.request.json
+      responses:
+        '200':
+          description: Tracks added to playlist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminPlaylist'
+              examples:
+                default:
+                  externalValue: ./examples/admin/update-admin-playlist.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Playlist or track not found (`PLAYLIST_NOT_FOUND`, `TRACK_NOT_FOUND`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                playlistNotFound:
+                  externalValue: ./examples/game/problem.playlist-not-found.404.json
+    delete:
+      tags: [admin]
+      operationId: removeAdminPlaylistTracks
+      summary: Remove tracks from a playlist
+      description: |
+        Requires role `ADMIN` (`CatalogAdminApi.removeTracksFromPlaylist`). Removes one or more tracks from the
+        playlist and returns the updated `AdminPlaylist`.
+      parameters:
+        - $ref: '#/components/parameters/PlaylistId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminPlaylistTracksRequest'
+            examples:
+              default:
+                externalValue: ./examples/admin/playlist-tracks.request.json
+      responses:
+        '200':
+          description: Tracks removed from playlist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminPlaylist'
+              examples:
+                default:
+                  externalValue: ./examples/admin/update-admin-playlist.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Playlist not found (`PLAYLIST_NOT_FOUND`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                playlistNotFound:
+                  externalValue: ./examples/game/problem.playlist-not-found.404.json
+  /api/v1/admin/users:
+    get:
+      tags: [admin]
+      operationId: listAdminUsers
+      summary: Search and filter user accounts for administration
+      description: |
+        Requires role `ADMIN` (BE-ID-02, BE-ADM-02). Lists user accounts with optional search (`q` matching nickname or
+        email) and filters for `kind` (`GUEST` or `REGISTERED`), `role` (`USER` or `ADMIN`), and account `status`
+        (`ACTIVE` or `LOCKED`).
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Search text matching nickname or email.
+          schema:
+            type: string
+            maxLength: 100
+        - name: kind
+          in: query
+          required: false
+          description: Filter by user kind.
+          schema:
+            $ref: '#/components/schemas/UserKind'
+        - name: role
+          in: query
+          required: false
+          description: Filter by user role.
+          schema:
+            $ref: '#/components/schemas/UserRole'
+        - name: status
+          in: query
+          required: false
+          description: Filter by account lock status (`ACTIVE` or `LOCKED`).
+          schema:
+            $ref: '#/components/schemas/UserAccountStatus'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: A page of user accounts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserPage'
+              examples:
+                default:
+                  externalValue: ./examples/admin/list-admin-users.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/admin/users/{userId}:
+    get:
+      tags: [admin]
+      operationId: getAdminUser
+      summary: Get detailed user account information for administration
+      description: Requires role `ADMIN`. Returns detailed account state for a single user.
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: User account detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUser'
+              examples:
+                default:
+                  externalValue: ./examples/admin/get-admin-user.200.json
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: User not found (`USER_NOT_FOUND`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                notFound:
+                  externalValue: ./examples/common/problem.not-found.404.json
+  /api/v1/admin/users/{userId}/lock:
+    put:
+      tags: [admin]
+      operationId: updateAdminUserLock
+      summary: Lock or unlock a user account
+      description: |
+        Requires role `ADMIN` (BR-28, BE-ID-02). Locks (`locked: true`, requiring a non-blank `reason`) or unlocks
+        (`locked: false`) a user account, revoking active refresh tokens when locked, and records an admin audit log
+        entry. An administrator cannot lock their own account (returns 409 `ADMIN_SELF_ACTION_FORBIDDEN`).
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUserLockRequest'
+            examples:
+              default:
+                externalValue: ./examples/admin/update-admin-user-lock.request.json
+      responses:
+        '200':
+          description: Account lock status updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUser'
+              examples:
+                default:
+                  externalValue: ./examples/admin/update-admin-user-lock.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: User not found (`USER_NOT_FOUND`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                notFound:
+                  externalValue: ./examples/common/problem.not-found.404.json
+        '409':
+          description: Administrator cannot lock their own account (`ADMIN_SELF_ACTION_FORBIDDEN`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                selfAction:
+                  externalValue: ./examples/admin/problem.admin-self-action.409.json
+  /api/v1/admin/users/{userId}/role:
+    put:
+      tags: [admin]
+      operationId: updateAdminUserRole
+      summary: Change a registered user's role
+      description: |
+        Requires role `ADMIN` (BE-ID-02). Updates a registered user's role (`USER` or `ADMIN`) and records an admin
+        audit log entry. An administrator cannot demote their own account (returns 409 `ADMIN_SELF_ACTION_FORBIDDEN`).
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUserRoleRequest'
+            examples:
+              default:
+                externalValue: ./examples/admin/update-admin-user-role.request.json
+      responses:
+        '200':
+          description: User role updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUser'
+              examples:
+                default:
+                  externalValue: ./examples/admin/update-admin-user-role.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: User not found (`USER_NOT_FOUND`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                notFound:
+                  externalValue: ./examples/common/problem.not-found.404.json
+        '409':
+          description: Administrator cannot change their own role (`ADMIN_SELF_ACTION_FORBIDDEN`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                selfAction:
+                  externalValue: ./examples/admin/problem.admin-self-action.409.json
+  /api/v1/admin/reports:
+    get:
+      tags: [admin]
+      operationId: listAdminChatReports
+      summary: List chat abuse reports for moderation
+      description: |
+        Requires role `ADMIN` (`ChatAdminApi.listReports`, BR-19). Lists chat reports filtered by `status` (defaults to
+        `OPEN`).
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Filter by report status (`OPEN`, `DISMISSED`, `ACTIONED`). Defaults to `OPEN`.
+          schema:
+            $ref: '#/components/schemas/ChatReportStatus'
+            default: OPEN
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: A page of chat reports.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminChatReportPage'
+              examples:
+                default:
+                  externalValue: ./examples/admin/list-admin-reports.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/admin/reports/{reportId}/resolve:
+    post:
+      tags: [admin]
+      operationId: resolveAdminChatReport
+      summary: Resolve a chat report as dismissed or actioned
+      description: |
+        Requires role `ADMIN` (`ChatAdminApi.resolveReport`, BR-19, BR-28). Marks a chat report as `DISMISSED` or
+        `ACTIONED`, optionally locks the reported sender's account (`lockSender: true` with `lockReason`), and records
+        an admin audit log entry.
+      parameters:
+        - $ref: '#/components/parameters/ReportId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminResolveChatReportRequest'
+            examples:
+              default:
+                externalValue: ./examples/admin/resolve-admin-report.request.json
+      responses:
+        '200':
+          description: Chat report resolved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminChatReport'
+              examples:
+                default:
+                  externalValue: ./examples/admin/resolve-admin-report.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Chat report not found (`REPORT_NOT_FOUND`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                notFound:
+                  externalValue: ./examples/common/problem.not-found.404.json
+  /api/v1/admin/banned-words:
+    get:
+      tags: [admin]
+      operationId: listAdminBannedWords
+      summary: List all banned words
+      description: |
+        Requires role `ADMIN` (`ChatAdminApi.listBannedWords`, BR-17, BR-22). Lists all lowercase banned words and
+        phrases used for chat and nickname filtering.
+      responses:
+        '200':
+          description: Banned word list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminBannedWordListResponse'
+              examples:
+                default:
+                  externalValue: ./examples/admin/list-admin-banned-words.200.json
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [admin]
+      operationId: createAdminBannedWord
+      summary: Add a new banned word or phrase
+      description: |
+        Requires role `ADMIN` (`ChatAdminApi.addBannedWord`, BR-17, BR-22). Normalizes `word` to lowercase NFC, adds it
+        to the banned word list, refreshes the in-memory matcher and records an admin audit log entry.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminBannedWordRequest'
+            examples:
+              default:
+                externalValue: ./examples/admin/banned-word.request.json
+      responses:
+        '201':
+          description: Banned word created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminBannedWord'
+              examples:
+                default:
+                  externalValue: ./examples/admin/banned-word.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: The banned word already exists (`BANNED_WORD_ALREADY_EXISTS`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                alreadyExists:
+                  externalValue: ./examples/admin/problem.banned-word-exists.409.json
+  /api/v1/admin/banned-words/{wordId}:
+    put:
+      tags: [admin]
+      operationId: updateAdminBannedWord
+      summary: Update an existing banned word
+      description: |
+        Requires role `ADMIN` (`ChatAdminApi.updateBannedWord`). Updates the text of an existing banned word and
+        refreshes the in-memory matcher.
+      parameters:
+        - $ref: '#/components/parameters/WordId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminBannedWordRequest'
+            examples:
+              default:
+                externalValue: ./examples/admin/banned-word.request.json
+      responses:
+        '200':
+          description: Banned word updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminBannedWord'
+              examples:
+                default:
+                  externalValue: ./examples/admin/banned-word.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Banned word not found (`BANNED_WORD_NOT_FOUND`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                notFound:
+                  externalValue: ./examples/common/problem.not-found.404.json
+        '409':
+          description: Another banned word with the same text already exists (`BANNED_WORD_ALREADY_EXISTS`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                alreadyExists:
+                  externalValue: ./examples/admin/problem.banned-word-exists.409.json
+    delete:
+      tags: [admin]
+      operationId: deleteAdminBannedWord
+      summary: Delete a banned word
+      description: |
+        Requires role `ADMIN` (`ChatAdminApi.deleteBannedWord`). Deletes a banned word, refreshes the in-memory matcher
+        and records an admin audit log entry.
+      parameters:
+        - $ref: '#/components/parameters/WordId'
+      responses:
+        '204':
+          description: Banned word deleted.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Banned word not found (`BANNED_WORD_NOT_FOUND`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                notFound:
+                  externalValue: ./examples/common/problem.not-found.404.json
+  /api/v1/admin/daily-schedule:
+    get:
+      tags: [admin]
+      operationId: listAdminDailySchedule
+      summary: List scheduled daily challenges within a date range
+      description: |
+        Requires role `ADMIN` (BR-25, BE-DAILY-01). Lists daily challenge track assignments between `from` and `to`
+        (`Asia/Ho_Chi_Minh` `yyyy-MM-dd`).
+      parameters:
+        - name: from
+          in: query
+          required: false
+          description: Start date inclusive (`yyyy-MM-dd`).
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          description: End date inclusive (`yyyy-MM-dd`).
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Scheduled daily challenges.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminDailyScheduleResponse'
+              examples:
+                default:
+                  externalValue: ./examples/admin/list-admin-daily-schedule.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/admin/daily-schedule/{challengeDate}:
+    put:
+      tags: [admin]
+      operationId: scheduleAdminDailyChallenge
+      summary: Assign or replace the daily challenge track for a future date
+      description: |
+        Requires role `ADMIN` (BR-25, BE-DAILY-01). Assigns an enabled catalog `trackId` (`source: ADMIN`) to a future
+        `challengeDate` (`Asia/Ho_Chi_Minh`) and records an admin audit log entry. Past or currently active dates
+        cannot be modified and return 409 (`DAILY_CHALLENGE_LOCKED`).
+      parameters:
+        - $ref: '#/components/parameters/ChallengeDate'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminScheduleDailyRequest'
+            examples:
+              default:
+                externalValue: ./examples/admin/schedule-admin-daily.request.json
+      responses:
+        '200':
+          description: Daily challenge scheduled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminDailyScheduleItem'
+              examples:
+                default:
+                  externalValue: ./examples/admin/schedule-admin-daily.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Track not found (`TRACK_NOT_FOUND`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                trackNotFound:
+                  externalValue: ./examples/game/problem.track-not-found.404.json
+        '409':
+          description: Past or active daily challenge cannot be modified (`DAILY_CHALLENGE_LOCKED`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                locked:
+                  externalValue: ./examples/admin/problem.daily-challenge-locked.409.json
+  /api/v1/admin/audit-logs:
+    get:
+      tags: [admin]
+      operationId: listAdminAuditLogs
+      summary: List administration audit log entries
+      description: |
+        Requires role `ADMIN` (BE-ADM-01, BE-ADM-02). Lists immutable `admin_audit_log` entries newest first, with
+        optional filters for `actorId`, `action`, `targetType`, `from` and `to`.
+      parameters:
+        - name: actorId
+          in: query
+          required: false
+          description: Filter by administrator user ID.
+          schema:
+            type: string
+            format: uuid
+        - name: action
+          in: query
+          required: false
+          description: Filter by action code (e.g. `USER_LOCKED`, `TRACK_DISABLED`, `DAILY_SCHEDULED`).
+          schema:
+            type: string
+            maxLength: 60
+        - name: targetType
+          in: query
+          required: false
+          description: Filter by target resource type (e.g. `USER`, `TRACK`, `PLAYLIST`, `CHAT_REPORT`, `BANNED_WORD`, `DAILY_CHALLENGE`).
+          schema:
+            type: string
+            maxLength: 40
+        - name: from
+          in: query
+          required: false
+          description: Filter entries created at or after this UTC timestamp.
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          description: Filter entries created at or before this UTC timestamp.
+          schema:
+            type: string
+            format: date-time
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: A page of admin audit log entries.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAuditLogPage'
+              examples:
+                default:
+                  externalValue: ./examples/admin/list-admin-audit-logs.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 components:
   securitySchemes:
     bearerAuth:
@@ -1076,6 +2873,61 @@ components:
         type: integer
         minimum: 1
         maximum: 15
+    OAuthProviderPath:
+      name: provider
+      in: path
+      required: true
+      description: Lowercase OAuth2 provider identifier (`google` or `facebook`).
+      schema:
+        $ref: '#/components/schemas/OAuthProviderSlug'
+    TrackId:
+      name: trackId
+      in: path
+      required: true
+      description: Catalog track UUID.
+      schema:
+        type: string
+        format: uuid
+    PlaylistId:
+      name: playlistId
+      in: path
+      required: true
+      description: Catalog playlist UUID.
+      schema:
+        type: string
+        format: uuid
+    UserId:
+      name: userId
+      in: path
+      required: true
+      description: User account UUID.
+      schema:
+        type: string
+        format: uuid
+    ReportId:
+      name: reportId
+      in: path
+      required: true
+      description: Chat report UUID.
+      schema:
+        type: string
+        format: uuid
+    WordId:
+      name: wordId
+      in: path
+      required: true
+      description: Banned word UUID.
+      schema:
+        type: string
+        format: uuid
+    ChallengeDate:
+      name: challengeDate
+      in: path
+      required: true
+      description: Daily challenge date (`yyyy-MM-dd` in `Asia/Ho_Chi_Minh`).
+      schema:
+        type: string
+        format: date
   responses:
     ValidationFailed:
       description: Invalid input (`VALIDATION_FAILED`); `errors` lists the fields.
@@ -1171,6 +3023,19 @@ components:
         - NOT_ROOM_HOST
         - ROOM_NOT_LOBBY
         - ROOM_CANNOT_START
+        - OAUTH_STATE_INVALID
+        - OAUTH_EMAIL_UNVERIFIED
+        - OAUTH_IDENTITY_ALREADY_LINKED
+        - GUEST_CANNOT_DELETE_ACCOUNT
+        - DAILY_ALREADY_PLAYED
+        - DAILY_CHALLENGE_NOT_AVAILABLE
+        - DAILY_CHALLENGE_LOCKED
+        - STANDARD_PLAYLIST_PROTECTED
+        - USER_NOT_FOUND
+        - ADMIN_SELF_ACTION_FORBIDDEN
+        - REPORT_NOT_FOUND
+        - BANNED_WORD_NOT_FOUND
+        - BANNED_WORD_ALREADY_EXISTS
     Problem:
       type: object
       description: RFC 9457 problem details with a stable `code`.
@@ -1279,6 +3144,18 @@ components:
           format: email
           maxLength: 254
           description: Only for registered users.
+        avatarUrl:
+          type: [string, 'null']
+          description: Optional profile picture URL from linked OAuth provider.
+        rankPoints:
+          type: integer
+          minimum: 0
+          description: Current competitive rank points (`rank_points`, BR-24). Starts at 1000 for new players.
+        linkedProviders:
+          type: array
+          description: Linked OAuth2 providers for registered users (`GOOGLE`, `FACEBOOK`).
+          items:
+            $ref: '#/components/schemas/OAuthProvider'
         createdAt:
           type: string
           format: date-time
@@ -1874,3 +3751,1153 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/PublicRoomItem'
+    OAuthProviderSlug:
+      type: string
+      enum: [google, facebook]
+      description: Lowercase OAuth2 provider slug used in URL paths.
+    OAuthProvider:
+      type: string
+      enum: [GOOGLE, FACEBOOK]
+      description: OAuth2/OIDC identity provider stored in `auth_identity` (ADR-005).
+    OAuthLinkRequest:
+      type: object
+      additionalProperties: false
+      required: [code, state]
+      properties:
+        code:
+          type: string
+          minLength: 1
+          maxLength: 2048
+          description: Authorization code returned by the OAuth2 provider.
+        state:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Anti-CSRF state parameter returned by the OAuth2 provider.
+        redirectUri:
+          type: string
+          format: uri
+          maxLength: 500
+          description: Optional redirect URI used when requesting the authorization code.
+    FacebookDataDeletionRequest:
+      type: object
+      required: [signed_request]
+      properties:
+        signed_request:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          description: Base64url-encoded HMAC-SHA256 signature and payload sent by Meta (`signed_request`).
+    FacebookDataDeletionResponse:
+      type: object
+      required: [url, confirmation_code]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Public URL where the user can check the status of their data deletion request.
+        confirmation_code:
+          type: string
+          maxLength: 120
+          description: Unique confirmation code for the data deletion request.
+    UserProfile:
+      type: object
+      required: [id, kind, role, nickname, rankPoints, xp, linkedProviders, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          $ref: '#/components/schemas/UserKind'
+        role:
+          $ref: '#/components/schemas/UserRole'
+        nickname:
+          type: string
+          minLength: 3
+          maxLength: 20
+        email:
+          type: [string, 'null']
+          format: email
+          maxLength: 254
+          description: Present for registered users (`REGISTERED`), null for guests.
+        avatarUrl:
+          type: [string, 'null']
+          description: Avatar URL from linked OAuth provider, if available.
+        rankPoints:
+          type: integer
+          minimum: 0
+          description: Competitive rank points (`rank_points`, BR-24, 01/11 supplement). Starts at 1000.
+        xp:
+          type: integer
+          minimum: 0
+          description: Cumulative experience points earned across matches.
+        linkedProviders:
+          type: array
+          description: OAuth2 providers linked to this account (`GOOGLE`, `FACEBOOK`).
+          items:
+            $ref: '#/components/schemas/OAuthProvider'
+        createdAt:
+          type: string
+          format: date-time
+    UpdateProfileRequest:
+      type: object
+      additionalProperties: false
+      required: [nickname]
+      properties:
+        nickname:
+          type: string
+          minLength: 3
+          maxLength: 20
+          description: New display name (BR-22); banned words are rejected with 400 (`VALIDATION_FAILED`).
+    MatchType:
+      type: string
+      enum: [SOLO, PRIVATE_ROOM, PUBLIC_ROOM, QUICK_MATCH]
+      description: Match type stored in `match.type`.
+    MatchHistoryItem:
+      type: object
+      required: [matchId, type, ranked, status, roundCount, totalScore, correctCount, rank, playerCount, startedAt, endedAt]
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/MatchType'
+        mode:
+          oneOf:
+            - $ref: '#/components/schemas/SoloMode'
+            - type: 'null'
+          description: Present for `SOLO` matches (`PRACTICE`), null for room matches.
+        ranked:
+          type: boolean
+          description: True when the match counted toward the all-time rank leaderboard (`QUICK_MATCH`, BR-20, BR-24).
+        status:
+          $ref: '#/components/schemas/MatchStatus'
+        roundCount:
+          type: integer
+          enum: [5, 10, 15]
+        totalScore:
+          type: integer
+          minimum: 0
+        correctCount:
+          type: integer
+          minimum: 0
+        rank:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: Caller's final placement in the match (1 = winner).
+        playerCount:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: Number of participants in the match.
+        rankDelta:
+          type: [integer, 'null']
+          description: Rank points delta from this match (`QUICK_MATCH`, BR-24), or null if unranked.
+        playlistId:
+          type: [string, 'null']
+          format: uuid
+        startedAt:
+          type: string
+          format: date-time
+        endedAt:
+          type: string
+          format: date-time
+    MatchHistoryPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/MatchHistoryItem'
+    MatchHistoryPlayer:
+      type: object
+      required: [nickname, isGuest, rank, totalScore, correctCount, correctTimeMs]
+      properties:
+        userId:
+          type: [string, 'null']
+          format: uuid
+        nickname:
+          type: string
+          maxLength: 20
+        isGuest:
+          type: boolean
+        rank:
+          type: integer
+          minimum: 1
+          maximum: 5
+        totalScore:
+          type: integer
+          minimum: 0
+        correctCount:
+          type: integer
+          minimum: 0
+        correctTimeMs:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Total answer time in milliseconds across correct rounds (tie-breaker, BR-15).
+        rankDelta:
+          type: [integer, 'null']
+    MatchHistoryRound:
+      type: object
+      required: [roundNo, outcome, baseScore, comboPercent, speedBonus, roundScore, wrongCount, answer]
+      properties:
+        roundNo:
+          type: integer
+          minimum: 1
+          maximum: 15
+        outcome:
+          $ref: '#/components/schemas/RoundOutcome'
+        correctLevel:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 5
+          description: Level of the correct guess (1..5), or null when not `CORRECT`.
+        listenSeconds:
+          oneOf:
+            - $ref: '#/components/schemas/DailyListenSeconds'
+            - type: 'null'
+          description: Listening duration in seconds (`2`, `5`, `10`, `20`, `30`) when `outcome` is `CORRECT`, or null.
+        baseScore:
+          type: integer
+          enum: [0, 200, 400, 600, 800, 1000]
+        comboPercent:
+          type: integer
+          enum: [0, 10, 20]
+        speedBonus:
+          type: integer
+          minimum: 0
+        roundScore:
+          type: integer
+          minimum: 0
+        wrongCount:
+          type: integer
+          minimum: 0
+        answerTimeMs:
+          type: [integer, 'null']
+          minimum: 0
+        answer:
+          $ref: '#/components/schemas/Answer'
+    MatchHistoryDetail:
+      allOf:
+        - $ref: '#/components/schemas/MatchHistoryItem'
+        - type: object
+          required: [players, rounds]
+          properties:
+            players:
+              type: array
+              items:
+                $ref: '#/components/schemas/MatchHistoryPlayer'
+            rounds:
+              type: array
+              items:
+                $ref: '#/components/schemas/MatchHistoryRound'
+    PlayerStats:
+      type: object
+      required: [matchesPlayed, matchesWon, winRate, roundsPlayed, roundsCorrect, bestCombo, rankPoints, xp]
+      properties:
+        matchesPlayed:
+          type: integer
+          minimum: 0
+        matchesWon:
+          type: integer
+          minimum: 0
+        winRate:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+          description: Win percentage (`0.0` to `100.0`).
+        roundsPlayed:
+          type: integer
+          minimum: 0
+        roundsCorrect:
+          type: integer
+          minimum: 0
+        averageCorrectLevel:
+          type: [number, 'null']
+          format: double
+          minimum: 1
+          maximum: 5
+          description: Average listening level (1..5) across correct rounds, or null if no correct rounds yet.
+        averageListenSeconds:
+          type: [number, 'null']
+          format: double
+          minimum: 2
+          maximum: 30
+          description: Average listening duration in seconds across correct rounds, or null if no correct rounds yet.
+        bestCombo:
+          type: integer
+          minimum: 0
+          description: Highest combo streak achieved at 2s/5s levels (BR-08).
+        rankPoints:
+          type: integer
+          minimum: 0
+        xp:
+          type: integer
+          minimum: 0
+        favoriteGenre:
+          oneOf:
+            - $ref: '#/components/schemas/Genre'
+            - type: 'null'
+          description: Most frequently played/solved genre, or null if not enough data.
+    AchievementItem:
+      type: object
+      required: [code, nameVi, nameEn, descriptionVi, descriptionEn, sortOrder, unlocked]
+      properties:
+        code:
+          type: string
+          maxLength: 40
+        nameVi:
+          type: string
+          maxLength: 100
+        nameEn:
+          type: string
+          maxLength: 100
+        descriptionVi:
+          type: string
+          maxLength: 240
+        descriptionEn:
+          type: string
+          maxLength: 240
+        sortOrder:
+          type: integer
+          minimum: 0
+        unlocked:
+          type: boolean
+        unlockedAt:
+          type: [string, 'null']
+          format: date-time
+    AchievementListResponse:
+      type: object
+      required: [unlockedCount, totalCount, items]
+      properties:
+        unlockedCount:
+          type: integer
+          minimum: 0
+        totalCount:
+          type: integer
+          minimum: 0
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AchievementItem'
+    RankLeaderboardEntry:
+      type: object
+      required: [rank, userId, nickname, rankPoints, matchesPlayed, matchesWon, reachedAt]
+      properties:
+        rank:
+          type: integer
+          minimum: 1
+        userId:
+          type: string
+          format: uuid
+        nickname:
+          type: string
+          minLength: 3
+          maxLength: 20
+        avatarUrl:
+          type: [string, 'null']
+        rankPoints:
+          type: integer
+          minimum: 0
+        matchesPlayed:
+          type: integer
+          minimum: 0
+        matchesWon:
+          type: integer
+          minimum: 0
+        reachedAt:
+          type: string
+          format: date-time
+          description: 'Timestamp when the player reached their current `rankPoints` (tie-breaker: earlier ranks higher, BR-24).'
+    RankLeaderboardPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/RankLeaderboardEntry'
+            myEntry:
+              oneOf:
+                - $ref: '#/components/schemas/RankLeaderboardEntry'
+                - type: 'null'
+              description: The caller's own leaderboard entry if they are a registered player with at least 1 ranked match, otherwise null.
+    DailyAttemptStatus:
+      type: string
+      enum: [NOT_STARTED, IN_PROGRESS, SOLVED, UNSOLVED]
+      description: Status of the caller's daily challenge attempt for today (BR-25).
+    DailyCompletionStatus:
+      type: string
+      enum: [SOLVED, UNSOLVED]
+      description: Final status of a completed daily challenge attempt.
+    DailyLevelStatus:
+      type: string
+      enum: [CORRECT, WRONG, UNOPENED]
+      description: Per-level outcome for the 5 listening slots (`2s`, `5s`, `10s`, `20s`, `30s`) used in the spoiler-free share summary (BR-25).
+    DailyListenSeconds:
+      type: integer
+      enum: [2, 5, 10, 20, 30]
+      description: Listening duration in seconds for a level (`2`, `5`, `10`, `20`, `30`, BR-01).
+    DailyRoundState:
+      type: object
+      description: An in-progress daily challenge attempt. Deliberately has no answer, track id, title or artist field (NFR-07, BR-25).
+      required: [challengeDate, level, listenSeconds, canListenMore, canSkip, wrongCount, audio, startedAt, expiresAt, serverTime]
+      properties:
+        challengeDate:
+          type: string
+          format: date
+          description: Challenge date (`yyyy-MM-dd` in `Asia/Ho_Chi_Minh`).
+        level:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: Opened listening level, 1 to 5 (BR-01).
+        listenSeconds:
+          $ref: '#/components/schemas/DailyListenSeconds'
+        canListenMore:
+          type: boolean
+          description: '`level` < 5.'
+        canSkip:
+          type: boolean
+          description: '`level` = 5 (BR-04).'
+        wrongCount:
+          type: integer
+          minimum: 0
+          maximum: 5
+        audio:
+          $ref: '#/components/schemas/AudioClip'
+        startedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+          description: 5-minute ceiling from `startedAt` after which an unfinished attempt becomes `UNSOLVED` (`TIMEOUT`, BR-25).
+        serverTime:
+          type: string
+          format: date-time
+    DailyResult:
+      type: object
+      description: Completed daily challenge result with spoiler-free level slots and revealed song answer (BR-25, BR-29).
+      required: [challengeDate, status, outcome, levels, score, wrongCount, elapsedMs, currentStreak, longestStreak, nextResetAt, answer]
+      properties:
+        challengeDate:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/DailyCompletionStatus'
+        outcome:
+          $ref: '#/components/schemas/RoundOutcome'
+        correctLevel:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 5
+          description: Level of the correct guess (1..5) when `status` is `SOLVED`, otherwise null.
+        correctListenSeconds:
+          oneOf:
+            - $ref: '#/components/schemas/DailyListenSeconds'
+            - type: 'null'
+          description: Listening duration in seconds (`2`, `5`, `10`, `20`, `30`) when `status` is `SOLVED`, otherwise null.
+        levels:
+          type: array
+          minItems: 5
+          maxItems: 5
+          description: Five level slots (`2s`, `5s`, `10s`, `20s`, `30s`) for the spoiler-free share summary (`Meloo #YYYY-MM-DD`, BR-25).
+          items:
+            $ref: '#/components/schemas/DailyLevelStatus'
+        score:
+          type: integer
+          enum: [0, 200, 400, 600, 800, 1000]
+          description: Base score at the solved level (BR-02), or 0 when `UNSOLVED`.
+        wrongCount:
+          type: integer
+          minimum: 0
+          maximum: 5
+        elapsedMs:
+          type: integer
+          minimum: 0
+          description: Total elapsed time in milliseconds from `startedAt` to completion (BR-25).
+        rank:
+          type: [integer, 'null']
+          minimum: 1
+          description: Caller's rank on that day's daily leaderboard, if available.
+        currentStreak:
+          type: integer
+          minimum: 0
+          description: Consecutive days solved (`SOLVED`) up to today (BR-25).
+        longestStreak:
+          type: integer
+          minimum: 0
+          description: All-time longest consecutive solved-day streak.
+        nextResetAt:
+          type: string
+          format: date-time
+          description: Next daily reset timestamp (00:00 `Asia/Ho_Chi_Minh`).
+        answer:
+          $ref: '#/components/schemas/Answer'
+    DailyTodayResponse:
+      type: object
+      description: Today's daily challenge status. Contains `round` only when `IN_PROGRESS` (never exposing the answer) and `result` only when `SOLVED` or `UNSOLVED`.
+      required: [challengeDate, status, currentStreak, longestStreak, nextResetAt, serverTime]
+      properties:
+        challengeDate:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/DailyAttemptStatus'
+        currentStreak:
+          type: integer
+          minimum: 0
+        longestStreak:
+          type: integer
+          minimum: 0
+        nextResetAt:
+          type: string
+          format: date-time
+        serverTime:
+          type: string
+          format: date-time
+        round:
+          $ref: '#/components/schemas/DailyRoundState'
+          description: Present only when `status` is `IN_PROGRESS`.
+        result:
+          $ref: '#/components/schemas/DailyResult'
+          description: Present only when `status` is `SOLVED` or `UNSOLVED`.
+    DailyGuessResponse:
+      type: object
+      required: [correct, rightArtist, attemptEnded]
+      properties:
+        correct:
+          type: boolean
+        rightArtist:
+          type: boolean
+          description: True only for a wrong guess by the right main artist (BR-06); always false when `correct` is true.
+        attemptEnded:
+          type: boolean
+        round:
+          $ref: '#/components/schemas/DailyRoundState'
+          description: Present when `attemptEnded` is false (next listening level opened; no answer fields).
+        result:
+          $ref: '#/components/schemas/DailyResult'
+          description: Present when `attemptEnded` is true (`SOLVED` or `WRONG_OUT` at 30s).
+    DailyLeaderboardEntry:
+      type: object
+      required: [rank, userId, nickname, status, score, elapsedMs, completedAt]
+      properties:
+        rank:
+          type: integer
+          minimum: 1
+        userId:
+          type: string
+          format: uuid
+        nickname:
+          type: string
+          minLength: 3
+          maxLength: 20
+        avatarUrl:
+          type: [string, 'null']
+        status:
+          $ref: '#/components/schemas/DailyCompletionStatus'
+        correctLevel:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 5
+        listenSeconds:
+          oneOf:
+            - $ref: '#/components/schemas/DailyListenSeconds'
+            - type: 'null'
+        score:
+          type: integer
+          enum: [0, 200, 400, 600, 800, 1000]
+        elapsedMs:
+          type: integer
+          minimum: 0
+        completedAt:
+          type: string
+          format: date-time
+    DailyLeaderboardPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [challengeDate, items]
+          properties:
+            challengeDate:
+              type: string
+              format: date
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/DailyLeaderboardEntry'
+            myEntry:
+              oneOf:
+                - $ref: '#/components/schemas/DailyLeaderboardEntry'
+                - type: 'null'
+    DailyHistoryItem:
+      type: object
+      description: A single solved day in the caller's daily challenge history (29/10 supplement). Deliberately has no track or answer fields.
+      required: [date, level]
+      properties:
+        date:
+          type: string
+          format: date
+          description: Challenge date (`yyyy-MM-dd` in `Asia/Ho_Chi_Minh`).
+        level:
+          $ref: '#/components/schemas/DailyListenSeconds'
+          description: Listening level duration in seconds (`2`, `5`, `10`, `20` or `30`) at which the player solved that day's challenge.
+    DailyHistoryResponse:
+      type: object
+      description: Sparse solved-day history for the home page `StreakGrid` (29/10 supplement, BR-25).
+      required: [today, items, currentStreak, longestStreak]
+      properties:
+        today:
+          type: string
+          format: date
+          description: Current challenge date on the server (`yyyy-MM-dd` in `Asia/Ho_Chi_Minh`) so the client aligns the streak grid without clock skew.
+        items:
+          type: array
+          description: Sparse list of days where `status = SOLVED` within the requested window, sorted ascending by `date`. Unsolved or unplayed days are omitted.
+          items:
+            $ref: '#/components/schemas/DailyHistoryItem'
+        currentStreak:
+          type: integer
+          minimum: 0
+          description: Current consecutive solved-day streak up to `today` (or `yesterday` if `today` is not yet played/failed).
+        longestStreak:
+          type: integer
+          minimum: 0
+          description: All-time longest consecutive solved-day streak for the caller.
+    AdminDashboard:
+      type: object
+      required: [activeRooms, onlinePlayers, matchesToday, dailyPlayersToday, openChatReports, enabledTracks, disabledTracks, totalRegisteredUsers, totalGuestsToday, serverTime]
+      properties:
+        activeRooms:
+          type: integer
+          minimum: 0
+        onlinePlayers:
+          type: integer
+          minimum: 0
+        matchesToday:
+          type: integer
+          minimum: 0
+        dailyPlayersToday:
+          type: integer
+          minimum: 0
+        openChatReports:
+          type: integer
+          minimum: 0
+        enabledTracks:
+          type: integer
+          minimum: 0
+        disabledTracks:
+          type: integer
+          minimum: 0
+        totalRegisteredUsers:
+          type: integer
+          minimum: 0
+        totalGuestsToday:
+          type: integer
+          minimum: 0
+        serverTime:
+          type: string
+          format: date-time
+    AdminTrack:
+      type: object
+      required: [id, provider, providerTrackId, title, primaryArtistId, artistName, enabled, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        provider:
+          $ref: '#/components/schemas/MusicProvider'
+        providerTrackId:
+          type: string
+          maxLength: 64
+        title:
+          type: string
+          maxLength: 300
+        primaryArtistId:
+          type: string
+          format: uuid
+        artistName:
+          type: string
+          maxLength: 200
+        genreCode:
+          type: [string, 'null']
+          maxLength: 40
+        countryCode:
+          type: [string, 'null']
+          pattern: '^[A-Z]{2}$'
+        releaseYear:
+          type: [integer, 'null']
+          minimum: 1900
+          maximum: 2100
+        popularityRank:
+          type: [integer, 'null']
+          minimum: 1
+        enabled:
+          type: boolean
+        disabledReason:
+          type: [string, 'null']
+          maxLength: 200
+        coverUrl:
+          type: [string, 'null']
+          maxLength: 500
+        lastPreviewCheckedAt:
+          type: [string, 'null']
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    AdminTrackPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/AdminTrack'
+    AdminTrackMetadataRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        genreCode:
+          type: [string, 'null']
+          maxLength: 40
+        countryCode:
+          type: [string, 'null']
+          pattern: '^[A-Z]{2}$'
+        releaseYear:
+          type: [integer, 'null']
+          minimum: 1900
+          maximum: 2100
+    AdminTrackStatusRequest:
+      type: object
+      additionalProperties: false
+      required: [enabled]
+      properties:
+        enabled:
+          type: boolean
+        disabledReason:
+          type: [string, 'null']
+          maxLength: 200
+          description: 'Reason when disabling a track (`enabled: false`, BR-27).'
+    AdminTrackImportRequest:
+      type: object
+      additionalProperties: false
+      required: [playlistId, provider, query]
+      properties:
+        playlistId:
+          type: string
+          format: uuid
+        provider:
+          $ref: '#/components/schemas/MusicProvider'
+        query:
+          type: string
+          minLength: 1
+          maxLength: 120
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 10
+    AdminImportResult:
+      type: object
+      required: [requested, imported, updated, skippedNoPreview, failed, errors]
+      properties:
+        requested:
+          type: integer
+          minimum: 0
+        imported:
+          type: integer
+          minimum: 0
+        updated:
+          type: integer
+          minimum: 0
+        skippedNoPreview:
+          type: integer
+          minimum: 0
+        failed:
+          type: integer
+          minimum: 0
+        errors:
+          type: array
+          items:
+            type: string
+    AdminPlaylist:
+      type: object
+      required: [id, code, nameVi, nameEn, kind, enabled, trackCount, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          maxLength: 60
+        nameVi:
+          type: string
+          maxLength: 120
+        nameEn:
+          type: string
+          maxLength: 120
+        descriptionVi:
+          type: [string, 'null']
+          maxLength: 400
+        descriptionEn:
+          type: [string, 'null']
+          maxLength: 400
+        kind:
+          $ref: '#/components/schemas/PlaylistKind'
+        enabled:
+          type: boolean
+        trackCount:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+    AdminPlaylistListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminPlaylist'
+    AdminCreatePlaylistRequest:
+      type: object
+      additionalProperties: false
+      required: [code, nameVi, nameEn, kind]
+      properties:
+        code:
+          type: string
+          minLength: 2
+          maxLength: 60
+          pattern: '^[a-z0-9-]+$'
+        nameVi:
+          type: string
+          minLength: 1
+          maxLength: 120
+        nameEn:
+          type: string
+          minLength: 1
+          maxLength: 120
+        descriptionVi:
+          type: [string, 'null']
+          maxLength: 400
+        descriptionEn:
+          type: [string, 'null']
+          maxLength: 400
+        kind:
+          $ref: '#/components/schemas/PlaylistKind'
+          default: CURATED
+        enabled:
+          type: boolean
+          default: true
+    AdminUpdatePlaylistRequest:
+      type: object
+      additionalProperties: false
+      required: [nameVi, nameEn, enabled]
+      properties:
+        nameVi:
+          type: string
+          minLength: 1
+          maxLength: 120
+        nameEn:
+          type: string
+          minLength: 1
+          maxLength: 120
+        descriptionVi:
+          type: [string, 'null']
+          maxLength: 400
+        descriptionEn:
+          type: [string, 'null']
+          maxLength: 400
+        enabled:
+          type: boolean
+    AdminPlaylistTracksRequest:
+      type: object
+      additionalProperties: false
+      required: [trackIds]
+      properties:
+        trackIds:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            type: string
+            format: uuid
+    UserAccountStatus:
+      type: string
+      enum: [ACTIVE, LOCKED]
+      description: Account status in `app_user.status` (BR-28).
+    AdminUser:
+      type: object
+      required: [id, kind, role, status, nickname, rankPoints, linkedProviders, lastActiveAt, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          $ref: '#/components/schemas/UserKind'
+        role:
+          $ref: '#/components/schemas/UserRole'
+        status:
+          $ref: '#/components/schemas/UserAccountStatus'
+        nickname:
+          type: string
+          minLength: 3
+          maxLength: 20
+        email:
+          type: [string, 'null']
+          format: email
+          maxLength: 254
+        avatarUrl:
+          type: [string, 'null']
+        rankPoints:
+          type: integer
+          minimum: 0
+        linkedProviders:
+          type: array
+          items:
+            $ref: '#/components/schemas/OAuthProvider'
+        lockReason:
+          type: [string, 'null']
+        lockedAt:
+          type: [string, 'null']
+          format: date-time
+        lastActiveAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    AdminUserPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/AdminUser'
+    AdminUserLockRequest:
+      type: object
+      additionalProperties: false
+      required: [locked]
+      properties:
+        locked:
+          type: boolean
+        reason:
+          type: [string, 'null']
+          maxLength: 500
+          description: Required when `locked` is true (BR-28).
+    AdminUserRoleRequest:
+      type: object
+      additionalProperties: false
+      required: [role]
+      properties:
+        role:
+          $ref: '#/components/schemas/UserRole'
+    ChatReportStatus:
+      type: string
+      enum: [OPEN, DISMISSED, ACTIONED]
+      description: Moderation state of a chat report (`chat_report.status`).
+    ChatReportResolutionStatus:
+      type: string
+      enum: [DISMISSED, ACTIONED]
+      description: Target status when resolving a chat report.
+    AdminChatReport:
+      type: object
+      required: [id, messageText, senderId, senderNickname, reporterId, context, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        messageText:
+          type: string
+          maxLength: 200
+        senderId:
+          type: string
+          format: uuid
+        senderNickname:
+          type: string
+          maxLength: 20
+        reporterId:
+          type: string
+          format: uuid
+        context:
+          type: array
+          description: Up to 5 preceding chat messages in the room for moderation context (BR-19).
+          items:
+            type: string
+        status:
+          $ref: '#/components/schemas/ChatReportStatus'
+        handledBy:
+          type: [string, 'null']
+          format: uuid
+        handledAt:
+          type: [string, 'null']
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    AdminChatReportPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/AdminChatReport'
+    AdminResolveChatReportRequest:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/ChatReportResolutionStatus'
+        lockSender:
+          type: boolean
+          default: false
+          description: When true and `status` is `ACTIONED`, also locks the reported sender's account (BR-28).
+        lockReason:
+          type: [string, 'null']
+          maxLength: 500
+          description: Reason recorded on the sender's account when `lockSender` is true.
+    AdminBannedWord:
+      type: object
+      required: [id, word, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        word:
+          type: string
+          minLength: 1
+          maxLength: 80
+        createdBy:
+          type: [string, 'null']
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+    AdminBannedWordListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminBannedWord'
+    AdminBannedWordRequest:
+      type: object
+      additionalProperties: false
+      required: [word]
+      properties:
+        word:
+          type: string
+          minLength: 1
+          maxLength: 80
+          description: Word or phrase to block (normalized to lowercase NFC, BR-17, BR-22).
+    DailyChallengeSource:
+      type: string
+      enum: [ADMIN, AUTO]
+      description: How the daily challenge track was selected (`ADMIN` manual schedule or `AUTO` fallback, BR-25).
+    AdminDailyScheduleItem:
+      type: object
+      required: [challengeDate, trackId, title, artistName, provider, source, locked, createdAt]
+      properties:
+        challengeDate:
+          type: string
+          format: date
+        trackId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 300
+        artistName:
+          type: string
+          maxLength: 200
+        provider:
+          $ref: '#/components/schemas/MusicProvider'
+        source:
+          $ref: '#/components/schemas/DailyChallengeSource'
+        locked:
+          type: boolean
+          description: True when `challengeDate` is today or in the past in `Asia/Ho_Chi_Minh` and can no longer be edited.
+        createdBy:
+          type: [string, 'null']
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+    AdminDailyScheduleResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminDailyScheduleItem'
+    AdminScheduleDailyRequest:
+      type: object
+      additionalProperties: false
+      required: [trackId]
+      properties:
+        trackId:
+          type: string
+          format: uuid
+          description: Enabled catalog track UUID to schedule for `challengeDate` (BR-25, BR-27).
+    AdminAuditLog:
+      type: object
+      required: [id, actorId, action, targetType, detail, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        actorId:
+          type: string
+          format: uuid
+        actorNickname:
+          type: [string, 'null']
+          maxLength: 20
+        action:
+          type: string
+          maxLength: 60
+        targetType:
+          type: string
+          maxLength: 40
+        targetId:
+          type: [string, 'null']
+          maxLength: 64
+        detail:
+          type: object
+          additionalProperties: true
+          description: Structured audit metadata (`admin_audit_log.detail` JSONB).
+        createdAt:
+          type: string
+          format: date-time
+    AdminAuditLogPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/AdminAuditLog'

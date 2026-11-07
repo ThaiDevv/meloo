@@ -1,0 +1,15 @@
+{
+  "id": "55555555-5555-4555-8555-555555555501",
+  "messageText": "Spam message in room lobby",
+  "senderId": "7c1d2a64-3b5e-4f08-9a1b-2e6f0c4d8a11",
+  "senderNickname": "Meloman",
+  "reporterId": "b41c7d90-2e84-4a3c-9c71-8f21e5b73012",
+  "context": [
+    "[08:01:10] MinhNhac: Chào mọi người",
+    "[08:01:15] Meloman: Spam message in room lobby"
+  ],
+  "status": "ACTIONED",
+  "handledBy": "99999999-9999-4999-8999-999999999901",
+  "handledAt": "2026-10-29T08:25:00Z",
+  "createdAt": "2026-10-29T08:01:20Z"
+}

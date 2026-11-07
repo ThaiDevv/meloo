@@ -1,0 +1,15 @@
+{
+  "id": "b41c7d90-2e84-4a3c-9c71-8f21e5b73012",
+  "kind": "REGISTERED",
+  "role": "USER",
+  "status": "ACTIVE",
+  "nickname": "MinhNhac",
+  "email": "minh.nhac@example.com",
+  "avatarUrl": "https://lh3.googleusercontent.com/a/ACg8ocSampleAvatarUrl",
+  "rankPoints": 1450,
+  "linkedProviders": ["GOOGLE"],
+  "lockReason": null,
+  "lockedAt": null,
+  "lastActiveAt": "2026-10-29T08:05:00Z",
+  "createdAt": "2026-10-20T09:15:00Z"
+}

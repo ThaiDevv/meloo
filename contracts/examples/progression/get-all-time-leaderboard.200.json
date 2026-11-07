@@ -1,0 +1,38 @@
+{
+  "page": 0,
+  "size": 10,
+  "totalItems": 2,
+  "totalPages": 1,
+  "items": [
+    {
+      "rank": 1,
+      "userId": "a19f3e20-6c4d-4b18-8e52-9d0c1a2b3f44",
+      "nickname": "NhacThanh",
+      "avatarUrl": "https://lh3.googleusercontent.com/a/ACg8ocLeader1",
+      "rankPoints": 1820,
+      "matchesPlayed": 42,
+      "matchesWon": 31,
+      "reachedAt": "2026-10-27T18:10:00Z"
+    },
+    {
+      "rank": 2,
+      "userId": "b41c7d90-2e84-4a3c-9c71-8f21e5b73012",
+      "nickname": "MinhNhac",
+      "avatarUrl": "https://lh3.googleusercontent.com/a/ACg8ocSampleAvatarUrl",
+      "rankPoints": 1450,
+      "matchesPlayed": 24,
+      "matchesWon": 15,
+      "reachedAt": "2026-10-28T14:05:12Z"
+    }
+  ],
+  "myEntry": {
+    "rank": 2,
+    "userId": "b41c7d90-2e84-4a3c-9c71-8f21e5b73012",
+    "nickname": "MinhNhac",
+    "avatarUrl": "https://lh3.googleusercontent.com/a/ACg8ocSampleAvatarUrl",
+    "rankPoints": 1450,
+    "matchesPlayed": 24,
+    "matchesWon": 15,
+    "reachedAt": "2026-10-28T14:05:12Z"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "items": [
+    {
+      "id": "11111111-1111-4111-8111-111111111101",
+      "code": "vpop-standard",
+      "nameVi": "Bộ chuẩn V-Pop",
+      "nameEn": "Standard V-Pop Set",
+      "descriptionVi": "Tuyển tập bài hát V-Pop phổ biến cho chế độ xếp hạng.",
+      "descriptionEn": "Standard curated V-Pop songs for ranked matches.",
+      "kind": "STANDARD",
+      "enabled": true,
+      "trackCount": 120,
+      "createdAt": "2026-10-01T10:00:00Z"
+    }
+  ]
+}

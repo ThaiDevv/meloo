@@ -2,8 +2,11 @@
   "code": "indie-viet-2020s",
   "nameVi": "Indie Việt thập niên 2020",
   "nameEn": "2020s Vietnamese Indie",
-  "descriptionVi": "Những bản Indie Việt được yêu thích từ 2020 tới nay.",
-  "descriptionEn": "Beloved Vietnamese Indie tracks from the 2020s.",
-  "kind": "CURATED",
-  "enabled": true
+  "trackIds": [
+    "22222222-2222-4222-8222-222222222201",
+    "22222222-2222-4222-8222-222222222202",
+    "22222222-2222-4222-8222-222222222203",
+    "22222222-2222-4222-8222-222222222204",
+    "22222222-2222-4222-8222-222222222205"
+  ]
 }

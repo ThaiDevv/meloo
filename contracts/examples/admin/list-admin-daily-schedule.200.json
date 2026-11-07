@@ -6,7 +6,7 @@
       "title": "Nơi Này Có Anh",
       "artistName": "Sơn Tùng M-TP",
       "provider": "DEEZER",
-      "source": "ADMIN",
+      "source": "SCHEDULED",
       "locked": true,
       "createdBy": "99999999-9999-4999-8999-999999999901",
       "createdAt": "2026-10-25T10:00:00Z"
@@ -17,7 +17,7 @@
       "title": "See Tình",
       "artistName": "Hoàng Thùy Linh",
       "provider": "DEEZER",
-      "source": "ADMIN",
+      "source": "SCHEDULED",
       "locked": false,
       "createdBy": "99999999-9999-4999-8999-999999999901",
       "createdAt": "2026-10-28T11:00:00Z"

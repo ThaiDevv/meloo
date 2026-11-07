@@ -5,8 +5,20 @@
   "senderNickname": "Meloman",
   "reporterId": "b41c7d90-2e84-4a3c-9c71-8f21e5b73012",
   "context": [
-    "[08:01:10] MinhNhac: Chào mọi người",
-    "[08:01:15] Meloman: Spam message in room lobby"
+    {
+      "messageId": "55555555-5555-4555-8555-555555555510",
+      "senderId": "b41c7d90-2e84-4a3c-9c71-8f21e5b73012",
+      "senderNickname": "MinhNhac",
+      "content": "Chào mọi người",
+      "sentAt": "2026-10-29T08:01:10Z"
+    },
+    {
+      "messageId": "55555555-5555-4555-8555-555555555511",
+      "senderId": "7c1d2a64-3b5e-4f08-9a1b-2e6f0c4d8a11",
+      "senderNickname": "Meloman",
+      "content": "Spam message in room lobby",
+      "sentAt": "2026-10-29T08:01:15Z"
+    }
   ],
   "status": "ACTIONED",
   "handledBy": "99999999-9999-4999-8999-999999999901",

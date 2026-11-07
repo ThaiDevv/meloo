@@ -9,7 +9,7 @@
   "correctCount": 8,
   "rank": 1,
   "playerCount": 4,
-  "rankDelta": 40,
+  "rankDelta": 30,
   "playlistId": "11111111-1111-4111-8111-111111111101",
   "startedAt": "2026-10-28T14:00:00Z",
   "endedAt": "2026-10-28T14:05:12Z",
@@ -22,7 +22,7 @@
       "totalScore": 7420,
       "correctCount": 8,
       "correctTimeMs": 14820,
-      "rankDelta": 40
+      "rankDelta": 30
     },
     {
       "userId": "d92a4c11-5f3b-4e82-9a10-3c8e7b1f2044",
@@ -32,7 +32,7 @@
       "totalScore": 6180,
       "correctCount": 7,
       "correctTimeMs": 18200,
-      "rankDelta": 15
+      "rankDelta": 10
     }
   ],
   "rounds": [

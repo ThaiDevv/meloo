@@ -865,10 +865,11 @@ export interface paths {
          * Get the current player's daily challenge streak grid history
          * @description Any signed-in user, guest or registered (29/10 supplement, BR-25). Returns the sparse list of days solved
          *     (`SOLVED`) by the caller within `[from, to]` (inclusive, `Asia/Ho_Chi_Minh` `yyyy-MM-dd`), sorted ascending by
-         *     `date`, so the home page `StreakGrid` can render the 52-week x 7-day heatmap and color each cell by the solved
-         *     listening level (`2`, `5`, `10`, `20` or `30` seconds). Unsolved or unplayed days are omitted from `items`.
-         *     When `from` and `to` are omitted, defaults to the 280-day (40-week) window ending on `today`. A range exceeding
-         *     366 days or `from > to` is rejected with 400 (`VALIDATION_FAILED`). Never contains any track or answer fields.
+         *     `date`, so the home page `StreakGrid` can render the 40-week x 7-day heatmap (280 days) and color each cell by
+         *     the solved listening level (`2`, `5`, `10`, `20` or `30` seconds). Unsolved or unplayed days are omitted from
+         *     `items`. When `from` and `to` are omitted, defaults to the 280-day (40-week) window ending on `today`. A range
+         *     exceeding 366 days or `from > to` is rejected with 400 (`VALIDATION_FAILED`). Never contains any track or answer
+         *     fields.
          */
         get: operations["getDailyHistory"];
         put?: never;
@@ -910,8 +911,8 @@ export interface paths {
         };
         /**
          * Search and filter catalog tracks for administration
-         * @description Requires role `ADMIN`. Lists catalog tracks (both enabled and disabled, BR-27) with optional search query and
-         *     filters for `enabled`, `genreCode`, `countryCode` and `provider`.
+         * @description Requires role `ADMIN` (`CatalogAdminApi.searchTracks`). Lists catalog tracks (both enabled and disabled, BR-27)
+         *     with optional search query (`q`) and filters for `enabled`, `genreCode`, `countryCode` and `decade`.
          */
         get: operations["listAdminTracks"];
         put?: never;
@@ -932,7 +933,7 @@ export interface paths {
         get?: never;
         /**
          * Update genre, country and release year of a catalog track
-         * @description Requires role `ADMIN` (`CatalogAdminApi.updateTrackMetadata`). Updates curated metadata (`genreCode`,
+         * @description Requires role `ADMIN` (`CatalogAdminApi.updateTrackMetadata`). Updates curated metadata (`genreId`,
          *     `countryCode`, `releaseYear`) and records an admin audit log entry.
          */
         put: operations["updateAdminTrackMetadata"];
@@ -974,10 +975,11 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Import tracks from a music provider into a playlist
-         * @description Requires role `ADMIN` (`CatalogAdminApi.importFromProvider`). Searches `provider` (`DEEZER` or `ITUNES`) for
-         *     `query`, imports up to `limit` tracks that have a valid preview URL (BR-27), attaches them to `playlistId`, and
-         *     records an admin audit log entry.
+         * Import tracks from the music provider into the catalog
+         * @description Requires role `ADMIN` (`CatalogAdminApi.importByQuery` / `CatalogAdminApi.importByProviderTrackId`). Imports
+         *     tracks either by search `query` (up to `limit`) or by a single `providerTrackId`, skipping tracks without a
+         *     valid preview URL (BR-27), optionally assigning `genreId` and `defaultCountryCode`, and records an admin audit
+         *     log entry.
          */
         post: operations["importAdminTracks"];
         delete?: never;
@@ -995,15 +997,15 @@ export interface paths {
         };
         /**
          * List all playlists for administration
-         * @description Requires role `ADMIN` (`CatalogAdminApi.listPlaylists`). Returns all playlists (both enabled and disabled)
-         *     with their track counts.
+         * @description Requires role `ADMIN` (`CatalogAdminApi.listPlaylists`). Returns all playlists (curated and standard, enabled
+         *     and disabled) with their `trackIds` and `enabledTrackCount`.
          */
         get: operations["listAdminPlaylists"];
         put?: never;
         /**
-         * Create a new curated or standard playlist
-         * @description Requires role `ADMIN` (`CatalogAdminApi.createPlaylist`). Creates a new playlist and records an admin audit log
-         *     entry.
+         * Create a new curated playlist
+         * @description Requires role `ADMIN` (`CatalogAdminApi.createPlaylist`). Creates a curated playlist containing at least 5
+         *     enabled tracks (`trackIds`, BR-09) and records an admin audit log entry.
          */
         post: operations["createAdminPlaylist"];
         delete?: never;
@@ -1021,16 +1023,16 @@ export interface paths {
         };
         get?: never;
         /**
-         * Update a playlist's names, descriptions and enabled status
-         * @description Requires role `ADMIN` (`CatalogAdminApi.updatePlaylist`). Updates localized names, descriptions and `enabled`
-         *     flag of a playlist.
+         * Update a playlist's names and enabled status
+         * @description Requires role `ADMIN` (`CatalogAdminApi.updatePlaylist`). Updates localized names (`nameVi`, `nameEn`) and
+         *     `enabled` flag of a playlist. Enabling a playlist requires at least 5 enabled tracks (BR-09).
          */
         put: operations["updateAdminPlaylist"];
         post?: never;
         /**
          * Delete a curated playlist
          * @description Requires role `ADMIN` (`CatalogAdminApi.deletePlaylist`). Deletes a curated playlist. The standard playlist
-         *     (`kind: STANDARD`, BR-23) is protected and cannot be deleted (returns 409 `STANDARD_PLAYLIST_PROTECTED`).
+         *     (`curated: false`, BR-23) is protected and cannot be deleted (returns 409 `STANDARD_PLAYLIST_PROTECTED`).
          */
         delete: operations["deleteAdminPlaylist"];
         options?: never;
@@ -1049,14 +1051,15 @@ export interface paths {
         put?: never;
         /**
          * Add tracks to a playlist
-         * @description Requires role `ADMIN` (`CatalogAdminApi.addTracksToPlaylist`). Attaches one or more tracks to the playlist
-         *     (idempotent for tracks already in the playlist) and returns the updated `AdminPlaylist`.
+         * @description Requires role `ADMIN` (`CatalogAdminApi.addTracksToPlaylist`). Attaches one or more enabled tracks to the
+         *     playlist (idempotent for tracks already in the playlist) and returns the updated `AdminPlaylist`.
          */
         post: operations["addAdminPlaylistTracks"];
         /**
          * Remove tracks from a playlist
          * @description Requires role `ADMIN` (`CatalogAdminApi.removeTracksFromPlaylist`). Removes one or more tracks from the
-         *     playlist and returns the updated `AdminPlaylist`.
+         *     playlist (refused with 422 `NOT_ENOUGH_TRACKS` if an enabled playlist would drop below 5 enabled tracks, BR-09)
+         *     and returns the updated `AdminPlaylist`.
          */
         delete: operations["removeAdminPlaylistTracks"];
         options?: never;
@@ -1275,8 +1278,8 @@ export interface paths {
         get?: never;
         /**
          * Assign or replace the daily challenge track for a future date
-         * @description Requires role `ADMIN` (BR-25, BE-DAILY-01). Assigns an enabled catalog `trackId` (`source: ADMIN`) to a future
-         *     `challengeDate` (`Asia/Ho_Chi_Minh`) and records an admin audit log entry. Past or currently active dates
+         * @description Requires role `ADMIN` (BR-25, BE-DAILY-01). Assigns an enabled catalog `trackId` (`source: SCHEDULED`) to a
+         *     future `challengeDate` (`Asia/Ho_Chi_Minh`) and records an admin audit log entry. Past or currently active dates
          *     cannot be modified and return 409 (`DAILY_CHALLENGE_LOCKED`).
          */
         put: operations["scheduleAdminDailyChallenge"];
@@ -1377,7 +1380,7 @@ export interface components {
             email?: string;
             /** @description Optional profile picture URL from linked OAuth provider. */
             avatarUrl?: string | null;
-            /** @description Current competitive rank points (`rank_points`, BR-24). Starts at 1000 for new players. */
+            /** @description Current competitive rank points (`ranked_score` / `rankPoints`, BR-24). Starts at 0 with a floor of 0. */
             rankPoints?: number;
             /** @description Linked OAuth2 providers for registered users (`GOOGLE`, `FACEBOOK`). */
             linkedProviders?: components["schemas"]["OAuthProvider"][];
@@ -1780,7 +1783,7 @@ export interface components {
             email?: string | null;
             /** @description Avatar URL from linked OAuth provider, if available. */
             avatarUrl?: string | null;
-            /** @description Competitive rank points (`rank_points`, BR-24, 01/11 supplement). Starts at 1000. */
+            /** @description Competitive rank points (`ranked_score` / `rankPoints`, BR-24, 01/11 supplement). Starts at 0 with a floor of 0. */
             rankPoints: number;
             /** @description Cumulative experience points earned across matches. */
             xp: number;
@@ -2073,7 +2076,7 @@ export interface components {
             items: components["schemas"]["DailyHistoryItem"][];
             /** @description Current consecutive solved-day streak up to `today` (or `yesterday` if `today` is not yet played/failed). */
             currentStreak: number;
-            /** @description All-time longest consecutive solved-day streak for the caller. */
+            /** @description Longest consecutive solved-day streak within the queried range. */
             longestStreak: number;
         };
         AdminDashboard: {
@@ -2089,32 +2092,33 @@ export interface components {
             /** Format: date-time */
             serverTime: string;
         };
+        /** @description Full admin view of a catalog track (`AdminTrackView`, BR-27). */
         AdminTrack: {
             /** Format: uuid */
             id: string;
             provider: components["schemas"]["MusicProvider"];
             providerTrackId: string;
             title: string;
-            /** Format: uuid */
-            primaryArtistId: string;
             artistName: string;
-            genreCode?: string | null;
-            countryCode?: string | null;
-            releaseYear?: number | null;
-            popularityRank?: number | null;
+            /** Format: uuid */
+            genreId: string | null;
+            genreCode: string | null;
+            countryCode: string | null;
+            releaseYear: number | null;
             enabled: boolean;
-            disabledReason?: string | null;
-            coverUrl?: string | null;
-            /** Format: date-time */
-            lastPreviewCheckedAt?: string | null;
-            /** Format: date-time */
-            createdAt: string;
+            disabledReason: string | null;
+            coverUrl: string | null;
         };
         AdminTrackPage: components["schemas"]["Page"] & {
             items: components["schemas"]["AdminTrack"][];
         };
+        /** @description Full replacement of editable track metadata (`TrackMetadataUpdate`). A null value clears the field. */
         AdminTrackMetadataRequest: {
-            genreCode?: string | null;
+            /**
+             * Format: uuid
+             * @description Genre UUID to assign, or null to clear.
+             */
+            genreId?: string | null;
             countryCode?: string | null;
             releaseYear?: number | null;
         };
@@ -2123,55 +2127,67 @@ export interface components {
             /** @description Reason when disabling a track (`enabled: false`, BR-27). */
             disabledReason?: string | null;
         };
+        /**
+         * @description Imports tracks into the catalog either by search `query` (`CatalogAdminApi.importByQuery`) or by a single
+         *     `providerTrackId` (`CatalogAdminApi.importByProviderTrackId`). Exactly one of `query` or `providerTrackId` must
+         *     be provided.
+         */
         AdminTrackImportRequest: {
-            /** Format: uuid */
-            playlistId: string;
-            provider: components["schemas"]["MusicProvider"];
-            query: string;
-            /** @default 10 */
+            /** @description Search text for provider import (`importByQuery`). */
+            query?: string | null;
+            /** @description Single provider track identifier for direct import (`importByProviderTrackId`). */
+            providerTrackId?: string | null;
+            /**
+             * @description Maximum number of tracks to import when using `query`.
+             * @default 25
+             */
             limit: number;
+            /**
+             * Format: uuid
+             * @description Optional genre UUID assigned to imported tracks.
+             */
+            genreId?: string | null;
+            /** @description Optional two-letter ISO 3166-1 alpha-2 country code assigned to imported tracks. */
+            defaultCountryCode?: string | null;
         };
+        /** @description Summary of a provider track import (`com.meloo.catalog.api.AdminImportResult`). */
         AdminImportResult: {
-            requested: number;
-            imported: number;
-            updated: number;
-            skippedNoPreview: number;
-            failed: number;
-            errors: string[];
+            totalProcessed: number;
+            importedCount: number;
+            skippedNoPreviewCount: number;
+            duplicateCount: number;
+            /** @description Tracks created by this call plus already-known tracks it matched. */
+            tracks: components["schemas"]["AdminTrack"][];
         };
+        /** @description Admin view of a playlist (`AdminPlaylistView`). */
         AdminPlaylist: {
             /** Format: uuid */
             id: string;
             code: string;
             nameVi: string;
             nameEn: string;
-            descriptionVi?: string | null;
-            descriptionEn?: string | null;
-            kind: components["schemas"]["PlaylistKind"];
+            /** @description True for curated playlists, false for the standard set (`STANDARD`, BR-23). */
+            curated: boolean;
             enabled: boolean;
-            trackCount: number;
-            /** Format: date-time */
-            createdAt: string;
+            /** @description Track UUIDs in play order (both enabled and disabled). */
+            trackIds: string[];
+            /** @description Number of enabled tracks in the playlist that can be chosen for a new match. */
+            enabledTrackCount: number;
         };
         AdminPlaylistListResponse: {
             items: components["schemas"]["AdminPlaylist"][];
         };
+        /** @description Creates a curated playlist (`CatalogAdminApi.createPlaylist`). Requires at least 5 enabled tracks (BR-09). */
         AdminCreatePlaylistRequest: {
             code: string;
             nameVi: string;
             nameEn: string;
-            descriptionVi?: string | null;
-            descriptionEn?: string | null;
-            /** @default CURATED */
-            kind: components["schemas"]["PlaylistKind"];
-            /** @default true */
-            enabled: boolean;
+            /** @description Initial list of enabled track UUIDs (at least 5 required by BR-09). */
+            trackIds: string[];
         };
         AdminUpdatePlaylistRequest: {
             nameVi: string;
             nameEn: string;
-            descriptionVi?: string | null;
-            descriptionEn?: string | null;
             enabled: boolean;
         };
         AdminPlaylistTracksRequest: {
@@ -2223,6 +2239,17 @@ export interface components {
          * @enum {string}
          */
         ChatReportResolutionStatus: "DISMISSED" | "ACTIONED";
+        /** @description A chat message snapshot stored in `chat_report.context` (`ChatContextMessage`, BR-19). */
+        AdminChatContextMessage: {
+            /** Format: uuid */
+            messageId: string;
+            /** Format: uuid */
+            senderId: string;
+            senderNickname: string;
+            content: string;
+            /** Format: date-time */
+            sentAt: string;
+        };
         AdminChatReport: {
             /** Format: uuid */
             id: string;
@@ -2232,8 +2259,8 @@ export interface components {
             senderNickname: string;
             /** Format: uuid */
             reporterId: string;
-            /** @description Up to 5 preceding chat messages in the room for moderation context (BR-19). */
-            context: string[];
+            /** @description Up to 5 preceding chat messages in the room for moderation context (`ChatContextMessage[]`, BR-19). */
+            context: components["schemas"]["AdminChatContextMessage"][];
             status: components["schemas"]["ChatReportStatus"];
             /** Format: uuid */
             handledBy?: string | null;
@@ -2272,10 +2299,10 @@ export interface components {
             word: string;
         };
         /**
-         * @description How the daily challenge track was selected (`ADMIN` manual schedule or `AUTO` fallback, BR-25).
+         * @description How the daily challenge track was selected (`SCHEDULED` by admin or `AUTO` fallback, V7 `daily_challenge.source`, BR-25).
          * @enum {string}
          */
-        DailyChallengeSource: "ADMIN" | "AUTO";
+        DailyChallengeSource: "SCHEDULED" | "AUTO";
         AdminDailyScheduleItem: {
             /** Format: date */
             challengeDate: string;
@@ -2303,18 +2330,23 @@ export interface components {
             trackId: string;
         };
         AdminAuditLog: {
-            /** Format: uuid */
-            id: string;
+            /**
+             * Format: int64
+             * @description Sequential audit log entry ID (`audit_log.id` bigint, V8).
+             */
+            id: number;
             /** Format: uuid */
             actorId: string;
             actorNickname?: string | null;
             action: string;
             targetType: string;
             targetId?: string | null;
-            /** @description Structured audit metadata (`admin_audit_log.detail` JSONB). */
+            /** @description Administrative reason (mandatory when `action = USER_LOCK`, BR-28). */
+            reason: string | null;
+            /** @description Structured audit metadata (`audit_log.detail` JSONB). */
             detail: {
                 [key: string]: unknown;
-            };
+            } | null;
             /** Format: date-time */
             createdAt: string;
         };
@@ -3909,7 +3941,7 @@ export interface operations {
     listAdminTracks: {
         parameters: {
             query?: {
-                /** @description Optional search text matching title or artist name. */
+                /** @description Optional search text matching normalized title or artist name. */
                 q?: string;
                 /** @description Filter by enabled status (BR-27). */
                 enabled?: boolean;
@@ -3917,8 +3949,8 @@ export interface operations {
                 genreCode?: string;
                 /** @description Filter by two-letter ISO 3166-1 alpha-2 country code. */
                 countryCode?: string;
-                /** @description Filter by music provider (`DEEZER` or `ITUNES`). */
-                provider?: components["schemas"]["MusicProvider"];
+                /** @description Filter by release decade start year (e.g. `1990`, `2000`, `2010`, `2020`). */
+                decade?: number;
                 /** @description Zero-based page index. */
                 page?: components["parameters"]["Page"];
                 /** @description Page size. */
@@ -4047,7 +4079,7 @@ export interface operations {
             400: components["responses"]["ValidationFailed"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
-            /** @description Target playlist not found (`PLAYLIST_NOT_FOUND`). */
+            /** @description Referenced genre or provider track not found (`NOT_FOUND`). */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -4114,6 +4146,15 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /** @description Playlist has fewer than 5 enabled tracks (`NOT_ENOUGH_TRACKS`, BR-09). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["NotEnoughTracksProblem"];
+                };
+            };
         };
     };
     updateAdminPlaylist: {
@@ -4151,6 +4192,15 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Enabling the playlist requires at least 5 enabled tracks (`NOT_ENOUGH_TRACKS`, BR-09). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["NotEnoughTracksProblem"];
                 };
             };
         };
@@ -4270,6 +4320,15 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Removing the tracks would leave an enabled playlist with fewer than 5 enabled tracks (`NOT_ENOUGH_TRACKS`, BR-09). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["NotEnoughTracksProblem"];
                 };
             };
         };

@@ -135,18 +135,34 @@ paths:
     get:
       tags: [identity]
       operationId: startOAuthLogin
-      summary: Start OAuth2/OIDC login or guest account upgrade
+      summary: Start OAuth2/OIDC login, guest upgrade, or provider linking
       description: |
-        Public or guest session (ADR-005). Generates a cryptographic `state` and PKCE `code_verifier`, stores them in a
-        short-lived HttpOnly cookie, and redirects (302) the browser to the provider's authorization endpoint (`google`
-        or `facebook`). If the caller has a `meloo_refresh` cookie (`Path=/api/v1/auth`) from an active guest session,
-        the guest user ID is bound into the OAuth state so that completing login merges the guest's match history, solo
-        records and daily challenge history into the registered account (`GuestMerged`, BR-21).
+        Public, guest, or registered session (ADR-005, BR-20, BR-21). Generates a cryptographic `state` and PKCE
+        `code_verifier`, stores them in a short-lived HttpOnly cookie (`Path=/api/v1/auth`), and redirects (302) the
+        browser to the provider's authorization endpoint (`google` or `facebook`).
+        - **Anonymous login (`mode=login`, no `meloo_refresh` cookie):** starts a new OAuth2 login flow.
+        - **Guest upgrade (`mode=login`, guest `meloo_refresh` cookie present):** binds the guest `userId` into the
+          signed OAuth `state` cookie so completing authentication upgrades/merges the guest's match history, solo
+          records and daily challenge history into the registered account (`GuestMerged`, BR-21).
+        - **Link additional provider (`mode=link`, registered `meloo_refresh` cookie present):** binds the caller's
+          registered `userId` and `mode=link` into the signed OAuth `state` cookie. When the provider redirects back to
+          `GET /api/v1/auth/oauth2/{provider}/callback`, `mode=link` does not consume `code` on the redirect hop; instead
+          it redirects (302) to the SPA `/auth/callback?mode=link&provider={provider}&code=...&state=...` so the
+          authenticated SPA can call `POST /api/v1/auth/oauth2/{provider}/link` with `Authorization: Bearer <accessToken>`
+          plus the HttpOnly state/PKCE cookie to exchange the unused `code` and bind the new `auth_identity`.
       security:
         - {}
         - refreshCookie: []
       parameters:
         - $ref: '#/components/parameters/OAuthProviderPath'
+        - name: mode
+          in: query
+          required: false
+          description: Flow mode (`login` for sign-in / guest upgrade via server callback; `link` to forward unused `code` and `state` to the SPA for `POST /api/v1/auth/oauth2/{provider}/link`).
+          schema:
+            type: string
+            enum: [login, link]
+            default: login
         - name: returnTo
           in: query
           required: false
@@ -177,12 +193,18 @@ paths:
       operationId: handleOAuthCallback
       summary: Handle OAuth2 authorization code callback
       description: |
-        Public (browser redirect from Google or Facebook, ADR-005). Verifies the `state` and PKCE cookie, exchanges
-        `code` for tokens/profile, requires a verified email (`email_verified = true`) to auto-link accounts with the
-        same email across Google and Facebook, merges guest data (`GuestMerged`, BR-21) when initiated from a guest
-        session, sets the `meloo_refresh` HttpOnly cookie, and redirects (302) to the frontend `/auth/callback` route
-        (which calls `POST /api/v1/auth/refresh` to obtain the in-memory access token). On provider error, unverified
-        email or locked account (`ACCOUNT_LOCKED`, BR-28), redirects (302) to `/auth/callback?error=<code>`.
+        Public (browser redirect from Google or Facebook, ADR-005).
+        - For `mode=login` (default): verifies the `state` and PKCE cookie, exchanges `code` for tokens/profile,
+          requires a verified email (`email_verified = true`) to auto-link accounts with the same email across Google
+          and Facebook, merges guest data (`GuestMerged`, BR-21) when initiated from a guest session, sets the
+          `meloo_refresh` HttpOnly cookie, and redirects (302) to the frontend `/auth/callback` route (which calls
+          `POST /api/v1/auth/refresh` to obtain the in-memory access token).
+        - For `mode=link` (initiated by a signed-in user via `GET /api/v1/auth/oauth2/{provider}?mode=link`): validates
+          that `state` matches the HttpOnly state/PKCE cookie without consuming `code`, and redirects (302) to
+          `/auth/callback?mode=link&provider={provider}&code=<code>&state=<state>` so the SPA can complete linking via
+          `POST /api/v1/auth/oauth2/{provider}/link`.
+        - On provider error, unverified email or locked account (`ACCOUNT_LOCKED`, BR-28), redirects (302) to
+          `/auth/callback?error=<code>`.
       security: []
       parameters:
         - $ref: '#/components/parameters/OAuthProviderPath'
@@ -216,10 +238,10 @@ paths:
             maxLength: 500
       responses:
         '302':
-          description: 'Redirects to the SPA `/auth/callback` (with `Set-Cookie: meloo_refresh` on success, or `?error=...` on failure).'
+          description: 'Redirects to the SPA `/auth/callback` (with `Set-Cookie: meloo_refresh` on login success, `?mode=link&code=...&state=...` for provider linking, or `?error=...` on failure).'
           headers:
             Location:
-              description: Frontend callback URI (`/auth/callback` or `/auth/callback?error=...`).
+              description: Frontend callback URI (`/auth/callback`, `/auth/callback?mode=link&...`, or `/auth/callback?error=...`).
               schema:
                 type: string
                 format: uri-reference
@@ -235,11 +257,13 @@ paths:
       operationId: linkOAuthProvider
       summary: Link an OAuth2 provider or exchange an authorization code for the current user
       description: |
-        Signed-in user (guest upgrading to a registered account, or registered user linking an additional provider,
-        BR-20, BR-21, ADR-005). Exchanges the OAuth2 authorization `code` and `state`, links the `auth_identity`
-        (`GOOGLE` or `FACEBOOK`) to the caller's user (or merges the guest into the existing registered user when the
-        verified email matches, emitting `GuestMerged`), rotates the refresh token cookie and returns the updated
-        `AuthSession`.
+        Signed-in user (registered user linking an additional provider, or guest upgrading to a registered account,
+        BR-20, BR-21, ADR-005). Completes a flow initiated via `GET /api/v1/auth/oauth2/{provider}?mode=link`:
+        verifies that the submitted `state` matches the caller's short-lived HttpOnly state/PKCE cookie (and that the
+        `userId` bound in the state cookie matches the caller's Bearer JWT), exchanges the unused OAuth2 authorization
+        `code` using the stored PKCE `code_verifier`, links the `auth_identity` (`GOOGLE` or `FACEBOOK`) to the caller's
+        user (or merges the guest into the existing registered user when the verified email matches, emitting
+        `GuestMerged`), rotates the `meloo_refresh` cookie and returns the updated `AuthSession`.
       parameters:
         - $ref: '#/components/parameters/OAuthProviderPath'
       requestBody:
@@ -1266,8 +1290,9 @@ paths:
       operationId: getMyProfile
       summary: Get the current player's profile
       description: |
-        Any signed-in user (guest or registered). Returns full profile details including `rankPoints` (01/11
-        supplement, BR-24), `xp`, `avatarUrl` and linked OAuth providers.
+        Any signed-in user (guest or registered, BR-20). Returns full profile details including `rankPoints` (01/11
+        supplement, BR-24), `xp`, `avatarUrl` and linked OAuth providers. Guests have a read-only profile (`GET` only;
+        editing via `PATCH /api/v1/me/profile` requires a `REGISTERED` account per BR-20).
       responses:
         '200':
           description: Current player profile.
@@ -1285,10 +1310,11 @@ paths:
     patch:
       tags: [progression]
       operationId: updateMyProfile
-      summary: Update the current player's nickname
+      summary: Update the current registered player's nickname
       description: |
-        Any signed-in user. Updates the display `nickname` (3-20 characters, validated against the banned-word list per
-        BR-22) and returns the updated `UserProfile`.
+        Registered users only (`REGISTERED`, BR-20). Updates the display `nickname` (3-20 characters, validated against
+        the banned-word list per BR-22) and returns the updated `UserProfile`. Guest profiles are read-only per BR-20;
+        calling this endpoint with a guest session is rejected with 403 (`GUEST_PROFILE_READ_ONLY`).
       requestBody:
         required: true
         content:
@@ -1313,7 +1339,18 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          description: Forbidden. Registered account required; guest profiles are read-only and receive `GUEST_PROFILE_READ_ONLY` (BR-20), or the account is locked (`ACCOUNT_LOCKED`, BR-28).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                guestProfileReadOnly:
+                  summary: Guest profiles are read-only (BR-20)
+                  externalValue: ./examples/progression/problem.guest-profile-read-only.403.json
+                accountLocked:
+                  summary: Account is locked (BR-28)
+                  externalValue: ./examples/audio/problem.forbidden.403.json
   /api/v1/me/matches:
     get:
       tags: [progression]
@@ -1445,9 +1482,11 @@ paths:
       operationId: getDailyLeaderboard
       summary: Get the daily challenge leaderboard
       description: |
-        Any signed-in user. Lists players who completed the daily challenge for `date` (defaults to today in
-        `Asia/Ho_Chi_Minh`, UTC+7). Ranked by `SOLVED` before `UNSOLVED`, then fewer listen seconds (`correctLevel` 1..5,
-        i.e. 2s -> 5s -> 10s -> 20s -> 30s), then smaller `elapsedMs` (BR-25).
+        Any signed-in user (guest or registered, BR-20). Lists registered players (`REGISTERED`, active,
+        `is_guest = false` per BR-20, UC-10 branch 5a and DES-01 `daily_attempt.is_guest`) who completed the daily
+        challenge for `date` (defaults to today in `Asia/Ho_Chi_Minh`, UTC+7). Ranked by `SOLVED` before `UNSOLVED`,
+        then fewer listen seconds (`correctLevel` 1..5, i.e. 2s -> 5s -> 10s -> 20s -> 30s), then smaller `elapsedMs`
+        (BR-25). Guest attempts are never included in `items`, and a guest caller always receives `myEntry: null`.
       parameters:
         - name: date
           in: query
@@ -1480,11 +1519,17 @@ paths:
       operationId: getDailyToday
       summary: Get today's daily challenge status for the current player
       description: |
-        Any signed-in user (guest or registered, BR-20, BR-25). Returns today's challenge date (`Asia/Ho_Chi_Minh`,
-        reset at 00:00 UTC+7), the caller's attempt `status` (`NOT_STARTED`, `IN_PROGRESS`, `SOLVED`, `UNSOLVED`),
-        streak counters, `nextResetAt` and `serverTime`. When `IN_PROGRESS`, includes `round` (`DailyRoundState`, which
-        never contains the answer). When `SOLVED` or `UNSOLVED`, includes `result` (`DailyResult` with the revealed
-        `answer`).
+        Any signed-in user (guest or registered, BR-20, BR-25). Returns the active or current daily challenge date
+        (`Asia/Ho_Chi_Minh`, reset at 00:00 UTC+7), the caller's attempt `status` (`NOT_STARTED`, `IN_PROGRESS`,
+        `SOLVED`, `UNSOLVED`), streak counters, `nextResetAt` and `serverTime`.
+        - **Midnight rollover priority rule (BR-25, UC-10 branch 4a):** If the caller has an unexpired `IN_PROGRESS`
+          attempt (`serverTime < expiresAt`, within the 5-minute ceiling from `startedAt`) that was started on day `D`
+          before `00:00 Asia/Ho_Chi_Minh`, this endpoint returns that active attempt with `challengeDate = D` and
+          `status = IN_PROGRESS` even when called after `00:00` on day `D+1`, until the attempt finishes or expires.
+        - **Expired attempt cleanup:** Any `IN_PROGRESS` attempt with `serverTime >= expiresAt` is finalized as
+          `UNSOLVED` (`outcome: TIMEOUT`) on its original `challengeDate` before resolving the current server date.
+        - When `IN_PROGRESS`, includes `round` (`DailyRoundState`, which never contains the answer). When `SOLVED` or
+          `UNSOLVED`, includes `result` (`DailyResult` with the revealed `answer`).
       responses:
         '200':
           description: Today's daily challenge state.
@@ -1521,10 +1566,18 @@ paths:
       operationId: startDailyAttempt
       summary: Start or resume today's single daily challenge attempt
       description: |
-        Any signed-in user (BR-25). Starts today's attempt at level 1 (`2s`) with a 5-minute ceiling (`expiresAt`) and
-        returns `DailyRoundState`. If the attempt is already `IN_PROGRESS` and not expired, returns the current
-        `DailyRoundState` with a fresh audio token so reloading does not lose the attempt. If the caller already
-        finished today's challenge (`SOLVED` or `UNSOLVED`), returns 409 (`DAILY_ALREADY_PLAYED`).
+        Any signed-in user (BR-25). Resolves the caller's daily attempt with the following midnight rollover rule
+        (BR-25, UC-10 branch 4a):
+        1. **Resume unexpired active attempt first:** If the caller already has an `IN_PROGRESS` attempt whose 5-minute
+           ceiling has not expired (`serverTime < expiresAt`) — including an attempt started on day `D` before `00:00`
+           that is resumed after `00:00` on day `D+1` — returns that existing `DailyRoundState` (`challengeDate = D`,
+           bound to day `D`'s track) with a fresh audio token so reloading across midnight never loses or switches the
+           issued track.
+        2. **Start today's attempt:** Otherwise, any expired `IN_PROGRESS` attempt (`serverTime >= expiresAt`) is
+           finalized as `UNSOLVED` (`outcome: TIMEOUT`) on its original `challengeDate`, and a new attempt for the
+           current server date in `Asia/Ho_Chi_Minh` is started at level 1 (`2s`) with a 5-minute ceiling (`expiresAt`).
+        3. **Already completed today:** If the caller has already finished the current server date's challenge (`SOLVED`
+           or `UNSOLVED`), returns 409 (`DAILY_ALREADY_PLAYED`).
       responses:
         '200':
           description: Daily attempt started or resumed at current level.
@@ -1534,7 +1587,11 @@ paths:
                 $ref: '#/components/schemas/DailyRoundState'
               examples:
                 default:
+                  summary: Newly started attempt at level 1 (2s)
                   externalValue: ./examples/daily/start-daily-attempt.200.json
+                rolloverResume:
+                  summary: Resumed in-progress attempt across 00:00 UTC+7 keeping issued challengeDate (BR-25)
+                  externalValue: ./examples/daily/start-daily-attempt.rollover.200.json
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1563,10 +1620,12 @@ paths:
     post:
       tags: [daily]
       operationId: listenMoreDaily
-      summary: Open the next listening level in today's daily challenge
+      summary: Open the next listening level in the active daily challenge attempt
       description: |
-        Advances today's in-progress daily attempt to the next level (`2s -> 5s -> 10s -> 20s -> 30s`, BR-01, BR-03,
-        BR-25) without counting as a wrong guess, and returns a new `AudioClip` for that level.
+        Advances the caller's active (`IN_PROGRESS`, `serverTime < expiresAt`) daily attempt to the next level
+        (`2s -> 5s -> 10s -> 20s -> 30s`, BR-01, BR-03, BR-25) without counting as a wrong guess, and returns a new
+        `AudioClip` for the track of that attempt's `challengeDate` (including when the attempt was started before
+        `00:00` and continues across midnight within its 5-minute ceiling, BR-25, UC-10 branch 4a).
       parameters:
         - name: expectedLevel
           in: query
@@ -1611,10 +1670,12 @@ paths:
     post:
       tags: [daily]
       operationId: skipDaily
-      summary: Give up on today's daily challenge at the 30-second level
+      summary: Give up on the active daily challenge attempt at the 30-second level
       description: |
-        Allowed only when today's attempt has reached level 5 (`30s`, BR-04, BR-25). Ends the attempt as `UNSOLVED`
-        (`outcome: GAVE_UP`), resets `currentStreak` to 0, reveals the song `answer`, and returns `DailyResult`.
+        Allowed only when the caller's active (`IN_PROGRESS`, `serverTime < expiresAt`) daily attempt has reached level 5
+        (`30s`, BR-04, BR-25). Ends that attempt on its issued `challengeDate` (even if completed after `00:00` UTC+7 per
+        BR-25 and UC-10 branch 4a) as `UNSOLVED` (`outcome: GAVE_UP`), resets `currentStreak` to 0, reveals the song
+        `answer` of that `challengeDate`, and returns `DailyResult`.
       responses:
         '200':
           description: Attempt ended as unsolved (`GAVE_UP`) and answer revealed.
@@ -1644,16 +1705,20 @@ paths:
     post:
       tags: [daily]
       operationId: submitDailyGuess
-      summary: Submit a song guess for today's daily challenge
+      summary: Submit a song guess for the active daily challenge attempt
       description: |
-        Any signed-in user with an `IN_PROGRESS` daily attempt (BR-02, BR-03, BR-05, BR-06, BR-25). Checks `trackId`
-        against today's track (exact or normalized title + main artist per BR-05).
-        - Correct: ends the attempt as `SOLVED` (`attemptEnded: true`), updates `currentStreak` and `longestStreak`,
-          and returns `result` (`DailyResult` with `answer`).
+        Any signed-in user with an active (`IN_PROGRESS`, `serverTime < expiresAt`) daily attempt (BR-02, BR-03, BR-05,
+        BR-06, BR-25). Resolves the caller's unexpired `IN_PROGRESS` attempt and checks `trackId` against the track of
+        **that attempt's issued `challengeDate`** (exact or normalized title + main artist per BR-05) — never switching
+        to day `D+1`'s track when an attempt started on day `D` before `00:00 Asia/Ho_Chi_Minh` finishes after `00:00`
+        within its 5-minute ceiling (BR-25, UC-10 branch 4a). If no unexpired `IN_PROGRESS` attempt exists (or the
+        attempt's 5-minute `expiresAt` ceiling has already passed), returns 409 (`ROUND_NOT_ACTIVE`).
+        - Correct: ends the attempt on its issued `challengeDate` as `SOLVED` (`attemptEnded: true`), updates
+          `currentStreak` and `longestStreak`, and returns `result` (`DailyResult` with `answer`).
         - Wrong before level 5: opens the next level (`attemptEnded: false`), sets `rightArtist` (BR-06), and returns
           `round` (`DailyRoundState` without the answer).
-        - Wrong at level 5 (`30s`): ends the attempt as `UNSOLVED` (`outcome: WRONG_OUT`, `attemptEnded: true`), resets
-          `currentStreak` to 0, and returns `result` (`DailyResult` with `answer`).
+        - Wrong at level 5 (`30s`): ends the attempt on its issued `challengeDate` as `UNSOLVED` (`outcome: WRONG_OUT`,
+          `attemptEnded: true`), resets `currentStreak` to 0, and returns `result` (`DailyResult` with `answer`).
       requestBody:
         required: true
         content:
@@ -1665,7 +1730,7 @@ paths:
                 externalValue: ./examples/game/submit-guess.request.json
       responses:
         '200':
-          description: Guess evaluated.
+          description: Guess evaluated against the track of the active attempt's `challengeDate`.
           content:
             application/json:
               schema:
@@ -1677,6 +1742,9 @@ paths:
                 correctFinished:
                   summary: Correct guess; attempt ended with answer and shareable result
                   externalValue: ./examples/daily/submit-daily-guess.correct.200.json
+                rolloverAfterMidnight:
+                  summary: Guess submitted at 00:01 UTC+7 for an attempt started at 23:59 UTC+7 (evaluated against issued challengeDate, BR-25)
+                  externalValue: ./examples/daily/submit-daily-guess.rollover.200.json
         '400':
           $ref: '#/components/responses/ValidationFailed'
         '401':
@@ -3059,6 +3127,7 @@ components:
         - OAUTH_EMAIL_UNVERIFIED
         - OAUTH_IDENTITY_ALREADY_LINKED
         - GUEST_CANNOT_DELETE_ACCOUNT
+        - GUEST_PROFILE_READ_ONLY
         - DAILY_ALREADY_PLAYED
         - DAILY_CHALLENGE_NOT_AVAILABLE
         - DAILY_CHALLENGE_LOCKED
@@ -3800,17 +3869,17 @@ components:
           type: string
           minLength: 1
           maxLength: 2048
-          description: Authorization code returned by the OAuth2 provider.
+          description: Unconsumed authorization code issued by the OAuth2 provider after `GET /api/v1/auth/oauth2/{provider}?mode=link`.
         state:
           type: string
           minLength: 1
           maxLength: 512
-          description: Anti-CSRF state parameter returned by the OAuth2 provider.
+          description: Anti-CSRF `state` parameter returned by the OAuth2 provider; verified against the caller's HttpOnly state/PKCE cookie and bound `userId`.
         redirectUri:
           type: string
           format: uri
           maxLength: 500
-          description: Optional redirect URI used when requesting the authorization code.
+          description: Optional OAuth2 callback redirect URI used when requesting the authorization code (`https://meloo.game/api/v1/auth/oauth2/{provider}/callback`).
     FacebookDataDeletionRequest:
       type: object
       required: [signed_request]
@@ -4180,13 +4249,13 @@ components:
       description: Listening duration in seconds for a level (`2`, `5`, `10`, `20`, `30`, BR-01).
     DailyRoundState:
       type: object
-      description: An in-progress daily challenge attempt. Deliberately has no answer, track id, title or artist field (NFR-07, BR-25).
+      description: An in-progress daily challenge attempt. Locked to the `challengeDate` and track issued by the server at `startedAt` even if continued across 00:00 UTC+7 within its 5-minute `expiresAt` ceiling (BR-25, UC-10 branch 4a). Deliberately has no answer, track id, title or artist field (NFR-07, BR-25).
       required: [challengeDate, level, listenSeconds, canListenMore, canSkip, wrongCount, audio, startedAt, expiresAt, serverTime]
       properties:
         challengeDate:
           type: string
           format: date
-          description: Challenge date (`yyyy-MM-dd` in `Asia/Ho_Chi_Minh`).
+          description: Challenge date (`yyyy-MM-dd` in `Asia/Ho_Chi_Minh`) issued by the server when the attempt started; preserved across 00:00 UTC+7 until the attempt completes or expires (BR-25).
         level:
           type: integer
           minimum: 1
@@ -4224,6 +4293,7 @@ components:
         challengeDate:
           type: string
           format: date
+          description: Challenge date (`yyyy-MM-dd` in `Asia/Ho_Chi_Minh`) issued by the server when the attempt started, even if completed after 00:00 UTC+7 (BR-25, UC-10 branch 4a).
         status:
           $ref: '#/components/schemas/DailyCompletionStatus'
         outcome:
@@ -4260,7 +4330,7 @@ components:
         rank:
           type: [integer, 'null']
           minimum: 1
-          description: Caller's rank on that day's daily leaderboard, if available.
+          description: Caller's rank on that day's daily leaderboard for registered players (`REGISTERED`), or null for guests (`BR-20`, `UC-10` branch 5a).
         currentStreak:
           type: integer
           minimum: 0
@@ -4366,12 +4436,14 @@ components:
               format: date
             items:
               type: array
+              description: Ranked entries of registered players (`REGISTERED`, `is_guest = false` per BR-20 and DES-01) who completed the challenge for `challengeDate`. Guest attempts are never included.
               items:
                 $ref: '#/components/schemas/DailyLeaderboardEntry'
             myEntry:
               oneOf:
                 - $ref: '#/components/schemas/DailyLeaderboardEntry'
                 - type: 'null'
+              description: The caller's own entry on that day's daily leaderboard if they are a registered player (`REGISTERED`) who completed `challengeDate`; always null for guests (BR-20, UC-10 branch 5a) or when not yet completed.
     DailyHistoryItem:
       type: object
       description: A single solved day in the caller's daily challenge history (29/10 supplement). Deliberately has no track or answer fields.

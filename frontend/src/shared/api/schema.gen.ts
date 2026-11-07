@@ -78,12 +78,20 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Start OAuth2/OIDC login or guest account upgrade
-         * @description Public or guest session (ADR-005). Generates a cryptographic `state` and PKCE `code_verifier`, stores them in a
-         *     short-lived HttpOnly cookie, and redirects (302) the browser to the provider's authorization endpoint (`google`
-         *     or `facebook`). If the caller has a `meloo_refresh` cookie (`Path=/api/v1/auth`) from an active guest session,
-         *     the guest user ID is bound into the OAuth state so that completing login merges the guest's match history, solo
-         *     records and daily challenge history into the registered account (`GuestMerged`, BR-21).
+         * Start OAuth2/OIDC login, guest upgrade, or provider linking
+         * @description Public, guest, or registered session (ADR-005, BR-20, BR-21). Generates a cryptographic `state` and PKCE
+         *     `code_verifier`, stores them in a short-lived HttpOnly cookie (`Path=/api/v1/auth`), and redirects (302) the
+         *     browser to the provider's authorization endpoint (`google` or `facebook`).
+         *     - **Anonymous login (`mode=login`, no `meloo_refresh` cookie):** starts a new OAuth2 login flow.
+         *     - **Guest upgrade (`mode=login`, guest `meloo_refresh` cookie present):** binds the guest `userId` into the
+         *       signed OAuth `state` cookie so completing authentication upgrades/merges the guest's match history, solo
+         *       records and daily challenge history into the registered account (`GuestMerged`, BR-21).
+         *     - **Link additional provider (`mode=link`, registered `meloo_refresh` cookie present):** binds the caller's
+         *       registered `userId` and `mode=link` into the signed OAuth `state` cookie. When the provider redirects back to
+         *       `GET /api/v1/auth/oauth2/{provider}/callback`, `mode=link` does not consume `code` on the redirect hop; instead
+         *       it redirects (302) to the SPA `/auth/callback?mode=link&provider={provider}&code=...&state=...` so the
+         *       authenticated SPA can call `POST /api/v1/auth/oauth2/{provider}/link` with `Authorization: Bearer <accessToken>`
+         *       plus the HttpOnly state/PKCE cookie to exchange the unused `code` and bind the new `auth_identity`.
          */
         get: operations["startOAuthLogin"];
         put?: never;
@@ -103,12 +111,18 @@ export interface paths {
         };
         /**
          * Handle OAuth2 authorization code callback
-         * @description Public (browser redirect from Google or Facebook, ADR-005). Verifies the `state` and PKCE cookie, exchanges
-         *     `code` for tokens/profile, requires a verified email (`email_verified = true`) to auto-link accounts with the
-         *     same email across Google and Facebook, merges guest data (`GuestMerged`, BR-21) when initiated from a guest
-         *     session, sets the `meloo_refresh` HttpOnly cookie, and redirects (302) to the frontend `/auth/callback` route
-         *     (which calls `POST /api/v1/auth/refresh` to obtain the in-memory access token). On provider error, unverified
-         *     email or locked account (`ACCOUNT_LOCKED`, BR-28), redirects (302) to `/auth/callback?error=<code>`.
+         * @description Public (browser redirect from Google or Facebook, ADR-005).
+         *     - For `mode=login` (default): verifies the `state` and PKCE cookie, exchanges `code` for tokens/profile,
+         *       requires a verified email (`email_verified = true`) to auto-link accounts with the same email across Google
+         *       and Facebook, merges guest data (`GuestMerged`, BR-21) when initiated from a guest session, sets the
+         *       `meloo_refresh` HttpOnly cookie, and redirects (302) to the frontend `/auth/callback` route (which calls
+         *       `POST /api/v1/auth/refresh` to obtain the in-memory access token).
+         *     - For `mode=link` (initiated by a signed-in user via `GET /api/v1/auth/oauth2/{provider}?mode=link`): validates
+         *       that `state` matches the HttpOnly state/PKCE cookie without consuming `code`, and redirects (302) to
+         *       `/auth/callback?mode=link&provider={provider}&code=<code>&state=<state>` so the SPA can complete linking via
+         *       `POST /api/v1/auth/oauth2/{provider}/link`.
+         *     - On provider error, unverified email or locked account (`ACCOUNT_LOCKED`, BR-28), redirects (302) to
+         *       `/auth/callback?error=<code>`.
          */
         get: operations["handleOAuthCallback"];
         put?: never;
@@ -130,11 +144,13 @@ export interface paths {
         put?: never;
         /**
          * Link an OAuth2 provider or exchange an authorization code for the current user
-         * @description Signed-in user (guest upgrading to a registered account, or registered user linking an additional provider,
-         *     BR-20, BR-21, ADR-005). Exchanges the OAuth2 authorization `code` and `state`, links the `auth_identity`
-         *     (`GOOGLE` or `FACEBOOK`) to the caller's user (or merges the guest into the existing registered user when the
-         *     verified email matches, emitting `GuestMerged`), rotates the refresh token cookie and returns the updated
-         *     `AuthSession`.
+         * @description Signed-in user (registered user linking an additional provider, or guest upgrading to a registered account,
+         *     BR-20, BR-21, ADR-005). Completes a flow initiated via `GET /api/v1/auth/oauth2/{provider}?mode=link`:
+         *     verifies that the submitted `state` matches the caller's short-lived HttpOnly state/PKCE cookie (and that the
+         *     `userId` bound in the state cookie matches the caller's Bearer JWT), exchanges the unused OAuth2 authorization
+         *     `code` using the stored PKCE `code_verifier`, links the `auth_identity` (`GOOGLE` or `FACEBOOK`) to the caller's
+         *     user (or merges the guest into the existing registered user when the verified email matches, emitting
+         *     `GuestMerged`), rotates the `meloo_refresh` cookie and returns the updated `AuthSession`.
          */
         post: operations["linkOAuthProvider"];
         delete?: never;
@@ -570,8 +586,9 @@ export interface paths {
         };
         /**
          * Get the current player's profile
-         * @description Any signed-in user (guest or registered). Returns full profile details including `rankPoints` (01/11
-         *     supplement, BR-24), `xp`, `avatarUrl` and linked OAuth providers.
+         * @description Any signed-in user (guest or registered, BR-20). Returns full profile details including `rankPoints` (01/11
+         *     supplement, BR-24), `xp`, `avatarUrl` and linked OAuth providers. Guests have a read-only profile (`GET` only;
+         *     editing via `PATCH /api/v1/me/profile` requires a `REGISTERED` account per BR-20).
          */
         get: operations["getMyProfile"];
         put?: never;
@@ -580,9 +597,10 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Update the current player's nickname
-         * @description Any signed-in user. Updates the display `nickname` (3-20 characters, validated against the banned-word list per
-         *     BR-22) and returns the updated `UserProfile`.
+         * Update the current registered player's nickname
+         * @description Registered users only (`REGISTERED`, BR-20). Updates the display `nickname` (3-20 characters, validated against
+         *     the banned-word list per BR-22) and returns the updated `UserProfile`. Guest profiles are read-only per BR-20;
+         *     calling this endpoint with a guest session is rejected with 403 (`GUEST_PROFILE_READ_ONLY`).
          */
         patch: operations["updateMyProfile"];
         trace?: never;
@@ -702,9 +720,11 @@ export interface paths {
         };
         /**
          * Get the daily challenge leaderboard
-         * @description Any signed-in user. Lists players who completed the daily challenge for `date` (defaults to today in
-         *     `Asia/Ho_Chi_Minh`, UTC+7). Ranked by `SOLVED` before `UNSOLVED`, then fewer listen seconds (`correctLevel` 1..5,
-         *     i.e. 2s -> 5s -> 10s -> 20s -> 30s), then smaller `elapsedMs` (BR-25).
+         * @description Any signed-in user (guest or registered, BR-20). Lists registered players (`REGISTERED`, active,
+         *     `is_guest = false` per BR-20, UC-10 branch 5a and DES-01 `daily_attempt.is_guest`) who completed the daily
+         *     challenge for `date` (defaults to today in `Asia/Ho_Chi_Minh`, UTC+7). Ranked by `SOLVED` before `UNSOLVED`,
+         *     then fewer listen seconds (`correctLevel` 1..5, i.e. 2s -> 5s -> 10s -> 20s -> 30s), then smaller `elapsedMs`
+         *     (BR-25). Guest attempts are never included in `items`, and a guest caller always receives `myEntry: null`.
          */
         get: operations["getDailyLeaderboard"];
         put?: never;
@@ -724,11 +744,17 @@ export interface paths {
         };
         /**
          * Get today's daily challenge status for the current player
-         * @description Any signed-in user (guest or registered, BR-20, BR-25). Returns today's challenge date (`Asia/Ho_Chi_Minh`,
-         *     reset at 00:00 UTC+7), the caller's attempt `status` (`NOT_STARTED`, `IN_PROGRESS`, `SOLVED`, `UNSOLVED`),
-         *     streak counters, `nextResetAt` and `serverTime`. When `IN_PROGRESS`, includes `round` (`DailyRoundState`, which
-         *     never contains the answer). When `SOLVED` or `UNSOLVED`, includes `result` (`DailyResult` with the revealed
-         *     `answer`).
+         * @description Any signed-in user (guest or registered, BR-20, BR-25). Returns the active or current daily challenge date
+         *     (`Asia/Ho_Chi_Minh`, reset at 00:00 UTC+7), the caller's attempt `status` (`NOT_STARTED`, `IN_PROGRESS`,
+         *     `SOLVED`, `UNSOLVED`), streak counters, `nextResetAt` and `serverTime`.
+         *     - **Midnight rollover priority rule (BR-25, UC-10 branch 4a):** If the caller has an unexpired `IN_PROGRESS`
+         *       attempt (`serverTime < expiresAt`, within the 5-minute ceiling from `startedAt`) that was started on day `D`
+         *       before `00:00 Asia/Ho_Chi_Minh`, this endpoint returns that active attempt with `challengeDate = D` and
+         *       `status = IN_PROGRESS` even when called after `00:00` on day `D+1`, until the attempt finishes or expires.
+         *     - **Expired attempt cleanup:** Any `IN_PROGRESS` attempt with `serverTime >= expiresAt` is finalized as
+         *       `UNSOLVED` (`outcome: TIMEOUT`) on its original `challengeDate` before resolving the current server date.
+         *     - When `IN_PROGRESS`, includes `round` (`DailyRoundState`, which never contains the answer). When `SOLVED` or
+         *       `UNSOLVED`, includes `result` (`DailyResult` with the revealed `answer`).
          */
         get: operations["getDailyToday"];
         put?: never;
@@ -750,10 +776,18 @@ export interface paths {
         put?: never;
         /**
          * Start or resume today's single daily challenge attempt
-         * @description Any signed-in user (BR-25). Starts today's attempt at level 1 (`2s`) with a 5-minute ceiling (`expiresAt`) and
-         *     returns `DailyRoundState`. If the attempt is already `IN_PROGRESS` and not expired, returns the current
-         *     `DailyRoundState` with a fresh audio token so reloading does not lose the attempt. If the caller already
-         *     finished today's challenge (`SOLVED` or `UNSOLVED`), returns 409 (`DAILY_ALREADY_PLAYED`).
+         * @description Any signed-in user (BR-25). Resolves the caller's daily attempt with the following midnight rollover rule
+         *     (BR-25, UC-10 branch 4a):
+         *     1. **Resume unexpired active attempt first:** If the caller already has an `IN_PROGRESS` attempt whose 5-minute
+         *        ceiling has not expired (`serverTime < expiresAt`) — including an attempt started on day `D` before `00:00`
+         *        that is resumed after `00:00` on day `D+1` — returns that existing `DailyRoundState` (`challengeDate = D`,
+         *        bound to day `D`'s track) with a fresh audio token so reloading across midnight never loses or switches the
+         *        issued track.
+         *     2. **Start today's attempt:** Otherwise, any expired `IN_PROGRESS` attempt (`serverTime >= expiresAt`) is
+         *        finalized as `UNSOLVED` (`outcome: TIMEOUT`) on its original `challengeDate`, and a new attempt for the
+         *        current server date in `Asia/Ho_Chi_Minh` is started at level 1 (`2s`) with a 5-minute ceiling (`expiresAt`).
+         *     3. **Already completed today:** If the caller has already finished the current server date's challenge (`SOLVED`
+         *        or `UNSOLVED`), returns 409 (`DAILY_ALREADY_PLAYED`).
          */
         post: operations["startDailyAttempt"];
         delete?: never;
@@ -772,9 +806,11 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Open the next listening level in today's daily challenge
-         * @description Advances today's in-progress daily attempt to the next level (`2s -> 5s -> 10s -> 20s -> 30s`, BR-01, BR-03,
-         *     BR-25) without counting as a wrong guess, and returns a new `AudioClip` for that level.
+         * Open the next listening level in the active daily challenge attempt
+         * @description Advances the caller's active (`IN_PROGRESS`, `serverTime < expiresAt`) daily attempt to the next level
+         *     (`2s -> 5s -> 10s -> 20s -> 30s`, BR-01, BR-03, BR-25) without counting as a wrong guess, and returns a new
+         *     `AudioClip` for the track of that attempt's `challengeDate` (including when the attempt was started before
+         *     `00:00` and continues across midnight within its 5-minute ceiling, BR-25, UC-10 branch 4a).
          */
         post: operations["listenMoreDaily"];
         delete?: never;
@@ -793,9 +829,11 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Give up on today's daily challenge at the 30-second level
-         * @description Allowed only when today's attempt has reached level 5 (`30s`, BR-04, BR-25). Ends the attempt as `UNSOLVED`
-         *     (`outcome: GAVE_UP`), resets `currentStreak` to 0, reveals the song `answer`, and returns `DailyResult`.
+         * Give up on the active daily challenge attempt at the 30-second level
+         * @description Allowed only when the caller's active (`IN_PROGRESS`, `serverTime < expiresAt`) daily attempt has reached level 5
+         *     (`30s`, BR-04, BR-25). Ends that attempt on its issued `challengeDate` (even if completed after `00:00` UTC+7 per
+         *     BR-25 and UC-10 branch 4a) as `UNSOLVED` (`outcome: GAVE_UP`), resets `currentStreak` to 0, reveals the song
+         *     `answer` of that `challengeDate`, and returns `DailyResult`.
          */
         post: operations["skipDaily"];
         delete?: never;
@@ -814,15 +852,19 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Submit a song guess for today's daily challenge
-         * @description Any signed-in user with an `IN_PROGRESS` daily attempt (BR-02, BR-03, BR-05, BR-06, BR-25). Checks `trackId`
-         *     against today's track (exact or normalized title + main artist per BR-05).
-         *     - Correct: ends the attempt as `SOLVED` (`attemptEnded: true`), updates `currentStreak` and `longestStreak`,
-         *       and returns `result` (`DailyResult` with `answer`).
+         * Submit a song guess for the active daily challenge attempt
+         * @description Any signed-in user with an active (`IN_PROGRESS`, `serverTime < expiresAt`) daily attempt (BR-02, BR-03, BR-05,
+         *     BR-06, BR-25). Resolves the caller's unexpired `IN_PROGRESS` attempt and checks `trackId` against the track of
+         *     **that attempt's issued `challengeDate`** (exact or normalized title + main artist per BR-05) — never switching
+         *     to day `D+1`'s track when an attempt started on day `D` before `00:00 Asia/Ho_Chi_Minh` finishes after `00:00`
+         *     within its 5-minute ceiling (BR-25, UC-10 branch 4a). If no unexpired `IN_PROGRESS` attempt exists (or the
+         *     attempt's 5-minute `expiresAt` ceiling has already passed), returns 409 (`ROUND_NOT_ACTIVE`).
+         *     - Correct: ends the attempt on its issued `challengeDate` as `SOLVED` (`attemptEnded: true`), updates
+         *       `currentStreak` and `longestStreak`, and returns `result` (`DailyResult` with `answer`).
          *     - Wrong before level 5: opens the next level (`attemptEnded: false`), sets `rightArtist` (BR-06), and returns
          *       `round` (`DailyRoundState` without the answer).
-         *     - Wrong at level 5 (`30s`): ends the attempt as `UNSOLVED` (`outcome: WRONG_OUT`, `attemptEnded: true`), resets
-         *       `currentStreak` to 0, and returns `result` (`DailyResult` with `answer`).
+         *     - Wrong at level 5 (`30s`): ends the attempt on its issued `challengeDate` as `UNSOLVED` (`outcome: WRONG_OUT`,
+         *       `attemptEnded: true`), resets `currentStreak` to 0, and returns `result` (`DailyResult` with `answer`).
          */
         post: operations["submitDailyGuess"];
         delete?: never;
@@ -1320,7 +1362,7 @@ export interface components {
          *     Bao gồm các mã lỗi mặc định HTTP và mã lỗi nghiệp vụ của các module.
          * @enum {string}
          */
-        ErrorCode: "VALIDATION_FAILED" | "UNAUTHORIZED" | "FORBIDDEN" | "NOT_FOUND" | "METHOD_NOT_ALLOWED" | "UNSUPPORTED_MEDIA_TYPE" | "NOT_ACCEPTABLE" | "CONFLICT" | "RATE_LIMITED" | "INTERNAL_ERROR" | "REFRESH_RACE" | "ACCOUNT_LOCKED" | "TRACK_NOT_FOUND" | "PLAYLIST_NOT_FOUND" | "SOLO_MATCH_IN_PROGRESS" | "NO_ACTIVE_MATCH" | "MATCH_NOT_IN_PROGRESS" | "MATCH_NOT_FOUND" | "MATCH_NOT_FINISHED" | "QUICK_MATCH_REQUIRES_ACCOUNT" | "NOT_ENOUGH_TRACKS" | "ROUND_NOT_ACTIVE" | "ROUND_NOT_FOUND" | "ROUND_NOT_FINISHED" | "LISTEN_LEVEL_MAX" | "LISTEN_LEVEL_MISMATCH" | "SKIP_NOT_ALLOWED" | "AUDIO_TOKEN_INVALID" | "AUDIO_TOKEN_EXPIRED" | "RANGE_NOT_SATISFIABLE" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_KICKED" | "NOT_ROOM_HOST" | "ROOM_NOT_LOBBY" | "ROOM_CANNOT_START" | "OAUTH_STATE_INVALID" | "OAUTH_EMAIL_UNVERIFIED" | "OAUTH_IDENTITY_ALREADY_LINKED" | "GUEST_CANNOT_DELETE_ACCOUNT" | "DAILY_ALREADY_PLAYED" | "DAILY_CHALLENGE_NOT_AVAILABLE" | "DAILY_CHALLENGE_LOCKED" | "STANDARD_PLAYLIST_PROTECTED" | "USER_NOT_FOUND" | "ADMIN_SELF_ACTION_FORBIDDEN" | "REPORT_NOT_FOUND" | "BANNED_WORD_NOT_FOUND" | "BANNED_WORD_ALREADY_EXISTS";
+        ErrorCode: "VALIDATION_FAILED" | "UNAUTHORIZED" | "FORBIDDEN" | "NOT_FOUND" | "METHOD_NOT_ALLOWED" | "UNSUPPORTED_MEDIA_TYPE" | "NOT_ACCEPTABLE" | "CONFLICT" | "RATE_LIMITED" | "INTERNAL_ERROR" | "REFRESH_RACE" | "ACCOUNT_LOCKED" | "TRACK_NOT_FOUND" | "PLAYLIST_NOT_FOUND" | "SOLO_MATCH_IN_PROGRESS" | "NO_ACTIVE_MATCH" | "MATCH_NOT_IN_PROGRESS" | "MATCH_NOT_FOUND" | "MATCH_NOT_FINISHED" | "QUICK_MATCH_REQUIRES_ACCOUNT" | "NOT_ENOUGH_TRACKS" | "ROUND_NOT_ACTIVE" | "ROUND_NOT_FOUND" | "ROUND_NOT_FINISHED" | "LISTEN_LEVEL_MAX" | "LISTEN_LEVEL_MISMATCH" | "SKIP_NOT_ALLOWED" | "AUDIO_TOKEN_INVALID" | "AUDIO_TOKEN_EXPIRED" | "RANGE_NOT_SATISFIABLE" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_KICKED" | "NOT_ROOM_HOST" | "ROOM_NOT_LOBBY" | "ROOM_CANNOT_START" | "OAUTH_STATE_INVALID" | "OAUTH_EMAIL_UNVERIFIED" | "OAUTH_IDENTITY_ALREADY_LINKED" | "GUEST_CANNOT_DELETE_ACCOUNT" | "GUEST_PROFILE_READ_ONLY" | "DAILY_ALREADY_PLAYED" | "DAILY_CHALLENGE_NOT_AVAILABLE" | "DAILY_CHALLENGE_LOCKED" | "STANDARD_PLAYLIST_PROTECTED" | "USER_NOT_FOUND" | "ADMIN_SELF_ACTION_FORBIDDEN" | "REPORT_NOT_FOUND" | "BANNED_WORD_NOT_FOUND" | "BANNED_WORD_ALREADY_EXISTS";
         /** @description RFC 9457 problem details with a stable `code`. */
         Problem: {
             /**
@@ -1747,13 +1789,13 @@ export interface components {
          */
         OAuthProvider: "GOOGLE" | "FACEBOOK";
         OAuthLinkRequest: {
-            /** @description Authorization code returned by the OAuth2 provider. */
+            /** @description Unconsumed authorization code issued by the OAuth2 provider after `GET /api/v1/auth/oauth2/{provider}?mode=link`. */
             code: string;
-            /** @description Anti-CSRF state parameter returned by the OAuth2 provider. */
+            /** @description Anti-CSRF `state` parameter returned by the OAuth2 provider; verified against the caller's HttpOnly state/PKCE cookie and bound `userId`. */
             state: string;
             /**
              * Format: uri
-             * @description Optional redirect URI used when requesting the authorization code.
+             * @description Optional OAuth2 callback redirect URI used when requesting the authorization code (`https://meloo.game/api/v1/auth/oauth2/{provider}/callback`).
              */
             redirectUri?: string;
         };
@@ -1949,11 +1991,11 @@ export interface components {
          * @enum {integer}
          */
         DailyListenSeconds: 2 | 5 | 10 | 20 | 30;
-        /** @description An in-progress daily challenge attempt. Deliberately has no answer, track id, title or artist field (NFR-07, BR-25). */
+        /** @description An in-progress daily challenge attempt. Locked to the `challengeDate` and track issued by the server at `startedAt` even if continued across 00:00 UTC+7 within its 5-minute `expiresAt` ceiling (BR-25, UC-10 branch 4a). Deliberately has no answer, track id, title or artist field (NFR-07, BR-25). */
         DailyRoundState: {
             /**
              * Format: date
-             * @description Challenge date (`yyyy-MM-dd` in `Asia/Ho_Chi_Minh`).
+             * @description Challenge date (`yyyy-MM-dd` in `Asia/Ho_Chi_Minh`) issued by the server when the attempt started; preserved across 00:00 UTC+7 until the attempt completes or expires (BR-25).
              */
             challengeDate: string;
             /** @description Opened listening level, 1 to 5 (BR-01). */
@@ -1977,7 +2019,10 @@ export interface components {
         };
         /** @description Completed daily challenge result with spoiler-free level slots and revealed song answer (BR-25, BR-29). */
         DailyResult: {
-            /** Format: date */
+            /**
+             * Format: date
+             * @description Challenge date (`yyyy-MM-dd` in `Asia/Ho_Chi_Minh`) issued by the server when the attempt started, even if completed after 00:00 UTC+7 (BR-25, UC-10 branch 4a).
+             */
             challengeDate: string;
             status: components["schemas"]["DailyCompletionStatus"];
             outcome: components["schemas"]["RoundOutcome"];
@@ -1995,7 +2040,7 @@ export interface components {
             wrongCount: number;
             /** @description Total elapsed time in milliseconds from `startedAt` to completion (BR-25). */
             elapsedMs: number;
-            /** @description Caller's rank on that day's daily leaderboard, if available. */
+            /** @description Caller's rank on that day's daily leaderboard for registered players (`REGISTERED`), or null for guests (`BR-20`, `UC-10` branch 5a). */
             rank?: number | null;
             /** @description Consecutive days solved (`SOLVED`) up to today (BR-25). */
             currentStreak: number;
@@ -2052,7 +2097,9 @@ export interface components {
         DailyLeaderboardPage: components["schemas"]["Page"] & {
             /** Format: date */
             challengeDate: string;
+            /** @description Ranked entries of registered players (`REGISTERED`, `is_guest = false` per BR-20 and DES-01) who completed the challenge for `challengeDate`. Guest attempts are never included. */
             items: components["schemas"]["DailyLeaderboardEntry"][];
+            /** @description The caller's own entry on that day's daily leaderboard if they are a registered player (`REGISTERED`) who completed `challengeDate`; always null for guests (BR-20, UC-10 branch 5a) or when not yet completed. */
             myEntry?: components["schemas"]["DailyLeaderboardEntry"] | null;
         };
         /** @description A single solved day in the caller's daily challenge history (29/10 supplement). Deliberately has no track or answer fields. */
@@ -2515,6 +2562,8 @@ export interface operations {
     startOAuthLogin: {
         parameters: {
             query?: {
+                /** @description Flow mode (`login` for sign-in / guest upgrade via server callback; `link` to forward unused `code` and `state` to the SPA for `POST /api/v1/auth/oauth2/{provider}/link`). */
+                mode?: "login" | "link";
                 /** @description Optional relative frontend path to redirect to after `/auth/callback` finishes. */
                 returnTo?: string;
             };
@@ -2563,10 +2612,10 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Redirects to the SPA `/auth/callback` (with `Set-Cookie: meloo_refresh` on success, or `?error=...` on failure). */
+            /** @description Redirects to the SPA `/auth/callback` (with `Set-Cookie: meloo_refresh` on login success, `?mode=link&code=...&state=...` for provider linking, or `?error=...` on failure). */
             302: {
                 headers: {
-                    /** @description Frontend callback URI (`/auth/callback` or `/auth/callback?error=...`). */
+                    /** @description Frontend callback URI (`/auth/callback`, `/auth/callback?mode=link&...`, or `/auth/callback?error=...`). */
                     Location?: string;
                     "Set-Cookie": components["headers"]["RefreshCookie"];
                     [name: string]: unknown;
@@ -3481,7 +3530,15 @@ export interface operations {
             };
             400: components["responses"]["ValidationFailed"];
             401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
+            /** @description Forbidden. Registered account required; guest profiles are read-only and receive `GUEST_PROFILE_READ_ONLY` (BR-20), or the account is locked (`ACCOUNT_LOCKED`, BR-28). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     listMyMatches: {
@@ -3795,7 +3852,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Guess evaluated. */
+            /** @description Guess evaluated against the track of the active attempt's `challengeDate`. */
             200: {
                 headers: {
                     [name: string]: unknown;

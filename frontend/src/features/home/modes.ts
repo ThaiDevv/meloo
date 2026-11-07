@@ -9,6 +9,6 @@ export interface HomeMode {
 export const HOME_MODES: HomeMode[] = [
   { id: 'solo', to: '/solo', available: true },
   { id: 'daily', to: '/daily', available: false },
-  { id: 'room', to: '/rooms/new', available: false },
+  { id: 'room', to: '/rooms/new', available: true },
   { id: 'quick', to: '/quick-match', available: false },
 ]

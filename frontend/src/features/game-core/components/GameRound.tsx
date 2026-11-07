@@ -235,7 +235,7 @@ function RoundPlay({
       <section
         aria-label={t('stage.level', { n: round.level, max: 5 })}
         aria-busy={audio.status === 'loading'}
-        className="grid gap-6 rounded-3xl bg-surface p-5 sm:p-8 md:grid-cols-[minmax(0,25rem)_1fr] md:items-center md:gap-x-10 md:p-10"
+        className="grid gap-6 rounded-3xl bg-surface p-5 sm:p-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] md:items-center md:gap-x-10 md:p-10"
       >
         <Turntable
           level={round.level}
@@ -243,7 +243,7 @@ function RoundPlay({
           playing={audio.playing}
           player={player}
           joltKey={verdict && !verdict.correct ? verdict.nonce : undefined}
-          className="mx-auto w-full max-w-80 md:max-w-none"
+          className="mx-auto w-full max-w-80 md:max-w-100"
         />
         <div className="flex min-w-0 flex-col gap-6">
           <h2 className="font-display text-2xl font-extrabold tracking-tight md:text-3xl">

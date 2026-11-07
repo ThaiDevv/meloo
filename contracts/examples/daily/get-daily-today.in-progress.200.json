@@ -1,0 +1,23 @@
+{
+  "challengeDate": "2026-10-29",
+  "status": "IN_PROGRESS",
+  "currentStreak": 2,
+  "longestStreak": 5,
+  "nextResetAt": "2026-10-29T17:00:00Z",
+  "serverTime": "2026-10-29T08:01:10Z",
+  "round": {
+    "challengeDate": "2026-10-29",
+    "level": 2,
+    "listenSeconds": 5,
+    "canListenMore": true,
+    "canSkip": false,
+    "wrongCount": 1,
+    "audio": {
+      "url": "/api/v1/audio/Hq3TnV8wYb5RsLd2PzXe9KcMu6AfJg1oWiNtB7yEx0Q",
+      "expiresAt": "2026-10-29T08:03:10Z"
+    },
+    "startedAt": "2026-10-29T08:00:30Z",
+    "expiresAt": "2026-10-29T08:05:30Z",
+    "serverTime": "2026-10-29T08:01:10Z"
+  }
+}

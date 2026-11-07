@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Conflict",
+  "status": 409,
+  "code": "DAILY_CHALLENGE_LOCKED",
+  "detail": "Past or active daily challenges cannot be modified.",
+  "instance": "/api/v1/admin/daily-schedule/2026-10-29"
+}

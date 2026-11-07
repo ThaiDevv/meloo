@@ -1,0 +1,22 @@
+{
+  "page": 0,
+  "size": 10,
+  "totalItems": 1,
+  "totalPages": 1,
+  "items": [
+    {
+      "id": 1,
+      "actorId": "99999999-9999-4999-8999-999999999901",
+      "actorNickname": "AdminThai",
+      "action": "USER_LOCK",
+      "targetType": "USER",
+      "targetId": "b41c7d90-2e84-4a3c-9c71-8f21e5b73012",
+      "reason": "Repeated abusive messages in public rooms (BR-28)",
+      "detail": {
+        "previousStatus": "ACTIVE",
+        "newStatus": "LOCKED"
+      },
+      "createdAt": "2026-10-29T08:20:00Z"
+    }
+  ]
+}

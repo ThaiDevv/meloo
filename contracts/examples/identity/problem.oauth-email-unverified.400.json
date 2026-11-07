@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Unverified OAuth email",
+  "status": 400,
+  "code": "OAUTH_EMAIL_UNVERIFIED",
+  "detail": "The OAuth provider did not return a verified email address.",
+  "instance": "/api/v1/auth/oauth2/facebook/link"
+}

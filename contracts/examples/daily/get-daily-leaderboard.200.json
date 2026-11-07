@@ -1,0 +1,57 @@
+{
+  "challengeDate": "2026-10-29",
+  "page": 0,
+  "size": 10,
+  "totalItems": 3,
+  "totalPages": 1,
+  "items": [
+    {
+      "rank": 1,
+      "userId": "a19f3e20-6c4d-4b18-8e52-9d0c1a2b3f44",
+      "nickname": "NhacThanh",
+      "avatarUrl": "https://lh3.googleusercontent.com/a/ACg8ocLeader1",
+      "status": "SOLVED",
+      "correctLevel": 1,
+      "listenSeconds": 2,
+      "score": 1000,
+      "elapsedMs": 2840,
+      "completedAt": "2026-10-29T00:12:05Z"
+    },
+    {
+      "rank": 2,
+      "userId": "b41c7d90-2e84-4a3c-9c71-8f21e5b73012",
+      "nickname": "MinhNhac",
+      "avatarUrl": "https://lh3.googleusercontent.com/a/ACg8ocSampleAvatarUrl",
+      "status": "SOLVED",
+      "correctLevel": 2,
+      "listenSeconds": 5,
+      "score": 800,
+      "elapsedMs": 14320,
+      "completedAt": "2026-10-29T08:01:44Z"
+    },
+    {
+      "rank": 3,
+      "userId": "c82e4f10-9a3b-4d2c-8f61-1e5a7b9c3d20",
+      "nickname": "ThuHa",
+      "avatarUrl": "https://lh3.googleusercontent.com/a/ACg8ocLeader3",
+      "status": "UNSOLVED",
+      "correctLevel": null,
+      "listenSeconds": null,
+      "score": 0,
+      "elapsedMs": 48200,
+      "completedAt": "2026-10-29T08:20:00Z"
+    }
+  ],
+  "myEntry": {
+    "rank": 2,
+    "userId": "b41c7d90-2e84-4a3c-9c71-8f21e5b73012",
+    "nickname": "MinhNhac",
+    "avatarUrl": "https://lh3.googleusercontent.com/a/ACg8ocSampleAvatarUrl",
+    "status": "SOLVED",
+    "correctLevel": 2,
+    "listenSeconds": 5,
+    "score": 800,
+    "elapsedMs": 14320,
+    "completedAt": "2026-10-29T08:01:44Z"
+  }
+}

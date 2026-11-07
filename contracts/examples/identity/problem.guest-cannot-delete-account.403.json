@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Forbidden",
+  "status": 403,
+  "code": "GUEST_CANNOT_DELETE_ACCOUNT",
+  "detail": "Only registered accounts can request self-service account deletion.",
+  "instance": "/api/v1/me"
+}

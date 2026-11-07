@@ -1,0 +1,40 @@
+{
+  "page": 0,
+  "size": 10,
+  "totalItems": 2,
+  "totalPages": 1,
+  "items": [
+    {
+      "matchId": "8f1d4a70-3b2c-4e19-9a04-6c5d8e2f1b33",
+      "type": "QUICK_MATCH",
+      "mode": null,
+      "ranked": true,
+      "status": "FINISHED",
+      "roundCount": 10,
+      "totalScore": 7420,
+      "correctCount": 8,
+      "rank": 1,
+      "playerCount": 4,
+      "rankDelta": 30,
+      "playlistId": "11111111-1111-4111-8111-111111111101",
+      "startedAt": "2026-10-28T14:00:00Z",
+      "endedAt": "2026-10-28T14:05:12Z"
+    },
+    {
+      "matchId": "4c9a2e10-7d5b-4a81-8c32-1e7f9a0b4d22",
+      "type": "SOLO",
+      "mode": "PRACTICE",
+      "ranked": false,
+      "status": "FINISHED",
+      "roundCount": 5,
+      "totalScore": 4200,
+      "correctCount": 5,
+      "rank": 1,
+      "playerCount": 1,
+      "rankDelta": null,
+      "playlistId": null,
+      "startedAt": "2026-10-27T19:20:00Z",
+      "endedAt": "2026-10-27T19:23:40Z"
+    }
+  ]
+}

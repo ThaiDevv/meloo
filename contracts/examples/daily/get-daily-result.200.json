@@ -1,0 +1,23 @@
+{
+  "challengeDate": "2026-10-29",
+  "status": "SOLVED",
+  "outcome": "CORRECT",
+  "correctLevel": 2,
+  "correctListenSeconds": 5,
+  "levels": ["WRONG", "CORRECT", "UNOPENED", "UNOPENED", "UNOPENED"],
+  "score": 800,
+  "wrongCount": 1,
+  "elapsedMs": 14320,
+  "rank": 12,
+  "currentStreak": 3,
+  "longestStreak": 5,
+  "nextResetAt": "2026-10-29T17:00:00Z",
+  "answer": {
+    "trackId": "22222222-2222-4222-8222-222222222201",
+    "title": "Nơi Này Có Anh",
+    "artistName": "Sơn Tùng M-TP",
+    "provider": "DEEZER",
+    "listenUrl": "https://www.deezer.com/track/350123451",
+    "coverUrl": "https://cdn-images.dzcdn.net/images/cover/sample1/250x250-000000-80-0-0.jpg"
+  }
+}

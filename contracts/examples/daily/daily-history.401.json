@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Unauthorized",
+  "status": 401,
+  "code": "UNAUTHORIZED",
+  "detail": "Bearer token is missing or expired.",
+  "instance": "/api/v1/daily/history"
+}

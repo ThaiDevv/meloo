@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Forbidden",
+  "status": 403,
+  "code": "GUEST_PROFILE_READ_ONLY",
+  "detail": "Guest profiles are read-only. Sign in with a registered account to update your profile.",
+  "instance": "/api/v1/me/profile"
+}

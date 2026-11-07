@@ -1,0 +1,14 @@
+{
+  "id": "22222222-2222-4222-8222-222222222201",
+  "provider": "DEEZER",
+  "providerTrackId": "350123451",
+  "title": "Nơi Này Có Anh",
+  "artistName": "Sơn Tùng M-TP",
+  "genreId": "44444444-4444-4444-8444-444444444401",
+  "genreCode": "vpop",
+  "countryCode": "VN",
+  "releaseYear": 2017,
+  "enabled": true,
+  "disabledReason": null,
+  "coverUrl": "https://cdn-images.dzcdn.net/images/cover/sample1/250x250-000000-80-0-0.jpg"
+}

@@ -1,0 +1,16 @@
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiNDFjN2Q5MC0yZTg0LTRhM2MtOWM3MS04ZjIxZTViNzMwMTIiLCJraW5kIjoiUkVHSVNURVJFRCIsInJvbGUiOiJVU0VSIiwiaWF0IjoxNzYxMjI1MDAwLCJleHAiOjE3NjEyMjU5MDB9.signature",
+  "tokenType": "Bearer",
+  "expiresAt": "2026-10-23T13:25:00Z",
+  "user": {
+    "id": "b41c7d90-2e84-4a3c-9c71-8f21e5b73012",
+    "kind": "REGISTERED",
+    "role": "USER",
+    "nickname": "MinhNhac",
+    "email": "minh.nhac@example.com",
+    "avatarUrl": "https://lh3.googleusercontent.com/a/ACg8ocSampleAvatarUrl",
+    "rankPoints": 1450,
+    "linkedProviders": ["GOOGLE", "FACEBOOK"],
+    "createdAt": "2026-10-20T09:15:00Z"
+  }
+}

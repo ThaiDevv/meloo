@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Not found",
+  "status": 404,
+  "code": "DAILY_CHALLENGE_NOT_AVAILABLE",
+  "detail": "No daily challenge is available for the requested date.",
+  "instance": "/api/v1/daily/today"
+}

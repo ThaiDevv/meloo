@@ -127,7 +127,7 @@ public class GuestAuthService {
             .orElseThrow(
                 () -> new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "User not found"));
 
-    if (user.getStatus() == UserStatus.LOCKED) {
+    if (user.getStatus() == UserStatus.LOCKED || user.getMergedIntoId() != null) {
       throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_LOCKED", "Account is locked");
     }
 

@@ -61,6 +61,7 @@ public final class OAuthCallbackFilter extends OncePerRequestFilter {
       response.setContentType("application/problem+json");
       var problem =
           org.springframework.http.ProblemDetail.forStatusAndDetail(e.status(), e.getMessage());
+      problem.setType(java.net.URI.create("about:blank"));
       problem.setProperty("code", e.code());
       problem.setInstance(java.net.URI.create(request.getRequestURI()));
       mapper.writeValue(response.getOutputStream(), problem);

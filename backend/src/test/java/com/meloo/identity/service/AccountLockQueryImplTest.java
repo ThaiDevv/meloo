@@ -67,4 +67,11 @@ class AccountLockQueryImplTest {
     assertThat(locked).isFalse();
     verifyNoInteractions(appUserRepository);
   }
+
+  @Test
+  void mergedGuestIsUnavailableToOtherModules() {
+    UUID userId = UUID.randomUUID();
+    when(appUserRepository.existsByIdAndMergedIntoIdIsNotNull(userId)).thenReturn(true);
+    assertThat(accountLockQuery.isLocked(userId)).isTrue();
+  }
 }

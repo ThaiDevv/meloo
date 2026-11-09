@@ -4,7 +4,10 @@ import com.meloo.generated.api.IdentityApi;
 import com.meloo.generated.model.AuthSessionDto;
 import com.meloo.generated.model.GuestRequestDto;
 import com.meloo.generated.model.MeDto;
+import com.meloo.generated.model.OAuthLinkRequestDto;
+import com.meloo.generated.model.OAuthProviderSlugDto;
 import com.meloo.identity.config.IdentityProperties;
+import com.meloo.identity.oauth.OAuthLinkService;
 import com.meloo.identity.service.GuestAuthService;
 import com.meloo.identity.service.GuestRateLimiter;
 import com.meloo.identity.service.NicknameValidator;
@@ -16,6 +19,7 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -29,6 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class IdentityController implements IdentityApi {
 
+  private final ObjectProvider<OAuthLinkService> oauthLink;
   private final GuestAuthService guestAuthService;
   private final GuestRateLimiter guestRateLimiter;
   private final NicknameValidator nicknameValidator;
@@ -38,6 +43,7 @@ public class IdentityController implements IdentityApi {
   private final HttpServletResponse response;
 
   public IdentityController(
+      ObjectProvider<OAuthLinkService> oauthLink,
       GuestAuthService guestAuthService,
       GuestRateLimiter guestRateLimiter,
       NicknameValidator nicknameValidator,
@@ -45,6 +51,7 @@ public class IdentityController implements IdentityApi {
       @Value("${meloo.cors.allowed-origins:http://localhost:5173}") List<String> allowedOrigins,
       HttpServletRequest request,
       HttpServletResponse response) {
+    this.oauthLink = oauthLink;
     this.guestAuthService = guestAuthService;
     this.guestRateLimiter = guestRateLimiter;
     this.nicknameValidator = nicknameValidator;
@@ -52,6 +59,21 @@ public class IdentityController implements IdentityApi {
     this.allowedOrigins = List.copyOf(allowedOrigins);
     this.request = request;
     this.response = response;
+  }
+
+  @Override
+  public ResponseEntity<AuthSessionDto> linkOAuthProvider(
+      OAuthProviderSlugDto provider, OAuthLinkRequestDto body) {
+    var service = oauthLink.getIfAvailable();
+    if (service == null || provider != OAuthProviderSlugDto.GOOGLE) {
+      throw new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "OAuth provider unavailable");
+    }
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth == null || !(auth.getPrincipal() instanceof Jwt jwt)) {
+      throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Bearer token required");
+    }
+    return ResponseEntity.ok(
+        service.link(body, UUID.fromString(jwt.getSubject()), request, response).session());
   }
 
   @Override

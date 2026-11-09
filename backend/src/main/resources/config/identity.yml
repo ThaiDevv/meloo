@@ -48,3 +48,11 @@ meloo:
       - đồ chó
       - đụ má
       - vãi lồn
+
+    oauth:
+      enabled: ${MELOO_GOOGLE_OAUTH_ENABLED:false}
+      client-id: ${MELOO_GOOGLE_CLIENT_ID:}
+      client-secret: ${MELOO_GOOGLE_CLIENT_SECRET:}
+      spa-origin: ${MELOO_SPA_ORIGIN:http://localhost:5173}
+  admin:
+    emails: ${MELOO_ADMIN_EMAILS:}

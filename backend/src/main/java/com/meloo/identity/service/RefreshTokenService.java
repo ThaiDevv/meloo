@@ -95,6 +95,8 @@ public class RefreshTokenService {
   @Transactional(noRollbackFor = ApiException.class)
   public IssuedRefreshToken rotateRefreshToken(String rawToken) {
     String tokenHash = hashToken(rawToken);
+    // Use the same user -> refresh-token lock order as account locks and guest merges.
+    appUserRepository.lockRefreshOwner(tokenHash);
     Optional<RefreshToken> optionalToken =
         refreshTokenRepository.findByTokenHashForUpdate(tokenHash);
 
@@ -139,7 +141,7 @@ public class RefreshTokenService {
             .orElseThrow(
                 () -> new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "User not found"));
 
-    if (user.getStatus() == UserStatus.LOCKED) {
+    if (user.getStatus() == UserStatus.LOCKED || user.getMergedIntoId() != null) {
       existingToken.setRevokedAt(now);
       refreshTokenRepository.save(existingToken);
       throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_LOCKED", "Account is locked");

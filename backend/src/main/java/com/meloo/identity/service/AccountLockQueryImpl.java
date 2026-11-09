@@ -8,10 +8,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Implementation of {@link AccountLockQuery} querying user lock state via {@link
+ * Implementation of {@link AccountLockQuery} querying account lock or merged-guest state via {@link
  * AppUserRepository}.
  *
- * <p>Operates read-only over the primary key index of {@code app_users}. Returns {@code false} if
+ * <p>Operates read-only over the primary key index of {@code app_user}. Returns {@code false} if
  * the user record does not exist.
  */
 @Service
@@ -29,6 +29,7 @@ public class AccountLockQueryImpl implements AccountLockQuery {
     if (userId == null) {
       return false;
     }
-    return appUserRepository.existsByIdAndStatus(userId, UserStatus.LOCKED);
+    return appUserRepository.existsByIdAndStatus(userId, UserStatus.LOCKED)
+        || appUserRepository.existsByIdAndMergedIntoIdIsNotNull(userId);
   }
 }

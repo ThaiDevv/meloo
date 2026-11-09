@@ -3,7 +3,8 @@ package com.meloo.identity.api;
 import java.util.UUID;
 
 /**
- * Query service for checking whether a player's account is locked (BR-28).
+ * Query service for checking whether a player's account is locked or is a merged guest (BR-21,
+ * BR-28).
  *
  * <p>Exposed in the {@code identity.api} package as a public SPI for other modules (e.g. {@code
  * audio}) to query account lock status synchronously without directly accessing identity tables
@@ -21,7 +22,7 @@ import java.util.UUID;
 public interface AccountLockQuery {
 
   /**
-   * Checks whether the user with the given ID is locked.
+   * Checks whether the user with the given ID is locked or has been merged.
    *
    * <p>If the user ID does not exist in the database, this method returns {@code false} (does not
    * block). Rationale: audio tokens and session tokens are signed exclusively by the server for
@@ -29,7 +30,8 @@ public interface AccountLockQuery {
    * not break audio playback.
    *
    * @param userId the unique identifier of the user
-   * @return {@code true} if the user exists and has status {@code LOCKED}, {@code false} otherwise
+   * @return {@code true} if the user exists and has status {@code LOCKED} or a merge target, {@code
+   *     false} otherwise
    */
   boolean isLocked(UUID userId);
 }

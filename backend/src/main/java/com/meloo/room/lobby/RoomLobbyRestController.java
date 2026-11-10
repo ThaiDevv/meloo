@@ -6,6 +6,7 @@ import com.meloo.generated.model.JoinRoomRequestDto;
 import com.meloo.generated.model.PublicRoomPageDto;
 import com.meloo.generated.model.QuickMatchRequestDto;
 import com.meloo.generated.model.RoomResponseDto;
+import com.meloo.room.matchmaking.MatchmakingService;
 import com.meloo.shared.api.ApiException;
 import java.util.Objects;
 import java.util.UUID;
@@ -23,7 +24,11 @@ public class RoomLobbyRestController implements RoomApi {
 
   private final RoomLobbyService roomLobbyService;
 
-  public RoomLobbyRestController(RoomLobbyService roomLobbyService) {
+  private final MatchmakingService matchmaking;
+
+  public RoomLobbyRestController(
+      RoomLobbyService roomLobbyService, MatchmakingService matchmaking) {
+    this.matchmaking = matchmaking;
     this.roomLobbyService =
         Objects.requireNonNull(roomLobbyService, "roomLobbyService must not be null");
   }
@@ -62,7 +67,7 @@ public class RoomLobbyRestController implements RoomApi {
       @Nullable QuickMatchRequestDto quickMatchRequestDto) {
     UserPrincipal user = getCurrentUser();
     RoomResponseDto room =
-        roomLobbyService.quickMatch(
+        matchmaking.quickMatch(
             user.userId(), user.nickname(), user.avatarUrl(), user.isGuest(), quickMatchRequestDto);
     return ResponseEntity.ok(room);
   }

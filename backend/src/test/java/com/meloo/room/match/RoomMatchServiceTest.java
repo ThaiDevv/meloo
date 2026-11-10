@@ -658,6 +658,9 @@ class RoomMatchServiceTest {
     service.start(room.roomId(), host);
     barrier();
     assertThat(last(ErrorMessage.class).code()).isEqualTo("NOT_HOST");
+    service.startQuickMatch(room.roomId(), () -> false);
+    barrier();
+    assertThat(sent).noneMatch(RoundPrepareEvent.class::isInstance);
     room.findPlayer(guest).orElseThrow().setConnected(false);
     service.startQuickMatch(room.roomId());
     barrier();

@@ -38,6 +38,15 @@ public class MatchPlayer implements Persistable<UUID> {
   @Nullable @Column(name = "user_id")
   private UUID userId;
 
+  @Nullable @Column(name = "owner_id")
+  private UUID ownerId;
+
+  @Nullable @Column(name = "rank_delta")
+  private Integer rankDelta;
+
+  @Nullable @Column(name = "rank_points")
+  private Long rankPoints;
+
   @Column(nullable = false, length = 20)
   private String nickname;
 
@@ -67,6 +76,9 @@ public class MatchPlayer implements Persistable<UUID> {
 
   @PrePersist
   void prePersist() {
+    if (ownerId == null) {
+      ownerId = userId;
+    }
     if (createdAt == null) {
       createdAt = Instant.now();
     }

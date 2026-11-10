@@ -12,6 +12,8 @@ import com.meloo.identity.persistence.UserStatus;
 import com.meloo.shared.api.ApiException;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -52,6 +54,36 @@ public class UserAccountsService implements UserAccounts {
     return view(
         user,
         identities.findAllByUserId(id).stream().map(i -> i.getProvider().name()).sorted().toList());
+  }
+
+  @Override
+  public Map<UUID, UserAccount> findByIdIn(Collection<UUID> ids) {
+    var distinct = ids.stream().distinct().toList();
+    Map<UUID, UserAccount> result = new HashMap<>();
+    // Bound IN parameters independently of the number of players on a leaderboard.
+    for (int offset = 0; offset < distinct.size(); offset += 1000) {
+      var batch = distinct.subList(offset, Math.min(offset + 1000, distinct.size()));
+      var eligible =
+          users.findAllById(batch).stream()
+              .filter(
+                  u ->
+                      u.getKind() == UserKind.REGISTERED
+                          && u.getStatus() == UserStatus.ACTIVE
+                          && u.getMergedIntoId() == null)
+              .toList();
+      var providers =
+          identities.findAllByUserIdIn(eligible.stream().map(AppUser::getId).toList()).stream()
+              .collect(
+                  Collectors.groupingBy(
+                      i -> i.getUserId(),
+                      Collectors.mapping(i -> i.getProvider().name(), Collectors.toList())));
+      for (var user : eligible) {
+        result.put(
+            user.getId(),
+            view(user, providers.getOrDefault(user.getId(), List.of()).stream().sorted().toList()));
+      }
+    }
+    return Map.copyOf(result);
   }
 
   @Override

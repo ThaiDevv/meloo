@@ -63,6 +63,18 @@ class DeezerMusicProviderTest {
   }
 
   @Test
+  void normalizesPopularityToOneHundredWithUnknownAndOverflowSafeBoundaries() {
+    assertThat(DeezerMusicProvider.normalizePopularity(null)).isNull();
+    assertThat(DeezerMusicProvider.normalizePopularity(0)).isNull();
+    assertThat(DeezerMusicProvider.normalizePopularity(-1)).isNull();
+    assertThat(DeezerMusicProvider.normalizePopularity(1)).isEqualTo(1);
+    assertThat(DeezerMusicProvider.normalizePopularity(10000)).isEqualTo(1);
+    assertThat(DeezerMusicProvider.normalizePopularity(10001)).isEqualTo(2);
+    assertThat(DeezerMusicProvider.normalizePopularity(896464)).isEqualTo(90);
+    assertThat(DeezerMusicProvider.normalizePopularity(Integer.MAX_VALUE)).isEqualTo(100);
+  }
+
+  @Test
   @DisplayName("search successfully returns parsed ProviderTracks with coverUrl")
   void search_success() {
     wireMockServer.stubFor(
@@ -111,7 +123,7 @@ class DeezerMusicProviderTest {
     assertThat(track.coverUrl())
         .isEqualTo(
             "https://cdn-images.dzcdn.net/images/cover/eaeadce7932a97533fe495881d2fcd7a/500x500.jpg");
-    assertThat(track.popularityRank()).isEqualTo(896464);
+    assertThat(track.popularityRank()).isEqualTo(90);
   }
 
   @Test

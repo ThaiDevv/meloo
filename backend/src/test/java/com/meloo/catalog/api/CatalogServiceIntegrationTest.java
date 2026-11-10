@@ -109,6 +109,29 @@ class CatalogServiceIntegrationTest extends IntegrationTest {
   }
 
   @Test
+  void popularSelectionUsesCanonicalScoresDeduplicatesAndIgnoresDisabledUnknown() {
+    Track seed = createTrack("Seed Hit", artistA, genreVpop, "VN", (short) 2020, true, null);
+    seed.setPopularityRank(95);
+    Track imported =
+        createTrack("Imported Hit", artistA, genreVpop, "VN", (short) 2020, true, null);
+    imported.setPopularityRank(896464); // Legacy raw Deezer score = 90 in canonical bands.
+    Track duplicate = createTrack("Seed Hit", artistA, genreVpop, "VN", (short) 2020, true, null);
+    duplicate.setPopularityRank(80);
+    Track disabled =
+        createTrack("Disabled Hit", artistB, genreKpop, "VN", (short) 2020, false, null);
+    disabled.setPopularityRank(100);
+    createTrack("Unknown", artistB, genreKpop, "VN", (short) 2020, true, null);
+    trackRepository.saveAllAndFlush(List.of(seed, imported, duplicate, disabled));
+    assertThat(catalogService.selectPopularTracks(20))
+        .extracting(TrackInfo::id)
+        .containsExactly(seed.getId(), imported.getId());
+    assertThat(catalogService.selectPopularTracks(1))
+        .extracting(TrackInfo::id)
+        .containsExactly(seed.getId());
+    assertThat(catalogService.selectPopularTracks(0)).isEmpty();
+  }
+
+  @Test
   @DisplayName("findPlaylistByCode returns playlist details and counts enabled tracks only")
   void findPlaylistByCodeReturnsPlaylistAndEnabledTrackCount() {
     Track enabledTrack =

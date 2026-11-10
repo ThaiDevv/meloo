@@ -48,6 +48,11 @@ public class CatalogServiceImpl implements CatalogService {
   }
 
   @Override
+  public List<TrackInfo> selectPopularTracks(int count) {
+    return catalogQueryRepository.selectPopularTracks(count);
+  }
+
+  @Override
   public Optional<TrackInfo> getTrackById(UUID trackId) {
     return catalogQueryRepository.findTrackById(trackId);
   }

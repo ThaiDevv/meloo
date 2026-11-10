@@ -32,7 +32,7 @@ public class FakeMusicProvider implements MusicProvider {
                 .durationSeconds(185)
                 .previewUrl(resolveSampleUrl("sample1.mp3"))
                 .coverUrl("https://fake-media.meloo.internal/covers/see-tinh.jpg")
-                .popularityRank(1)
+                .popularityRank(100)
                 .releaseYear((short) 2022)
                 .countryCode("VN")
                 .build(),
@@ -45,7 +45,7 @@ public class FakeMusicProvider implements MusicProvider {
                 .durationSeconds(265)
                 .previewUrl(resolveSampleUrl("sample2.mp3"))
                 .coverUrl(null)
-                .popularityRank(2)
+                .popularityRank(99)
                 .releaseYear((short) 2022)
                 .countryCode("VN")
                 .build(),
@@ -58,7 +58,7 @@ public class FakeMusicProvider implements MusicProvider {
                 .durationSeconds(191)
                 .previewUrl(resolveSampleUrl("sample3.mp3"))
                 .coverUrl("https://fake-media.meloo.internal/covers/cat-doi-noi-sau.jpg")
-                .popularityRank(3)
+                .popularityRank(98)
                 .releaseYear((short) 2023)
                 .countryCode("VN")
                 .build(),
@@ -71,7 +71,7 @@ public class FakeMusicProvider implements MusicProvider {
                 .durationSeconds(233)
                 .previewUrl(resolveSampleUrl("sample1.mp3"))
                 .coverUrl(null)
-                .popularityRank(4)
+                .popularityRank(97)
                 .releaseYear((short) 2017)
                 .countryCode("US")
                 .build(),
@@ -84,7 +84,7 @@ public class FakeMusicProvider implements MusicProvider {
                 .durationSeconds(199)
                 .previewUrl(resolveSampleUrl("sample2.mp3"))
                 .coverUrl("https://fake-media.meloo.internal/covers/dynamite.jpg")
-                .popularityRank(5)
+                .popularityRank(96)
                 .releaseYear((short) 2020)
                 .countryCode("KR")
                 .build(),
@@ -97,7 +97,7 @@ public class FakeMusicProvider implements MusicProvider {
                 .durationSeconds(260)
                 .previewUrl(resolveSampleUrl("sample3.mp3"))
                 .coverUrl("https://fake-media.meloo.internal/covers/noi-nay-co-anh.jpg")
-                .popularityRank(6)
+                .popularityRank(95)
                 .releaseYear((short) 2017)
                 .countryCode("VN")
                 .build());
@@ -149,7 +149,9 @@ public class FakeMusicProvider implements MusicProvider {
     return allTracks.stream()
         .sorted(
             Comparator.comparingInt(
-                track -> track.popularityRank() != null ? track.popularityRank() : 999))
+                    (ProviderTrack track) ->
+                        track.popularityRank() != null ? track.popularityRank() : 0)
+                .reversed())
         .limit(Math.max(1, limit))
         .toList();
   }

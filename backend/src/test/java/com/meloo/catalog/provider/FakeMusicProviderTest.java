@@ -94,9 +94,9 @@ class FakeMusicProviderTest {
   void chart_orderedByRank() {
     List<ProviderTrack> chart = provider.chart(3);
     assertThat(chart).hasSize(3);
-    assertThat(chart.get(0).popularityRank()).isEqualTo(1);
-    assertThat(chart.get(1).popularityRank()).isEqualTo(2);
-    assertThat(chart.get(2).popularityRank()).isEqualTo(3);
+    assertThat(chart.get(0).popularityRank()).isEqualTo(100);
+    assertThat(chart.get(1).popularityRank()).isEqualTo(99);
+    assertThat(chart.get(2).popularityRank()).isEqualTo(98);
   }
 
   @Test

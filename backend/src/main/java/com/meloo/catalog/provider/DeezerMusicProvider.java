@@ -306,9 +306,16 @@ public class DeezerMusicProvider implements MusicProvider {
         .durationSeconds(item.duration())
         .previewUrl(item.preview() != null && !item.preview().isBlank() ? item.preview() : null)
         .coverUrl(coverUrl)
-        .popularityRank(item.rank())
+        .popularityRank(normalizePopularity(item.rank()))
         .releaseYear(releaseYear)
         .build();
+  }
+
+  // Raw Deezer popularity uses 10,000-point bands; canonical scores are 1–100, high first.
+  static @Nullable Integer normalizePopularity(@Nullable Integer rank) {
+    return rank == null || rank <= 0
+        ? null
+        : (int) Math.min(100L, (rank.longValue() + 9999L) / 10000L);
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)

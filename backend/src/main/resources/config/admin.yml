@@ -1,1 +1,10 @@
-# Configuration owned by the admin module.
+meloo:
+  admin:
+    retention-days: 90
+    retention-cron: "0 0 3 * * *"
+    # Set the actual public beta opening date when PO opens beta (BIZ-07).
+    # A missing date leaves the internal returning-player KPI unavailable.
+    beta-start: ${MELOO_ADMIN_BETA_START:}
+    beta-end: 2026-11-29
+    beta-cutoff: 2026-11-27
+    excluded-user-ids: []

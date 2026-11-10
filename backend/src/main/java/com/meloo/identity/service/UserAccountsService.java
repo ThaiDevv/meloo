@@ -10,6 +10,7 @@ import com.meloo.identity.persistence.UserKind;
 import com.meloo.identity.persistence.UserRole;
 import com.meloo.identity.persistence.UserStatus;
 import com.meloo.shared.api.ApiException;
+import java.text.Normalizer;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Collection;
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
@@ -31,16 +33,39 @@ public class UserAccountsService implements UserAccounts {
   private final RefreshTokenRepository tokens;
   private final Clock clock;
   private final AuthIdentityRepository identities;
+  private final NicknameValidator nicknames;
 
   public UserAccountsService(
       AppUserRepository users,
       RefreshTokenRepository tokens,
       Clock clock,
       AuthIdentityRepository identities) {
+    this(
+        users,
+        tokens,
+        clock,
+        identities,
+        new NicknameValidator(
+            new com.meloo.identity.config.IdentityProperties(
+                new com.meloo.identity.config.IdentityProperties.JwtProperties(
+                    "012345678901234567890123456789012", null, null, null),
+                null,
+                null,
+                List.of())));
+  }
+
+  @Autowired
+  public UserAccountsService(
+      AppUserRepository users,
+      RefreshTokenRepository tokens,
+      Clock clock,
+      AuthIdentityRepository identities,
+      NicknameValidator nicknames) {
     this.users = users;
     this.tokens = tokens;
     this.clock = clock;
     this.identities = identities;
+    this.nicknames = nicknames;
   }
 
   @Override
@@ -60,30 +85,55 @@ public class UserAccountsService implements UserAccounts {
   public Map<UUID, UserAccount> findByIdIn(Collection<UUID> ids) {
     var distinct = ids.stream().distinct().toList();
     Map<UUID, UserAccount> result = new HashMap<>();
-    // Bound IN parameters independently of the number of players on a leaderboard.
-    for (int offset = 0; offset < distinct.size(); offset += 1000) {
-      var batch = distinct.subList(offset, Math.min(offset + 1000, distinct.size()));
-      var eligible =
-          users.findAllById(batch).stream()
-              .filter(
-                  u ->
-                      u.getKind() == UserKind.REGISTERED
-                          && u.getStatus() == UserStatus.ACTIVE
-                          && u.getMergedIntoId() == null)
-              .toList();
-      var providers =
-          identities.findAllByUserIdIn(eligible.stream().map(AppUser::getId).toList()).stream()
-              .collect(
-                  Collectors.groupingBy(
-                      i -> i.getUserId(),
-                      Collectors.mapping(i -> i.getProvider().name(), Collectors.toList())));
-      for (var user : eligible) {
-        result.put(
-            user.getId(),
-            view(user, providers.getOrDefault(user.getId(), List.of()).stream().sorted().toList()));
-      }
+    // Keep each IN list below the PostgreSQL bind parameter limit for large leaderboards.
+    for (int from = 0; from < distinct.size(); from += 1000) {
+      result.putAll(findBatch(distinct.subList(from, Math.min(from + 1000, distinct.size()))));
     }
     return Map.copyOf(result);
+  }
+
+  private Map<UUID, UserAccount> findBatch(Collection<UUID> ids) {
+    if (ids.isEmpty()) {
+      return Map.of();
+    }
+    var eligible =
+        users.findAllById(ids).stream()
+            .filter(
+                u ->
+                    u.getKind() == UserKind.REGISTERED
+                        && u.getStatus() == UserStatus.ACTIVE
+                        && u.getMergedIntoId() == null)
+            .toList();
+    var providers =
+        identities.findAllByUserIdIn(eligible.stream().map(AppUser::getId).toList()).stream()
+            .collect(
+                Collectors.groupingBy(
+                    i -> i.getUserId(),
+                    Collectors.mapping(i -> i.getProvider().name(), Collectors.toList())));
+    return eligible.stream()
+        .collect(
+            Collectors.toUnmodifiableMap(
+                AppUser::getId,
+                u ->
+                    view(
+                        u,
+                        providers.getOrDefault(u.getId(), List.of()).stream().sorted().toList())));
+  }
+
+  @Override
+  @Transactional
+  public UserAccount updateNickname(UUID id, String nickname) {
+    AppUser user = requireForUpdate(id);
+    if (user.getStatus() != UserStatus.ACTIVE) {
+      throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_LOCKED", "Account is locked");
+    }
+    if (user.getKind() != UserKind.REGISTERED) {
+      throw new ApiException(
+          HttpStatus.FORBIDDEN, "GUEST_PROFILE_READ_ONLY", "Guest profiles are read-only");
+    }
+    nicknames.validate(nickname);
+    user.setNickname(Normalizer.normalize(nickname.trim(), Normalizer.Form.NFC));
+    return get(id);
   }
 
   @Override

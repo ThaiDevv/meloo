@@ -42,6 +42,18 @@ public class PlayerStats {
   @Column(name = "rounds_correct", nullable = false)
   private int roundsCorrect;
 
+  @Column(name = "rounds_played", nullable = false)
+  private int roundsPlayed;
+
+  @Column(name = "correct_level_total", nullable = false)
+  private long correctLevelTotal;
+
+  @Column(name = "listen_seconds_total", nullable = false)
+  private long listenSecondsTotal;
+
+  @Column(name = "ranked_matches", nullable = false)
+  private int rankedMatches;
+
   @Column(name = "best_combo", nullable = false)
   private short bestCombo;
 

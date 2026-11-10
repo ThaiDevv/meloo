@@ -40,6 +40,9 @@ public class MatchEntity implements Persistable<UUID> {
   @Column(nullable = false, length = 16)
   private MatchType type;
 
+  @Nullable @Column(length = 16)
+  private String mode;
+
   @Column(nullable = false)
   private boolean ranked;
 

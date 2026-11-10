@@ -10,8 +10,11 @@ import java.util.UUID;
 public interface UserAccounts {
   UserAccount get(UUID id);
 
-  /** Batch profiles eligible for leaderboards: registered, active, and not merged. */
+  /** Active registered accounts that have not been merged, fetched in bulk. */
   Map<UUID, UserAccount> findByIdIn(Collection<UUID> ids);
+
+  /** Updates an active registered player's display name after BR-22 validation. */
+  UserAccount updateNickname(UUID id, String nickname);
 
   UserPage search(String query, int page, int size);
 

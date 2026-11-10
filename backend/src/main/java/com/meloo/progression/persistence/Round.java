@@ -16,6 +16,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Persistable;
 
 @Entity
@@ -45,6 +46,12 @@ public class Round implements Persistable<UUID> {
 
   @Column(name = "artist_name", nullable = false, length = 200)
   private String artistName;
+
+  @Nullable @Column(length = 16)
+  private String provider;
+
+  @Nullable @Column(name = "provider_track_id", length = 200)
+  private String providerTrackId;
 
   @Column(name = "created_at", updatable = false, nullable = false)
   private Instant createdAt;

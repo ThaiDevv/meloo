@@ -13,6 +13,7 @@ import com.meloo.room.lobby.RoomLobbyService;
 import com.meloo.room.lobby.RoomPlayer;
 import com.meloo.room.lobby.RoomSession;
 import com.meloo.room.match.RoomMatch.Participant;
+import com.meloo.room.matchmaking.QuickMatchLobbyChanged;
 import com.meloo.room.realtime.RoomEventPublisher;
 import com.meloo.room.realtime.RoomEventPublisher.PrivateQueue;
 import com.meloo.room.realtime.RoomEventPublisher.RoomTopic;
@@ -94,6 +95,11 @@ public class RoomMatchService implements ActiveRoundQuery {
 
   /** Entry point for MEL-70; validates connected membership again on the actor queue. */
   public void startQuickMatch(UUID roomId) {
+    startQuickMatch(roomId, () -> true);
+  }
+
+  /** Rechecks the matchmaking generation after pending membership commands have run. */
+  public void startQuickMatch(UUID roomId, java.util.function.BooleanSupplier stillEligible) {
     registry
         .actor(roomId)
         .ifPresent(
@@ -101,7 +107,8 @@ public class RoomMatchService implements ActiveRoundQuery {
                 actor.execute(
                     () -> {
                       RoomSession room = lobby.getRoom(roomId).orElse(null);
-                      if (room != null && room.isQuickMatch()) startOnQueue(room, null);
+                      if (room != null && room.isQuickMatch() && stillEligible.getAsBoolean())
+                        startOnQueue(room, null);
                     }));
   }
 
@@ -707,6 +714,8 @@ public class RoomMatchService implements ActiveRoundQuery {
     match.room.setCurrentRound(0);
     match.room.promoteWaitingPlayers();
     messages.publish(match.room.roomId(), RoomTopic.LOBBY, new ReturnToLobbyEvent(clock.instant()));
+    if (match.room.isQuickMatch())
+      events.publishEvent(new QuickMatchLobbyChanged(match.room.roomId(), true));
   }
 
   private void preparationFailed(RoomMatch match, @Nullable UUID requester, int missing) {

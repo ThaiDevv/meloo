@@ -26,6 +26,7 @@ import com.meloo.room.api.message.RoomPlayerSummaryPayload;
 import com.meloo.room.api.message.RoomSettingsChangedEvent;
 import com.meloo.room.api.message.SettingsCommand;
 import com.meloo.room.api.message.WaitingListChangedEvent;
+import com.meloo.room.matchmaking.QuickMatchLobbyChanged;
 import com.meloo.room.realtime.RoomActor;
 import com.meloo.room.realtime.RoomConnectionHandler;
 import com.meloo.room.realtime.RoomEventPublisher;
@@ -337,92 +338,79 @@ public class RoomLobbyService {
 
     quickMatchLock.lock();
     try {
-      // Matchmaking: Tìm phòng QUICK_MATCH đang ở LOBBY còn chỗ và khớp bộ lọc/playlist
-      for (RoomSession existingSession : roomsById.values()) {
-        if (existingSession.isQuickMatch()
-            && existingSession.status() == RoomStatusDto.LOBBY
-            && existingSession.playerCount() < existingSession.maxPlayers()
-            && !existingSession.isBanned(userId)
-            && Objects.equals(existingSession.playlistId(), playlistId)
-            && matchesFilter(existingSession.filter(), filterPayload)) {
-
-          RoomActor actor = roomRegistry.actor(existingSession.roomId()).orElse(null);
-          if (actor != null) {
-            try {
-              RoomPlayer player =
-                  new RoomPlayer(userId, nickname, avatarUrl, false, true, isGuest, true, 0, now);
-              CompletableFuture<Void> updateFuture =
-                  await(
-                      actor.submit(
-                          () -> {
-                            if (existingSession.hasMember(userId)) {
-                              return CompletableFuture.completedFuture(null);
-                            }
-                            if (existingSession.playerCount() >= existingSession.maxPlayers()
-                                || existingSession.status() != RoomStatusDto.LOBBY) {
-                              return null;
-                            }
-                            existingSession.addPlayer(player);
-                            RoomDescriptor updated =
-                                new RoomDescriptor(
-                                    existingSession.roomId(),
-                                    existingSession.allMemberIds(),
-                                    existingSession.isPrivate());
-                            return roomRegistry.update(updated);
-                          }));
-
-              if (updateFuture != null) {
-                await(updateFuture);
-                eventPublisher.publish(
-                    existingSession.roomId(),
-                    RoomTopic.LOBBY,
-                    new PlayerJoinedEvent(player.toPayload(), now));
-                return existingSession.toResponseDto();
-              }
-            } catch (Exception ignored) {
-              // Phòng thay đổi trạng thái đồng thời, tiếp tục tìm phòng khác
-            }
-          }
+      UUID requestedPlaylist = playlistId;
+      RoomFilterPayload requestedFilter = filterPayload;
+      for (RoomSession session : roomsById.values()) {
+        QuickMatchJoin joined =
+            submitIfOpen(
+                session.roomId(),
+                () -> {
+                  if (!session.isQuickMatch()
+                      || session.status() != RoomStatusDto.LOBBY
+                      || session.isBanned(userId)
+                      || !Objects.equals(session.playlistId(), requestedPlaylist)
+                      || !matchesFilter(session.filter(), requestedFilter)) return null;
+                  if (session.hasMember(userId)) {
+                    return new QuickMatchJoin(
+                        session.toResponseDto(), CompletableFuture.completedFuture(null));
+                  }
+                  if (session.isFull()) return null;
+                  return addQuickMatchPlayer(session, userId, nickname, avatarUrl, isGuest, now);
+                });
+        if (joined != null) {
+          await(joined.updated());
+          return joined.response();
         }
       }
-
-      // Không có phòng chờ phù hợp: tạo phòng ghép trận mới với người chơi này
-      int mp = properties.maxPlayers();
-      UUID roomId = UUID.randomUUID();
-
-      RoomPlayer player =
-          new RoomPlayer(userId, nickname, avatarUrl, false, true, isGuest, true, 0, now);
-      RoomSession session =
-          new RoomSession(
-              roomId,
-              null,
-              RoomTypeDto.QUICK_MATCH,
-              null,
-              RoomStatusDto.LOBBY,
-              roundCount,
-              mp,
-              playlistId,
-              filterPayload,
-              now);
-      session.addPlayer(player);
-
-      roomsById.put(roomId, session);
-      RoomDescriptor descriptor = new RoomDescriptor(roomId, Set.of(userId), false);
-      RoomConnectionHandler handler = createConnectionHandler(roomId, session);
-      roomRegistry.register(descriptor, handler);
-
-      return session.toResponseDto();
+      RoomResponseDto created = createQuickMatchRoom(playlistId, filterPayload, roundCount, null);
+      RoomSession session = roomsById.get(created.getRoomId());
+      QuickMatchJoin joined =
+          await(
+              roomRegistry
+                  .actor(created.getRoomId())
+                  .orElseThrow()
+                  .submit(
+                      () ->
+                          addQuickMatchPlayer(session, userId, nickname, avatarUrl, isGuest, now)));
+      await(joined.updated());
+      return joined.response();
     } finally {
       quickMatchLock.unlock();
     }
   }
 
+  private record QuickMatchJoin(RoomResponseDto response, CompletableFuture<Void> updated) {}
+
+  private QuickMatchJoin addQuickMatchPlayer(
+      RoomSession session,
+      UUID userId,
+      String nickname,
+      @Nullable String avatarUrl,
+      boolean guest,
+      Instant now) {
+    RoomPlayer player =
+        new RoomPlayer(userId, nickname, avatarUrl, false, true, guest, true, 0, now);
+    session.addPlayer(player);
+    CompletableFuture<Void> updated =
+        roomRegistry.update(new RoomDescriptor(session.roomId(), session.allMemberIds(), false));
+    eventPublisher.publish(
+        session.roomId(), RoomTopic.LOBBY, new PlayerJoinedEvent(player.toPayload(), now));
+    matchLifecyclePublisher.publishEvent(new QuickMatchLobbyChanged(session.roomId(), false));
+    return new QuickMatchJoin(session.toResponseDto(), updated);
+  }
+
   private static boolean matchesFilter(
       @Nullable RoomFilterPayload a, @Nullable RoomFilterPayload b) {
-    if ((a == null || a.isEmpty()) && (b == null || b.isEmpty())) {
-      return true;
-    }
-    return Objects.equals(a, b);
+    if (a == null) a = new RoomFilterPayload(null, null, null, null);
+    if (b == null) b = new RoomFilterPayload(null, null, null, null);
+    return sameValues(a.genreCodes(), b.genreCodes())
+        && sameValues(a.countryCodes(), b.countryCodes())
+        && sameValues(a.decades(), b.decades())
+        && sameValues(a.artistIds(), b.artistIds());
+  }
+
+  private static <T> boolean sameValues(@Nullable List<T> a, @Nullable List<T> b) {
+    return (a == null ? Set.of() : Set.copyOf(a)).equals(b == null ? Set.of() : Set.copyOf(b));
   }
 
   /** Vào phòng bằng mã 6 ký tự hoặc đường dẫn liên kết (BR-11, BR-12, BR-13, BR-15). */
@@ -829,22 +817,40 @@ public class RoomLobbyService {
 
   /** Trả về danh sách phòng công khai phân trang (BR-11, BR-15). */
   public PublicRoomPageDto listPublicRooms(int page, int size) {
-    List<PublicRoomItemDto> allItems =
+    List<PublicListing> allItems =
         roomsById.values().stream()
-            .filter(
+            .filter(RoomSession::isPublic)
+            .map(
                 room ->
-                    room.isPublic()
-                        && (room.status() == RoomStatusDto.LOBBY
-                            || room.status() == RoomStatusDto.PLAYING))
-            .sorted((a, b) -> b.createdAt().compareTo(a.createdAt()))
-            .map(this::toPublicItemDto)
+                    submitIfOpen(
+                        room.roomId(),
+                        () ->
+                            room.status() == RoomStatusDto.LOBBY && !room.isFull()
+                                ? new PublicListing(toPublicItemDto(room), room.playlistId())
+                                : null))
+            .filter(Objects::nonNull)
+            .sorted((a, b) -> b.item().getCreatedAt().compareTo(a.item().getCreatedAt()))
             .toList();
 
     int totalItems = allItems.size();
     int totalPages = size > 0 ? (int) Math.ceil((double) totalItems / size) : 0;
     int fromIndex = Math.min(page * size, totalItems);
     int toIndex = Math.min(fromIndex + size, totalItems);
-    List<PublicRoomItemDto> pagedItems = allItems.subList(fromIndex, toIndex);
+    List<PublicRoomItemDto> pagedItems =
+        allItems.subList(fromIndex, toIndex).stream()
+            .map(
+                snapshot -> {
+                  PublicRoomItemDto item = snapshot.item();
+                  if (snapshot.playlistId() != null) {
+                    item.setPlaylistName(
+                        catalogService
+                            .findPlaylistById(snapshot.playlistId())
+                            .map(PlaylistInfo::name)
+                            .orElse(null));
+                  }
+                  return item;
+                })
+            .toList();
 
     PublicRoomPageDto pageDto = new PublicRoomPageDto();
     pageDto.setPage(page);
@@ -980,17 +986,13 @@ public class RoomLobbyService {
     }
   }
 
+  private record PublicListing(PublicRoomItemDto item, @Nullable UUID playlistId) {}
+
   private PublicRoomItemDto toPublicItemDto(RoomSession room) {
     String hostNickname =
         room.hostId() != null
             ? room.findPlayer(room.hostId()).map(RoomPlayer::nickname).orElse("Host")
             : "System";
-
-    String playlistName = null;
-    if (room.playlistId() != null) {
-      playlistName =
-          catalogService.findPlaylistById(room.playlistId()).map(PlaylistInfo::name).orElse(null);
-    }
 
     PublicRoomItemDto item =
         new PublicRoomItemDto(
@@ -1002,7 +1004,6 @@ public class RoomLobbyService {
             PublicRoomItemDto.RoundCountEnum.fromValue(room.roundCount()),
             room.status(),
             room.createdAt().atOffset(ZoneOffset.UTC));
-    item.setPlaylistName(playlistName);
     return item;
   }
 
@@ -1018,6 +1019,18 @@ public class RoomLobbyService {
   private TrackFilter toTrackFilter(RoomFilterPayload payload) {
     return new TrackFilter(
         payload.genreCodes(), payload.countryCodes(), payload.decades(), payload.artistIds());
+  }
+
+  private <T> @Nullable T submitIfOpen(UUID roomId, java.util.function.Supplier<T> command) {
+    RoomActor actor = roomRegistry.actor(roomId).orElse(null);
+    if (actor == null) return null;
+    try {
+      return await(actor.submit(command));
+    } catch (IllegalStateException failure) {
+      // An idle room can close after lookup but before this command reaches its actor.
+      if (roomRegistry.actor(roomId).isEmpty()) return null;
+      throw failure;
+    }
   }
 
   private static <T> T await(CompletableFuture<T> future) {

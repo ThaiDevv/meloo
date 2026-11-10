@@ -10,6 +10,9 @@ meloo:
       default-round-count: 10
       idle-timeout: 10m
       disconnect-timeout: 30s
+    matchmaking:
+      countdown: 30s
+      solo-suggestion-delay: 60s
     match:
       prepare-timeout: 5s
       round-duration: 45s

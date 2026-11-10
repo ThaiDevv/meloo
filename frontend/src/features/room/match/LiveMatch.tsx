@@ -18,6 +18,7 @@ import { RoomProblem } from '../lobby/components/RoomProblem'
 import { ConnectionBanner } from '../lobby/components/ConnectionBanner'
 import { LobbyAlert } from '../lobby/components/LobbyAlert'
 import { errorText } from '../lobby/model/errorText'
+import { GuestLoginBanner } from './components/GuestLoginBanner'
 import { GuessFeed } from './components/GuessFeed'
 import { NoticeBar } from './components/NoticeBar'
 import { Podium } from './components/Podium'
@@ -255,6 +256,7 @@ export function LiveMatch({ initialRoom }: { initialRoom: RoomResponse }) {
             <Link to="/">{t('problem.home')}</Link>
           </Button>
         </div>
+        <GuestLoginBanner />
       </div>
     )
   } else if (state.phase === 'reveal' && state.reveal) {

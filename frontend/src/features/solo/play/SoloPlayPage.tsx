@@ -11,6 +11,7 @@ import {
   type MatchResult,
   type SoloMatch,
 } from './api/soloMatchApi'
+import { GuestLoginBanner } from './components/GuestLoginBanner'
 import { ExitDialog } from './components/ExitDialog'
 import { MatchIntro } from './components/MatchIntro'
 import { MatchPlay } from './components/MatchPlay'
@@ -234,11 +235,14 @@ function SummaryScreen({
   }
 
   return (
-    <MatchSummary
-      result={result}
-      replaying={create.isPending}
-      onReplay={onReplay}
-      onShare={onShare}
-    />
+    <div className="space-y-6">
+      <MatchSummary
+        result={result}
+        replaying={create.isPending}
+        onReplay={onReplay}
+        onShare={onShare}
+      />
+      <GuestLoginBanner />
+    </div>
   )
 }

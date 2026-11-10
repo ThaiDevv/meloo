@@ -17,7 +17,6 @@ function renderAt(path: string) {
 
 // Every route in .claude/skills/meloo-frontend/references/routes.md → ticket that replaces it.
 const routes: [path: string, ticket: string][] = [
-  ['/auth/callback', 'FE-AUTH-02'],
   ['/daily', 'FE-DAILY-01'],
   ['/rooms', 'FE-ROOM-03'],
   ['/quick-match', 'FE-ROOM-03'],
@@ -79,6 +78,14 @@ describe('app routes', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Thư viện giao diện' }),
     ).toBeInTheDocument()
+  })
+
+  it('serves the OAuth callback page at /auth/callback', async () => {
+    renderAt('/auth/callback')
+    expect(
+      await screen.findByRole('heading', { name: /đăng nhập không thành công/i }),
+    ).toBeInTheDocument()
+    expect(screen.queryByTestId('placeholder')).not.toBeInTheDocument()
   })
 
   it('shows not-found for unknown paths', async () => {

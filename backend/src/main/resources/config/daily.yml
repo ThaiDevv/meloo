@@ -1,1 +1,5 @@
-# Configuration owned by the daily module.
+meloo:
+  daily:
+    popular-pool-size: 20
+    actions-per-minute: 120
+    expiry-scan-ms: 15000

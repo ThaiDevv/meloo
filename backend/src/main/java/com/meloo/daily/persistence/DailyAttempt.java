@@ -55,6 +55,19 @@ public class DailyAttempt {
   @Nullable @Column(name = "elapsed_ms", nullable = true)
   private Integer elapsedMs;
 
+  @Builder.Default
+  @Column(name = "current_level", nullable = false)
+  private short currentLevel = 1;
+
+  @Column(name = "wrong_count", nullable = false)
+  private int wrongCount;
+
+  @Nullable @Column(name = "outcome", length = 12)
+  private String outcome;
+
+  @Nullable @Column(name = "track_snapshot", columnDefinition = "text")
+  private String trackSnapshot;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 

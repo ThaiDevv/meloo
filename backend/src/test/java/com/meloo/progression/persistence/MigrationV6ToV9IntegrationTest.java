@@ -198,6 +198,7 @@ class MigrationV6ToV9IntegrationTest {
     assertThat(
             Flyway.configure()
                 .dataSource(dataSource)
+                .target("10")
                 .outOfOrder(true)
                 .load()
                 .migrate()
@@ -210,6 +211,7 @@ class MigrationV6ToV9IntegrationTest {
     assertThat(
             Flyway.configure()
                 .dataSource(dataSource)
+                .target("10")
                 .load()
                 .validateWithResult()
                 .validationSuccessful)

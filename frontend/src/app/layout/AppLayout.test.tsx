@@ -62,12 +62,18 @@ describe('AppLayout', () => {
     await userEvent.tab() // EN
     await userEvent.tab() // theme toggle
     expect(screen.getByRole('button', { name: /giao diện/ })).toHaveFocus()
+    await userEvent.tab() // account menu
+    expect(screen.getByTestId('account-menu-login-btn')).toHaveFocus()
   })
 })
 
-describe('AccountMenu stub', () => {
-  it('renders nothing until FE-AUTH-02 replaces it', () => {
-    const { container } = render(<AccountMenu />)
-    expect(container).toBeEmptyDOMElement()
+describe('AccountMenu in header', () => {
+  it('renders login button for guest / unauthenticated visitor', () => {
+    render(
+      <MemoryRouter>
+        <AccountMenu />
+      </MemoryRouter>,
+    )
+    expect(screen.getByTestId('account-menu-login-btn')).toBeInTheDocument()
   })
 })

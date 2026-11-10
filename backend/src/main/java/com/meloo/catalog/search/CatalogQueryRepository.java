@@ -107,7 +107,7 @@ public class CatalogQueryRepository {
           ) AS sim
         FROM matching_tracks mt
         JOIN artist a ON mt.primary_artist_id = a.id
-        ORDER BY tier ASC, sim DESC, mt.popularity_rank ASC NULLS LAST, mt.title ASC
+        ORDER BY tier ASC, sim DESC, CASE WHEN mt.popularity_rank > 100 THEN LEAST(100, CEIL(mt.popularity_rank / 10000.0)) ELSE mt.popularity_rank END DESC NULLS LAST, mt.title ASC
         LIMIT :limit OFFSET :offset
         """;
 
@@ -401,6 +401,30 @@ public class CatalogQueryRepository {
     sql.append(" ORDER BY RANDOM() LIMIT :limit");
 
     return jdbcTemplate.query(sql.toString(), params, trackInfoRowMapper);
+  }
+
+  /** Accepts old raw Deezer ranks while new imports use the canonical 1–100 score. */
+  public List<TrackInfo> selectPopularTracks(int count) {
+    if (count <= 0) {
+      return List.of();
+    }
+    return jdbcTemplate.query(
+        """
+        WITH candidates AS (
+          SELECT DISTINCT ON (t.title_normalized, t.primary_artist_id)
+                 t.id, t.title, a.name AS artist_name, t.provider, t.provider_track_id,
+                 t.cover_url, t.genre_id, t.country_code, t.release_year,
+                 CASE WHEN t.popularity_rank > 100
+                      THEN LEAST(100, CEIL(t.popularity_rank / 10000.0))
+                      ELSE t.popularity_rank END AS popularity
+          FROM track t JOIN artist a ON a.id = t.primary_artist_id
+          WHERE t.enabled = true AND t.popularity_rank > 0
+          ORDER BY t.title_normalized, t.primary_artist_id, popularity DESC, t.id
+        )
+        SELECT * FROM candidates ORDER BY popularity DESC, id LIMIT :limit
+        """,
+        new MapSqlParameterSource("limit", Math.min(count, 1000)),
+        trackInfoRowMapper);
   }
 
   /** Finds track information by ID (enabled tracks only). */

@@ -64,6 +64,12 @@ public interface CatalogService {
   }
 
   /**
+   * Returns the most popular enabled tracks, deduplicated by normalized title and artist.
+   * Popularity uses a 1–100 score, higher is more popular; null scores are excluded.
+   */
+  List<TrackInfo> selectPopularTracks(int count);
+
+  /**
    * Retrieves track information by ID. Returns empty if not found or disabled.
    *
    * @param trackId track UUID

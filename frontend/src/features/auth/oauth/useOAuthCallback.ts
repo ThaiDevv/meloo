@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { getAccessToken, useAuthStore } from '@/shared/api/authStore'
 import { apiClient } from '@/shared/api/client'
 import { refreshSession } from '@/shared/api/refresh'
 import type { components } from '@/shared/api/schema.gen'
@@ -21,9 +22,11 @@ function isSupportedProvider(value: string): value is OAuthProviderSlug {
  *   exchange it for an in-memory access token, then navigate to `returnTo`.
  *
  * Mode link:
- *   The backend forwarded `code` and `state` to this page. We call
- *   `POST /api/v1/auth/oauth2/{provider}/link` with these params (the HttpOnly
- *   state/PKCE cookie rides along automatically), then refresh to get the updated user.
+ *   The backend forwarded `code` and `state` to this page. Because this arrives after a
+ *   full-page redirect, the in-memory access token may be missing: restore the session first.
+ *   Then we call `POST /api/v1/auth/oauth2/{provider}/link` with `code`, `state` and an explicit
+ *   `Authorization: Bearer <accessToken>` header. On 200, the backend returns the updated
+ *   `AuthSession` and rotates the cookie; we store it and navigate to `returnTo`.
  */
 export function useOAuthCallback() {
   const [searchParams] = useSearchParams()
@@ -57,18 +60,56 @@ export function useOAuthCallback() {
 
           setCallbackState({ status: 'linking' })
 
-          const { response } = await apiClient.POST('/api/v1/auth/oauth2/{provider}/link', {
-            params: { path: { provider } },
-            body: { code, state },
-          })
+          // Full-page redirect drops in-memory access token. Restore session first if missing.
+          let token = getAccessToken()
+          if (!token) {
+            const outcome = await refreshSession()
+            if (outcome !== 'refreshed') {
+              if (!cancelled) setCallbackState({ status: 'error', code: 'UNAUTHORIZED' })
+              return
+            }
+            token = getAccessToken()
+          }
 
-          if (!cancelled && !response.ok) {
-            setCallbackState({ status: 'error', code: 'unknown' })
+          if (!token) {
+            if (!cancelled) setCallbackState({ status: 'error', code: 'UNAUTHORIZED' })
             return
           }
+
+          const {
+            data,
+            response,
+            error: linkError,
+          } = await apiClient.POST('/api/v1/auth/oauth2/{provider}/link', {
+            params: { path: { provider } },
+            body: { code, state },
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          })
+
+          if (cancelled) return
+
+          if (!response.ok || !data) {
+            const errCode =
+              linkError &&
+              typeof linkError === 'object' &&
+              'code' in linkError &&
+              typeof linkError.code === 'string'
+                ? linkError.code
+                : 'unknown'
+            setCallbackState({ status: 'error', code: errCode })
+            return
+          }
+
+          // Link succeeded: store updated session and navigate
+          useAuthStore.getState().setSession(data)
+          const destination = safeReturnTo(returnTo)
+          void navigate(destination, { replace: true })
+          return
         }
 
-        // For both login and link: refresh to get the new/updated session into memory.
+        // Mode login:
         const outcome = await refreshSession()
         if (cancelled) return
 
@@ -76,7 +117,6 @@ export function useOAuthCallback() {
           const destination = safeReturnTo(returnTo)
           void navigate(destination, { replace: true })
         } else {
-          // Session expired or unavailable right after the callback: treat as error.
           setCallbackState({ status: 'error', code: 'unknown' })
         }
       } catch {

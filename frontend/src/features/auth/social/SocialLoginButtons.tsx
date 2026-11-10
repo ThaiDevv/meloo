@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/shared/ui/Button'
+import { startOAuth } from './oauthUrl'
 
 interface SocialLoginButtonsProps {
   /**
@@ -8,13 +9,6 @@ interface SocialLoginButtonsProps {
    * Passed as `returnTo` query param to the OAuth start URL.
    */
   returnTo?: string
-}
-
-/** Initiates an OAuth2 login flow by navigating to the backend start URL. */
-function startOAuth(provider: 'google' | 'facebook', returnTo?: string) {
-  const params = new URLSearchParams({ mode: 'login' })
-  if (returnTo) params.set('returnTo', returnTo)
-  window.location.href = `/api/v1/auth/oauth2/${provider}?${params.toString()}`
 }
 
 /**
@@ -29,13 +23,13 @@ export function SocialLoginButtons({ returnTo }: SocialLoginButtonsProps) {
   function handleGoogle() {
     if (pending) return
     setPending('google')
-    startOAuth('google', returnTo)
+    startOAuth('google', { mode: 'login', returnTo })
   }
 
   function handleFacebook() {
     if (pending) return
     setPending('facebook')
-    startOAuth('facebook', returnTo)
+    startOAuth('facebook', { mode: 'login', returnTo })
   }
 
   return (

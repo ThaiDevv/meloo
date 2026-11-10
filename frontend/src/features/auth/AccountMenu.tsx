@@ -1,5 +1,5 @@
 import { LogOut, User } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from 'react-router-dom'
 import { apiClient } from '@/shared/api/client'
@@ -8,23 +8,37 @@ import { useSessionStore } from '@/shared/session/store'
 import { toast } from '@/shared/ui/toast-store'
 import { Button } from '@/shared/ui/Button'
 import { SocialLoginButtons } from './social/SocialLoginButtons'
+import { useSessionRestore } from './useSessionRestore'
 
 /**
  * Account menu in the header. Replaces the stub (`return null`) from FE-01.
  *
- * - Not signed in (role === null): shows "Sign in" button that opens an inline panel.
- * - Guest (role === 'GUEST'): same — guests are encouraged to upgrade.
+ * - Not signed in (role === null):
+ *   - While checking session restore: shows skeleton placeholder.
+ *   - Once done or failed: shows "Sign in" button that opens an inline panel.
+ * - Guest (role === 'GUEST'): shows "Sign in" button to encourage upgrade.
  * - Registered / Admin (role === 'USER' | 'ADMIN'): dropdown with Profile and Sign out.
  */
 export function AccountMenu() {
   const role = useSessionStore((s) => s.role)
+  const { state } = useSessionRestore()
   const location = useLocation()
 
   if (role === 'USER' || role === 'ADMIN') {
     return <RegisteredMenu />
   }
 
-  // Guest or unauthenticated: show login button
+  if (role === null && state === 'checking') {
+    return (
+      <div
+        className="h-9 w-20 animate-pulse rounded-lg bg-raised/50"
+        data-testid="account-menu-skeleton"
+        aria-hidden="true"
+      />
+    )
+  }
+
+  // Guest or unauthenticated (state === 'done' or 'failed'): show login button
   return <LoginPanel returnTo={location.pathname} />
 }
 
@@ -34,14 +48,44 @@ function RegisteredMenu() {
   const [open, setOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setOpen(false)
+        triggerRef.current?.focus()
+      }
+    }
+
+    function handleClickOutside(e: MouseEvent | TouchEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [open])
 
   async function handleLogout() {
     if (loggingOut) return
     setLoggingOut(true)
-    setOpen(false)
     try {
-      await apiClient.POST('/api/v1/auth/logout')
-      useAuthStore.getState().clear()
+      const { response } = await apiClient.POST('/api/v1/auth/logout')
+      if (response.ok) {
+        useAuthStore.getState().clear()
+        setOpen(false)
+      } else {
+        toast({ title: t('accountMenu.logoutError'), tone: 'negative' })
+      }
     } catch {
       toast({ title: t('accountMenu.logoutError'), tone: 'negative' })
     } finally {
@@ -52,6 +96,7 @@ function RegisteredMenu() {
   return (
     <div className="relative" ref={menuRef}>
       <Button
+        ref={triggerRef}
         type="button"
         variant="ghost"
         size="icon"
@@ -71,11 +116,6 @@ function RegisteredMenu() {
           role="menu"
           aria-label={t('accountMenu.openMenu')}
           className="absolute right-0 top-full z-50 mt-1 min-w-[10rem] rounded-xl border border-border bg-background py-1 shadow-lg"
-          onBlur={(e) => {
-            if (e.relatedTarget && !menuRef.current?.contains(e.relatedTarget)) {
-              setOpen(false)
-            }
-          }}
         >
           <Link
             to="/profile"
@@ -109,30 +149,64 @@ function RegisteredMenu() {
   )
 }
 
-/** Login panel (button that expands to show social login options). */
+/** Login panel (button that toggles inline panel showing social login options). */
 function LoginPanel({ returnTo }: { returnTo: string }) {
   const { t } = useTranslation('auth')
-  const [expanded, setExpanded] = useState(false)
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
-  if (!expanded) {
-    return (
+  useEffect(() => {
+    if (!open) return
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setOpen(false)
+        triggerRef.current?.focus()
+      }
+    }
+
+    function handleClickOutside(e: MouseEvent | TouchEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [open])
+
+  return (
+    <div className="relative" ref={containerRef}>
       <Button
+        ref={triggerRef}
         type="button"
         variant="outline"
         size="sm"
+        aria-expanded={open}
+        aria-haspopup="dialog"
         onClick={() => {
-          setExpanded(true)
+          setOpen((v) => !v)
         }}
         data-testid="account-menu-login-btn"
       >
         {t('accountMenu.loginButton')}
       </Button>
-    )
-  }
 
-  return (
-    <div className="absolute right-4 top-full z-50 mt-1 w-72 rounded-xl border border-border bg-background p-4 shadow-lg">
-      <SocialLoginButtons returnTo={returnTo} />
+      {open && (
+        <div
+          role="dialog"
+          aria-label={t('accountMenu.loginButton')}
+          className="absolute right-0 top-full z-50 mt-2 w-72 rounded-xl border border-border bg-background p-4 shadow-lg"
+        >
+          <SocialLoginButtons returnTo={returnTo} />
+        </div>
+      )}
     </div>
   )
 }

@@ -82,7 +82,9 @@ describe('app routes', () => {
 
   it('serves the OAuth callback page at /auth/callback', async () => {
     renderAt('/auth/callback')
-    expect(await screen.findByRole('status')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: /đăng nhập không thành công/i }),
+    ).toBeInTheDocument()
     expect(screen.queryByTestId('placeholder')).not.toBeInTheDocument()
   })
 

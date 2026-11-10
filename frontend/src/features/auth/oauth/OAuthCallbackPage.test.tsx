@@ -6,11 +6,11 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import i18n from '@/i18n'
 import { server } from '@/mocks/server'
-import { useAuthStore } from '@/shared/api/authStore'
+import { useAuthStore, type AuthSession } from '@/shared/api/authStore'
 import { resetSessionRestoreForTests } from '../useSessionRestore'
 import { OAuthCallbackPage } from './OAuthCallbackPage'
 
-const registeredSession = {
+const registeredSession: AuthSession = {
   accessToken: 'mock-registered-token',
   tokenType: 'Bearer',
   expiresAt: '2026-10-23T13:25:00Z',
@@ -100,17 +100,92 @@ describe('OAuthCallbackPage', () => {
     })
   })
 
-  it('shows linking state and navigates home after successful link', async () => {
+  it('sends Bearer token header and saves session on successful link', async () => {
+    let capturedAuthHeader: string | null = null
+    const updatedSession = {
+      ...registeredSession,
+      user: {
+        ...registeredSession.user,
+        linkedProviders: ['GOOGLE', 'FACEBOOK'],
+      },
+    }
+
     server.use(
-      http.post('*/api/v1/auth/oauth2/google/link', () =>
-        HttpResponse.json(registeredSession, { status: 200 }),
-      ),
+      http.post('*/api/v1/auth/oauth2/google/link', ({ request }) => {
+        capturedAuthHeader = request.headers.get('Authorization')
+        return HttpResponse.json(updatedSession, { status: 200 })
+      }),
       http.post('*/api/v1/auth/refresh', () => HttpResponse.json(registeredSession)),
     )
+
+    // Pre-populate store with a session before link
+    act(() => {
+      useAuthStore.getState().setSession(registeredSession)
+    })
+
     renderCallback('?mode=link&provider=google&code=abc123&state=st_xyz')
+
     await waitFor(() => {
       expect(screen.getByText('home')).toBeInTheDocument()
     })
+
+    expect(capturedAuthHeader).toBe('Bearer mock-registered-token')
+    expect(useAuthStore.getState().user?.linkedProviders).toEqual(['GOOGLE', 'FACEBOOK'])
+  })
+
+  it('restores session first after full-page redirect before linking', async () => {
+    let capturedAuthHeader: string | null = null
+    let refreshCalled = false
+
+    server.use(
+      http.post('*/api/v1/auth/refresh', () => {
+        refreshCalled = true
+        return HttpResponse.json(registeredSession)
+      }),
+      http.post('*/api/v1/auth/oauth2/google/link', ({ request }) => {
+        capturedAuthHeader = request.headers.get('Authorization')
+        return HttpResponse.json(registeredSession, { status: 200 })
+      }),
+    )
+
+    // Cold store (memory cleared after full redirect)
+    expect(useAuthStore.getState().accessToken).toBeNull()
+
+    renderCallback('?mode=link&provider=google&code=abc123&state=st_xyz')
+
+    await waitFor(() => {
+      expect(screen.getByText('home')).toBeInTheDocument()
+    })
+
+    expect(refreshCalled).toBe(true)
+    expect(capturedAuthHeader).toBe('Bearer mock-registered-token')
+  })
+
+  it('shows error when link endpoint returns 409 OAUTH_IDENTITY_ALREADY_LINKED', async () => {
+    server.use(
+      http.post('*/api/v1/auth/oauth2/google/link', () =>
+        HttpResponse.json(
+          { code: 'OAUTH_IDENTITY_ALREADY_LINKED', title: 'Already linked' },
+          { status: 409, headers: { 'Content-Type': 'application/problem+json' } },
+        ),
+      ),
+      http.post('*/api/v1/auth/refresh', () => HttpResponse.json(registeredSession)),
+    )
+
+    act(() => {
+      useAuthStore.getState().setSession(registeredSession)
+    })
+
+    renderCallback('?mode=link&provider=google&code=abc123&state=st_xyz')
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('heading', { name: /đăng nhập không thành công/i }),
+      ).toBeInTheDocument()
+    })
+    expect(
+      screen.getByText(/tài khoản mạng xã hội này đã được liên kết với người dùng khác/i),
+    ).toBeInTheDocument()
   })
 
   it('error retry button navigates to /start', async () => {

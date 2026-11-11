@@ -1,3 +1,41 @@
 {
-  "title": "Bảng xếp hạng"
+  "title": "Bảng xếp hạng",
+  "subtitle": "So tài với người chơi khác: tổng điểm rank và kết quả thử thách hôm nay.",
+  "loading": "Đang tải bảng xếp hạng",
+  "myPosition": "Vị trí của bạn",
+  "tabs": {
+    "label": "Chọn bảng xếp hạng",
+    "allTime": "Toàn thời gian",
+    "today": "Hôm nay"
+  },
+  "row": {
+    "rank": "Hạng",
+    "you": "Bạn"
+  },
+  "pagination": {
+    "label": "Phân trang bảng xếp hạng",
+    "previous": "Trang trước",
+    "next": "Trang sau",
+    "status": "Trang {{page}}/{{total}}"
+  },
+  "guest": {
+    "title": "Đăng nhập để chơi xếp hạng và lên bảng",
+    "description": "Bạn vẫn xem được bảng xếp hạng, nhưng tên khách không được ghi lên bảng."
+  },
+  "allTime": {
+    "description": "Xếp theo điểm rank tích lũy từ các trận ghép xếp hạng.",
+    "points": "{{points}} điểm rank",
+    "matches": "{{played}} trận · {{won}} trận thắng",
+    "emptyTitle": "Chưa có ai trên bảng",
+    "emptyDescription": "Chơi một trận ghép xếp hạng để là người đầu tiên."
+  },
+  "daily": {
+    "description": "Xếp theo mức đoán đúng (càng ít giây càng cao), rồi theo thời gian.",
+    "descriptionWithDate": "Thử thách ngày {{date}}. Xếp theo mức đoán đúng (càng ít giây càng cao), rồi theo thời gian.",
+    "score": "{{score}} điểm",
+    "solved": "Đoán đúng ở {{listen}} giây · {{time}} giây",
+    "unsolved": "Chưa đoán ra · {{time}} giây",
+    "emptyTitle": "Hôm nay chưa ai hoàn thành",
+    "emptyDescription": "Chơi thử thách ngày để lên bảng hôm nay."
+  }
 }

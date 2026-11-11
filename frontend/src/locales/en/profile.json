@@ -1,3 +1,84 @@
 {
-  "title": "Profile"
+  "title": "Profile",
+  "guest": "Guest",
+  "unit": "points",
+  "loading": "Loading…",
+  "rankDelta": "{{delta}} rank points",
+  "header": {
+    "points": "{{rank}} rank points · {{xp}} XP"
+  },
+  "matchType": {
+    "SOLO": "Solo",
+    "PRIVATE_ROOM": "Private room",
+    "PUBLIC_ROOM": "Public room",
+    "QUICK_MATCH": "Quick match"
+  },
+  "outcome": {
+    "CORRECT": "Correct",
+    "WRONG_OUT": "Wrong up to 30 seconds",
+    "GAVE_UP": "Skipped",
+    "TIMEOUT": "Time's up",
+    "MISSED": "No guess"
+  },
+  "stats": {
+    "heading": "Statistics",
+    "matchesPlayed": "Matches",
+    "matchesWon_one": "{{count}} win",
+    "matchesWon_other": "{{count}} wins",
+    "winRate": "Win rate",
+    "rounds": "{{correct}} / {{total}} rounds correct",
+    "averageLevel": "Average correct level",
+    "levelValue": "Level {{level}}",
+    "listenValue": "{{seconds}} seconds heard on average",
+    "noCorrect": "No correct rounds yet",
+    "favoriteGenre": "Best genre",
+    "bestCombo_one": "Longest combo: {{count}} round",
+    "bestCombo_other": "Longest combo: {{count}} rounds",
+    "none": "None yet",
+    "emptyTitle": "No numbers yet",
+    "emptyBody": "Your statistics show up here after your first match."
+  },
+  "history": {
+    "heading": "Match history",
+    "abandoned": "Abandoned",
+    "ranked": "Ranked",
+    "correct": "{{correct}} / {{total}} rounds correct",
+    "placement": "Place {{rank}} / {{players}}",
+    "pagination": "Match history pages",
+    "previous": "Previous",
+    "next": "Next",
+    "pageOf": "Page {{page}} / {{total}}",
+    "emptyTitle": "You have not played a match yet",
+    "emptyBody": "Finish a match and it shows up here, with the answer to every round.",
+    "playFirst": "Play your first match",
+    "pastEnd": "There are no matches on this page.",
+    "firstPage": "Back to the first page"
+  },
+  "detail": {
+    "title": "Match detail",
+    "back": "Back to profile",
+    "round": "Round {{n}}",
+    "correctAt": "Correct at level {{level}} ({{seconds}} seconds)",
+    "wrong_one": "{{count}} wrong guess",
+    "wrong_other": "{{count}} wrong guesses",
+    "listen": "Listen to the song",
+    "newTab": "(opens in a new tab)",
+    "combo": "Combo +{{percent}}%",
+    "standings": "Match standings",
+    "rank": "Place",
+    "you": "you",
+    "guest": "guest",
+    "playerCorrect_one": "{{count}} round correct",
+    "playerCorrect_other": "{{count}} rounds correct",
+    "rounds": "Round by round",
+    "noRounds": "This match ended before any round finished.",
+    "notFoundTitle": "Match not found",
+    "notFoundBody": "The match does not exist or you did not play in it."
+  },
+  "errors": {
+    "profile": "Could not load your profile. Please try again.",
+    "stats": "Could not load your statistics. Please try again.",
+    "history": "Could not load your match history. Please try again.",
+    "detail": "Could not load this match. Please try again."
+  }
 }

@@ -20,8 +20,6 @@ const routes: [path: string, ticket: string][] = [
   ['/daily', 'FE-DAILY-01'],
   ['/rooms', 'FE-ROOM-03'],
   ['/quick-match', 'FE-ROOM-03'],
-  ['/profile', 'FE-PROF-01'],
-  ['/profile/matches/m1', 'FE-PROF-01'],
   ['/leaderboard', 'FE-LB-01'],
   ['/admin', 'FE-ADM-01'],
   ['/admin/catalog', 'FE-ADM-01'],
@@ -113,7 +111,11 @@ describe('app routes', () => {
       useSessionStore.getState().setRole('GUEST')
     })
     const guest = renderAt('/profile')
-    await screen.findAllByTestId('placeholder')
+    // Both renders above stay mounted, so the profile page may appear more than once.
+    expect(
+      await screen.findAllByRole('heading', { level: 2, name: 'Lịch sử trận' }),
+    ).not.toHaveLength(0)
+    expect(screen.queryByTestId('placeholder')).not.toBeInTheDocument()
     expect(guest.state.location.pathname).toBe('/profile')
   })
 })

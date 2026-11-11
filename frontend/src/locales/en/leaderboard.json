@@ -1,3 +1,41 @@
 {
-  "title": "Leaderboard"
+  "title": "Leaderboard",
+  "subtitle": "See how you stack up: all-time rank points and today's daily challenge.",
+  "loading": "Loading leaderboard",
+  "myPosition": "Your position",
+  "tabs": {
+    "label": "Choose a leaderboard",
+    "allTime": "All time",
+    "today": "Today"
+  },
+  "row": {
+    "rank": "Rank",
+    "you": "You"
+  },
+  "pagination": {
+    "label": "Leaderboard pages",
+    "previous": "Previous page",
+    "next": "Next page",
+    "status": "Page {{page}} of {{total}}"
+  },
+  "guest": {
+    "title": "Sign in to play ranked and get on the board",
+    "description": "You can still browse the leaderboard, but guest names are not listed on it."
+  },
+  "allTime": {
+    "description": "Ranked by rank points earned in ranked matchmaking.",
+    "points": "{{points}} rank points",
+    "matches": "{{played}} matches · {{won}} wins",
+    "emptyTitle": "Nobody on the board yet",
+    "emptyDescription": "Play a ranked match to be the first."
+  },
+  "daily": {
+    "description": "Ranked by how early you guessed right (fewer seconds is better), then by time.",
+    "descriptionWithDate": "Daily challenge for {{date}}. Ranked by how early you guessed right (fewer seconds is better), then by time.",
+    "score": "{{score}} points",
+    "solved": "Guessed at {{listen}}s · {{time}}s",
+    "unsolved": "Not guessed · {{time}}s",
+    "emptyTitle": "Nobody has finished today yet",
+    "emptyDescription": "Play the daily challenge to get on today's board."
+  }
 }

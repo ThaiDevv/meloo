@@ -20,7 +20,6 @@ const routes: [path: string, ticket: string][] = [
   ['/daily', 'FE-DAILY-01'],
   ['/rooms', 'FE-ROOM-03'],
   ['/quick-match', 'FE-ROOM-03'],
-  ['/leaderboard', 'FE-LB-01'],
   ['/admin', 'FE-ADM-01'],
   ['/admin/catalog', 'FE-ADM-01'],
   ['/admin/playlists', 'FE-ADM-01'],

@@ -1,3 +1,84 @@
 {
-  "title": "Hồ sơ"
+  "title": "Hồ sơ",
+  "guest": "Khách",
+  "unit": "điểm",
+  "loading": "Đang tải…",
+  "rankDelta": "{{delta}} điểm hạng",
+  "header": {
+    "points": "{{rank}} điểm hạng · {{xp}} XP"
+  },
+  "matchType": {
+    "SOLO": "Chơi đơn",
+    "PRIVATE_ROOM": "Phòng riêng",
+    "PUBLIC_ROOM": "Phòng công khai",
+    "QUICK_MATCH": "Ghép trận nhanh"
+  },
+  "outcome": {
+    "CORRECT": "Đoán đúng",
+    "WRONG_OUT": "Sai tới 30 giây",
+    "GAVE_UP": "Bỏ qua",
+    "TIMEOUT": "Hết giờ",
+    "MISSED": "Không đoán"
+  },
+  "stats": {
+    "heading": "Thống kê",
+    "matchesPlayed": "Số trận",
+    "matchesWon_one": "Thắng {{count}} trận",
+    "matchesWon_other": "Thắng {{count}} trận",
+    "winRate": "Tỉ lệ thắng",
+    "rounds": "Đúng {{correct}} / {{total}} vòng",
+    "averageLevel": "Mức đoán đúng trung bình",
+    "levelValue": "Mức {{level}}",
+    "listenValue": "Nghe trung bình {{seconds}} giây",
+    "noCorrect": "Chưa có vòng đoán đúng",
+    "favoriteGenre": "Thể loại sở trường",
+    "bestCombo_one": "Chuỗi combo dài nhất: {{count}} vòng",
+    "bestCombo_other": "Chuỗi combo dài nhất: {{count}} vòng",
+    "none": "Chưa có",
+    "emptyTitle": "Chưa có số liệu",
+    "emptyBody": "Thống kê của bạn sẽ hiện ở đây sau trận đầu tiên."
+  },
+  "history": {
+    "heading": "Lịch sử trận",
+    "abandoned": "Bỏ dở",
+    "ranked": "Tính hạng",
+    "correct": "Đúng {{correct}} / {{total}} vòng",
+    "placement": "Hạng {{rank}} / {{players}}",
+    "pagination": "Phân trang lịch sử trận",
+    "previous": "Trang trước",
+    "next": "Trang sau",
+    "pageOf": "Trang {{page}} / {{total}}",
+    "emptyTitle": "Bạn chưa chơi trận nào",
+    "emptyBody": "Chơi xong một trận là lịch sử sẽ hiện ở đây, kèm đáp án từng vòng.",
+    "playFirst": "Chơi trận đầu tiên",
+    "pastEnd": "Trang này không còn trận nào.",
+    "firstPage": "Về trang đầu"
+  },
+  "detail": {
+    "title": "Chi tiết trận",
+    "back": "Về hồ sơ",
+    "round": "Vòng {{n}}",
+    "correctAt": "Đúng ở mức {{level}} ({{seconds}} giây)",
+    "wrong_one": "Sai {{count}} lần",
+    "wrong_other": "Sai {{count}} lần",
+    "listen": "Nghe cả bài",
+    "newTab": "(mở thẻ mới)",
+    "combo": "Combo +{{percent}}%",
+    "standings": "Bảng xếp hạng trận",
+    "rank": "Hạng",
+    "you": "bạn",
+    "guest": "khách",
+    "playerCorrect_one": "Đúng {{count}} vòng",
+    "playerCorrect_other": "Đúng {{count}} vòng",
+    "rounds": "Từng vòng",
+    "noRounds": "Trận này kết thúc trước khi xong vòng nào.",
+    "notFoundTitle": "Không tìm thấy trận này",
+    "notFoundBody": "Trận không tồn tại hoặc bạn không tham gia trận này."
+  },
+  "errors": {
+    "profile": "Không tải được hồ sơ. Hãy thử lại.",
+    "stats": "Không tải được thống kê. Hãy thử lại.",
+    "history": "Không tải được lịch sử trận. Hãy thử lại.",
+    "detail": "Không tải được chi tiết trận. Hãy thử lại."
+  }
 }

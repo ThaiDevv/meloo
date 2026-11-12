@@ -1,3 +1,70 @@
 {
-  "title": "Pháp lý"
+  "title": "Pháp lý",
+  "updated": "Cập nhật ngày 12/11/2026",
+  "navigation": "Các trang pháp lý",
+  "contact": {
+    "title": "Liên hệ và yêu cầu về dữ liệu",
+    "body": "Meloo do Trần Văn Thái vận hành trong khuôn khổ đồ án học thuật. Bạn có thể gửi câu hỏi hoặc yêu cầu về dữ liệu qua email dưới đây. Chúng tôi xử lý yêu cầu trong vòng 30 ngày. Không gửi mật khẩu, mã đăng nhập hay token.",
+    "email": "tranvanthai20062@gmail.com"
+  },
+  "privacy": {
+    "title": "Chính sách quyền riêng tư",
+    "intro": "Chính sách này giải thích cách Meloo xử lý dữ liệu khi bạn chơi với tư cách khách hoặc đăng nhập, cùng các quyền và cách liên hệ của bạn.",
+    "collection": {
+      "title": "Dữ liệu được thu thập",
+      "body": "Meloo lưu mã người chơi, biệt danh, loại tài khoản, thời điểm tạo và hoạt động gần nhất. Khi đăng nhập Google, chúng tôi nhận mã định danh từ nhà cung cấp và email nếu được cung cấp; không nhận mật khẩu Google. Chúng tôi lưu lịch sử trận, lượt đoán, điểm, thống kê, huy hiệu và kết quả thử thách ngày. Khi dùng phòng chơi và chat, nội dung tin nhắn, báo cáo vi phạm và thông tin xử lý kiểm duyệt cũng được ghi nhận."
+    },
+    "purpose": {
+      "title": "Mục đích và lưu trữ trên thiết bị",
+      "body": "Dữ liệu dùng để xác thực, duy trì phiên chơi, hiển thị tiến bộ và xếp hạng, ghép dữ liệu khách khi đăng nhập, bảo đảm công bằng và xử lý vi phạm. Cookie phiên và thông tin xác thực giúp duy trì đăng nhập; lựa chọn ngôn ngữ được lưu trong trình duyệt. Xóa cookie hoặc dữ liệu trình duyệt có thể làm mất quyền truy cập phiên khách, nhưng không xóa dữ liệu trên máy chủ."
+    },
+    "storage": {
+      "title": "Thời gian lưu dữ liệu",
+      "body": "Theo cam kết của Meloo, dữ liệu khách được xóa sau 30 ngày không hoạt động. Tác vụ xóa tự động đang chờ triển khai cùng chức năng xóa tài khoản; trước khi hoàn tất, hãy gửi yêu cầu qua email để được xử lý trong 30 ngày. Dữ liệu tài khoản được giữ để cung cấp lịch sử và tiến bộ cho đến khi tài khoản được xóa; Meloo chưa quy định thời hạn riêng cho từng loại nhật ký và bản sao lưu. Chúng tôi không lưu file nhạc trên máy chủ: đoạn nghe thử được chuyển tiếp trực tuyến từ nhà cung cấp."
+    },
+    "sharing": {
+      "title": "Hiển thị và bên cung cấp dịch vụ",
+      "body": "Biệt danh, điểm và thứ hạng có thể được người chơi khác nhìn thấy trong phòng và bảng xếp hạng; tin nhắn được gửi tới những người trong phòng, nội dung bị báo cáo được quản trị viên xem xét. Google xử lý việc đăng nhập theo chính sách riêng của họ. Đoạn nhạc do nhà cung cấp nhạc cung cấp; hạ tầng lưu trữ và vận hành xử lý dữ liệu cần thiết để cung cấp Meloo. Facebook chỉ áp dụng khi chức năng đăng nhập đó được bật."
+    },
+    "rights": {
+      "title": "Quyền và lựa chọn của bạn",
+      "body": "Bạn có thể yêu cầu xem, sửa hoặc xóa dữ liệu của mình và phản ánh việc xử lý dữ liệu qua email liên hệ. Hãy nêu biệt danh và email đăng nhập nếu có để chúng tôi xác minh đúng người. Bạn có thể dừng sử dụng dịch vụ bất cứ lúc nào. Hướng dẫn xóa dữ liệu nêu cách gửi yêu cầu khi chức năng tự xóa chưa sẵn sàng."
+    }
+  },
+  "terms": {
+    "title": "Điều khoản sử dụng",
+    "intro": "Meloo là trò chơi đoán tên bài hát thuộc đồ án học thuật phi thương mại. Các điều khoản này mô tả cách tham gia và trách nhiệm khi sử dụng dịch vụ.",
+    "service": {
+      "title": "Tham gia trò chơi",
+      "body": "Bạn có thể chơi đơn hoặc tham gia phòng tự tạo với tư cách khách. Ghép trận nhanh và tính điểm rank yêu cầu đăng nhập. Máy chủ quyết định đáp án, điểm và thời gian; kết quả dựa trên dữ liệu được máy chủ chấp nhận."
+    },
+    "fairPlay": {
+      "title": "Chơi công bằng và tôn trọng người khác",
+      "body": "Không khai thác lỗi, tự động hóa gian lận, tìm cách lấy đáp án trước khi vòng kết thúc, quấy rối, phát tán nội dung vi phạm hoặc tiết lộ dữ liệu riêng tư của người khác. Không gửi thông tin nhạy cảm vào chat. Quản trị viên có thể xử lý báo cáo và khóa người chơi vi phạm kèm lý do."
+    },
+    "music": {
+      "title": "Âm nhạc và quyền sở hữu",
+      "body": "Quyền đối với bài hát, bản ghi âm và hình ảnh thuộc chủ sở hữu tương ứng. Meloo chỉ chuyển tiếp đoạn nghe thử để chơi, không lưu file nhạc trên máy chủ và không cung cấp chức năng tải nhạc. Việc truy cập Meloo không trao cho bạn quyền sao chép hay phân phối lại nội dung của nhà cung cấp."
+    },
+    "availability": {
+      "title": "Tính sẵn sàng và thay đổi",
+      "body": "Đây là dịch vụ thử nghiệm; có thể bị gián đoạn và danh mục bài hát có thể thay đổi theo nhà cung cấp. Chúng tôi cập nhật ngày sửa đổi trên các trang này khi thay đổi nội dung. Bạn có thể liên hệ để đặt câu hỏi hoặc dừng sử dụng và yêu cầu xóa dữ liệu."
+    }
+  },
+  "dataDeletion": {
+    "title": "Hướng dẫn xóa dữ liệu",
+    "intro": "Chức năng tự xóa tài khoản chưa sẵn sàng. Bạn có thể gửi yêu cầu qua email ngay cả khi không còn đăng nhập được; đăng xuất hoặc gỡ liên kết Google/Facebook không thay thế việc xóa dữ liệu tại Meloo.",
+    "request": {
+      "title": "Gửi yêu cầu xóa",
+      "body": "Gửi email đến địa chỉ liên hệ bên dưới với tiêu đề “Yêu cầu xóa dữ liệu Meloo”. Nêu biệt danh, email đã dùng đăng nhập và dữ liệu muốn xóa. Nếu chơi với tư cách khách, nêu biệt danh và thông tin phiên bạn còn có; không gửi token, cookie hoặc mật khẩu. Xóa dữ liệu trình duyệt chỉ xóa dữ liệu trên thiết bị, không xóa dữ liệu đã lưu tại Meloo."
+    },
+    "verification": {
+      "title": "Xác minh và thời hạn",
+      "body": "Chúng tôi xử lý yêu cầu trong vòng 30 ngày và phản hồi qua email. Chúng tôi có thể yêu cầu thông tin bổ sung để xác minh bạn là chủ dữ liệu, tránh xóa nhầm tài khoản. Nếu mất phiên khách, hãy mô tả trường hợp qua email để được hỗ trợ xác minh."
+    },
+    "effect": {
+      "title": "Dữ liệu liên quan và kết quả",
+      "body": "Yêu cầu có thể bao gồm tài khoản, thông tin liên kết đăng nhập và dữ liệu gắn với người chơi như lịch sử, thống kê, huy hiệu, tin nhắn và báo cáo. Chúng tôi xác nhận phạm vi xử lý và kết quả qua email; chính sách này chưa ấn định thời hạn xóa riêng cho bản sao lưu. Theo cam kết, dữ liệu khách được xóa sau 30 ngày không hoạt động; tác vụ tự động đang chờ triển khai. Hủy quyền truy cập ứng dụng ở Google/Facebook không tự xóa dữ liệu tại Meloo; hãy gửi yêu cầu riêng."
+    }
+  }
 }

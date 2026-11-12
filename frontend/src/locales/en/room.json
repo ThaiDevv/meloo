@@ -265,8 +265,12 @@
     },
     "guest": {
       "title": "Sign in to find a match",
-      "description": "Quick match counts for rank, so it is only for signed-in accounts. Sign in, then come back here.",
-      "browse": "Browse public rooms"
+      "description": "Sign in to play quick matches and earn ranking points.",
+      "browse": "Browse public rooms",
+      "returnHint": "After signing in, you’ll return here to choose your music.",
+      "multiplayer": "2–5 players",
+      "ranked": "Ranked matches",
+      "explore": "Not ready to sign in?"
     },
     "errors": {
       "notEnoughTracks": "This music does not have enough tracks for a match ({{missing}} short). Remove some filters or pick another set.",

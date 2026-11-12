@@ -265,8 +265,12 @@
     },
     "guest": {
       "title": "Đăng nhập để ghép trận",
-      "description": "Ghép trận nhanh có điểm xếp hạng nên chỉ dành cho tài khoản đã đăng nhập. Đăng nhập rồi quay lại đây nhé.",
-      "browse": "Xem phòng công khai"
+      "description": "Ghép trận nhanh dành cho tài khoản đã đăng nhập để tính điểm xếp hạng của bạn.",
+      "browse": "Xem phòng công khai",
+      "returnHint": "Đăng nhập xong, bạn sẽ trở lại đây để chọn bộ nhạc.",
+      "multiplayer": "2–5 người chơi",
+      "ranked": "Tính điểm xếp hạng",
+      "explore": "Chưa muốn đăng nhập?"
     },
     "errors": {
       "notEnoughTracks": "Bộ nhạc này chưa đủ bài để ghép trận (thiếu {{missing}} bài). Hãy bỏ bớt bộ lọc hoặc chọn bộ khác.",

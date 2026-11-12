@@ -227,5 +227,52 @@
       "points": "{{n}} điểm rank",
       "profile": "Xem điểm rank ở hồ sơ"
     }
+  },
+  "public": {
+    "title": "Phòng công khai",
+    "intro": "Vào một phòng đang chờ người, hoặc để hệ thống ghép bạn với người lạ chỉ bằng một nút.",
+    "quickMatch": "Ghép trận nhanh",
+    "create": "Tạo phòng",
+    "waiting": "Phòng đang chờ",
+    "loading": "Đang tải danh sách phòng…",
+    "host": "Chủ phòng {{name}}",
+    "players": "{{n}}/{{max}} người",
+    "full": "Đầy",
+    "join": "Vào phòng",
+    "joinNamed": "Vào phòng của {{name}}",
+    "empty": {
+      "title": "Chưa có phòng nào đang chờ",
+      "description": "Hãy tạo một phòng công khai, hoặc thử ghép trận nhanh để gặp người chơi khác."
+    }
+  },
+  "quick": {
+    "title": "Ghép trận nhanh",
+    "intro": "Chọn bộ nhạc, hệ thống sẽ ghép bạn với người chơi cùng sở thích. Trận ghép tính điểm xếp hạng.",
+    "start": "Tìm trận",
+    "starting": "Đang vào hàng chờ…",
+    "searching": "Đang tìm người chơi",
+    "waited": "Đã chờ",
+    "players": "Trong phòng: {{n}}/{{max}} người",
+    "found": "Đã có đối thủ! Trận bắt đầu sau",
+    "cancel": "Hủy tìm trận",
+    "alone": {
+      "title": "Chưa có ai vào cùng bạn",
+      "description": "Bạn có thể đổi cách chơi, hoặc cứ ở lại chờ thêm.",
+      "solo": "Chuyển sang chơi đơn",
+      "invite": "Tạo phòng riêng và mời bạn",
+      "unranked": "Phòng riêng không tính điểm xếp hạng. Link mời sẽ được sao chép sau khi tạo phòng.",
+      "keepWaiting": "Hoặc cứ giữ nguyên, bạn vẫn đang trong hàng chờ."
+    },
+    "guest": {
+      "title": "Đăng nhập để ghép trận",
+      "description": "Ghép trận nhanh có điểm xếp hạng nên chỉ dành cho tài khoản đã đăng nhập. Đăng nhập rồi quay lại đây nhé.",
+      "browse": "Xem phòng công khai"
+    },
+    "errors": {
+      "notEnoughTracks": "Bộ nhạc này chưa đủ bài để ghép trận (thiếu {{missing}} bài). Hãy bỏ bớt bộ lọc hoặc chọn bộ khác.",
+      "unknown": "Chưa vào được hàng chờ. Hãy thử lại."
+    },
+    "leaving": "Đang rời hàng chờ… Nếu mất kết nối, việc rời sẽ hoàn tất khi kết nối lại.",
+    "left": "Bạn đã rời hàng chờ."
   }
 }

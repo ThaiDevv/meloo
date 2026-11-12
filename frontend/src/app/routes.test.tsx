@@ -18,8 +18,6 @@ function renderAt(path: string) {
 // Every route in .claude/skills/meloo-frontend/references/routes.md → ticket that replaces it.
 const routes: [path: string, ticket: string][] = [
   ['/daily', 'FE-DAILY-01'],
-  ['/rooms', 'FE-ROOM-03'],
-  ['/quick-match', 'FE-ROOM-03'],
   ['/admin', 'FE-ADM-01'],
   ['/admin/catalog', 'FE-ADM-01'],
   ['/admin/playlists', 'FE-ADM-01'],

@@ -1,9 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Navigate, useNavigate } from 'react-router-dom'
+import { useDailyScope } from '@/shared/daily'
 import { toast } from '@/shared/ui/toast-store'
 import {
-  DAILY_TODAY_KEY,
+  dailyTodayKey,
   DailyApiError,
   fetchDailyToday,
   isSignedOut,
@@ -27,6 +28,7 @@ function DailyScreen() {
   const { t } = useTranslation('daily')
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const scope = useDailyScope()
   const today = useDailyToday()
   const { start } = useDailyActions()
 
@@ -58,7 +60,7 @@ function DailyScreen() {
   const onStart = () => {
     start.mutate(undefined, {
       onSuccess: (round) => {
-        queryClient.setQueryData(DAILY_TODAY_KEY, {
+        queryClient.setQueryData(dailyTodayKey(scope), {
           ...data,
           challengeDate: round.challengeDate,
           status: 'IN_PROGRESS',
@@ -75,7 +77,7 @@ function DailyScreen() {
           // Already played today (another tab): show what the server has.
           fetchDailyToday().then(
             (fresh) => {
-              queryClient.setQueryData(DAILY_TODAY_KEY, fresh)
+              queryClient.setQueryData(dailyTodayKey(scope), fresh)
             },
             () => {
               toast({ title: t('errors.action'), tone: 'negative' })

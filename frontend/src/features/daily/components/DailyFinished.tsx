@@ -2,10 +2,10 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Share2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { RoundReveal } from '@/features/game-core'
-import { formatDayMonthYear } from '@/shared/daily'
+import { formatDayMonthYear, useDailyScope } from '@/shared/daily'
 import { Button } from '@/shared/ui/Button'
 import { toast } from '@/shared/ui/toast-store'
-import { DAILY_TODAY_KEY, useDailyResult, type DailyResult } from '../api/dailyApi'
+import { dailyTodayKey, useDailyResult, type DailyResult } from '../api/dailyApi'
 import { dailyShareText, shareDaily } from '../lib/share'
 import { toRoundResult } from '../lib/mapping'
 import { Countdown } from './Countdown'
@@ -18,6 +18,7 @@ import { StreakStats } from './StreakStats'
 export function DailyFinished({ result }: { result: DailyResult }) {
   const { t } = useTranslation('daily')
   const queryClient = useQueryClient()
+  const scope = useDailyScope()
   const shared = useDailyResult(result.challengeDate)
 
   const onShare = () => {
@@ -60,7 +61,7 @@ export function DailyFinished({ result }: { result: DailyResult }) {
           <Countdown
             nextResetAt={result.nextResetAt}
             onReached={() => {
-              void queryClient.invalidateQueries({ queryKey: DAILY_TODAY_KEY })
+              void queryClient.invalidateQueries({ queryKey: dailyTodayKey(scope) })
             }}
           />
           <Button onClick={onShare} disabled={!shared.data}>

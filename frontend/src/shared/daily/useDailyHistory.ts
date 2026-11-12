@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { apiClient } from '@/shared/api/client'
+import { useDailyScope } from './useDailyScope'
 import type { components } from '@/shared/api/schema.gen'
 
 export type DailyHistory = components['schemas']['DailyHistoryResponse']
 
-export const DAILY_HISTORY_KEY = ['daily', 'history'] as const
+export const dailyHistoryKey = (scope: string) => ['daily', scope, 'history'] as const
 
 /**
  * The player's solved days and streaks (`GET /daily/history`). The server counts the streaks and names
@@ -12,8 +13,9 @@ export const DAILY_HISTORY_KEY = ['daily', 'history'] as const
  * there is no session.
  */
 export function useDailyHistory(enabled = true) {
+  const scope = useDailyScope()
   return useQuery({
-    queryKey: DAILY_HISTORY_KEY,
+    queryKey: dailyHistoryKey(scope),
     enabled,
     staleTime: 60_000,
     queryFn: async (): Promise<DailyHistory> => {

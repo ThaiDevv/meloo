@@ -3,10 +3,10 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { GameRound, type GuessVerdict } from '@/features/game-core'
-import { DAILY_HISTORY_KEY } from '@/shared/daily'
+import { dailyHistoryKey, useDailyScope } from '@/shared/daily'
 import { toast } from '@/shared/ui/toast-store'
 import {
-  DAILY_TODAY_KEY,
+  dailyTodayKey,
   DailyApiError,
   fetchDailyToday,
   isSignedOut,
@@ -31,6 +31,7 @@ export function DailyPlay({ initial }: DailyPlayProps) {
   const { t } = useTranslation('daily')
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const scope = useDailyScope()
   const actions = useDailyActions()
   const [round, setRound] = useState(initial)
   const [verdict, setVerdict] = useState<GuessVerdict | null>(null)
@@ -40,7 +41,7 @@ export function DailyPlay({ initial }: DailyPlayProps) {
 
   /** The attempt is over: the page shows the result of the day. */
   const finish = (result: DailyResult) => {
-    queryClient.setQueryData<DailyToday>(DAILY_TODAY_KEY, (today) =>
+    queryClient.setQueryData<DailyToday>(dailyTodayKey(scope), (today) =>
       today
         ? {
             ...today,
@@ -52,14 +53,14 @@ export function DailyPlay({ initial }: DailyPlayProps) {
           }
         : today,
     )
-    void queryClient.invalidateQueries({ queryKey: DAILY_HISTORY_KEY })
+    void queryClient.invalidateQueries({ queryKey: dailyHistoryKey(scope) })
   }
 
   /** The screen and the server disagree (a double click, another tab, the ceiling passed): take the server's view. */
   const resync = () => {
     fetchDailyToday().then(
       (today) => {
-        queryClient.setQueryData(DAILY_TODAY_KEY, today)
+        queryClient.setQueryData(dailyTodayKey(scope), today)
         if (today.status === 'IN_PROGRESS' && today.round) setRound(today.round)
       },
       (error: unknown) => {

@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { apiClient } from '@/shared/api/client'
 import type { components } from '@/shared/api/schema.gen'
+import { useDailyScope } from '@/shared/daily'
 import { noteServerTime } from '../lib/clock'
 
 type Schemas = components['schemas']
@@ -10,7 +11,7 @@ export type DailyRoundState = Schemas['DailyRoundState']
 export type DailyResult = Schemas['DailyResult']
 export type DailyGuessResponse = Schemas['DailyGuessResponse']
 
-export const DAILY_TODAY_KEY = ['daily', 'today'] as const
+export const dailyTodayKey = (scope: string) => ['daily', scope, 'today'] as const
 
 /** A failed call, with the HTTP status and the problem `code` when the server sent one. */
 export class DailyApiError extends Error {
@@ -43,10 +44,14 @@ export async function fetchDailyToday(): Promise<DailyToday> {
 
 /** Today's state for this player: not started, in progress (with the open round) or finished (with the result). */
 export function useDailyToday() {
+  const scope = useDailyScope()
   return useQuery({
-    queryKey: DAILY_TODAY_KEY,
-    // The page keeps its own copy once play starts; a refetch must not rewind it.
+    queryKey: dailyTodayKey(scope),
+    // The page keeps its own copy while it is open (a refetch must not rewind it), and nothing
+    // survives leaving it: coming back asks the server again, so the level and the clock are never
+    // an old snapshot (BR-25).
     staleTime: Infinity,
+    gcTime: 0,
     refetchOnWindowFocus: false,
     retry: false,
     queryFn: fetchDailyToday,
@@ -55,9 +60,11 @@ export function useDailyToday() {
 
 /** The finished result of a day, with the five level slots the share text is built from (BR-25). */
 export function useDailyResult(date: string) {
+  const scope = useDailyScope()
   return useQuery({
-    queryKey: ['daily', 'result', date],
+    queryKey: ['daily', scope, 'result', date],
     staleTime: Infinity,
+    gcTime: 0,
     retry: false,
     queryFn: async () => {
       const { data, error, response } = await apiClient.GET('/api/v1/daily/result', {

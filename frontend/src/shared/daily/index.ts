@@ -1,2 +1,3 @@
-export { DAILY_HISTORY_KEY, useDailyHistory, type DailyHistory } from './useDailyHistory'
+export { dailyHistoryKey, useDailyHistory, type DailyHistory } from './useDailyHistory'
+export { useDailyScope } from './useDailyScope'
 export * from './dates'

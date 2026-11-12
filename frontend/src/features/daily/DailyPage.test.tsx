@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { I18nextProvider } from 'react-i18next'
@@ -7,6 +7,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import i18n from '@/i18n'
 import { server } from '@/mocks/server'
+import { useAuthStore } from '@/shared/api/authStore'
 import { apiClient } from '@/shared/api/client'
 import { useToastStore } from '@/shared/ui/toast-store'
 import notStarted from '../../../../contracts/examples/daily/get-daily-today.not-started.200.json'
@@ -31,16 +32,24 @@ function renderPage() {
     ],
     { initialEntries: ['/daily'] },
   )
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <I18nextProvider i18n={i18n}>
-      <QueryClientProvider
-        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
-      >
+      <QueryClientProvider client={client}>
         <RouterProvider router={router} />
       </QueryClientProvider>
     </I18nextProvider>,
   )
-  return router
+  return Object.assign(router, { client })
+}
+
+function signInAs(id: string) {
+  act(() => {
+    useAuthStore.setState({
+      accessToken: 'token',
+      user: { id, kind: 'GUEST', role: 'USER', nickname: id, createdAt: '2026-10-29T00:00:00Z' },
+    })
+  })
 }
 
 async function typeAndGuess(user: ReturnType<typeof userEvent.setup>, trackId: string) {
@@ -57,6 +66,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   cleanup()
+  useAuthStore.getState().clear()
   vi.unstubAllGlobals()
 })
 
@@ -293,5 +303,70 @@ describe('DailyPage: sharing (BR-25)', () => {
         'Không chép được kết quả. Hãy thử lại.',
       )
     })
+  })
+})
+
+describe('DailyPage: whose data it shows', () => {
+  it("never shows the previous player's result to a new session in the same tab", async () => {
+    const user = userEvent.setup()
+    signInAs('player-a')
+    const router = renderPage()
+    await user.click(await screen.findByRole('button', { name: 'Bắt đầu' }))
+    await screen.findByTestId('round')
+    await typeAndGuess(user, ANSWER_ID)
+    await screen.findByRole('heading', { name: 'Bạn đã chơi hôm nay' })
+    expect(screen.getByText('Chúng Ta Của Hiện Tại')).toBeVisible()
+
+    // Log out, and a new guest arrives: the server has nothing for them yet.
+    server.use(http.get('*/api/v1/daily/today', () => HttpResponse.json(notStarted)))
+    signInAs('player-b')
+
+    expect(await screen.findByRole('button', { name: 'Bắt đầu' })).toBeVisible()
+    expect(screen.queryByText('Chúng Ta Của Hiện Tại')).not.toBeInTheDocument()
+    const keys = router.client
+      .getQueryCache()
+      .findAll({ queryKey: ['daily'] })
+      .map((query) => query.queryKey[1])
+    expect(keys.length).toBeGreaterThan(0)
+    expect(keys.every((key) => key === 'player-b')).toBe(true)
+  })
+
+  it('asks the server again when the player comes back, so the level and the clock are current', async () => {
+    const user = userEvent.setup()
+    signInAs('player-a')
+    const router = renderPage()
+    await user.click(await screen.findByRole('button', { name: 'Bắt đầu' }))
+    await screen.findByText('level 1')
+    await user.click(screen.getByRole('button', { name: 'stub-listen' }))
+    await screen.findByText('level 2')
+
+    await act(async () => {
+      await router.navigate('/start')
+    })
+    await screen.findByText('start page')
+    await act(async () => {
+      await router.navigate('/daily')
+    })
+
+    // Not the snapshot taken when the attempt started (level 1).
+    expect(await screen.findByText('level 2')).toBeVisible()
+    expect(screen.queryByText('level 1')).not.toBeInTheDocument()
+  })
+
+  it('shows the finished screen when the attempt ran out while the player was away', async () => {
+    const user = userEvent.setup()
+    signInAs('player-a')
+    const router = renderPage()
+    await user.click(await screen.findByRole('button', { name: 'Bắt đầu' }))
+    await screen.findByTestId('round')
+    await act(async () => {
+      await router.navigate('/start')
+    })
+    await screen.findByText('start page')
+    server.use(http.get('*/api/v1/daily/today', () => HttpResponse.json(solved)))
+    await act(async () => {
+      await router.navigate('/daily')
+    })
+    expect(await screen.findByRole('heading', { name: 'Bạn đã chơi hôm nay' })).toBeVisible()
   })
 })

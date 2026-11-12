@@ -33,11 +33,13 @@ describe('HomePage', () => {
       'href',
       '/rooms/new',
     )
-    for (const title of ['Thử thách ngày', 'Ghép trận nhanh']) {
-      expect(within(modes).getByText(title)).toBeInTheDocument()
-      expect(within(modes).queryByRole('link', { name: new RegExp(title) })).not.toBeInTheDocument()
-    }
-    expect(within(modes).getAllByText('Sắp có')).toHaveLength(2)
+    expect(within(modes).getByRole('link', { name: /Ghép trận nhanh/ })).toHaveAttribute(
+      'href',
+      '/quick-match',
+    )
+    expect(within(modes).getByText('Thử thách ngày')).toBeInTheDocument()
+    expect(within(modes).queryByRole('link', { name: /Thử thách ngày/ })).not.toBeInTheDocument()
+    expect(within(modes).getAllByText('Sắp có')).toHaveLength(1)
   })
 
   it('shows the five listening levels with the base score of each (BR-01, BR-02)', () => {
@@ -76,11 +78,12 @@ describe('HomePage', () => {
     for (const counter of container.querySelectorAll('.mh-roll')) {
       expect(counter.closest('[aria-hidden="true"]')).not.toBeNull()
     }
-    // Only the three real links are focusable: the hero action, the solo tile, and the room entry.
+    // Only the real links are focusable: the hero action, the solo tile, the room entry and quick match.
     expect(screen.getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
       '/solo',
       '/solo',
       '/rooms/new',
+      '/quick-match',
     ])
   })
 
@@ -166,6 +169,6 @@ describe('HomePage', () => {
       'href',
       '/rooms/new',
     )
-    expect(screen.getAllByText('Coming soon')).toHaveLength(2)
+    expect(screen.getAllByText('Coming soon')).toHaveLength(1)
   })
 })

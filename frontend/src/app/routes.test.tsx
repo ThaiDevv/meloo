@@ -26,9 +26,6 @@ const routes: [path: string, ticket: string][] = [
   ['/admin/users', 'FE-ADM-02'],
   ['/admin/moderation', 'FE-ADM-02'],
   ['/admin/audit', 'FE-ADM-02'],
-  ['/legal/privacy', 'LEG-01'],
-  ['/legal/terms', 'LEG-01'],
-  ['/legal/data-deletion', 'LEG-01'],
 ]
 
 describe('app routes', () => {
@@ -40,6 +37,17 @@ describe('app routes', () => {
     renderAt(path)
     const placeholder = await screen.findByTestId('placeholder')
     expect(placeholder).toHaveTextContent(ticket)
+  })
+
+  it.each([
+    ['/legal/privacy', 'Chính sách quyền riêng tư'],
+    ['/legal/terms', 'Điều khoản sử dụng'],
+    ['/legal/data-deletion', 'Hướng dẫn xóa dữ liệu'],
+  ])('serves %s without a session', async (path, title) => {
+    useSessionStore.getState().setRole(null)
+    renderAt(path)
+    expect(await screen.findByRole('heading', { level: 1, name: title })).toBeInTheDocument()
+    expect(screen.queryByTestId('placeholder')).not.toBeInTheDocument()
   })
 
   it('serves the home page at / and the solo setup at /solo', async () => {

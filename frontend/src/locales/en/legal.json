@@ -1,3 +1,70 @@
 {
-  "title": "Legal"
+  "title": "Legal",
+  "updated": "Updated on 12 November 2026",
+  "navigation": "Legal pages",
+  "contact": {
+    "title": "Contact and data requests",
+    "body": "Meloo is operated by Tran Van Thai as an academic project. Send questions or data requests to the email below. We process requests within 30 days. Do not send passwords, sign-in codes or tokens.",
+    "email": "tranvanthai20062@gmail.com"
+  },
+  "privacy": {
+    "title": "Privacy policy",
+    "intro": "This policy explains how Meloo processes data when you play as a guest or sign in, your choices and how to contact us.",
+    "collection": {
+      "title": "Data we collect",
+      "body": "Meloo stores a player ID, nickname, account type, creation time and last activity time. When you sign in with Google, we receive a provider identifier and an email if provided; we do not receive your Google password. We store match history, guesses, scores, statistics, badges and daily challenge results. When you use rooms and chat, we also record messages, abuse reports and moderation actions."
+    },
+    "purpose": {
+      "title": "Purpose and storage on your device",
+      "body": "We use data to authenticate you, maintain sessions, show progress and rankings, merge guest data on sign-in, ensure fair play and handle abuse. Session cookies and authentication information maintain sign-in; your language choice is saved in your browser. Clearing cookies or browser data may remove access to a guest session, but does not delete server data."
+    },
+    "storage": {
+      "title": "How long data is kept",
+      "body": "Meloo commits to deleting guest data after 30 days of inactivity. Automated cleanup is awaiting implementation alongside account deletion; until then, email us to have a request processed within 30 days. Account data is kept to provide history and progress until the account is deleted; Meloo has not yet set separate retention periods for each type of log or backup. We do not store music files on our servers: previews are streamed through from the provider."
+    },
+    "sharing": {
+      "title": "Visibility and service providers",
+      "body": "Other players may see your nickname, score and rank in rooms and leaderboards; messages are sent to people in the room and administrators review reported content. Google handles sign-in under its own policies. Music previews come from the music provider; hosting and operational infrastructure process data needed to provide Meloo. Facebook applies only when that sign-in option is enabled."
+    },
+    "rights": {
+      "title": "Your rights and choices",
+      "body": "You can request access to, correction or deletion of your data and raise concerns about its processing by email. Include your nickname and sign-in email, if any, so we can verify ownership. You can stop using the service at any time. The data deletion instructions explain how to request deletion while self-service deletion is unavailable."
+    }
+  },
+  "terms": {
+    "title": "Terms of use",
+    "intro": "Meloo is a non-commercial academic song-guessing game. These terms describe participation and responsibilities when using the service.",
+    "service": {
+      "title": "Playing the game",
+      "body": "You can play solo or join player-created rooms as a guest. Quick matchmaking and rank points require sign-in. The server determines answers, scores and time; results depend on data accepted by the server."
+    },
+    "fairPlay": {
+      "title": "Fair play and respect",
+      "body": "Do not exploit bugs, automate cheating, obtain answers before a round ends, harass others, distribute abusive content or disclose other people’s private data. Do not send sensitive information in chat. Administrators may act on reports and lock players who violate the rules, with a reason."
+    },
+    "music": {
+      "title": "Music and ownership",
+      "body": "Songs, recordings and artwork belong to their respective owners. Meloo only streams previews through for gameplay, does not store music files on its servers and does not offer music downloads. Access to Meloo does not grant you permission to copy or redistribute a provider’s content."
+    },
+    "availability": {
+      "title": "Availability and changes",
+      "body": "This is an experimental service; interruptions may occur and the song catalog may change depending on the provider. We update the revision date on these pages when content changes. You can contact us with questions, or stop using the service and request data deletion."
+    }
+  },
+  "dataDeletion": {
+    "title": "Data deletion instructions",
+    "intro": "Self-service account deletion is not available yet. You can email a request even if you can no longer sign in; signing out or unlinking Google/Facebook does not replace deletion of data held by Meloo.",
+    "request": {
+      "title": "Send a deletion request",
+      "body": "Email the contact address below with the subject “Meloo data deletion request”. Include your nickname, sign-in email and the data you want deleted. For a guest session, include your nickname and any session information you still have; do not send tokens, cookies or passwords. Clearing browser data only removes data on your device, not data stored by Meloo."
+    },
+    "verification": {
+      "title": "Verification and timing",
+      "body": "We process requests within 30 days and reply by email. We may ask for additional information to verify ownership and avoid deleting the wrong account. If you have lost your guest session, describe the situation by email so we can help verify ownership."
+    },
+    "effect": {
+      "title": "Related data and outcome",
+      "body": "A request may cover the account, linked sign-in details and player-related data such as history, statistics, badges, messages and reports. We confirm the scope and outcome by email; this policy does not yet set a separate backup deletion period. Meloo commits to deleting guest data after 30 days of inactivity; automated cleanup is awaiting implementation. Revoking app access in Google/Facebook does not automatically delete Meloo data; send a separate request."
+    }
+  }
 }

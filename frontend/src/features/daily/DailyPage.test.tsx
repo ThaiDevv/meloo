@@ -128,9 +128,59 @@ describe('DailyPage: before the attempt', () => {
       expect(router.state.location.pathname).toBe('/start')
     })
   })
+
+  it('keeps a forbidden guest on the error screen instead of redirecting to start', async () => {
+    signInAs('forbidden-guest')
+    let calls = 0
+    server.use(
+      http.get('*/api/v1/daily/today', () => {
+        calls += 1
+        return HttpResponse.json({ code: 'FORBIDDEN' }, { status: 403 })
+      }),
+    )
+    const router = renderPage()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Chưa tải được thử thách ngày')
+    expect(router.state.location.pathname).toBe('/daily')
+    expect(useAuthStore.getState().user?.id).toBe('forbidden-guest')
+    expect(calls).toBe(1)
+
+    server.use(http.get('*/api/v1/daily/today', () => HttpResponse.json(notStarted)))
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Thử lại' }))
+    expect(await screen.findByRole('button', { name: 'Bắt đầu' })).toBeVisible()
+  })
+
+  it('keeps the session and offers retry when token refresh is temporarily unavailable', async () => {
+    signInAs('refresh-unavailable')
+    server.use(
+      http.get('*/api/v1/daily/today', () => new HttpResponse(null, { status: 401 })),
+      http.post('*/api/v1/auth/refresh', () => new HttpResponse(null, { status: 503 })),
+    )
+    const router = renderPage()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Chưa tải được thử thách ngày')
+    expect(router.state.location.pathname).toBe('/daily')
+    expect(useAuthStore.getState().user?.id).toBe('refresh-unavailable')
+  })
 })
 
 describe('DailyPage: playing the one attempt', () => {
+  it('keeps the intro when starting is forbidden without redirecting a valid guest', async () => {
+    signInAs('forbidden-start')
+    server.use(
+      http.post('*/api/v1/daily/today/start', () =>
+        HttpResponse.json({ code: 'FORBIDDEN' }, { status: 403 }),
+      ),
+    )
+    const router = renderPage()
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Bắt đầu' }))
+
+    await waitFor(() => {
+      expect(useToastStore.getState().toasts.at(-1)?.tone).toBe('negative')
+    })
+    expect(router.state.location.pathname).toBe('/daily')
+    expect(screen.getByRole('button', { name: 'Bắt đầu' })).toBeEnabled()
+  })
   it('plays the song of the day with game-core: listen more, guess wrong, guess right', async () => {
     const user = userEvent.setup()
     renderPage()

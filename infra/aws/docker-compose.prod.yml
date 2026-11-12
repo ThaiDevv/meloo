@@ -12,6 +12,14 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - MELOO_CORS_ALLOWED_ORIGINS=${MELOO_CORS_ALLOWED_ORIGINS}
       - MELOO_JWT_SECRET=${MELOO_JWT_SECRET}
+      # Enable only after configuring the Google web client on EC2 (MEL-113).
+      - MELOO_GOOGLE_OAUTH_ENABLED=${MELOO_GOOGLE_OAUTH_ENABLED:-false}
+      - MELOO_GOOGLE_CLIENT_ID=${MELOO_GOOGLE_CLIENT_ID:-}
+      - MELOO_GOOGLE_CLIENT_SECRET=${MELOO_GOOGLE_CLIENT_SECRET:-}
+      - MELOO_SPA_ORIGIN=${MELOO_SPA_ORIGIN:-https://meloo.id.vn}
+      # Caddy terminates HTTPS; OAuth callback URLs must use the public origin.
+      - SERVER_FORWARD_HEADERS_STRATEGY=native
+      - SERVER_TOMCAT_REMOTEIP_HOST_HEADER=X-Forwarded-Host
       - MELOO_AUDIO_HMAC_SECRET=${MELOO_AUDIO_HMAC_SECRET:?Thiếu MELOO_AUDIO_HMAC_SECRET trong .env}
       # EC2 t3.micro chỉ có 1 GB RAM: JVM dùng tối đa 60% RAM, thoát an toàn khi OOM
       - JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=60 -XX:+ExitOnOutOfMemoryError

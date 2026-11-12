@@ -1,3 +1,42 @@
 {
-  "title": "Thử thách ngày"
+  "title": "Thử thách ngày",
+  "loading": "Đang tải thử thách…",
+  "intro": {
+    "body": "Mỗi ngày một bài chung cho mọi người, và bạn chỉ có một lượt.",
+    "rules": "Mỗi lượt có tối đa 5 phút. Hết giờ mà chưa đoán ra thì tính là chưa đoán ra. Bài mới mở lúc 00:00 giờ Việt Nam.",
+    "start": "Bắt đầu"
+  },
+  "streak": {
+    "current": "Chuỗi hiện tại",
+    "longest": "Chuỗi dài nhất",
+    "days_one": "{{count}} ngày",
+    "days_other": "{{count}} ngày"
+  },
+  "finished": {
+    "heading": "Bạn đã chơi hôm nay",
+    "progress": "Chuỗi ngày và bài mới",
+    "nextIn": "Bài mới sau",
+    "rank": "Hạng hôm nay: {{rank}}"
+  },
+  "share": {
+    "button": "Chia sẻ kết quả",
+    "title": "Meloo · Thử thách ngày",
+    "headline": "Meloo · {{date}}",
+    "correct": "Đúng ở {{label}}",
+    "unsolved": "Chưa đoán ra",
+    "copied": "Đã chép kết quả vào bộ nhớ tạm.",
+    "failed": "Không chép được kết quả. Hãy thử lại.",
+    "loadFailed": "Chưa tải được kết quả để chia sẻ. Hãy tải lại trang."
+  },
+  "notAvailable": {
+    "title": "Hôm nay chưa có bài",
+    "body": "Thử thách ngày chưa sẵn sàng. Bạn quay lại sau nhé.",
+    "action": "Về trang chủ"
+  },
+  "errors": {
+    "loadTitle": "Chưa tải được thử thách ngày",
+    "loadBody": "Có lỗi khi tải. Thử lại nhé.",
+    "action": "Chưa gửi được. Hãy thử lại.",
+    "rateLimited": "Bạn thao tác hơi nhanh. Đợi một chút rồi thử lại."
+  }
 }

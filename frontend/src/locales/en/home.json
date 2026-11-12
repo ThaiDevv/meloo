@@ -64,7 +64,15 @@
     "body": "Any day you guess the daily challenge lights up. The faster you guess it, the brighter it glows.",
     "late": "30s level",
     "early": "2s level",
-    "none": "Not guessed"
+    "none": "Not guessed",
+    "tooltip": "{{date}}: Right at {{label}}",
+    "summary_one": "You guessed it on {{count}} day. Current streak: {{current}}. Longest: {{longest}}.",
+    "summary_other": "You guessed it on {{count}} days. Current streak: {{current}}. Longest: {{longest}}.",
+    "loading": "Loading the calendar…",
+    "error": {
+      "title": "Couldn't load the calendar",
+      "body": "The rest of the page still works. Try loading the calendar again."
+    }
   },
   "demo": {
     "round": "Round 3/10",

@@ -9,22 +9,7 @@ import { HOME_MODES, type HomeMode } from './modes'
 import { Reveal } from './Reveal'
 import { RoundDemo } from './RoundDemo'
 import { ScoreboardBand } from './ScoreboardBand'
-import { StreakGrid, type StreakLevel } from './StreakGrid'
-
-/**
- * A made-up history for the picture only, the same on every visit: no real player's turns exist on
- * the home page yet (the daily challenge ships later). FE-DAILY-01 replaces this with real days.
- */
-function sampleLevel(date: Date): StreakLevel {
-  const day = Math.floor(date.getTime() / 86_400_000)
-  const roll = ((day * 2_654_435_761) >>> 0) % 100
-  if (roll < 58) return 0
-  if (roll < 70) return 1
-  if (roll < 82) return 2
-  if (roll < 91) return 3
-  if (roll < 97) return 4
-  return 5
-}
+import { StreakSection } from './StreakSection'
 
 function ModeText({ id }: { id: HomeMode['id'] }) {
   const { t } = useTranslation('home')
@@ -139,35 +124,7 @@ export function HomePage() {
           </div>
         </section>
 
-        <section aria-labelledby="streak-title" className="pb-20 lg:pb-32">
-          <Reveal className="flex flex-wrap items-center gap-3">
-            <h2
-              id="streak-title"
-              className="font-display text-3xl font-extrabold tracking-[-0.02em] sm:text-4xl"
-            >
-              {t('streak.heading')}
-            </h2>
-            <Badge>{t('streak.badge')}</Badge>
-          </Reveal>
-          <Reveal delay={80}>
-            <p className="mt-3 max-w-xl text-lg">{t('streak.body')}</p>
-          </Reveal>
-          <Reveal delay={160} className="mt-8 rounded-2xl bg-surface p-5 sm:p-6">
-            <StreakGrid levelOf={sampleLevel} />
-            <div
-              aria-hidden="true"
-              className="mt-5 flex flex-wrap items-center justify-end gap-x-3 gap-y-2 text-sm text-muted-foreground"
-            >
-              <span data-level={0} className="mh-cell size-3.5 rounded-[3px]" />
-              <span>{t('streak.none')}</span>
-              <span className="ml-2">{t('streak.late')}</span>
-              {[0, 1, 2, 3, 4, 5].map((level) => (
-                <span key={level} data-level={level} className="mh-cell size-3.5 rounded-[3px]" />
-              ))}
-              <span>{t('streak.early')}</span>
-            </div>
-          </Reveal>
-        </section>
+        <StreakSection />
 
         <section aria-labelledby="how-title" className="pb-24 lg:pb-36">
           <Reveal>

@@ -64,7 +64,15 @@
     "body": "Hôm nào đoán ra thử thách ngày, hôm đó sáng lên. Đoán càng nhanh, ô càng sáng.",
     "late": "Mốc 30s",
     "early": "Mốc 2s",
-    "none": "Chưa đoán ra"
+    "none": "Chưa đoán ra",
+    "tooltip": "{{date}}: Đúng ở {{label}}",
+    "loading": "Đang tải lịch…",
+    "error": {
+      "title": "Chưa tải được lịch",
+      "body": "Phần còn lại của trang vẫn dùng được. Thử tải lại lịch nhé."
+    },
+    "summary_one": "Bạn đã đoán ra {{count}} ngày, chuỗi hiện tại {{current}} ngày, dài nhất {{longest}} ngày.",
+    "summary_other": "Bạn đã đoán ra {{count}} ngày, chuỗi hiện tại {{current}} ngày, dài nhất {{longest}} ngày."
   },
   "demo": {
     "round": "Vòng 3/10",

@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import userEvent from '@testing-library/user-event'
@@ -9,9 +10,13 @@ import { HomePage } from './HomePage'
 function renderPage() {
   return render(
     <I18nextProvider i18n={i18n}>
-      <MemoryRouter>
-        <HomePage />
-      </MemoryRouter>
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
+        <MemoryRouter>
+          <HomePage />
+        </MemoryRouter>
+      </QueryClientProvider>
     </I18nextProvider>,
   )
 }
@@ -24,7 +29,7 @@ describe('HomePage', () => {
     expect(screen.getAllByRole('link', { name: 'Chơi đơn' })[0]).toHaveAttribute('href', '/solo')
   })
 
-  it('lists the four entries, with the unbuilt ones marked "Sắp có" and not clickable', () => {
+  it('lists the four entries, all of them links now that every mode has shipped', () => {
     renderPage()
 
     const modes = screen.getByRole('region', { name: 'Chọn cách chơi' })
@@ -33,13 +38,15 @@ describe('HomePage', () => {
       'href',
       '/rooms/new',
     )
+    expect(within(modes).getByRole('link', { name: /Thử thách ngày/ })).toHaveAttribute(
+      'href',
+      '/daily',
+    )
     expect(within(modes).getByRole('link', { name: /Ghép trận nhanh/ })).toHaveAttribute(
       'href',
       '/quick-match',
     )
-    expect(within(modes).getByText('Thử thách ngày')).toBeInTheDocument()
-    expect(within(modes).queryByRole('link', { name: /Thử thách ngày/ })).not.toBeInTheDocument()
-    expect(within(modes).getAllByText('Sắp có')).toHaveLength(1)
+    expect(within(modes).queryByText('Sắp có')).not.toBeInTheDocument()
   })
 
   it('shows the five listening levels with the base score of each (BR-01, BR-02)', () => {
@@ -78,10 +85,11 @@ describe('HomePage', () => {
     for (const counter of container.querySelectorAll('.mh-roll')) {
       expect(counter.closest('[aria-hidden="true"]')).not.toBeNull()
     }
-    // Only the real links are focusable: the hero action, the solo tile, the room entry and quick match.
+    // Only the real links are focusable: the hero action, the solo tile, and the daily, room and quick match entries.
     expect(screen.getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
       '/solo',
       '/solo',
+      '/daily',
       '/rooms/new',
       '/quick-match',
     ])
@@ -169,6 +177,6 @@ describe('HomePage', () => {
       'href',
       '/rooms/new',
     )
-    expect(screen.getAllByText('Coming soon')).toHaveLength(1)
+    expect(screen.queryByText('Coming soon')).not.toBeInTheDocument()
   })
 })

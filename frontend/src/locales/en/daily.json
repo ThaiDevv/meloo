@@ -1,3 +1,42 @@
 {
-  "title": "Daily challenge"
+  "title": "Daily challenge",
+  "loading": "Loading the challenge…",
+  "intro": {
+    "body": "One song a day, the same for everyone, and you get one attempt.",
+    "rules": "An attempt lasts 5 minutes at most. If time runs out before you guess it, it counts as not guessed. A new song opens at 00:00 Vietnam time.",
+    "start": "Start"
+  },
+  "streak": {
+    "current": "Current streak",
+    "longest": "Longest streak",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days"
+  },
+  "finished": {
+    "heading": "You played today",
+    "progress": "Streak and next song",
+    "nextIn": "Next song in",
+    "rank": "Today's rank: {{rank}}"
+  },
+  "share": {
+    "button": "Share result",
+    "title": "Meloo · Daily challenge",
+    "headline": "Meloo · {{date}}",
+    "correct": "Right at {{label}}",
+    "unsolved": "Not guessed",
+    "copied": "Result copied to the clipboard.",
+    "failed": "Couldn't copy the result. Please try again.",
+    "loadFailed": "Couldn't load the result to share. Reload the page."
+  },
+  "notAvailable": {
+    "title": "No song today",
+    "body": "The daily challenge isn't ready yet. Please come back later.",
+    "action": "Back to home"
+  },
+  "errors": {
+    "loadTitle": "Couldn't load the daily challenge",
+    "loadBody": "Something went wrong while loading. Please try again.",
+    "action": "That didn't go through. Please try again.",
+    "rateLimited": "You're going a bit fast. Wait a moment and try again."
+  }
 }

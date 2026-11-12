@@ -40,6 +40,15 @@ async function startSearch() {
   await screen.findByRole('heading', { name: /Đang tìm người chơi/ })
 }
 
+async function connectSocket() {
+  await waitFor(() => {
+    expect(kit.clients).toHaveLength(1)
+  })
+  act(() => {
+    kit.latest().connect()
+  })
+}
+
 function lobbyEvent(event: object) {
   act(() => {
     kit.latest().emit(LOBBY, { ...event, serverTime: SERVER_TIME })
@@ -160,6 +169,7 @@ describe('waiting 60 seconds alone (AC3)', () => {
     answerQuickMatch()
     vi.useFakeTimers({ shouldAdvanceTime: true })
     await startSearch()
+    await connectSocket()
     expect(screen.queryByText('Chưa có ai vào cùng bạn')).not.toBeInTheDocument()
     act(() => {
       vi.advanceTimersByTime(60_000)
@@ -219,5 +229,92 @@ describe('waiting 60 seconds alone (AC3)', () => {
       user: player({ userId: THIRD_ID, nickname: 'Third' }),
     })
     expect(screen.queryByText('Chưa có ai vào cùng bạn')).not.toBeInTheDocument()
+  })
+})
+
+describe('leaving the queue for real', () => {
+  it('sends the leave command before it creates the private room', async () => {
+    answerQuickMatch()
+    const order: string[] = []
+    server.use(
+      http.post('*/api/v1/rooms', () => {
+        order.push(`create(after ${String(kit.latest().commands('leave').length)} leave)`)
+        return HttpResponse.json(
+          quickMatchRoom({ code: 'PRV234', hostId: GUEST_ID, roomType: 'PRIVATE_ROOM' }),
+          { status: 201 },
+        )
+      }),
+    )
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    await startSearch()
+    await connectSocket()
+    act(() => {
+      vi.advanceTimersByTime(60_000)
+    })
+    await userEvent.click(screen.getByRole('button', { name: /Tạo phòng riêng và mời bạn/ }))
+    await screen.findByTestId('where')
+    expect(order).toEqual(['create(after 1 leave)'])
+  })
+
+  it('does not follow the match once the player chose to leave', async () => {
+    answerQuickMatch()
+    server.use(http.post('*/api/v1/rooms', () => new Promise<Response>(() => undefined)))
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    await startSearch()
+    await connectSocket()
+    act(() => {
+      vi.advanceTimersByTime(60_000)
+    })
+    await userEvent.click(screen.getByRole('button', { name: /Tạo phòng riêng và mời bạn/ }))
+    lobbyEvent({ type: 'MATCH_STARTING', countdownSeconds: 30 })
+    act(() => {
+      kit.latest().emit(ROUND, {
+        type: 'ROUND_PREPARE',
+        roundNo: 1,
+        totalRounds: 5,
+        serverTime: SERVER_TIME,
+      })
+    })
+    expect(screen.queryByTestId('where')).not.toBeInTheDocument()
+  })
+
+  it('waits for the connection before it says the player left', async () => {
+    answerQuickMatch()
+    await startSearch()
+    await connectSocket()
+    act(() => {
+      kit.latest().drop()
+    })
+    await userEvent.click(screen.getByRole('button', { name: 'Hủy tìm trận' }))
+    expect(kit.latest().commands('leave')).toEqual([])
+    expect(screen.getByText(/Đang rời hàng chờ/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Tìm trận' })).not.toBeInTheDocument()
+
+    act(() => {
+      kit.latest().connect()
+    })
+    expect(await screen.findByRole('button', { name: 'Tìm trận' })).toBeInTheDocument()
+    expect(kit.latest().commands('leave')).toHaveLength(1)
+  })
+})
+
+describe('a match that started without the live events (BR-14)', () => {
+  it('opens the match from a resync snapshot', async () => {
+    answerQuickMatch()
+    await startSearch()
+    await connectSocket()
+    act(() => {
+      kit.latest().emit('/user/queue/private', {
+        type: 'RESYNC_STATE',
+        room: quickMatchRoom({ status: 'PLAYING', currentRound: 1 }),
+        roomPhase: 'ROUND_IN_PROGRESS',
+        currentRound: null,
+        scores: [],
+        lastRoundAnswer: null,
+        lastRoundResults: null,
+        serverTime: SERVER_TIME,
+      })
+    })
+    expect(await screen.findByTestId('where')).toHaveTextContent(`play:/r/${ROOM_ID}/play`)
   })
 })

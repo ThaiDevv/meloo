@@ -271,6 +271,8 @@
     "errors": {
       "notEnoughTracks": "This music does not have enough tracks for a match ({{missing}} short). Remove some filters or pick another set.",
       "unknown": "Could not join the queue. Please try again."
-    }
+    },
+    "leaving": "Leaving the queue… If the connection dropped, leaving finishes once it is back.",
+    "left": "You have left the queue."
   }
 }

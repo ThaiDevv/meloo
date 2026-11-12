@@ -1,5 +1,5 @@
 import { Link2, Loader } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useRoomRealtime, useRoomStore } from '@/shared/realtime'
@@ -13,6 +13,8 @@ import { inviteLink } from '../../lobby/model/roomCode'
 import { failureOfError } from '../api/publicRoomsApi'
 import { failureText } from '../model/errorText'
 import { ALONE_HINT_AFTER_S, formatElapsed } from '../model/waiting'
+
+type Leaving = 'cancel' | 'solo' | 'invite'
 
 interface QueueScreenProps {
   /** The room matchmaking put the player in: they are already inside it. */
@@ -33,10 +35,9 @@ export function QueueScreen({ room: initialRoom, onLeft }: QueueScreenProps) {
   const stored = useRoomStore((state) => state.room)
   const countdown = useRoomStore((state) => state.countdown)
   const soloSuggestion = useRoomStore((state) => state.soloSuggestion)
-  const matchStarting = useRoomStore((state) => state.matchStarting)
-  const roundPrepareCount = useRoomStore((state) => state.roundPrepareCount)
   const [elapsed, setElapsed] = useState(0)
   const [failure, setFailure] = useState<string | null>(null)
+  const [leaving, setLeaving] = useState<Leaving | null>(null)
 
   const room = stored?.roomId === initialRoom.roomId ? stored : initialRoom
   const players = room.players.length
@@ -52,39 +53,30 @@ export function QueueScreen({ room: initialRoom, onLeft }: QueueScreenProps) {
     }
   }, [])
 
-  // The first round is prepared once the countdown ran out: the match page takes over from here.
-  const seenRounds = useRef(roundPrepareCount)
+  // The match page takes over once the server says the match runs. This follows the room's phase, not
+  // only the live events, so a snapshot after a reconnect (BR-14) or an event missed before the
+  // subscription still gets the player there. A player who chose to leave is not taken along.
+  const phase = useRoomStore((state) => state.phase)
+  const running =
+    phase === 'ROUND_PREPARE' ||
+    phase === 'ROUND_IN_PROGRESS' ||
+    phase === 'ROUND_REVEAL' ||
+    phase === 'FINISHED' ||
+    (stored?.roomId === initialRoom.roomId && stored.status === 'PLAYING')
   useEffect(() => {
-    if (roundPrepareCount > seenRounds.current && matchStarting) {
-      void navigate(`/r/${room.roomId}/play`, { state: { room } })
-    }
-    seenRounds.current = roundPrepareCount
-  }, [roundPrepareCount, matchStarting, navigate, room])
+    if (running && leaving === null) void navigate(`/r/${room.roomId}/play`, { state: { room } })
+  }, [running, leaving, navigate, room])
 
-  const leaveQueue = () => {
-    send('leave', {})
-    useRoomStore.getState().reset()
-  }
-  const cancel = () => {
-    leaveQueue()
-    onLeft()
-  }
-  const playSolo = () => {
-    leaveQueue()
-    void navigate('/solo')
-  }
-  const inviteFriends = () => {
-    setFailure(null)
+  const createPrivate = () => {
     createRoom.mutate(
       {
         roomType: 'PRIVATE_ROOM',
-        roundCount: room.roundCount,
-        maxPlayers: room.maxPlayers,
+        roundCount: initialRoom.roundCount,
+        maxPlayers: initialRoom.maxPlayers,
         ...musicRequest(selectionOf(room)),
       },
       {
         onSuccess: (privateRoom) => {
-          leaveQueue()
           const code = privateRoom.code ?? privateRoom.roomId
           if (privateRoom.code) {
             void navigator.clipboard.writeText(inviteLink(privateRoom.code)).then(
@@ -108,8 +100,42 @@ export function QueueScreen({ room: initialRoom, onLeft }: QueueScreenProps) {
       },
     )
   }
+  // Leaving is only done once the "leave" command went out: while the socket is down it waits for the
+  // link to come back instead of pretending the player left.
+  const [leftQueue, setLeftQueue] = useState(false)
+  useEffect(() => {
+    if (leaving === null || leftQueue) return
+    // The result of sending to the socket (an external system) is what tells that the player left.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (send('leave', {})) setLeftQueue(true)
+  }, [leaving, leftQueue, link, send])
+  useEffect(() => {
+    if (!leftQueue || leaving === null) return
+    useRoomStore.getState().reset()
+    if (leaving === 'cancel') onLeft()
+    else if (leaving === 'solo') void navigate('/solo')
+    else createPrivate()
+    // The action of a finished leave runs once, when the leave completes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leftQueue])
 
-  const showHint = alone && (elapsed >= ALONE_HINT_AFTER_S || soloSuggestion !== null)
+  const leave = (then: Leaving) => {
+    if (leftQueue) {
+      // Already out of the queue (a private room failed to open): the choice just goes on from here.
+      if (then === 'cancel') onLeft()
+      else if (then === 'solo') void navigate('/solo')
+      else {
+        setFailure(null)
+        createPrivate()
+      }
+      return
+    }
+    if (leaving === null) setLeaving(then)
+  }
+
+  const busy = leaving !== null && (!leftQueue || createRoom.isPending)
+  const showHint =
+    leaving === 'invite' || (alone && (elapsed >= ALONE_HINT_AFTER_S || soloSuggestion !== null))
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-10 lg:py-14">
@@ -159,10 +185,18 @@ export function QueueScreen({ room: initialRoom, onLeft }: QueueScreenProps) {
         <Button
           variant="outline"
           className="bg-transparent text-primary-foreground focus-visible:outline-primary-foreground"
-          onClick={cancel}
+          disabled={busy}
+          onClick={() => {
+            leave('cancel')
+          }}
         >
           {t('quick.cancel')}
         </Button>
+        {leaving !== null ? (
+          <p role="status" className="text-sm opacity-80">
+            {leftQueue ? t('quick.left') : t('quick.leaving')}
+          </p>
+        ) : null}
       </section>
 
       {showHint ? (
@@ -175,8 +209,21 @@ export function QueueScreen({ room: initialRoom, onLeft }: QueueScreenProps) {
           </h2>
           <p className="text-sm text-muted-foreground">{t('quick.alone.description')}</p>
           <div className="flex flex-wrap gap-3">
-            <Button onClick={playSolo}>{t('quick.alone.solo')}</Button>
-            <Button variant="outline" disabled={createRoom.isPending} onClick={inviteFriends}>
+            <Button
+              disabled={busy}
+              onClick={() => {
+                leave('solo')
+              }}
+            >
+              {t('quick.alone.solo')}
+            </Button>
+            <Button
+              variant="outline"
+              disabled={busy}
+              onClick={() => {
+                leave('invite')
+              }}
+            >
               <Link2 aria-hidden="true" className="size-4" />
               {createRoom.isPending ? t('create.submitting') : t('quick.alone.invite')}
             </Button>

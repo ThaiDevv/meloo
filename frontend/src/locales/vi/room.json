@@ -271,6 +271,8 @@
     "errors": {
       "notEnoughTracks": "Bộ nhạc này chưa đủ bài để ghép trận (thiếu {{missing}} bài). Hãy bỏ bớt bộ lọc hoặc chọn bộ khác.",
       "unknown": "Chưa vào được hàng chờ. Hãy thử lại."
-    }
+    },
+    "leaving": "Đang rời hàng chờ… Nếu mất kết nối, việc rời sẽ hoàn tất khi kết nối lại.",
+    "left": "Bạn đã rời hàng chờ."
   }
 }

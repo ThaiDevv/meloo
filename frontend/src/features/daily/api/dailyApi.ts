@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { apiClient } from '@/shared/api/client'
+import { getAccessToken } from '@/shared/api/authStore'
 import type { components } from '@/shared/api/schema.gen'
 import { useDailyScope } from '@/shared/daily'
 import { noteServerTime } from '../lib/clock'
@@ -32,8 +33,9 @@ export class DailyApiError extends Error {
   }
 }
 
+/** A 403 denies this operation, not the session. A failed refresh may also leave a valid session. */
 export const isSignedOut = (error: unknown) =>
-  error instanceof DailyApiError && (error.status === 401 || error.status === 403)
+  error instanceof DailyApiError && error.status === 401 && getAccessToken() === null
 
 export async function fetchDailyToday(): Promise<DailyToday> {
   const { data, error, response } = await apiClient.GET('/api/v1/daily/today')

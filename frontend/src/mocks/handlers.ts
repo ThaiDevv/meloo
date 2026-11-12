@@ -1,4 +1,5 @@
 import { http, HttpResponse } from 'msw'
+import { dailyHandlers } from '@/features/daily/mocks'
 import { authHandlers } from '@/features/auth/mocks'
 import { leaderboardHandlers } from '@/features/leaderboard/mocks'
 import { profileHandlers } from '@/features/profile/mocks'
@@ -21,6 +22,7 @@ export const handlers = [
   ...roomHandlers,
   ...profileHandlers,
   ...leaderboardHandlers,
+  ...dailyHandlers,
 ]
 
 // MSW cannot fake a WebSocket, so mock mode swaps the STOMP client for a pretend broker.

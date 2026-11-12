@@ -2,6 +2,7 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { startOAuth } from '@/features/auth/social/oauthUrl'
 import { server } from '@/mocks/server'
 import { useRoomStore } from '@/shared/realtime'
 import { installFakeStomp, type FakeStompKit } from '@/shared/realtime/testing/fakeStomp'
@@ -15,6 +16,8 @@ import {
 } from '@/shared/realtime/testing/fixtures'
 import { useToastStore } from '@/shared/ui/toast-store'
 import { renderPublic, signInAs, signOutAll } from './testing'
+
+vi.mock('@/features/auth/social/oauthUrl', () => ({ startOAuth: vi.fn() }))
 
 const LOBBY = `/topic/rooms/${ROOM_ID}/lobby`
 const ROUND = `/topic/rooms/${ROOM_ID}/round`
@@ -84,6 +87,22 @@ describe('entering the queue (AC2)', () => {
     renderPublic('/quick-match')
     expect(await screen.findByTestId('quick-guest-invite')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Tìm trận' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Ghép trận nhanh' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Đăng nhập bằng Google' })).toBeEnabled()
+    await userEvent.click(screen.getByRole('link', { name: 'Xem phòng công khai' }))
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Phòng công khai' }),
+    ).toBeInTheDocument()
+  })
+
+  it('starts OAuth from the signed-out invitation and returns to quick match', async () => {
+    signOutAll()
+    renderPublic('/quick-match')
+    const google = await screen.findByRole('button', { name: 'Đăng nhập bằng Google' })
+    await userEvent.click(google)
+    expect(startOAuth).toHaveBeenCalledWith('google', { mode: 'login', returnTo: '/quick-match' })
+    expect(google).toBeDisabled()
+    expect(google).toHaveTextContent('Đang chuyển hướng')
   })
 
   it('explains when the music has too few tracks', async () => {

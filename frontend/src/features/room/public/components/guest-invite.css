@@ -1,0 +1,50 @@
+/* The grooves and centre label echo a record without implying a live match or audio control. */
+.quick-guest-disc {
+  display: grid;
+  width: 15rem;
+  aspect-ratio: 1;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--control);
+  background: var(--background);
+  position: relative;
+  isolation: isolate;
+}
+
+.quick-guest-disc::before,
+.quick-guest-disc::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  z-index: -1;
+}
+
+.quick-guest-disc::before {
+  inset: 12%;
+  border: 1px solid var(--border);
+  outline: 1px solid var(--border);
+  outline-offset: 12px;
+}
+
+.quick-guest-disc::after {
+  inset: 33%;
+  background: var(--primary);
+}
+
+/* Keep the shared OAuth behaviour; emphasis belongs only to this invitation. */
+.quick-guest-auth button {
+  min-height: 3.25rem;
+  height: auto;
+  padding-block: 0.75rem;
+  white-space: normal;
+}
+
+.quick-guest-auth [data-testid='btn-login-google'] {
+  background: var(--foreground);
+  color: var(--background);
+  border-color: transparent;
+}
+
+.quick-guest-auth [data-testid='btn-login-google']:hover {
+  opacity: 0.9;
+}

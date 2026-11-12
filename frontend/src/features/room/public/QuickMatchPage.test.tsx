@@ -318,3 +318,22 @@ describe('a match that started without the live events (BR-14)', () => {
     expect(await screen.findByTestId('where')).toHaveTextContent(`play:/r/${ROOM_ID}/play`)
   })
 })
+
+describe('a store that still holds the previous match', () => {
+  it('stays in the queue of a new room', async () => {
+    answerQuickMatch()
+    // The finished match A is still in the shared store when the player queues for room B.
+    useRoomStore.getState().open('previous-room', quickMatchRoom({ roomId: 'previous-room' }))
+    act(() => {
+      useRoomStore.getState().receive({
+        type: 'MATCH_FINISHED',
+        serverTime: SERVER_TIME,
+      } as never)
+    })
+    expect(useRoomStore.getState().phase).toBe('FINISHED')
+
+    await startSearch()
+    expect(screen.queryByTestId('where')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Hủy tìm trận' })).toBeInTheDocument()
+  })
+})

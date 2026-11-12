@@ -56,7 +56,11 @@ export function QueueScreen({ room: initialRoom, onLeft }: QueueScreenProps) {
   // The match page takes over once the server says the match runs. This follows the room's phase, not
   // only the live events, so a snapshot after a reconnect (BR-14) or an event missed before the
   // subscription still gets the player there. A player who chose to leave is not taken along.
-  const phase = useRoomStore((state) => state.phase)
+  // The store is shared by every room: its phase only counts while it holds this very room, or the
+  // end of a previous match would send the player of a new queue straight to a match page.
+  const phase = useRoomStore((state) =>
+    state.roomId === initialRoom.roomId ? state.phase : 'LOBBY',
+  )
   const running =
     phase === 'ROUND_PREPARE' ||
     phase === 'ROUND_IN_PROGRESS' ||

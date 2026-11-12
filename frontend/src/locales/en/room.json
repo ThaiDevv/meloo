@@ -227,5 +227,50 @@
       "points": "{{n}} rank points",
       "profile": "See your rank points on your profile"
     }
+  },
+  "public": {
+    "title": "Public rooms",
+    "intro": "Join a room that is waiting for players, or let the game match you with strangers in one tap.",
+    "quickMatch": "Quick match",
+    "create": "Create room",
+    "waiting": "Rooms waiting for players",
+    "loading": "Loading rooms…",
+    "host": "Host {{name}}",
+    "players": "{{n}}/{{max}} players",
+    "full": "Full",
+    "join": "Join",
+    "joinNamed": "Join {{name}}'s room",
+    "empty": {
+      "title": "No room is waiting right now",
+      "description": "Create a public room, or try quick match to meet other players."
+    }
+  },
+  "quick": {
+    "title": "Quick match",
+    "intro": "Pick the music and the game pairs you with other players. Matched games count for your rank.",
+    "start": "Find a match",
+    "starting": "Joining the queue…",
+    "searching": "Looking for players",
+    "waited": "Waited",
+    "players": "In the room: {{n}}/{{max}} players",
+    "found": "Opponent found! The match starts in",
+    "cancel": "Cancel search",
+    "alone": {
+      "title": "No one has joined you yet",
+      "description": "You can play another way, or just keep waiting.",
+      "solo": "Switch to solo",
+      "invite": "Create a private room and invite friends",
+      "unranked": "Private rooms do not count for rank. The invite link is copied once the room is created.",
+      "keepWaiting": "Or stay put, you are still in the queue."
+    },
+    "guest": {
+      "title": "Sign in to find a match",
+      "description": "Quick match counts for rank, so it is only for signed-in accounts. Sign in, then come back here.",
+      "browse": "Browse public rooms"
+    },
+    "errors": {
+      "notEnoughTracks": "This music does not have enough tracks for a match ({{missing}} short). Remove some filters or pick another set.",
+      "unknown": "Could not join the queue. Please try again."
+    }
   }
 }

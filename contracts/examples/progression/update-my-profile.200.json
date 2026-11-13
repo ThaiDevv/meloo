@@ -5,6 +5,8 @@
   "nickname": "MinhVPop",
   "email": "minh.nhac@example.com",
   "avatarUrl": "https://lh3.googleusercontent.com/a/ACg8ocSampleAvatarUrl",
+  "avatarId": "piano",
+  "profileCompleted": true,
   "rankPoints": 1450,
   "xp": 3280,
   "linkedProviders": ["GOOGLE"],

@@ -9,6 +9,8 @@
     "nickname": "MinhNhac",
     "email": "minh.nhac@example.com",
     "avatarUrl": "https://lh3.googleusercontent.com/a/ACg8ocSampleAvatarUrl",
+    "avatarId": "piano",
+    "profileCompleted": true,
     "rankPoints": 1450,
     "linkedProviders": ["GOOGLE", "FACEBOOK"],
     "createdAt": "2026-10-20T09:15:00Z"

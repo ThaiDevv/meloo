@@ -190,7 +190,9 @@ export interface paths {
         };
         /**
          * Get the current user
-         * @description Any signed-in user, guest or registered.
+         * @description Any signed-in user, guest or registered. Returns current session user details including `profileCompleted`
+         *     and `avatarId` (CT-04, BE-ID-04, FE-AUTH-04). If `profileCompleted` is false (newly registered OAuth account),
+         *     the frontend displays the initial nickname and avatar onboarding dialog before routing to the destination.
          */
         get: operations["getMe"];
         put?: never;
@@ -587,8 +589,8 @@ export interface paths {
         /**
          * Get the current player's profile
          * @description Any signed-in user (guest or registered, BR-20). Returns full profile details including `rankPoints` (01/11
-         *     supplement, BR-24), `xp`, `avatarUrl` and linked OAuth providers. Guests have a read-only profile (`GET` only;
-         *     editing via `PATCH /api/v1/me/profile` requires a `REGISTERED` account per BR-20).
+         *     supplement, BR-24), `xp`, `avatarUrl`, `avatarId`, `profileCompleted` and linked OAuth providers (CT-04, BE-ID-04).
+         *     Guests have a read-only profile (`GET` only; editing via `PATCH /api/v1/me/profile` requires a `REGISTERED` account per BR-20).
          */
         get: operations["getMyProfile"];
         put?: never;
@@ -597,10 +599,17 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Update the current registered player's nickname
-         * @description Registered users only (`REGISTERED`, BR-20). Updates the display `nickname` (3-20 characters, validated against
-         *     the banned-word list per BR-22) and returns the updated `UserProfile`. Guest profiles are read-only per BR-20;
-         *     calling this endpoint with a guest session is rejected with 403 (`GUEST_PROFILE_READ_ONLY`).
+         * Update the current registered player's profile (nickname and avatar)
+         * @description Registered users only (`REGISTERED`, BR-20, CT-04, BE-ID-04, FE-AUTH-04).
+         *     Updates the caller's display `nickname` (3-20 characters, validated against banned-word list per BR-22) and/or preset `avatarId` (`guitar`, `drum`, `headphones`, `disc`, `mic`, `piano`, `radio`, `wave`).
+         *
+         *     **Chính sách thiết lập hồ sơ và tài khoản (CT-04):**
+         *     - **Tài khoản mới qua OAuth:** Ban đầu `profileCompleted = false`. Lần đầu lưu thành công nickname hợp lệ và avatar preset hợp lệ trong cùng transaction sẽ đánh dấu `profileCompleted = true`.
+         *     - **Khách nâng cấp (BR-21):** Khi gộp khách vào tài khoản Google, nếu khách đã có nickname hợp lệ và `avatarId` hợp lệ thì chuyển sang và đánh dấu `profileCompleted = true`; nếu chưa chọn avatar hoặc nickname tạm thì giữ `profileCompleted = false`.
+         *     - **Tài khoản cũ:** Mặc định `profileCompleted = true` khi nâng cấp hệ thống; người dùng có thể đổi nickname/avatar bất kỳ lúc nào qua endpoint này.
+         *     - **Tài khoản đã hoàn tất (`profileCompleted = true`):** Đăng nhập lại, refresh session, reload không bao giờ ghi đè nickname hay avatar đã chọn. Trạng thái hoàn tất được quản lý bền vững phía server, KHÔNG bao giờ suy đoán từ tiền tố `Player_`.
+         *     - **Bảo mật:** Chỉ người dùng được sửa hồ sơ của chính mình (qua JWT session). Khách gọi sẽ bị từ chối 403 (`GUEST_PROFILE_READ_ONLY`). Tài khoản bị khóa nhận 403 (`ACCOUNT_LOCKED`).
+         *     - **Xác thực dữ liệu:** Gửi `avatarId` không thuộc danh sách 8 preset hợp lệ hoặc `nickname` vi phạm BR-22 trả về lỗi 400 (`VALIDATION_FAILED` hoặc `INVALID_AVATAR`).
          */
         patch: operations["updateMyProfile"];
         trace?: never;
@@ -1362,7 +1371,7 @@ export interface components {
          *     Bao gồm các mã lỗi mặc định HTTP và mã lỗi nghiệp vụ của các module.
          * @enum {string}
          */
-        ErrorCode: "VALIDATION_FAILED" | "UNAUTHORIZED" | "FORBIDDEN" | "NOT_FOUND" | "METHOD_NOT_ALLOWED" | "UNSUPPORTED_MEDIA_TYPE" | "NOT_ACCEPTABLE" | "CONFLICT" | "RATE_LIMITED" | "INTERNAL_ERROR" | "REFRESH_RACE" | "ACCOUNT_LOCKED" | "TRACK_NOT_FOUND" | "PLAYLIST_NOT_FOUND" | "SOLO_MATCH_IN_PROGRESS" | "NO_ACTIVE_MATCH" | "MATCH_NOT_IN_PROGRESS" | "MATCH_NOT_FOUND" | "MATCH_NOT_FINISHED" | "QUICK_MATCH_REQUIRES_ACCOUNT" | "NOT_ENOUGH_TRACKS" | "ROUND_NOT_ACTIVE" | "ROUND_NOT_FOUND" | "ROUND_NOT_FINISHED" | "LISTEN_LEVEL_MAX" | "LISTEN_LEVEL_MISMATCH" | "SKIP_NOT_ALLOWED" | "AUDIO_TOKEN_INVALID" | "AUDIO_TOKEN_EXPIRED" | "RANGE_NOT_SATISFIABLE" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_KICKED" | "NOT_ROOM_HOST" | "ROOM_NOT_LOBBY" | "ROOM_CANNOT_START" | "OAUTH_STATE_INVALID" | "OAUTH_EMAIL_UNVERIFIED" | "OAUTH_IDENTITY_ALREADY_LINKED" | "GUEST_CANNOT_DELETE_ACCOUNT" | "GUEST_PROFILE_READ_ONLY" | "DAILY_ALREADY_PLAYED" | "DAILY_CHALLENGE_NOT_AVAILABLE" | "DAILY_CHALLENGE_LOCKED" | "STANDARD_PLAYLIST_PROTECTED" | "USER_NOT_FOUND" | "ADMIN_SELF_ACTION_FORBIDDEN" | "REPORT_NOT_FOUND" | "BANNED_WORD_NOT_FOUND" | "BANNED_WORD_ALREADY_EXISTS";
+        ErrorCode: "VALIDATION_FAILED" | "UNAUTHORIZED" | "FORBIDDEN" | "NOT_FOUND" | "METHOD_NOT_ALLOWED" | "UNSUPPORTED_MEDIA_TYPE" | "NOT_ACCEPTABLE" | "CONFLICT" | "RATE_LIMITED" | "INTERNAL_ERROR" | "REFRESH_RACE" | "ACCOUNT_LOCKED" | "TRACK_NOT_FOUND" | "PLAYLIST_NOT_FOUND" | "SOLO_MATCH_IN_PROGRESS" | "NO_ACTIVE_MATCH" | "MATCH_NOT_IN_PROGRESS" | "MATCH_NOT_FOUND" | "MATCH_NOT_FINISHED" | "QUICK_MATCH_REQUIRES_ACCOUNT" | "NOT_ENOUGH_TRACKS" | "ROUND_NOT_ACTIVE" | "ROUND_NOT_FOUND" | "ROUND_NOT_FINISHED" | "LISTEN_LEVEL_MAX" | "LISTEN_LEVEL_MISMATCH" | "SKIP_NOT_ALLOWED" | "AUDIO_TOKEN_INVALID" | "AUDIO_TOKEN_EXPIRED" | "RANGE_NOT_SATISFIABLE" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_KICKED" | "NOT_ROOM_HOST" | "ROOM_NOT_LOBBY" | "ROOM_CANNOT_START" | "OAUTH_STATE_INVALID" | "OAUTH_EMAIL_UNVERIFIED" | "OAUTH_IDENTITY_ALREADY_LINKED" | "GUEST_CANNOT_DELETE_ACCOUNT" | "GUEST_PROFILE_READ_ONLY" | "INVALID_AVATAR" | "DAILY_ALREADY_PLAYED" | "DAILY_CHALLENGE_NOT_AVAILABLE" | "DAILY_CHALLENGE_LOCKED" | "STANDARD_PLAYLIST_PROTECTED" | "USER_NOT_FOUND" | "ADMIN_SELF_ACTION_FORBIDDEN" | "REPORT_NOT_FOUND" | "BANNED_WORD_NOT_FOUND" | "BANNED_WORD_ALREADY_EXISTS";
         /** @description RFC 9457 problem details with a stable `code`. */
         Problem: {
             /**
@@ -1405,9 +1414,23 @@ export interface components {
         UserKind: "GUEST" | "REGISTERED";
         /** @enum {string} */
         UserRole: "USER" | "ADMIN";
+        /**
+         * @description Preset avatar identifier chosen from the standard musical collection (CT-04, FE-AUTH-04):
+         *     - `guitar`: Classic guitar
+         *     - `drum`: Acoustic drum kit
+         *     - `headphones`: Studio headphones
+         *     - `disc`: Vinyl record disc
+         *     - `mic`: Vocal microphone
+         *     - `piano`: Piano keys
+         *     - `radio`: Vintage radio
+         *     - `wave`: Audio soundwave
+         * @enum {string}
+         */
+        PresetAvatarId: "guitar" | "drum" | "headphones" | "disc" | "mic" | "piano" | "radio" | "wave";
         GuestRequest: {
             /** @description Display name (BR-22); a banned word is rejected with 400. */
             nickname: string;
+            avatarId?: components["schemas"]["PresetAvatarId"];
         };
         Me: {
             /** Format: uuid */
@@ -1422,6 +1445,19 @@ export interface components {
             email?: string;
             /** @description Optional profile picture URL from linked OAuth provider. */
             avatarUrl?: string | null;
+            /**
+             * @description Identifier of the chosen preset avatar (`guitar`, `drum`, `headphones`, `disc`, `mic`, `piano`, `radio`, `wave`).
+             *     Null when the user has not chosen a preset avatar or uses an OAuth picture.
+             * @enum {string|null}
+             */
+            avatarId?: "guitar" | "drum" | "headphones" | "disc" | "mic" | "piano" | "radio" | "wave" | null;
+            /**
+             * @description Server-managed onboarding flag (CT-04, BE-ID-04, FE-AUTH-04).
+             *     `false` for new OAuth-registered accounts that must complete initial nickname and preset avatar setup.
+             *     `true` once setup is completed, for upgraded guests with valid existing profile, for legacy accounts, and for guest sessions.
+             *     Never inferred from `Player_` prefix.
+             */
+            profileCompleted?: boolean;
             /** @description Current competitive rank points (`ranked_score` / `rankPoints`, BR-24). Starts at 0 with a floor of 0. */
             rankPoints?: number;
             /** @description Linked OAuth2 providers for registered users (`GOOGLE`, `FACEBOOK`). */
@@ -1688,6 +1724,11 @@ export interface components {
             userId: string;
             nickname: string;
             avatarUrl?: string | null;
+            /**
+             * @description Preset avatar identifier if chosen (CT-04, FE-AUTH-04).
+             * @enum {string|null}
+             */
+            avatarId?: "guitar" | "drum" | "headphones" | "disc" | "mic" | "piano" | "radio" | "wave" | null;
             isHost: boolean;
             isReady: boolean;
             isGuest: boolean;
@@ -1825,6 +1866,19 @@ export interface components {
             email?: string | null;
             /** @description Avatar URL from linked OAuth provider, if available. */
             avatarUrl?: string | null;
+            /**
+             * @description Identifier of the chosen preset avatar (`guitar`, `drum`, `headphones`, `disc`, `mic`, `piano`, `radio`, `wave`).
+             *     Null when the user has not chosen a preset avatar or uses an OAuth picture.
+             * @enum {string|null}
+             */
+            avatarId?: "guitar" | "drum" | "headphones" | "disc" | "mic" | "piano" | "radio" | "wave" | null;
+            /**
+             * @description Server-managed onboarding flag (CT-04, BE-ID-04).
+             *     `false` for new OAuth-registered accounts that must complete initial nickname and preset avatar setup.
+             *     `true` once setup is completed, for upgraded guests with valid existing profile, for legacy accounts, and for guest sessions.
+             *     Never inferred from `Player_` prefix.
+             */
+            profileCompleted?: boolean;
             /** @description Competitive rank points (`ranked_score` / `rankPoints`, BR-24, 01/11 supplement). Starts at 0 with a floor of 0. */
             rankPoints: number;
             /** @description Cumulative experience points earned across matches. */
@@ -1835,8 +1889,9 @@ export interface components {
             createdAt: string;
         };
         UpdateProfileRequest: {
-            /** @description New display name (BR-22); banned words are rejected with 400 (`VALIDATION_FAILED`). */
-            nickname: string;
+            /** @description New display name (BR-22); banned words or invalid length are rejected with 400 (`VALIDATION_FAILED`). */
+            nickname?: string;
+            avatarId?: components["schemas"]["PresetAvatarId"];
         };
         /**
          * @description Match type stored in `match.type`.
@@ -1957,6 +2012,11 @@ export interface components {
             userId: string;
             nickname: string;
             avatarUrl?: string | null;
+            /**
+             * @description Preset avatar identifier if chosen (CT-04, FE-AUTH-04).
+             * @enum {string|null}
+             */
+            avatarId?: "guitar" | "drum" | "headphones" | "disc" | "mic" | "piano" | "radio" | "wave" | null;
             rankPoints: number;
             matchesPlayed: number;
             matchesWon: number;
@@ -2085,6 +2145,11 @@ export interface components {
             userId: string;
             nickname: string;
             avatarUrl?: string | null;
+            /**
+             * @description Preset avatar identifier if chosen (CT-04, FE-AUTH-04).
+             * @enum {string|null}
+             */
+            avatarId?: "guitar" | "drum" | "headphones" | "disc" | "mic" | "piano" | "radio" | "wave" | null;
             status: components["schemas"]["DailyCompletionStatus"];
             correctLevel?: number | null;
             listenSeconds?: components["schemas"]["DailyListenSeconds"] | null;
@@ -2255,6 +2320,13 @@ export interface components {
             /** Format: email */
             email?: string | null;
             avatarUrl?: string | null;
+            /**
+             * @description Preset avatar identifier if chosen (CT-04, FE-AUTH-04).
+             * @enum {string|null}
+             */
+            avatarId?: "guitar" | "drum" | "headphones" | "disc" | "mic" | "piano" | "radio" | "wave" | null;
+            /** @description Whether the user has completed their initial profile setup (CT-04). */
+            profileCompleted?: boolean;
             rankPoints: number;
             linkedProviders: components["schemas"]["OAuthProvider"][];
             lockReason?: string | null;
@@ -3528,7 +3600,15 @@ export interface operations {
                     "application/json": components["schemas"]["UserProfile"];
                 };
             };
-            400: components["responses"]["ValidationFailed"];
+            /** @description Validation failed (banned word, invalid length, or invalid avatar preset ID). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             401: components["responses"]["Unauthorized"];
             /** @description Forbidden. Registered account required; guest profiles are read-only and receive `GUEST_PROFILE_READ_ONLY` (BR-20), or the account is locked (`ACCOUNT_LOCKED`, BR-28). */
             403: {

@@ -3,5 +3,8 @@
   "kind": "GUEST",
   "role": "USER",
   "nickname": "Meloman",
+  "avatarUrl": null,
+  "avatarId": "headphones",
+  "profileCompleted": true,
   "createdAt": "2026-10-23T13:10:00Z"
 }

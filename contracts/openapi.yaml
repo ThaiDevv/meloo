@@ -355,7 +355,10 @@ paths:
       tags: [identity]
       operationId: getMe
       summary: Get the current user
-      description: Any signed-in user, guest or registered.
+      description: |
+        Any signed-in user, guest or registered. Returns current session user details including `profileCompleted`
+        and `avatarId` (CT-04, BE-ID-04, FE-AUTH-04). If `profileCompleted` is false (newly registered OAuth account),
+        the frontend displays the initial nickname and avatar onboarding dialog before routing to the destination.
       responses:
         '200':
           description: The current user.
@@ -368,8 +371,11 @@ paths:
                   summary: Guest user
                   externalValue: ./examples/identity/get-me.200.json
                 registered:
-                  summary: Registered user with OAuth providers and rank points
+                  summary: Registered user with OAuth providers, avatar and completed profile
                   externalValue: ./examples/identity/get-me.registered.200.json
+                onboarding:
+                  summary: Registered user requiring initial profile setup
+                  externalValue: ./examples/identity/get-me.onboarding.200.json
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1291,8 +1297,8 @@ paths:
       summary: Get the current player's profile
       description: |
         Any signed-in user (guest or registered, BR-20). Returns full profile details including `rankPoints` (01/11
-        supplement, BR-24), `xp`, `avatarUrl` and linked OAuth providers. Guests have a read-only profile (`GET` only;
-        editing via `PATCH /api/v1/me/profile` requires a `REGISTERED` account per BR-20).
+        supplement, BR-24), `xp`, `avatarUrl`, `avatarId`, `profileCompleted` and linked OAuth providers (CT-04, BE-ID-04).
+        Guests have a read-only profile (`GET` only; editing via `PATCH /api/v1/me/profile` requires a `REGISTERED` account per BR-20).
       responses:
         '200':
           description: Current player profile.
@@ -1310,11 +1316,21 @@ paths:
     patch:
       tags: [progression]
       operationId: updateMyProfile
-      summary: Update the current registered player's nickname
+      summary: Update the current registered player's profile (nickname and avatar)
       description: |
-        Registered users only (`REGISTERED`, BR-20). Updates the display `nickname` (3-20 characters, validated against
-        the banned-word list per BR-22) and returns the updated `UserProfile`. Guest profiles are read-only per BR-20;
-        calling this endpoint with a guest session is rejected with 403 (`GUEST_PROFILE_READ_ONLY`).
+        Registered users only (`REGISTERED`, BR-20, CT-04, BE-ID-04, FE-AUTH-04).
+        Updates the caller's display `nickname` (3-20 characters, validated against banned-word list per BR-22) and/or preset `avatarId` (`guitar`, `drum`, `headphones`, `disc`, `mic`, `piano`, `radio`, `wave`).
+
+        **Chính sách thiết lập hồ sơ và tài khoản (CT-04):**
+        - **Tài khoản mới qua OAuth:** Ban đầu `profileCompleted = false`. Lần đầu lưu thành công nickname hợp lệ và avatar preset hợp lệ trong cùng transaction sẽ đánh dấu `profileCompleted = true`.
+        - **Khách nâng cấp (BR-21):**
+          + Khi khách nâng cấp tạo tài khoản mới: nếu khách đã có nickname hợp lệ và `avatarId` hợp lệ thì chuyển sang tài khoản mới và đánh dấu `profileCompleted = true`; nếu chưa chọn avatar hoặc nickname tạm thì giữ `profileCompleted = false`.
+          + Khi khách đăng nhập vào tài khoản đã tồn tại và đã hoàn tất (`profileCompleted = true`): thông tin nickname và avatar đã lưu của tài khoản đích LUÔN ĐƯỢC ƯU TIÊN GIỮ NGUYÊN (không bị ghi đè bởi nickname/avatar tạm của khách); chỉ dữ liệu lịch sử trận, thống kê, huy hiệu của khách được gộp vào tài khoản đích theo BR-21.
+        - **Tài khoản cũ:** Mặc định `profileCompleted = true` khi nâng cấp hệ thống; người dùng có thể đổi nickname/avatar bất kỳ lúc nào qua endpoint này.
+        - **Tài khoản đã hoàn tất (`profileCompleted = true`):** Đăng nhập lại, refresh session, reload không bao giờ ghi đè nickname hay avatar đã chọn. Trạng thái hoàn tất được quản lý bền vững phía server, KHÔNG bao giờ suy đoán từ tiền tố `Player_`.
+        - **Quy tắc hiển thị avatar (FE-AUTH-04):** Giao diện client ưu tiên hiển thị preset avatar (`avatarId`) nếu người dùng đã chọn; `avatarUrl` (từ OAuth) dùng làm dự phòng khi `avatarId` là null; fallback về chữ cái đầu khi cả hai cùng null.
+        - **Bảo mật:** Chỉ người dùng được sửa hồ sơ của chính mình (qua JWT session). Khách gọi sẽ bị từ chối 403 (`GUEST_PROFILE_READ_ONLY`). Tài khoản bị khóa nhận 403 (`ACCOUNT_LOCKED`).
+        - **Xác thực dữ liệu:** Gửi `avatarId` không thuộc danh sách 8 preset hợp lệ hoặc `nickname` vi phạm BR-22 trả về lỗi 400 (`VALIDATION_FAILED` hoặc `INVALID_AVATAR`).
       requestBody:
         required: true
         content:
@@ -1323,7 +1339,11 @@ paths:
               $ref: '#/components/schemas/UpdateProfileRequest'
             examples:
               default:
+                summary: Update nickname only
                 externalValue: ./examples/progression/update-my-profile.request.json
+              presetSetup:
+                summary: Initial profile setup or update with nickname and preset avatar
+                externalValue: ./examples/progression/update-my-profile.request.preset.json
       responses:
         '200':
           description: Profile updated.
@@ -1335,7 +1355,18 @@ paths:
                 default:
                   externalValue: ./examples/progression/update-my-profile.200.json
         '400':
-          $ref: '#/components/responses/ValidationFailed'
+          description: Validation failed (banned word, invalid length, or invalid avatar preset ID).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                validationFailed:
+                  summary: Validation failed
+                  externalValue: ./examples/common/problem.validation-failed.400.json
+                invalidAvatar:
+                  summary: Invalid avatar preset ID
+                  externalValue: ./examples/progression/problem.invalid-avatar.400.json
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -3128,6 +3159,7 @@ components:
         - OAUTH_IDENTITY_ALREADY_LINKED
         - GUEST_CANNOT_DELETE_ACCOUNT
         - GUEST_PROFILE_READ_ONLY
+        - INVALID_AVATAR
         - DAILY_ALREADY_PLAYED
         - DAILY_CHALLENGE_NOT_AVAILABLE
         - DAILY_CHALLENGE_LOCKED
@@ -3215,6 +3247,27 @@ components:
     UserRole:
       type: string
       enum: [USER, ADMIN]
+    PresetAvatarId:
+      type: string
+      enum:
+        - guitar
+        - drum
+        - headphones
+        - disc
+        - mic
+        - piano
+        - radio
+        - wave
+      description: |
+        Preset avatar identifier chosen from the standard musical collection (CT-04, FE-AUTH-04):
+        - `guitar`: Classic guitar
+        - `drum`: Acoustic drum kit
+        - `headphones`: Studio headphones
+        - `disc`: Vinyl record disc
+        - `mic`: Vocal microphone
+        - `piano`: Piano keys
+        - `radio`: Vintage radio
+        - `wave`: Audio soundwave
     GuestRequest:
       type: object
       additionalProperties: false
@@ -3225,6 +3278,8 @@ components:
           minLength: 3
           maxLength: 20
           description: Display name (BR-22); a banned word is rejected with 400.
+        avatarId:
+          $ref: '#/components/schemas/PresetAvatarId'
     Me:
       type: object
       required: [id, kind, role, nickname, createdAt]
@@ -3248,6 +3303,19 @@ components:
         avatarUrl:
           type: [string, 'null']
           description: Optional profile picture URL from linked OAuth provider.
+        avatarId:
+          type: [string, 'null']
+          enum: [guitar, drum, headphones, disc, mic, piano, radio, wave, null]
+          description: |
+            Identifier of the chosen preset avatar (`guitar`, `drum`, `headphones`, `disc`, `mic`, `piano`, `radio`, `wave`).
+            Null when the user has not chosen a preset avatar or uses an OAuth picture.
+        profileCompleted:
+          type: boolean
+          description: |
+            Server-managed onboarding flag (CT-04, BE-ID-04, FE-AUTH-04).
+            `false` for new OAuth-registered accounts that must complete initial nickname and preset avatar setup.
+            `true` once setup is completed, for upgraded guests with valid existing profile, for legacy accounts, and for guest sessions.
+            Never inferred from `Player_` prefix.
         rankPoints:
           type: integer
           minimum: 0
@@ -3695,6 +3763,12 @@ components:
           maxLength: 20
         avatarUrl:
           type: [string, 'null']
+        avatarId:
+          type: [string, 'null']
+          enum: [guitar, drum, headphones, disc, mic, piano, radio, wave, null]
+          description: |
+            Preset avatar identifier if chosen (CT-04, FE-AUTH-04).
+            Ghi chú: Cung cấp qua REST API phòng; hợp đồng realtime WebSocket (`asyncapi.yaml`) và payload realtime sẽ được đồng bộ ở ticket contract realtime tiếp theo trước khi FE-ROOM triển khai hiển thị avatar realtime.
         isHost:
           type: boolean
         isReady:
@@ -3924,6 +3998,19 @@ components:
         avatarUrl:
           type: [string, 'null']
           description: Avatar URL from linked OAuth provider, if available.
+        avatarId:
+          type: [string, 'null']
+          enum: [guitar, drum, headphones, disc, mic, piano, radio, wave, null]
+          description: |
+            Identifier of the chosen preset avatar (`guitar`, `drum`, `headphones`, `disc`, `mic`, `piano`, `radio`, `wave`).
+            Null when the user has not chosen a preset avatar or uses an OAuth picture.
+        profileCompleted:
+          type: boolean
+          description: |
+            Server-managed onboarding flag (CT-04, BE-ID-04).
+            `false` for new OAuth-registered accounts that must complete initial nickname and preset avatar setup.
+            `true` once setup is completed, for upgraded guests with valid existing profile, for legacy accounts, and for guest sessions.
+            Never inferred from `Player_` prefix.
         rankPoints:
           type: integer
           minimum: 0
@@ -3943,13 +4030,14 @@ components:
     UpdateProfileRequest:
       type: object
       additionalProperties: false
-      required: [nickname]
       properties:
         nickname:
           type: string
           minLength: 3
           maxLength: 20
-          description: New display name (BR-22); banned words are rejected with 400 (`VALIDATION_FAILED`).
+          description: New display name (BR-22); banned words or invalid length are rejected with 400 (`VALIDATION_FAILED`).
+        avatarId:
+          $ref: '#/components/schemas/PresetAvatarId'
     MatchType:
       type: string
       enum: [SOLO, PRIVATE_ROOM, PUBLIC_ROOM, QUICK_MATCH]
@@ -4203,6 +4291,10 @@ components:
           maxLength: 20
         avatarUrl:
           type: [string, 'null']
+        avatarId:
+          type: [string, 'null']
+          enum: [guitar, drum, headphones, disc, mic, piano, radio, wave, null]
+          description: Preset avatar identifier if chosen (CT-04, FE-AUTH-04).
         rankPoints:
           type: integer
           minimum: 0
@@ -4406,6 +4498,10 @@ components:
           maxLength: 20
         avatarUrl:
           type: [string, 'null']
+        avatarId:
+          type: [string, 'null']
+          enum: [guitar, drum, headphones, disc, mic, piano, radio, wave, null]
+          description: Preset avatar identifier if chosen (CT-04, FE-AUTH-04).
         status:
           $ref: '#/components/schemas/DailyCompletionStatus'
         correctLevel:
@@ -4764,6 +4860,13 @@ components:
           maxLength: 254
         avatarUrl:
           type: [string, 'null']
+        avatarId:
+          type: [string, 'null']
+          enum: [guitar, drum, headphones, disc, mic, piano, radio, wave, null]
+          description: Preset avatar identifier if chosen (CT-04, FE-AUTH-04).
+        profileCompleted:
+          type: boolean
+          description: Whether the user has completed their initial profile setup (CT-04).
         rankPoints:
           type: integer
           minimum: 0

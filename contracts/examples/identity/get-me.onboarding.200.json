@@ -1,0 +1,13 @@
+{
+  "id": "c52d8e01-3f95-4b4d-ad82-9a32f6c84123",
+  "kind": "REGISTERED",
+  "role": "USER",
+  "nickname": "Player_9821",
+  "email": "newuser@example.com",
+  "avatarUrl": "https://lh3.googleusercontent.com/a/ACg8ocNewUserAvatar",
+  "avatarId": null,
+  "profileCompleted": false,
+  "rankPoints": 0,
+  "linkedProviders": ["GOOGLE"],
+  "createdAt": "2026-11-13T10:00:00Z"
+}

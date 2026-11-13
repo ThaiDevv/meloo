@@ -8,6 +8,9 @@
     "role": "USER",
     "nickname": "Meloman",
     "email": "meloman@example.com",
+    "avatarUrl": null,
+    "avatarId": "guitar",
+    "profileCompleted": true,
     "createdAt": "2026-10-20T08:00:00Z"
   }
 }

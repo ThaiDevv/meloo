@@ -1,0 +1,7 @@
+{
+  "type": "about:blank",
+  "title": "Invalid Avatar Identifier",
+  "status": 400,
+  "code": "INVALID_AVATAR",
+  "detail": "Avatar 'custom_upload' is not supported. Must be one of: guitar, drum, headphones, disc, mic, piano, radio, wave."
+}

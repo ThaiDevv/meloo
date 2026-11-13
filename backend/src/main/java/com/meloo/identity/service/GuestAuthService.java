@@ -65,6 +65,7 @@ public class GuestAuthService {
             .role(UserRole.USER)
             .status(UserStatus.ACTIVE)
             .nickname(normalizedNickname)
+            .avatarId(request.getAvatarId() == null ? null : request.getAvatarId().getValue())
             .createdAt(now)
             .lastActiveAt(now)
             .build();
@@ -151,6 +152,9 @@ public class GuestAuthService {
         .kind(UserKindDto.fromValue(user.getKind().name()))
         .role(UserRoleDto.fromValue(user.getRole().name()))
         .nickname(user.getNickname())
+        .avatarId(
+            user.getAvatarId() == null ? null : MeDto.AvatarIdEnum.fromValue(user.getAvatarId()))
+        .profileCompleted(user.isProfileCompleted())
         .email(user.getEmail())
         .createdAt(user.getCreatedAt().atOffset(ZoneOffset.UTC));
   }

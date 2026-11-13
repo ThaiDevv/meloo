@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.meloo.IntegrationTest;
 import com.meloo.generated.model.GuestRequestDto;
+import com.meloo.generated.model.PresetAvatarIdDto;
 import com.meloo.identity.api.UserAccounts;
 import com.meloo.identity.events.GuestMerged;
 import com.meloo.identity.events.UserRegistered;
@@ -26,6 +27,8 @@ import java.time.Instant;
 import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -98,6 +101,8 @@ class GoogleOAuthIntegrationTest extends IntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.user.email").value(email))
         .andExpect(jsonPath("$.user.kind").value("REGISTERED"))
+        .andExpect(jsonPath("$.user.profileCompleted").value(false))
+        .andExpect(jsonPath("$.user.avatarId").doesNotExist())
         .andExpect(jsonPath("$.user.role").value("USER"));
     AppUser user = users.findByEmail(email).orElseThrow();
     assertThat(
@@ -132,6 +137,77 @@ class GoogleOAuthIntegrationTest extends IntegrationTest {
   }
 
   @Test
+  void profileSetupSurvivesReloadRefreshLogoutAndGoogleLoginWithoutOverwrites() throws Exception {
+    String email = uniqueEmail();
+    profile(email, true);
+    Cookie refresh =
+        callback(start(null, "login")).andReturn().getResponse().getCookie("meloo_refresh");
+    var session = mvc.perform(post("/api/v1/auth/refresh").cookie(refresh)).andReturn();
+    var json =
+        new tools.jackson.databind.ObjectMapper()
+            .readTree(session.getResponse().getContentAsString());
+    String bearer = "Bearer " + json.path("accessToken").asText();
+    mvc.perform(
+            patch("/api/v1/me/profile")
+                .header("Authorization", bearer)
+                .contentType("application/json")
+                .content("{\"nickname\":\"Player_Chosen\",\"avatarId\":\"piano\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.profileCompleted").value(true))
+        .andExpect(jsonPath("$.avatarId").value("piano"));
+    for (String path : List.of("/api/v1/me", "/api/v1/me/profile")) {
+      mvc.perform(get(path).header("Authorization", bearer))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.nickname").value("Player_Chosen"))
+          .andExpect(jsonPath("$.avatarId").value("piano"))
+          .andExpect(jsonPath("$.profileCompleted").value(true));
+    }
+    Cookie rotated = session.getResponse().getCookie("meloo_refresh");
+    var refreshed =
+        mvc.perform(post("/api/v1/auth/refresh").cookie(rotated))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.user.nickname").value("Player_Chosen"))
+            .andExpect(jsonPath("$.user.avatarId").value("piano"))
+            .andExpect(jsonPath("$.user.profileCompleted").value(true))
+            .andReturn();
+    mvc.perform(
+            post("/api/v1/auth/logout").cookie(refreshed.getResponse().getCookie("meloo_refresh")))
+        .andExpect(status().isNoContent());
+    Cookie again =
+        callback(start(null, "login")).andReturn().getResponse().getCookie("meloo_refresh");
+    mvc.perform(post("/api/v1/auth/refresh").cookie(again))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.user.nickname").value("Player_Chosen"))
+        .andExpect(jsonPath("$.user.avatarId").value("piano"))
+        .andExpect(jsonPath("$.user.profileCompleted").value(true));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void guestUpgradeCompletesOnlyWithAnExistingValidPreset(boolean hasAvatar) throws Exception {
+    var guest =
+        guests.createGuest(
+            new GuestRequestDto()
+                .nickname("Player_Chosen")
+                .avatarId(hasAvatar ? PresetAvatarIdDto.DRUM : null));
+    assertThat(guest.session().getUser().getProfileCompleted()).isTrue();
+    String email = uniqueEmail();
+    profile(email, true);
+    Cookie refresh =
+        callback(start(refreshCookie(guest), "login"))
+            .andReturn()
+            .getResponse()
+            .getCookie("meloo_refresh");
+    mvc.perform(post("/api/v1/auth/refresh").cookie(refresh))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.user.nickname").value("Player_Chosen"))
+        .andExpect(jsonPath("$.user.profileCompleted").value(hasAvatar));
+    var account = accounts.get(users.findByEmail(email).orElseThrow().getId());
+    assertThat(account.avatarId()).isEqualTo(hasAvatar ? "drum" : null);
+    assertThat(account.profileCompleted()).isEqualTo(hasAvatar);
+  }
+
+  @Test
   void verifiedEmailLinksGoogleToExistingFacebookAccount() throws Exception {
     String email = uniqueEmail();
     AppUser existing = registered(email);
@@ -158,12 +234,18 @@ class GoogleOAuthIntegrationTest extends IntegrationTest {
   void guestMergesIntoExistingAccountAndAllGuestRefreshTokensAreRevoked() throws Exception {
     String email = uniqueEmail();
     AppUser existing = registered(email);
-    var guest = guest();
+    accounts.updateProfile(existing.getId(), "Chosen Target", "guitar");
+    var guest =
+        guests.createGuest(
+            new GuestRequestDto().nickname("Guest Choice").avatarId(PresetAvatarIdDto.DRUM));
     UUID guestId = guest.session().getUser().getId();
     profile(email, true);
     callback(start(refreshCookie(guest), "login"))
         .andExpect(redirectedUrl("http://localhost:5173/auth/callback"));
     assertThat(users.findById(guestId).orElseThrow().getMergedIntoId()).isEqualTo(existing.getId());
+    assertThat(accounts.get(existing.getId()).nickname()).isEqualTo("Chosen Target");
+    assertThat(accounts.get(existing.getId()).avatarId()).isEqualTo("guitar");
+    assertThat(accounts.get(existing.getId()).profileCompleted()).isTrue();
     assertThat(
             events.stream(GuestMerged.class)
                 .filter(e -> e.guestId().equals(guestId) && e.userId().equals(existing.getId()))

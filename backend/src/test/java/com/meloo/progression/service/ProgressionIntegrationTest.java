@@ -183,6 +183,11 @@ class ProgressionIntegrationTest extends IntegrationTest {
             List.of(player(user, false, 1, false, 1)),
             null));
     var merge = new GuestMerged(UUID.randomUUID(), guest, user, Instant.now());
+    jdbc.update(
+        "insert into user_achievement(user_id,achievement_code,unlocked_at) values (?,'FIRST_WIN','2026-01-01T00:00:00Z'),(?,'FIRST_WIN','2026-02-01T00:00:00Z'),(?,'COMBO_5','2026-03-01T00:00:00Z')",
+        guest,
+        user,
+        guest);
     writer.merge(merge);
     writer.merge(new GuestMerged(UUID.randomUUID(), guest, user, Instant.now()));
     writer.record(first);
@@ -200,6 +205,23 @@ class ProgressionIntegrationTest extends IntegrationTest {
     assertThat(queries.stats(user).getRoundsCorrect()).isEqualTo(4);
     assertThat(queries.stats(user).getBestCombo()).isEqualTo(2);
     assertThat(queries.stats(guest).getXp()).isZero();
+    assertThat(
+            jdbc.queryForList(
+                "select achievement_code from user_achievement where user_id=?",
+                String.class,
+                user))
+        .containsExactlyInAnyOrder("FIRST_WIN", "COMBO_5");
+    assertThat(
+            jdbc.queryForObject(
+                    "select unlocked_at from user_achievement where user_id=? and achievement_code='FIRST_WIN'",
+                    java.sql.Timestamp.class,
+                    user)
+                .toInstant())
+        .isEqualTo(Instant.parse("2026-01-01T00:00:00Z"));
+    assertThat(
+            jdbc.queryForObject(
+                "select count(*) from user_achievement where user_id=?", Integer.class, guest))
+        .isZero();
     // Historical participants remain snapshots, independent of current ownership.
     assertThat(queries.detail(user, first.matchId()).getPlayers().getFirst().getIsGuest()).isTrue();
   }

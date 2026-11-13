@@ -259,6 +259,16 @@ public class ProgressionWriter {
         event.userId(),
         event.guestId());
     jdbc.update("delete from player_stats where user_id = ?", event.guestId());
+    jdbc.update(
+        """
+        insert into user_achievement(user_id,achievement_code,unlocked_at)
+        select ?,achievement_code,unlocked_at from user_achievement where user_id = ?
+        on conflict(user_id,achievement_code) do update set
+            unlocked_at = least(user_achievement.unlocked_at, excluded.unlocked_at)
+        """,
+        event.userId(),
+        event.guestId());
+    jdbc.update("delete from user_achievement where user_id = ?", event.guestId());
   }
 
   private static Totals totals(List<RoundPlayerResult> results) {

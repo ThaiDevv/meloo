@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 
 /** Internal application API. The admin module must authorize and audit its callers. */
 public interface UserAccounts {
@@ -15,6 +16,9 @@ public interface UserAccounts {
 
   /** Updates an active registered player's display name after BR-22 validation. */
   UserAccount updateNickname(UUID id, String nickname);
+
+  /** Atomically updates the caller's profile; initial setup requires both fields. */
+  UserAccount updateProfile(UUID id, @Nullable String nickname, @Nullable String avatarId);
 
   UserPage search(String query, int page, int size);
 

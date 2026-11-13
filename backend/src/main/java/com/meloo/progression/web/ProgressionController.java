@@ -34,7 +34,11 @@ public class ProgressionController implements ProgressionApi {
 
   @Override
   public ResponseEntity<UserProfileDto> updateMyProfile(UpdateProfileRequestDto request) {
-    return ResponseEntity.ok(profiles.update(caller(), request.getNickname()));
+    return ResponseEntity.ok(
+        profiles.update(
+            caller(),
+            request.getNickname(),
+            request.getAvatarId() == null ? null : request.getAvatarId().getValue()));
   }
 
   @Override

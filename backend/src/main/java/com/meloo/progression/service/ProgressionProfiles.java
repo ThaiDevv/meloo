@@ -9,6 +9,7 @@ import com.meloo.identity.api.UserAccounts;
 import com.meloo.shared.api.ApiException;
 import java.time.ZoneOffset;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,8 +34,8 @@ public class ProgressionProfiles {
   }
 
   @Transactional
-  public UserProfileDto update(UUID caller, String nickname) {
-    return profile(accounts.updateNickname(caller, nickname));
+  public UserProfileDto update(UUID caller, @Nullable String nickname, @Nullable String avatarId) {
+    return profile(accounts.updateProfile(caller, nickname, avatarId));
   }
 
   private UserProfileDto profile(UserAccount account) {
@@ -48,6 +49,11 @@ public class ProgressionProfiles {
             stats.getXp(),
             account.linkedProviders().stream().map(OAuthProviderDto::fromValue).toList(),
             account.createdAt().atOffset(ZoneOffset.UTC))
-        .email(account.email());
+        .email(account.email())
+        .avatarId(
+            account.avatarId() == null
+                ? null
+                : UserProfileDto.AvatarIdEnum.fromValue(account.avatarId()))
+        .profileCompleted(account.profileCompleted());
   }
 }

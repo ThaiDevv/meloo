@@ -1,5 +1,6 @@
 package com.meloo.identity.service;
 
+import com.meloo.generated.model.PresetAvatarIdDto;
 import com.meloo.identity.api.UserAccount;
 import com.meloo.identity.api.UserAccounts;
 import com.meloo.identity.persistence.AppUser;
@@ -19,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -123,6 +125,12 @@ public class UserAccountsService implements UserAccounts {
   @Override
   @Transactional
   public UserAccount updateNickname(UUID id, String nickname) {
+    return updateProfile(id, nickname, null);
+  }
+
+  @Override
+  @Transactional
+  public UserAccount updateProfile(UUID id, @Nullable String nickname, @Nullable String avatarId) {
     AppUser user = requireForUpdate(id);
     if (user.getStatus() != UserStatus.ACTIVE) {
       throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_LOCKED", "Account is locked");
@@ -131,8 +139,25 @@ public class UserAccountsService implements UserAccounts {
       throw new ApiException(
           HttpStatus.FORBIDDEN, "GUEST_PROFILE_READ_ONLY", "Guest profiles are read-only");
     }
-    nicknames.validate(nickname);
-    user.setNickname(Normalizer.normalize(nickname.trim(), Normalizer.Form.NFC));
+    if (nickname != null) {
+      nicknames.validate(nickname);
+    }
+    if (avatarId != null) {
+      try {
+        PresetAvatarIdDto.fromValue(avatarId);
+      } catch (IllegalArgumentException ex) {
+        throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_AVATAR", "Invalid avatar preset");
+      }
+    }
+    if (nickname != null) {
+      user.setNickname(Normalizer.normalize(nickname.trim(), Normalizer.Form.NFC));
+    }
+    if (avatarId != null) {
+      user.setAvatarId(avatarId);
+    }
+    if (nickname != null && avatarId != null) {
+      user.setProfileCompleted(true);
+    }
     return get(id);
   }
 
@@ -231,6 +256,8 @@ public class UserAccountsService implements UserAccounts {
         u.getLockedAt(),
         u.getLastActiveAt(),
         providers,
-        u.getCreatedAt());
+        u.getCreatedAt(),
+        u.getAvatarId(),
+        u.isProfileCompleted());
   }
 }

@@ -1,5 +1,6 @@
 package com.meloo.identity.service;
 
+import com.meloo.generated.model.PresetAvatarIdDto;
 import com.meloo.identity.config.AdminEmailsProperties;
 import com.meloo.identity.events.GuestMerged;
 import com.meloo.identity.events.UserRegistered;
@@ -40,6 +41,7 @@ public class OAuthAccountService {
   private final ApplicationEventPublisher events;
   private final EntityManager entityManager;
   private final Clock clock;
+  private final NicknameValidator nicknames;
 
   public OAuthAccountService(
       AppUserRepository users,
@@ -50,7 +52,8 @@ public class OAuthAccountService {
       AdminEmailsProperties admins,
       ApplicationEventPublisher events,
       EntityManager entityManager,
-      Clock clock) {
+      Clock clock,
+      NicknameValidator nicknames) {
     this.users = users;
     this.identities = identities;
     this.tokens = tokens;
@@ -60,6 +63,7 @@ public class OAuthAccountService {
     this.events = events;
     this.entityManager = entityManager;
     this.clock = clock;
+    this.nicknames = nicknames;
   }
 
   /** Returns a live initiating session without rotating its refresh token. */
@@ -164,6 +168,8 @@ public class OAuthAccountService {
                           ? "Player_" + UUID.randomUUID().toString().substring(0, 8)
                           : bound.getNickname())
                   .email(email)
+                  .avatarId(bound == null ? null : bound.getAvatarId())
+                  .profileCompleted(hasCompleteGuestProfile(bound))
                   .createdAt(clock.instant())
                   .lastActiveAt(clock.instant())
                   .build());
@@ -205,6 +211,19 @@ public class OAuthAccountService {
   private void validToken(RefreshToken token) {
     if (token.getRevokedAt() != null || !token.getExpiresAt().isAfter(clock.instant())) {
       throw failure("OAUTH_STATE_INVALID");
+    }
+  }
+
+  private boolean hasCompleteGuestProfile(@Nullable AppUser guest) {
+    if (guest == null || guest.getAvatarId() == null) {
+      return false;
+    }
+    try {
+      nicknames.validate(guest.getNickname());
+      PresetAvatarIdDto.fromValue(guest.getAvatarId());
+      return true;
+    } catch (ApiException | IllegalArgumentException ex) {
+      return false;
     }
   }
 

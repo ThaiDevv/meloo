@@ -16,7 +16,9 @@ public record UserAccount(
     @Nullable Instant lockedAt,
     Instant lastActiveAt,
     List<String> linkedProviders,
-    Instant createdAt) {
+    Instant createdAt,
+    @Nullable String avatarId,
+    boolean profileCompleted) {
   public UserAccount {
     linkedProviders = List.copyOf(linkedProviders);
   }

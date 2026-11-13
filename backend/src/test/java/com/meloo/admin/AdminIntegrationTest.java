@@ -627,7 +627,19 @@ class AdminIntegrationTest extends IntegrationTest {
 
   private static UserAccount account(UUID id, String role, String status) {
     return new UserAccount(
-        id, "REGISTERED", role, status, "Player", null, null, null, NOW, List.of(), NOW);
+        id,
+        "REGISTERED",
+        role,
+        status,
+        "Player",
+        null,
+        null,
+        null,
+        NOW,
+        List.of(),
+        NOW,
+        null,
+        true);
   }
 
   private static String token(UUID id, String role) throws Exception {

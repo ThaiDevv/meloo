@@ -51,6 +51,13 @@ public class AppUser implements Persistable<UUID> {
   @Column(nullable = false, length = 20)
   private String nickname;
 
+  @Nullable @Column(name = "avatar_id", length = 10)
+  private String avatarId;
+
+  @Builder.Default
+  @Column(name = "profile_completed", nullable = false)
+  private boolean profileCompleted = true;
+
   @Nullable @Column(length = 254)
   private String email;
 

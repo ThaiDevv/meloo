@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -129,7 +130,7 @@ public class UserAccountsService implements UserAccounts {
 
   @Override
   @Transactional
-  public UserAccount updateProfile(UUID id, String nickname, String avatarId) {
+  public UserAccount updateProfile(UUID id, @Nullable String nickname, @Nullable String avatarId) {
     AppUser user = requireForUpdate(id);
     if (user.getStatus() != UserStatus.ACTIVE) {
       throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_LOCKED", "Account is locked");

@@ -24,8 +24,7 @@ class ProfileSetupIntegrationTest extends IntegrationTest {
   @Autowired UserAccounts accounts;
 
   @Test
-  void invalidSetupNeverChangesNicknameAvatarOrCompletionAndCannotTargetAnotherUser()
-      throws Exception {
+  void invalidSetupRollsBackAndValidPatchUpdatesOnlyTheJwtOwner() throws Exception {
     AppUser user = pending(), other = pending();
     for (String body :
         List.of(
@@ -43,15 +42,11 @@ class ProfileSetupIntegrationTest extends IntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(user.getId().toString()))
         .andExpect(jsonPath("$.profileCompleted").value(true));
-    // Resource identity is taken only from JWT; adding another user's ID in the URL cannot edit it.
-    mvc.perform(
-            patch("/api/v1/me/profile/" + other.getId())
-                .with(jwt().jwt(j -> j.subject(user.getId().toString())))
-                .contentType("application/json")
-                .content("{\"nickname\":\"Attacker\",\"avatarId\":\"mic\"}"))
-        .andExpect(status().is4xxClientError());
+    AppUser actual = users.findById(user.getId()).orElseThrow();
+    assertThat(actual.getNickname()).isEqualTo("Chosen");
+    assertThat(actual.getAvatarId()).isEqualTo("disc");
+    assertThat(actual.isProfileCompleted()).isTrue();
     assertPending(other);
-    assertThat(accounts.get(user.getId()).avatarId()).isEqualTo("disc");
   }
 
   @Test

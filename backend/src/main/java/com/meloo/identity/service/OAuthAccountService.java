@@ -1,5 +1,6 @@
 package com.meloo.identity.service;
 
+import com.meloo.generated.model.PresetAvatarIdDto;
 import com.meloo.identity.config.AdminEmailsProperties;
 import com.meloo.identity.events.GuestMerged;
 import com.meloo.identity.events.UserRegistered;
@@ -219,7 +220,7 @@ public class OAuthAccountService {
     }
     try {
       nicknames.validate(guest.getNickname());
-      com.meloo.generated.model.PresetAvatarIdDto.fromValue(guest.getAvatarId());
+      PresetAvatarIdDto.fromValue(guest.getAvatarId());
       return true;
     } catch (ApiException | IllegalArgumentException ex) {
       return false;

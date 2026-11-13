@@ -1323,9 +1323,12 @@ paths:
 
         **Chính sách thiết lập hồ sơ và tài khoản (CT-04):**
         - **Tài khoản mới qua OAuth:** Ban đầu `profileCompleted = false`. Lần đầu lưu thành công nickname hợp lệ và avatar preset hợp lệ trong cùng transaction sẽ đánh dấu `profileCompleted = true`.
-        - **Khách nâng cấp (BR-21):** Khi gộp khách vào tài khoản Google, nếu khách đã có nickname hợp lệ và `avatarId` hợp lệ thì chuyển sang và đánh dấu `profileCompleted = true`; nếu chưa chọn avatar hoặc nickname tạm thì giữ `profileCompleted = false`.
+        - **Khách nâng cấp (BR-21):**
+          + Khi khách nâng cấp tạo tài khoản mới: nếu khách đã có nickname hợp lệ và `avatarId` hợp lệ thì chuyển sang tài khoản mới và đánh dấu `profileCompleted = true`; nếu chưa chọn avatar hoặc nickname tạm thì giữ `profileCompleted = false`.
+          + Khi khách đăng nhập vào tài khoản đã tồn tại và đã hoàn tất (`profileCompleted = true`): thông tin nickname và avatar đã lưu của tài khoản đích LUÔN ĐƯỢC ƯU TIÊN GIỮ NGUYÊN (không bị ghi đè bởi nickname/avatar tạm của khách); chỉ dữ liệu lịch sử trận, thống kê, huy hiệu của khách được gộp vào tài khoản đích theo BR-21.
         - **Tài khoản cũ:** Mặc định `profileCompleted = true` khi nâng cấp hệ thống; người dùng có thể đổi nickname/avatar bất kỳ lúc nào qua endpoint này.
         - **Tài khoản đã hoàn tất (`profileCompleted = true`):** Đăng nhập lại, refresh session, reload không bao giờ ghi đè nickname hay avatar đã chọn. Trạng thái hoàn tất được quản lý bền vững phía server, KHÔNG bao giờ suy đoán từ tiền tố `Player_`.
+        - **Quy tắc hiển thị avatar (FE-AUTH-04):** Giao diện client ưu tiên hiển thị preset avatar (`avatarId`) nếu người dùng đã chọn; `avatarUrl` (từ OAuth) dùng làm dự phòng khi `avatarId` là null; fallback về chữ cái đầu khi cả hai cùng null.
         - **Bảo mật:** Chỉ người dùng được sửa hồ sơ của chính mình (qua JWT session). Khách gọi sẽ bị từ chối 403 (`GUEST_PROFILE_READ_ONLY`). Tài khoản bị khóa nhận 403 (`ACCOUNT_LOCKED`).
         - **Xác thực dữ liệu:** Gửi `avatarId` không thuộc danh sách 8 preset hợp lệ hoặc `nickname` vi phạm BR-22 trả về lỗi 400 (`VALIDATION_FAILED` hoặc `INVALID_AVATAR`).
       requestBody:
@@ -3763,7 +3766,9 @@ components:
         avatarId:
           type: [string, 'null']
           enum: [guitar, drum, headphones, disc, mic, piano, radio, wave, null]
-          description: Preset avatar identifier if chosen (CT-04, FE-AUTH-04).
+          description: |
+            Preset avatar identifier if chosen (CT-04, FE-AUTH-04).
+            Ghi chú: Cung cấp qua REST API phòng; hợp đồng realtime WebSocket (`asyncapi.yaml`) và payload realtime sẽ được đồng bộ ở ticket contract realtime tiếp theo trước khi FE-ROOM triển khai hiển thị avatar realtime.
         isHost:
           type: boolean
         isReady:

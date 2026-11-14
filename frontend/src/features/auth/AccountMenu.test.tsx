@@ -142,12 +142,10 @@ describe('AccountMenu', () => {
 
   it('shows the saved avatar in the account menu', () => {
     act(() => {
-      useAuthStore
-        .getState()
-        .setSession({
-          ...registeredSession,
-          user: { ...registeredSession.user, avatarId: 'piano' },
-        })
+      useAuthStore.getState().setSession({
+        ...registeredSession,
+        user: { ...registeredSession.user, avatarId: 'piano' },
+      })
     })
     renderMenu()
     expect(

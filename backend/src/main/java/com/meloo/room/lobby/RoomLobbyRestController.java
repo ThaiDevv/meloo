@@ -6,6 +6,7 @@ import com.meloo.generated.model.JoinRoomRequestDto;
 import com.meloo.generated.model.PublicRoomPageDto;
 import com.meloo.generated.model.QuickMatchRequestDto;
 import com.meloo.generated.model.RoomResponseDto;
+import com.meloo.identity.api.UserAccounts;
 import com.meloo.room.matchmaking.MatchmakingService;
 import com.meloo.shared.api.ApiException;
 import java.util.Objects;
@@ -25,9 +26,11 @@ public class RoomLobbyRestController implements RoomApi {
   private final RoomLobbyService roomLobbyService;
 
   private final MatchmakingService matchmaking;
+  private final UserAccounts accounts;
 
   public RoomLobbyRestController(
-      RoomLobbyService roomLobbyService, MatchmakingService matchmaking) {
+      RoomLobbyService roomLobbyService, MatchmakingService matchmaking, UserAccounts accounts) {
+    this.accounts = accounts;
     this.matchmaking = matchmaking;
     this.roomLobbyService =
         Objects.requireNonNull(roomLobbyService, "roomLobbyService must not be null");
@@ -38,7 +41,12 @@ public class RoomLobbyRestController implements RoomApi {
     UserPrincipal user = getCurrentUser();
     RoomResponseDto response =
         roomLobbyService.createRoom(
-            user.userId(), user.nickname(), user.avatarUrl(), user.isGuest(), createRoomRequestDto);
+            user.userId(),
+            user.nickname(),
+            user.avatarUrl(),
+            user.avatarId(),
+            user.isGuest(),
+            createRoomRequestDto);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
@@ -50,6 +58,7 @@ public class RoomLobbyRestController implements RoomApi {
             user.userId(),
             user.nickname(),
             user.avatarUrl(),
+            user.avatarId(),
             user.isGuest(),
             joinRoomRequestDto.getCode());
     return ResponseEntity.ok(response);
@@ -68,7 +77,12 @@ public class RoomLobbyRestController implements RoomApi {
     UserPrincipal user = getCurrentUser();
     RoomResponseDto room =
         matchmaking.quickMatch(
-            user.userId(), user.nickname(), user.avatarUrl(), user.isGuest(), quickMatchRequestDto);
+            user.userId(),
+            user.nickname(),
+            user.avatarUrl(),
+            user.avatarId(),
+            user.isGuest(),
+            quickMatchRequestDto);
     return ResponseEntity.ok(room);
   }
 
@@ -86,11 +100,6 @@ public class RoomLobbyRestController implements RoomApi {
       throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Invalid token subject");
     }
 
-    String nickname = jwt.getClaimAsString("nickname");
-    if (nickname == null || nickname.isBlank()) {
-      nickname = "Player";
-    }
-
     String avatarUrl = jwt.getClaimAsString("avatarUrl");
     if (avatarUrl == null) {
       avatarUrl = jwt.getClaimAsString("avatar_url");
@@ -103,9 +112,14 @@ public class RoomLobbyRestController implements RoomApi {
     String kind = jwt.getClaimAsString("kind");
     boolean isGuest = "GUEST".equalsIgnoreCase(kind) || "GUEST".equalsIgnoreCase(role);
 
-    return new UserPrincipal(userId, nickname, avatarUrl, isGuest);
+    var account = accounts.get(userId);
+    return new UserPrincipal(userId, account.nickname(), avatarUrl, account.avatarId(), isGuest);
   }
 
   private record UserPrincipal(
-      UUID userId, String nickname, @Nullable String avatarUrl, boolean isGuest) {}
+      UUID userId,
+      String nickname,
+      @Nullable String avatarUrl,
+      @Nullable String avatarId,
+      boolean isGuest) {}
 }

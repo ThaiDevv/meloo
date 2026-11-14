@@ -50,7 +50,12 @@ export function RoundResults({
                 <tr key={row.userId} className="border-t border-foreground/10">
                   <th scope="row" className="px-4 py-3 text-left font-normal">
                     <span className="flex items-center gap-2">
-                      <Avatar name={name} src={who?.avatarUrl ?? undefined} size="sm" />
+                      <Avatar
+                        name={name}
+                        src={who?.avatarUrl ?? undefined}
+                        avatarId={who?.avatarId}
+                        size="sm"
+                      />
                       <span className="min-w-0">
                         <span className="block truncate font-semibold">{name}</span>
                         <span className="block text-xs text-muted-foreground">

@@ -8,6 +8,7 @@ public record RoomPlayerSummaryPayload(
     UUID userId,
     String nickname,
     @Nullable String avatarUrl,
+    @Nullable String avatarId,
     boolean isHost,
     boolean isReady,
     boolean isGuest,

@@ -68,6 +68,7 @@ function AllTimeBoard() {
     rank: entry.rank,
     nickname: entry.nickname,
     avatarUrl: entry.avatarUrl,
+    avatarId: entry.avatarId,
     value: t('allTime.points', { points: format(entry.rankPoints) }),
     detail: t('allTime.matches', {
       played: format(entry.matchesPlayed),
@@ -110,6 +111,7 @@ function DailyBoard() {
     rank: entry.rank,
     nickname: entry.nickname,
     avatarUrl: entry.avatarUrl,
+    avatarId: entry.avatarId,
     value: t('daily.score', { score: format(entry.score) }),
     detail:
       entry.status === 'SOLVED' && entry.listenSeconds != null

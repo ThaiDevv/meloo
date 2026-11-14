@@ -61,6 +61,7 @@ export interface RoomPlayerSummary {
   userId: string
   nickname: string
   avatarUrl: string | null
+  avatarId?: 'guitar' | 'drum' | 'headphones' | 'disc' | 'mic' | 'piano' | 'radio' | 'wave' | null
   isHost: boolean
   isReady: boolean
   isGuest: boolean

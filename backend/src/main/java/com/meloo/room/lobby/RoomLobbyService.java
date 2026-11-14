@@ -180,6 +180,16 @@ public class RoomLobbyService {
       @Nullable String avatarUrl,
       boolean isGuest,
       CreateRoomRequestDto request) {
+    return createRoom(creatorId, creatorNickname, avatarUrl, null, isGuest, request);
+  }
+
+  public RoomResponseDto createRoom(
+      UUID creatorId,
+      String creatorNickname,
+      @Nullable String avatarUrl,
+      @Nullable String avatarId,
+      boolean isGuest,
+      CreateRoomRequestDto request) {
     Instant now = clock.instant();
 
     if (request.getPlaylistId() != null && request.getFilter() != null) {
@@ -247,7 +257,8 @@ public class RoomLobbyService {
             now);
 
     RoomPlayer host =
-        new RoomPlayer(creatorId, creatorNickname, avatarUrl, true, true, isGuest, false, 0, now);
+        new RoomPlayer(
+            creatorId, creatorNickname, avatarUrl, avatarId, true, true, isGuest, false, 0, now);
     session.addPlayer(host);
 
     roomsById.put(roomId, session);
@@ -307,6 +318,16 @@ public class RoomLobbyService {
       @Nullable String avatarUrl,
       boolean isGuest,
       @Nullable QuickMatchRequestDto request) {
+    return quickMatch(userId, nickname, avatarUrl, null, isGuest, request);
+  }
+
+  public RoomResponseDto quickMatch(
+      UUID userId,
+      String nickname,
+      @Nullable String avatarUrl,
+      @Nullable String avatarId,
+      boolean isGuest,
+      @Nullable QuickMatchRequestDto request) {
     Instant now = clock.instant();
 
     UUID playlistId = null;
@@ -355,7 +376,8 @@ public class RoomLobbyService {
                         session.toResponseDto(), CompletableFuture.completedFuture(null));
                   }
                   if (session.isFull()) return null;
-                  return addQuickMatchPlayer(session, userId, nickname, avatarUrl, isGuest, now);
+                  return addQuickMatchPlayer(
+                      session, userId, nickname, avatarUrl, avatarId, isGuest, now);
                 });
         if (joined != null) {
           await(joined.updated());
@@ -371,7 +393,8 @@ public class RoomLobbyService {
                   .orElseThrow()
                   .submit(
                       () ->
-                          addQuickMatchPlayer(session, userId, nickname, avatarUrl, isGuest, now)));
+                          addQuickMatchPlayer(
+                              session, userId, nickname, avatarUrl, avatarId, isGuest, now)));
       await(joined.updated());
       return joined.response();
     } finally {
@@ -386,10 +409,11 @@ public class RoomLobbyService {
       UUID userId,
       String nickname,
       @Nullable String avatarUrl,
+      @Nullable String avatarId,
       boolean guest,
       Instant now) {
     RoomPlayer player =
-        new RoomPlayer(userId, nickname, avatarUrl, false, true, guest, true, 0, now);
+        new RoomPlayer(userId, nickname, avatarUrl, avatarId, false, true, guest, true, 0, now);
     session.addPlayer(player);
     CompletableFuture<Void> updated =
         roomRegistry.update(new RoomDescriptor(session.roomId(), session.allMemberIds(), false));
@@ -416,6 +440,16 @@ public class RoomLobbyService {
   /** Vào phòng bằng mã 6 ký tự hoặc đường dẫn liên kết (BR-11, BR-12, BR-13, BR-15). */
   public RoomResponseDto joinRoomByCode(
       UUID userId, String nickname, @Nullable String avatarUrl, boolean isGuest, String code) {
+    return joinRoomByCode(userId, nickname, avatarUrl, null, isGuest, code);
+  }
+
+  public RoomResponseDto joinRoomByCode(
+      UUID userId,
+      String nickname,
+      @Nullable String avatarUrl,
+      @Nullable String avatarId,
+      boolean isGuest,
+      String code) {
     if (code == null || code.isBlank()) {
       throw new ApiException(
           HttpStatus.BAD_REQUEST, "VALIDATION_FAILED", "Mã phòng không được để trống");
@@ -452,7 +486,9 @@ public class RoomLobbyService {
                         "Phòng không tồn tại hoặc đã đóng"));
 
     JoinResult joinResult =
-        await(actor.submit(() -> doJoin(session, actor, userId, nickname, avatarUrl, isGuest)));
+        await(
+            actor.submit(
+                () -> doJoin(session, actor, userId, nickname, avatarUrl, avatarId, isGuest)));
 
     if (joinResult.updateFuture() != null) {
       await(joinResult.updateFuture());
@@ -485,6 +521,7 @@ public class RoomLobbyService {
       UUID userId,
       String nickname,
       @Nullable String avatarUrl,
+      @Nullable String avatarId,
       boolean isGuest) {
     Instant now = clock.instant();
 
@@ -508,7 +545,7 @@ public class RoomLobbyService {
     }
 
     RoomPlayer player =
-        new RoomPlayer(userId, nickname, avatarUrl, false, false, isGuest, false, 0, now);
+        new RoomPlayer(userId, nickname, avatarUrl, avatarId, false, false, isGuest, false, 0, now);
     session.addPlayer(player);
 
     RoomDescriptor descriptor =

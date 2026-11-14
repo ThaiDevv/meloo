@@ -46,7 +46,12 @@ export function PlayerCard({ player, leader }: { player: Standing; leader: boole
         <span className="num w-5 shrink-0 text-center text-sm font-semibold text-muted-foreground">
           {player.rank}
         </span>
-        <Avatar name={player.nickname} src={player.avatarUrl ?? undefined} size="sm" />
+        <Avatar
+          name={player.nickname}
+          src={player.avatarUrl ?? undefined}
+          avatarId={player.avatarId}
+          size="sm"
+        />
         <span className="min-w-0 flex-1">
           <span
             className={cn('block truncate text-sm font-semibold', !expanded && 'max-sm:hidden')}

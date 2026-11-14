@@ -134,7 +134,7 @@ class RoomMessageSerializationTest {
       Instant now = Instant.parse("2026-10-29T10:00:00Z");
       RoomPlayerSummaryPayload player =
           new RoomPlayerSummaryPayload(
-              UUID.randomUUID(), "PlayerOne", null, true, true, false, true, 0);
+              UUID.randomUUID(), "PlayerOne", null, "piano", true, true, false, true, 0);
       PlayerJoinedEvent event = new PlayerJoinedEvent(player, now);
 
       String json = jsonMapper.writeValueAsString(event);
@@ -142,6 +142,7 @@ class RoomMessageSerializationTest {
 
       assertThat(deserialized.type()).isEqualTo("PLAYER_JOINED");
       assertThat(deserialized.user().nickname()).isEqualTo("PlayerOne");
+      assertThat(deserialized.user().avatarId()).isEqualTo("piano");
       assertThat(deserialized.user().isConnected()).isTrue();
       assertThat(deserialized.serverTime()).isEqualTo(now);
     }
@@ -216,7 +217,7 @@ class RoomMessageSerializationTest {
           new WaitingListChangedEvent(
               List.of(
                   new RoomPlayerSummaryPayload(
-                      UUID.randomUUID(), "LateUser", null, false, false, true, true, 0)),
+                      UUID.randomUUID(), "LateUser", null, null, false, false, true, true, 0)),
               now);
       WaitingListChangedEvent wlDeser =
           jsonMapper.readValue(
@@ -504,7 +505,8 @@ class RoomMessageSerializationTest {
       UUID hostId = UUID.randomUUID();
 
       RoomPlayerSummaryPayload host =
-          new RoomPlayerSummaryPayload(hostId, "HostUser", null, true, true, false, true, 1000);
+          new RoomPlayerSummaryPayload(
+              hostId, "HostUser", null, null, true, true, false, true, 1000);
 
       RoomResponsePayload room =
           new RoomResponsePayload(

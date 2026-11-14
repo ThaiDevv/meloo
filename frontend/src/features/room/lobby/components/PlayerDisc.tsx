@@ -1,3 +1,4 @@
+import type { components } from '@/shared/api/schema.gen'
 import { cn } from '@/shared/lib/utils'
 import { Avatar } from '@/shared/ui/Avatar'
 import '../lobby.css'
@@ -5,6 +6,7 @@ import '../lobby.css'
 interface PlayerDiscProps {
   name: string
   src?: string
+  avatarId?: components['schemas']['PresetAvatarId'] | null
   /** A ready player's record turns; everyone else's rests. */
   spinning: boolean
   /** Lost connection: the record is dimmed. */
@@ -15,7 +17,7 @@ interface PlayerDiscProps {
  * A player as a record on a deck: grooves that turn when they are ready, and their own avatar as
  * the label, which stays upright so the initial can be read. Decorative; the name sits beside it.
  */
-export function PlayerDisc({ name, src, spinning, away = false }: PlayerDiscProps) {
+export function PlayerDisc({ name, src, avatarId, spinning, away = false }: PlayerDiscProps) {
   return (
     <span
       aria-hidden="true"
@@ -76,7 +78,12 @@ export function PlayerDisc({ name, src, spinning, away = false }: PlayerDiscProp
           <circle cx="50" cy="50" r="49" fill="none" className="stroke-primary" strokeWidth="2" />
         ) : null}
       </svg>
-      <Avatar name={name} src={src} className="relative size-11 text-lg sm:size-14 sm:text-2xl" />
+      <Avatar
+        name={name}
+        src={src}
+        avatarId={avatarId}
+        className="relative size-11 text-lg sm:size-14 sm:text-2xl"
+      />
     </span>
   )
 }

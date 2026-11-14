@@ -5,6 +5,7 @@ import registeredExample from '../../../../contracts/examples/identity/get-me.re
 import linkOauthExample from '../../../../contracts/examples/identity/link-oauth.200.json'
 import unauthorizedExample from '../../../../contracts/examples/common/problem.unauthorized.401.json'
 import validationExample from '../../../../contracts/examples/common/problem.validation-failed.400.json'
+import { AVATAR_IDS, type AvatarId } from './guest/avatars'
 
 type Me = components['schemas']['Me']
 type AuthSession = components['schemas']['AuthSession']
@@ -51,7 +52,10 @@ export const authHandlers = [
     if (!isAcceptable(nickname)) {
       return HttpResponse.json(validationExample, { status: 400, headers: PROBLEM })
     }
-    mockUser = { ...(guestExample.user as Me), nickname }
+    const avatar =
+      typeof body === 'object' && body !== null && 'avatarId' in body ? body.avatarId : undefined
+    const avatarId = AVATAR_IDS.find((id: AvatarId) => id === avatar) ?? null
+    mockUser = { ...(guestExample.user as Me), nickname, avatarId }
     return HttpResponse.json(sessionFor(mockUser), { status: 201 })
   }),
   http.post('*/api/v1/auth/refresh', () =>

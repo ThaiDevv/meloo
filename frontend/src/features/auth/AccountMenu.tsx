@@ -7,6 +7,7 @@ import { useAuthStore } from '@/shared/api/authStore'
 import { useSessionStore } from '@/shared/session/store'
 import { toast } from '@/shared/ui/toast-store'
 import { Button } from '@/shared/ui/Button'
+import { ProfileSetup } from './ProfileSetup'
 import { SocialLoginButtons } from './social/SocialLoginButtons'
 import { useSessionRestore } from './useSessionRestore'
 
@@ -20,6 +21,16 @@ import { useSessionRestore } from './useSessionRestore'
  * - Registered / Admin (role === 'USER' | 'ADMIN'): dropdown with Profile and Sign out.
  */
 export function AccountMenu() {
+  const user = useAuthStore((s) => s.user)
+  return (
+    <>
+      <AccountMenuContent />
+      {user?.kind === 'REGISTERED' && user.profileCompleted === false && <ProfileSetup />}
+    </>
+  )
+}
+
+function AccountMenuContent() {
   const role = useSessionStore((s) => s.role)
   const { state } = useSessionRestore()
   const location = useLocation()

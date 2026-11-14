@@ -66,13 +66,23 @@ public class MatchmakingService {
       @Nullable String avatarUrl,
       boolean guest,
       @Nullable QuickMatchRequestDto request) {
+    return quickMatch(userId, nickname, avatarUrl, null, guest, request);
+  }
+
+  public RoomResponseDto quickMatch(
+      UUID userId,
+      String nickname,
+      @Nullable String avatarUrl,
+      @Nullable String avatarId,
+      boolean guest,
+      @Nullable QuickMatchRequestDto request) {
     if (guest) {
       throw new ApiException(
           HttpStatus.FORBIDDEN,
           "QUICK_MATCH_REQUIRES_ACCOUNT",
           "Sign in to play a ranked quick match");
     }
-    return lobby.quickMatch(userId, nickname, avatarUrl, false, request);
+    return lobby.quickMatch(userId, nickname, avatarUrl, avatarId, false, request);
   }
 
   @EventListener

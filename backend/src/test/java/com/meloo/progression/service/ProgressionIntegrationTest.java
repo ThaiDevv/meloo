@@ -251,12 +251,14 @@ class ProgressionIntegrationTest extends IntegrationTest {
         second);
     jdbc.update("update player_stats set ranked_score=999 where user_id=?", locked);
     jdbc.update("update app_user set status='LOCKED',lock_reason='Test lock' where id=?", locked);
-    jdbc.update("update app_user set nickname='CurrentNickname' where id=?", first);
+    jdbc.update(
+        "update app_user set nickname='CurrentNickname', avatar_id='piano' where id=?", first);
     var page = queries.leaderboard(second, 0, 1);
     assertThat(page.getTotalItems()).isEqualTo(2);
     assertThat(page.getTotalPages()).isEqualTo(2);
     assertThat(page.getItems()).extracting(e -> e.getUserId()).containsExactly(first);
     assertThat(page.getItems().getFirst().getNickname()).isEqualTo("CurrentNickname");
+    assertThat(page.getItems().getFirst().getAvatarId().getValue()).isEqualTo("piano");
     assertThat(page.getMyEntry().getRank()).isEqualTo(2);
     assertThat(queries.leaderboard(guest, 5, 1).getMyEntry()).isNull();
     assertThat(queries.leaderboard(first, 5, 1).getItems()).isEmpty();

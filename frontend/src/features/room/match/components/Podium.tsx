@@ -59,7 +59,12 @@ export function Podium({ table, standings, rank, me }: PodiumProps) {
           if (!row) return <li key={slot} aria-hidden="true" />
           return (
             <li key={row.userId} className="flex min-w-0 flex-col items-center gap-2 text-center">
-              <Avatar name={row.nickname} src={avatarOf(row.userId)} size="lg" />
+              <Avatar
+                name={row.nickname}
+                src={avatarOf(row.userId)}
+                avatarId={standings.find((player) => player.userId === row.userId)?.avatarId}
+                size="lg"
+              />
               <p className="w-full truncate text-sm font-semibold">
                 {row.nickname}
                 {row.userId === me ? <span className="text-faint"> {t('players.you')}</span> : null}
@@ -91,7 +96,12 @@ export function Podium({ table, standings, rank, me }: PodiumProps) {
               <span className="num w-6 text-center text-sm font-semibold text-muted-foreground">
                 {row.rank}
               </span>
-              <Avatar name={row.nickname} src={avatarOf(row.userId)} size="sm" />
+              <Avatar
+                name={row.nickname}
+                src={avatarOf(row.userId)}
+                avatarId={standings.find((player) => player.userId === row.userId)?.avatarId}
+                size="sm"
+              />
               <span className="min-w-0 flex-1 truncate text-sm font-semibold">{row.nickname}</span>
               {row.left ? (
                 <span className="text-xs text-muted-foreground">{t('match.card.left')}</span>

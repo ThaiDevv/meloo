@@ -26,6 +26,8 @@ export function OAuthCallbackPage() {
     return <LoadingState message={t('callback.loading')} />
   }
 
+  if (callbackState.status === 'setup') return null
+
   if (callbackState.status === 'linking') {
     return <LoadingState message={t('callback.linking')} />
   }

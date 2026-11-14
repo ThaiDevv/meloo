@@ -55,6 +55,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.messaging.converter.ByteArrayMessageConverter;
 import org.springframework.messaging.converter.CompositeMessageConverter;
 import org.springframework.messaging.converter.JacksonJsonMessageConverter;
@@ -91,6 +92,7 @@ class RoomLobbyIntegrationTest extends IntegrationTest {
 
   @LocalServerPort private int port;
   @Autowired private MockMvc mockMvc;
+  @Autowired private JdbcTemplate jdbc;
   @Autowired private RoomLobbyService roomLobbyService;
   @Autowired private RoomRegistry roomRegistry;
   @Autowired private SimpUserRegistry simpUserRegistry;
@@ -152,17 +154,17 @@ class RoomLobbyIntegrationTest extends IntegrationTest {
   @Test
   @DisplayName("Vào phòng đầy từ chối với lỗi rõ ràng 409 ROOM_FULL (AC-2)")
   void joinFullRoomRejectsWith409() throws Exception {
-    UUID hostId = UUID.randomUUID();
+    UUID hostId = account("HostUser");
     CreateRoomRequestDto createReq = new CreateRoomRequestDto(RoomTypeEnum.PRIVATE_ROOM);
     createReq.setMaxPlayers(2);
 
     RoomResponseDto created =
         roomLobbyService.createRoom(hostId, "HostUser", null, false, createReq);
 
-    UUID player2Id = UUID.randomUUID();
+    UUID player2Id = account("Player2");
     roomLobbyService.joinRoomByCode(player2Id, "Player2", null, false, created.getCode());
 
-    UUID player3Id = UUID.randomUUID();
+    UUID player3Id = account("Player3");
     JoinRoomRequestDto joinReq = new JoinRoomRequestDto(created.getCode());
 
     mockMvc
@@ -179,15 +181,15 @@ class RoomLobbyIntegrationTest extends IntegrationTest {
   @DisplayName(
       "2 người cùng vào khi chỉ còn 1 chỗ: đúng 1 người vào được, 1 người nhận 409 (AC-2, Test bắt buộc)")
   void twoAuthenticatedClientsEnterRoomConcurrentSpot() throws Exception {
-    UUID hostId = UUID.randomUUID();
+    UUID hostId = account("HostUser");
     CreateRoomRequestDto createReq = new CreateRoomRequestDto(RoomTypeEnum.PRIVATE_ROOM);
     createReq.setMaxPlayers(2);
 
     RoomResponseDto created =
         roomLobbyService.createRoom(hostId, "HostUser", null, false, createReq);
 
-    UUID clientA = UUID.randomUUID();
-    UUID clientB = UUID.randomUUID();
+    UUID clientA = account("ClientA");
+    UUID clientB = account("ClientB");
 
     CountDownLatch startGate = new CountDownLatch(1);
     try (var executor = Executors.newFixedThreadPool(2)) {
@@ -248,9 +250,9 @@ class RoomLobbyIntegrationTest extends IntegrationTest {
   @Test
   @DisplayName("Chủ phòng rời qua STOMP thì quyền chuyển cho người vào sớm nhất (BR-12, AC-4)")
   void hostLeavesTransfersHostToEarliestPlayer() throws Exception {
-    UUID hostId = UUID.randomUUID();
-    UUID player2Id = UUID.randomUUID();
-    UUID player3Id = UUID.randomUUID();
+    UUID hostId = account("HostUser");
+    UUID player2Id = account("Player2");
+    UUID player3Id = account("Player3");
 
     CreateRoomRequestDto createReq = new CreateRoomRequestDto(RoomTypeEnum.PRIVATE_ROOM);
     createReq.setMaxPlayers(4);
@@ -286,8 +288,8 @@ class RoomLobbyIntegrationTest extends IntegrationTest {
   @Test
   @DisplayName("Vào khi trận đang chạy thì được xếp chờ ở sảnh (BR-15, AC-2)")
   void joinWhileMatchIsRunningQueuedAtLobbyWaitingList() throws Exception {
-    UUID hostId = UUID.randomUUID();
-    UUID player2Id = UUID.randomUUID();
+    UUID hostId = account("HostUser");
+    UUID player2Id = account("Player2");
 
     CreateRoomRequestDto createReq = new CreateRoomRequestDto(RoomTypeEnum.PRIVATE_ROOM);
     createReq.setMaxPlayers(4);
@@ -302,7 +304,7 @@ class RoomLobbyIntegrationTest extends IntegrationTest {
     RoomSession session = roomLobbyService.getRoom(created.getRoomId()).orElseThrow();
     session.setStatus(RoomStatusDto.PLAYING);
 
-    UUID player3Id = UUID.randomUUID();
+    UUID player3Id = account("Player3");
     JoinRoomRequestDto joinReq = new JoinRoomRequestDto(created.getCode());
 
     mockMvc
@@ -330,8 +332,8 @@ class RoomLobbyIntegrationTest extends IntegrationTest {
   @Test
   @DisplayName("Người bị mời ra vào lại thì bị từ chối 403 ROOM_KICKED (BR-12, AC-3)")
   void kickedPlayerCannotRejoinRoom() throws Exception {
-    UUID hostId = UUID.randomUUID();
-    UUID player2Id = UUID.randomUUID();
+    UUID hostId = account("HostUser");
+    UUID player2Id = account("Player2");
 
     CreateRoomRequestDto createReq = new CreateRoomRequestDto(RoomTypeEnum.PRIVATE_ROOM);
     createReq.setMaxPlayers(4);
@@ -426,8 +428,8 @@ class RoomLobbyIntegrationTest extends IntegrationTest {
   @Test
   @DisplayName("Sẵn sàng và chỉnh cài đặt phòng tự tạo hoạt động chuẩn STOMP (AC-3)")
   void readyAndSettingsCommandsWorkInPrivateRoom() throws Exception {
-    UUID hostId = UUID.randomUUID();
-    UUID player2Id = UUID.randomUUID();
+    UUID hostId = account("HostUser");
+    UUID player2Id = account("Player2");
 
     CreateRoomRequestDto createReq = new CreateRoomRequestDto(RoomTypeEnum.PRIVATE_ROOM);
     createReq.setMaxPlayers(4);
@@ -471,7 +473,7 @@ class RoomLobbyIntegrationTest extends IntegrationTest {
   @Test
   @DisplayName("REST API: Tạo phòng, vào bằng mã, liệt kê phòng công khai (OpenAPI)")
   void restApiRoomLifecycle() throws Exception {
-    UUID hostId = UUID.randomUUID();
+    UUID hostId = account("HostUser");
     CreateRoomRequestDto createReq = new CreateRoomRequestDto(RoomTypeEnum.PUBLIC_ROOM);
     createReq.setRoundCount(RoundCountEnum.NUMBER_10);
     createReq.setMaxPlayers(4);
@@ -488,6 +490,7 @@ class RoomLobbyIntegrationTest extends IntegrationTest {
             .andExpect(jsonPath("$.code").isNotEmpty())
             .andExpect(jsonPath("$.roomType").value("PUBLIC_ROOM"))
             .andExpect(jsonPath("$.playerCount").value(1))
+            .andExpect(jsonPath("$.players[0].avatarId").value("piano"))
             .andReturn();
 
     String roomCode =
@@ -497,7 +500,7 @@ class RoomLobbyIntegrationTest extends IntegrationTest {
             .get("code")
             .asText();
 
-    UUID player2Id = UUID.randomUUID();
+    UUID player2Id = account("Player2");
     JoinRoomRequestDto joinReq = new JoinRoomRequestDto(roomCode);
 
     mockMvc
@@ -524,7 +527,7 @@ class RoomLobbyIntegrationTest extends IntegrationTest {
   @DisplayName(
       "REST API: Quick match tạo phòng có caller là thành viên với isReady=true (BR-13, M1)")
   void restApiQuickMatch() throws Exception {
-    UUID callerId = UUID.randomUUID();
+    UUID callerId = account("QuickCaller");
     QuickMatchRequestDto req = new QuickMatchRequestDto();
     SoloFilterDto filter = new SoloFilterDto();
     filter.setDecades(List.of(1990));
@@ -544,6 +547,15 @@ class RoomLobbyIntegrationTest extends IntegrationTest {
         .andExpect(jsonPath("$.players[0].userId").value(callerId.toString()))
         .andExpect(jsonPath("$.players[0].isHost").value(false))
         .andExpect(jsonPath("$.players[0].isReady").value(true));
+  }
+
+  private UUID account(String nickname) {
+    UUID id = UUID.randomUUID();
+    jdbc.update(
+        "insert into app_user(id, kind, nickname, avatar_id) values (?, 'REGISTERED', ?, 'piano')",
+        id,
+        nickname);
+    return id;
   }
 
   private StompEventCollector subscribeLobby(StompSession session, UUID roomId) {

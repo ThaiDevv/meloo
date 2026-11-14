@@ -101,6 +101,10 @@ public class DailyLeaderboard {
         .rank(rs.getInt("position"))
         .userId(user)
         .nickname(profiles.get(user).nickname())
+        .avatarId(
+            profiles.get(user).avatarId() == null
+                ? null
+                : DailyLeaderboardEntryDto.AvatarIdEnum.fromValue(profiles.get(user).avatarId()))
         .status(DailyCompletionStatusDto.fromValue(rs.getString("status")))
         .correctLevel(level)
         .listenSeconds(level == null ? null : DailyMapper.seconds(level))

@@ -10,7 +10,6 @@ import { resetAuthMock } from '@/features/auth/mocks'
 import { server } from '@/mocks/server'
 import { useAuthStore } from '@/shared/api/authStore'
 import { GuestStartPage } from './GuestStartPage'
-import { useAvatarStore } from './store'
 import { resetSessionRestoreForTests } from '../useSessionRestore'
 
 function renderPage(initialEntry: string | { pathname: string; state: unknown } = '/start') {
@@ -57,7 +56,6 @@ afterEach(() => {
   act(() => {
     useAuthStore.getState().clear()
   })
-  useAvatarStore.getState().setAvatarId(null)
 })
 
 describe('GuestStartPage', () => {
@@ -97,9 +95,9 @@ describe('GuestStartPage', () => {
     await user.click(screen.getByRole('button', { name: 'Vào chơi' }))
 
     expect(await screen.findByText('solo')).toBeInTheDocument()
-    expect(bodies).toEqual([{ nickname: 'Meloman' }])
+    expect(bodies).toEqual([{ nickname: 'Meloman', avatarId: 'piano' }])
     expect(useAuthStore.getState().user?.nickname).toBe('Meloman')
-    expect(useAvatarStore.getState().avatarId).toBe('piano')
+    expect(useAuthStore.getState().user?.avatarId).toBe('piano')
   })
 
   it('goes home when no page asked for the sign-in, and ignores a `from` that leaves the site', async () => {
@@ -128,16 +126,6 @@ describe('GuestStartPage', () => {
     renderPage({ pathname: '/start', state: { from: '/start' } })
 
     expect(screen.getByText('home')).toBeInTheDocument()
-  })
-
-  it('clears the client-side avatar when the auth session is cleared', () => {
-    useAvatarStore.getState().setAvatarId('piano')
-
-    act(() => {
-      useAuthStore.getState().clear()
-    })
-
-    expect(useAvatarStore.getState().avatarId).toBeNull()
   })
 
   it('offers all avatars as one radio group with the first picked, and moves with the arrow keys', async () => {

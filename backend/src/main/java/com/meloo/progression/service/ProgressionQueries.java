@@ -190,6 +190,10 @@ public class ProgressionQueries {
                 candidate.played(),
                 candidate.won(),
                 candidate.reachedAt());
+        entry.setAvatarId(
+            user.avatarId() == null
+                ? null
+                : RankLeaderboardEntryDto.AvatarIdEnum.fromValue(user.avatarId()));
         if (rank > offset && rank <= offset + size) {
           items.add(entry);
         }

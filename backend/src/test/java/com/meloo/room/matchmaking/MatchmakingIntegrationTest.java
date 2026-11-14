@@ -32,6 +32,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.*;
 import org.springframework.context.event.EventListener;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.messaging.converter.JacksonJsonMessageConverter;
 import org.springframework.messaging.simp.stomp.*;
 import org.springframework.messaging.simp.user.SimpUserRegistry;
@@ -58,6 +59,7 @@ import tools.jackson.databind.*;
     })
 class MatchmakingIntegrationTest extends IntegrationTest {
   @Autowired MockMvc mvc;
+  @Autowired JdbcTemplate jdbc;
   @Autowired ObjectMapper mapper;
   @Autowired RoomLobbyService lobby;
   @Autowired RoomRegistry registry;
@@ -118,10 +120,11 @@ class MatchmakingIntegrationTest extends IntegrationTest {
   @Test
   void anonymousGets401AndGuestGetsContract403() throws Exception {
     mvc.perform(post("/api/v1/rooms/quick-match")).andExpect(status().isUnauthorized());
+    UUID guest = UUID.randomUUID();
+    jdbc.update("insert into app_user(id, kind, nickname) values (?, 'GUEST', 'Guest')", guest);
     mvc.perform(
             post("/api/v1/rooms/quick-match")
-                .with(
-                    jwt().jwt(j -> j.subject(UUID.randomUUID().toString()).claim("kind", "GUEST"))))
+                .with(jwt().jwt(j -> j.subject(guest.toString()).claim("kind", "GUEST"))))
         .andExpect(status().isForbidden())
         .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
         .andExpect(jsonPath("$.code").value("QUICK_MATCH_REQUIRES_ACCOUNT"));
@@ -254,6 +257,9 @@ class MatchmakingIntegrationTest extends IntegrationTest {
   }
 
   RoomResponseDto quick(UUID user) throws Exception {
+    jdbc.update(
+        "insert into app_user(id, kind, nickname) values (?, 'REGISTERED', 'Player') on conflict (id) do nothing",
+        user);
     var result =
         mvc.perform(
                 post("/api/v1/rooms/quick-match")

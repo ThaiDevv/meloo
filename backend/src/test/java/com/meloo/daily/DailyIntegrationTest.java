@@ -599,9 +599,11 @@ class DailyIntegrationTest extends IntegrationTest {
     saved(guest, true, TODAY, AttemptStatus.SOLVED, 1, 1);
     saved(locked, false, TODAY, AttemptStatus.SOLVED, 1, 1);
     jdbc.update("update app_user set status = 'LOCKED', lock_reason = 'test' where id = ?", locked);
+    jdbc.update("update app_user set avatar_id = 'radio' where id = ?", best);
     var page = daily.leaderboard(late, false, null, 0, 2);
     assertThat(page.getItems()).extracting(i -> i.getUserId()).containsExactly(best, slow);
     assertThat(page.getItems()).extracting(i -> i.getRank()).containsExactly(1, 2);
+    assertThat(page.getItems().getFirst().getAvatarId().getValue()).isEqualTo("radio");
     assertThat(page.getMyEntry().getRank()).isEqualTo(3);
     assertThat(page.getTotalItems()).isEqualTo(4);
     assertThat(daily.leaderboard(guest, true, null, 0, 10).getMyEntry()).isNull();

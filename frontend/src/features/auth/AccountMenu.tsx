@@ -7,6 +7,8 @@ import { useAuthStore } from '@/shared/api/authStore'
 import { useSessionStore } from '@/shared/session/store'
 import { toast } from '@/shared/ui/toast-store'
 import { Button } from '@/shared/ui/Button'
+import { Avatar } from '@/shared/ui/Avatar'
+import { ProfileSetup } from './ProfileSetup'
 import { SocialLoginButtons } from './social/SocialLoginButtons'
 import { useSessionRestore } from './useSessionRestore'
 
@@ -20,6 +22,16 @@ import { useSessionRestore } from './useSessionRestore'
  * - Registered / Admin (role === 'USER' | 'ADMIN'): dropdown with Profile and Sign out.
  */
 export function AccountMenu() {
+  const user = useAuthStore((s) => s.user)
+  return (
+    <>
+      <AccountMenuContent />
+      {user?.kind === 'REGISTERED' && user.profileCompleted === false && <ProfileSetup />}
+    </>
+  )
+}
+
+function AccountMenuContent() {
   const role = useSessionStore((s) => s.role)
   const { state } = useSessionRestore()
   const location = useLocation()
@@ -44,6 +56,7 @@ export function AccountMenu() {
 
 /** Dropdown menu for signed-in users: Profile link + Sign out. */
 function RegisteredMenu() {
+  const user = useAuthStore((s) => s.user)
   const { t } = useTranslation('auth')
   const [open, setOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
@@ -108,7 +121,16 @@ function RegisteredMenu() {
         }}
         data-testid="account-menu-trigger"
       >
-        <User className="size-5" aria-hidden="true" />
+        {user ? (
+          <Avatar
+            name={user.nickname}
+            avatarId={user.avatarId}
+            src={user.avatarUrl ?? undefined}
+            size="sm"
+          />
+        ) : (
+          <User className="size-5" aria-hidden="true" />
+        )}
       </Button>
 
       {open && (

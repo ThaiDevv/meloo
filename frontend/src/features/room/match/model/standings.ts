@@ -1,3 +1,4 @@
+import type { components } from '@/shared/api/schema.gen'
 import type { RoomPlayerSummary } from '@/shared/realtime/messages'
 import type { MatchState } from './matchState'
 
@@ -5,6 +6,7 @@ export interface Standing {
   userId: string
   nickname: string
   avatarUrl: string | null
+  avatarId?: components['schemas']['PresetAvatarId'] | null
   score: number
   /** Provisional place in this match; players with the same score share it. */
   rank: number
@@ -33,6 +35,7 @@ export function standingsOf(
       userId: player.userId,
       nickname: player.nickname,
       avatarUrl: player.avatarUrl,
+      avatarId: player.avatarId,
       score: state.scores[player.userId]?.totalScore ?? player.score,
       connected: inRoom.find((p) => p.userId === player.userId)?.isConnected ?? false,
       left: !present.has(player.userId),

@@ -8,7 +8,8 @@
     "isReady": false,
     "isGuest": true,
     "isConnected": true,
-    "score": 0
+    "score": 0,
+    "avatarId": "piano"
   },
   "serverTime": "2026-10-29T10:00:05Z"
 }

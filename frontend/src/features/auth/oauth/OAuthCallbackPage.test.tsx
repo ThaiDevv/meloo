@@ -68,6 +68,26 @@ describe('OAuthCallbackPage', () => {
     })
   })
 
+  it('waits for setup before navigating to the requested destination', async () => {
+    server.use(
+      http.post('*/api/v1/auth/refresh', () =>
+        HttpResponse.json({
+          ...registeredSession,
+          user: { ...registeredSession.user, profileCompleted: false },
+        }),
+      ),
+    )
+    renderCallback('?returnTo=/solo')
+    await waitFor(() => {
+      expect(useAuthStore.getState().user?.profileCompleted).toBe(false)
+    })
+    expect(screen.queryByText('solo page')).not.toBeInTheDocument()
+    act(() => {
+      useAuthStore.getState().updateUser({ ...registeredSession.user, profileCompleted: true })
+    })
+    expect(await screen.findByText('solo page')).toBeInTheDocument()
+  })
+
   it('navigates to returnTo after successful login', async () => {
     server.use(http.post('*/api/v1/auth/refresh', () => HttpResponse.json(registeredSession)))
     renderCallback('?returnTo=/solo')

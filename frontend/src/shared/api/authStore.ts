@@ -13,6 +13,7 @@ interface AuthState {
   accessToken: string | null
   user: CurrentUser | null
   setSession: (session: AuthSession) => void
+  updateUser: (user: CurrentUser) => void
   clear: () => void
 }
 
@@ -27,6 +28,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   setSession: (session) => {
     set({ accessToken: session.accessToken, user: session.user })
     useSessionStore.getState().setRole(roleOf(session.user))
+  },
+  updateUser: (user) => {
+    set({ user })
   },
   clear: () => {
     set({ accessToken: null, user: null })

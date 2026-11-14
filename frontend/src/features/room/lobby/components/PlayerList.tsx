@@ -46,6 +46,7 @@ export function PlayerList({ players, maxPlayers, me, showReady, onKick }: Playe
           <PlayerDisc
             name={player.nickname}
             src={player.avatarUrl ?? undefined}
+            avatarId={player.avatarId}
             spinning={player.isConnected && (player.isReady || player.isHost)}
             away={!player.isConnected}
           />

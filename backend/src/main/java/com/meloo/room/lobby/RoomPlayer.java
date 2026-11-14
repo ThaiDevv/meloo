@@ -13,6 +13,7 @@ public final class RoomPlayer {
   private final UUID userId;
   private final String nickname;
   private final @Nullable String avatarUrl;
+  private final @Nullable String avatarId;
   private final boolean isGuest;
   private final Instant joinedAt;
   private volatile boolean isHost;
@@ -30,9 +31,24 @@ public final class RoomPlayer {
       boolean isConnected,
       int score,
       Instant joinedAt) {
+    this(userId, nickname, avatarUrl, null, isHost, isReady, isGuest, isConnected, score, joinedAt);
+  }
+
+  public RoomPlayer(
+      UUID userId,
+      String nickname,
+      @Nullable String avatarUrl,
+      @Nullable String avatarId,
+      boolean isHost,
+      boolean isReady,
+      boolean isGuest,
+      boolean isConnected,
+      int score,
+      Instant joinedAt) {
     this.userId = Objects.requireNonNull(userId, "userId must not be null");
     this.nickname = Objects.requireNonNull(nickname, "nickname must not be null");
     this.avatarUrl = avatarUrl;
+    this.avatarId = avatarId;
     this.isHost = isHost;
     this.isReady = isReady;
     this.isGuest = isGuest;
@@ -95,13 +111,15 @@ public final class RoomPlayer {
 
   public RoomPlayerSummaryPayload toPayload() {
     return new RoomPlayerSummaryPayload(
-        userId, nickname, avatarUrl, isHost, isReady, isGuest, isConnected, score);
+        userId, nickname, avatarUrl, avatarId, isHost, isReady, isGuest, isConnected, score);
   }
 
   public RoomPlayerSummaryDto toDto() {
     RoomPlayerSummaryDto dto =
         new RoomPlayerSummaryDto(userId, nickname, isHost, isReady, isGuest, isConnected, score);
     dto.setAvatarUrl(avatarUrl);
+    dto.setAvatarId(
+        avatarId == null ? null : RoomPlayerSummaryDto.AvatarIdEnum.fromValue(avatarId));
     return dto;
   }
 }

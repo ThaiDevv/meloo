@@ -67,7 +67,7 @@ function ProfileHeader() {
   const me = profile.data
   return (
     <header className="flex flex-wrap items-center gap-4">
-      <Avatar name={me.nickname} src={me.avatarUrl ?? undefined} size="lg" />
+      <Avatar name={me.nickname} src={me.avatarUrl ?? undefined} avatarId={me.avatarId} size="lg" />
       <div className="min-w-0 space-y-1">
         <h1 className="flex flex-wrap items-center gap-3 font-display text-[clamp(2rem,6vw,3rem)] leading-none font-extrabold tracking-tight">
           <span className="break-all">{me.nickname}</span>

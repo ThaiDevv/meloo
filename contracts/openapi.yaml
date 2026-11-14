@@ -3768,7 +3768,7 @@ components:
           enum: [guitar, drum, headphones, disc, mic, piano, radio, wave, null]
           description: |
             Preset avatar identifier if chosen (CT-04, FE-AUTH-04).
-            Ghi chú: Cung cấp qua REST API phòng; hợp đồng realtime WebSocket (`asyncapi.yaml`) và payload realtime sẽ được đồng bộ ở ticket contract realtime tiếp theo trước khi FE-ROOM triển khai hiển thị avatar realtime.
+            Saved preset avatar is also provided in realtime room snapshots.
         isHost:
           type: boolean
         isReady:

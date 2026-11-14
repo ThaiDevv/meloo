@@ -61,6 +61,21 @@ describe('LeaderboardPage', () => {
     expect(screen.queryByText('Vị trí của bạn')).not.toBeInTheDocument()
   })
 
+  it('renders a saved preset avatar returned by the leaderboard', async () => {
+    server.use(
+      http.get('*/api/v1/leaderboards/all-time', () =>
+        HttpResponse.json({
+          ...allTimeExample,
+          items: [{ ...allTimeExample.items[0], avatarId: 'piano' }],
+          myEntry: null,
+        }),
+      ),
+    )
+    renderPage('USER')
+    const list = await screen.findByRole('list', { name: 'Toàn thời gian' })
+    expect(list.querySelector('[data-avatar-id="piano"]')).toBeInTheDocument()
+  })
+
   it('pins my position above the list when I am not on the current page', async () => {
     server.use(
       http.get('*/api/v1/leaderboards/all-time', () =>

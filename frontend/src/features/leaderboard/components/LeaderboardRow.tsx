@@ -1,3 +1,4 @@
+import type { components } from '@/shared/api/schema.gen'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/shared/lib/utils'
 import { Avatar } from '@/shared/ui/Avatar'
@@ -8,6 +9,7 @@ export interface RowData {
   rank: number
   nickname: string
   avatarUrl?: string | null
+  avatarId?: components['schemas']['PresetAvatarId'] | null
   /** The main number of the board, already formatted. */
   value: string
   /** One short line under the name. */
@@ -35,7 +37,12 @@ export function LeaderboardRow({ row, isMe, as: Tag = 'li' }: LeaderboardRowProp
         <span className="sr-only">{t('row.rank')} </span>
         {row.rank}
       </span>
-      <Avatar name={row.nickname} src={row.avatarUrl ?? undefined} size="sm" />
+      <Avatar
+        name={row.nickname}
+        src={row.avatarUrl ?? undefined}
+        avatarId={row.avatarId}
+        size="sm"
+      />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
           <span className="truncate text-sm font-medium">{row.nickname}</span>

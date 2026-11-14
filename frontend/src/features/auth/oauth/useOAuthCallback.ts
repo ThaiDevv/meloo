@@ -8,7 +8,10 @@ import type { components } from '@/shared/api/schema.gen'
 type OAuthProviderSlug = components['schemas']['OAuthProviderSlug']
 
 export type CallbackState =
-  { status: 'loading' } | { status: 'linking' } | { status: 'error'; code: string }
+  | { status: 'loading' }
+  | { status: 'linking' }
+  | { status: 'setup' }
+  | { status: 'error'; code: string }
 
 function isSupportedProvider(value: string): value is OAuthProviderSlug {
   return value === 'google' || value === 'facebook'
@@ -31,6 +34,7 @@ function isSupportedProvider(value: string): value is OAuthProviderSlug {
 export function useOAuthCallback() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const user = useAuthStore((s) => s.user)
 
   const error = searchParams.get('error')
   const mode = searchParams.get('mode')
@@ -104,6 +108,10 @@ export function useOAuthCallback() {
 
           // Link succeeded: store updated session and navigate
           useAuthStore.getState().setSession(data)
+          if (data.user.profileCompleted === false) {
+            setCallbackState({ status: 'setup' })
+            return
+          }
           const destination = safeReturnTo(returnTo)
           void navigate(destination, { replace: true })
           return
@@ -114,6 +122,10 @@ export function useOAuthCallback() {
         if (cancelled) return
 
         if (outcome === 'refreshed') {
+          if (useAuthStore.getState().user?.profileCompleted === false) {
+            setCallbackState({ status: 'setup' })
+            return
+          }
           const destination = safeReturnTo(returnTo)
           void navigate(destination, { replace: true })
         } else {
@@ -131,6 +143,12 @@ export function useOAuthCallback() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (callbackState.status === 'setup' && user?.profileCompleted === true) {
+      void navigate(safeReturnTo(returnTo), { replace: true })
+    }
+  }, [callbackState.status, user?.profileCompleted, navigate, returnTo])
 
   return { callbackState }
 }

@@ -1526,6 +1526,10 @@ components:
           maxLength: 20
         avatarUrl:
           type: [string, 'null']
+        avatarId:
+          type: [string, 'null']
+          enum: [guitar, drum, headphones, disc, mic, piano, radio, wave, null]
+          description: Saved preset avatar; preferred over avatarUrl when present.
         isHost:
           type: boolean
         isReady:

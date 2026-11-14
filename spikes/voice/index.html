@@ -1,0 +1,6 @@
+<!doctype html><html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Voice spike</title>
+<style>body{font:16px system-ui;max-width:50rem;margin:2rem auto;padding:0 1rem} label{display:block;margin:1rem 0}input{width:min(100%,35rem)}button{margin:.3rem}pre{white-space:pre-wrap;overflow-wrap:anywhere}audio{display:block}</style>
+<h1>Voice mesh spike</h1><p>Chỉ dùng trong mạng thử nghiệm đáng tin cậy. Không dùng thông tin thật.</p>
+<label>Phòng <input id="room" value="test" pattern="[a-zA-Z0-9-]{1,40}"></label>
+<label>ICE servers JSON (để trống: STUN-only) <input id="ice" placeholder='[{"urls":"turn:host:3478","username":"…","credential":"…"}]'></label>
+<button id="join">Tham gia</button><button id="mic" disabled>Bật mic</button><label>Đoạn nhạc thử <input id="music" type="file" accept="audio/*"></label><audio id="player" controls></audio><p id="status" role="status">Chưa kết nối; mic tắt.</p><div id="audio"></div><button id="stats" disabled>Thống kê ICE</button><pre id="output"></pre><script type="module" src="/client.js"></script></html>

@@ -140,6 +140,21 @@ describe('AccountMenu', () => {
     expect(screen.getByTestId('account-menu-trigger')).toBeInTheDocument()
   })
 
+  it('shows the saved avatar in the account menu', () => {
+    act(() => {
+      useAuthStore
+        .getState()
+        .setSession({
+          ...registeredSession,
+          user: { ...registeredSession.user, avatarId: 'piano' },
+        })
+    })
+    renderMenu()
+    expect(
+      screen.getByTestId('account-menu-trigger').querySelector('[data-avatar-id="piano"]'),
+    ).toBeInTheDocument()
+  })
+
   it('shows account menu trigger for admin users', () => {
     act(() => {
       useAuthStore.getState().setSession(adminSession)

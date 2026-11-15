@@ -1,5 +1,5 @@
 @startuml uc-03-nhieu-nguoi
-title Use case phân hệ Chơi nhiều người và giao tiếp (FR-09 → FR-12)
+title Use case phân hệ Chơi nhiều người và giao tiếp (FR-09 → FR-11)
 left to right direction
 skinparam shadowing false
 skinparam linetype polyline
@@ -38,7 +38,6 @@ rectangle "**Meloo — Chơi nhiều người**" {
   usecase "UC-21\nNhắn tin trong phòng" as UC21
   usecase "UC-22\nBáo cáo tin nhắn vi phạm" as UC22
   usecase "UC-20\nChơi lại trong phòng" as UC20
-  usecase "UC-23\nTrò chuyện bằng voice\n(phòng riêng)" as UC23
 }
 ChuPhong -- UC12
 ChuPhong -- UC17
@@ -50,7 +49,6 @@ Khach -- UC16
 Khach -- UC18
 Khach -- UC20
 Khach -- UC21
-Khach -- UC23
 UC18 ..> UC08 : <<include>>
 UC22 ..> UC21 : <<extend>>
 UC08 -- Music

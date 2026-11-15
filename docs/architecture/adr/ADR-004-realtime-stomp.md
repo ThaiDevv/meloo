@@ -3,7 +3,7 @@
 - Ngày: 2026-10-21 · Ticket: MEL-26
 
 ## Bối cảnh
-Phòng 2–5 người cần cập nhật tức thời: sảnh chờ, bắt đầu vòng, mở thêm đoạn nghe, bảng điểm, chat, và tín hiệu (offer, answer, ice) cho voice. Server là trọng tài nên mọi sự kiện phát từ server kèm `serverTime`. Chỉ có một instance backend (ADR-006), nên chưa cần mở rộng ngang.
+Phòng 2–5 người cần cập nhật tức thời: sảnh chờ, bắt đầu vòng, mở thêm đoạn nghe, bảng điểm và chat. Server là trọng tài nên mọi sự kiện phát từ server kèm `serverTime`. Chỉ có một instance backend (ADR-006), nên chưa cần mở rộng ngang.
 
 ## Các phương án
 | Phương án | Ưu | Nhược |
@@ -15,7 +15,7 @@ Phòng 2–5 người cần cập nhật tức thời: sảnh chờ, bắt đầ
 
 ## Quyết định
 Dùng STOMP qua WebSocket, endpoint `/ws`:
-- Lệnh lên: `/app/rooms/{roomId}/{command}`. Sự kiện phòng: `/topic/rooms/{roomId}/{lobby|round|scoreboard|chat|rtc}`. Tin riêng: `/user/queue/{errors|private}`.
+- Lệnh lên: `/app/rooms/{roomId}/{command}`. Sự kiện phòng: `/topic/rooms/{roomId}/{lobby|round|scoreboard|chat}`. Tin riêng: `/user/queue/{errors|private}`.
 - JWT kiểm ở frame CONNECT (ChannelInterceptor) rồi gắn Principal. SUBSCRIBE `/topic/rooms/{id}/**` chỉ cho thành viên phòng; SEND kiểm người gửi thuộc phòng và đúng vai trò.
 - Message nào cũng có `type` và `serverTime`; không message nào chứa đáp án trước `ROUND_END`.
 - Bật heartbeat. Mất kết nối giữ chỗ 30 giây (BR-14); vào lại nhận snapshot đầy đủ.
@@ -30,3 +30,5 @@ Dùng STOMP qua WebSocket, endpoint `/ws`:
 2. Simple broker giới hạn gì? — Một instance, trạng thái trong bộ nhớ; muốn nhiều instance cần broker relay (Phase 2).
 3. Làm sao biết ai được nghe topic phòng? — Interceptor kiểm thành viên phòng ở SUBSCRIBE.
 4. Rớt mạng giữa vòng thì sao? — Giữ chỗ 30 giây; vào lại nhận snapshot và `serverTime` để căn đồng hồ.
+
+> Cập nhật 14/11/2026: bỏ voice chat (BR-18, BR-19 hết hiệu lực), nên không còn kênh `rtc` cho tín hiệu WebRTC. Kênh `rtc.*` trong `contracts/asyncapi.yaml` sẽ được gỡ ở ticket dọn code voice.

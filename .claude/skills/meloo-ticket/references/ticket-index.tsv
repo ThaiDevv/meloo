@@ -66,10 +66,10 @@ MEL-76	FE-ROOM-03	Danh sách phòng công khai & ghép trận nhanh	agent-codex,
 MEL-77	LEG-01	Chính sách quyền riêng tư, điều khoản, xóa dữ liệu	agent-claude,doc,fe,must,s4	FE-01	MEL-38	meloo-frontend, meloo-docs	chuẩn	Claude
 MEL-78	BIZ-07	Beta công khai & theo dõi KPI	biz,must,owner-me,s4	BE-ADM-01	MEL-71	—	—	Thái
 MEL-79	PM-06	Sprint review & retro S4	must,owner-me,pm,s4			—	—	Thái
-MEL-80	SPK-02	Spike voice WebRTC + ADR-009	agent-claude,be,fe,s5,should	BE-RT-01	MEL-46	meloo-backend, meloo-frontend	chuẩn	Claude
-MEL-81	INF-03	TURN server	agent-codex,infra,owner-me,s5,should	SPK-02	MEL-80	meloo-infra	chuẩn	Thái+Codex
-MEL-82	BE-RTC-01	Signaling voice qua STOMP	agent-codex,be,s5,should	SPK-02,BE-RT-01	MEL-80 MEL-46	meloo-backend	sâu	Codex
-MEL-83	FE-RTC-01	Voice chat trong phòng riêng	agent-claude,fe,s5,should	BE-RTC-01,FE-ROOM-02	MEL-82 MEL-59	meloo-frontend	chuẩn	Claude
+MEL-80	SPK-02	[HỦY] Spike voice WebRTC + ADR-009	agent-claude,be,fe,s5,should	BE-RT-01	MEL-46	meloo-backend, meloo-frontend	chuẩn	Claude
+MEL-81	INF-03	[HỦY] TURN server	agent-codex,infra,owner-me,s5,should	SPK-02	MEL-80	meloo-infra	chuẩn	Thái+Codex
+MEL-82	BE-RTC-01	[HỦY] Signaling voice qua STOMP	agent-codex,be,s5,should	SPK-02,BE-RT-01	MEL-80 MEL-46	meloo-backend	sâu	Codex
+MEL-83	FE-RTC-01	[HỦY] Voice chat trong phòng riêng	agent-claude,fe,s5,should	BE-RTC-01,FE-ROOM-02	MEL-82 MEL-59	meloo-frontend	chuẩn	Claude
 MEL-84	BE-ID-03	Đăng nhập Facebook & xóa tài khoản	agent-codex,be,s5,should	BE-ID-02,LEG-01,BE-PROG-01,BE-CHAT-01,BE-ADM-01	MEL-67 MEL-77 MEL-68 MEL-57 MEL-71	meloo-backend	sâu	Codex
 MEL-85	BE-PROG-02	Huy hiệu thành tích	agent-claude,be,s5,should	BE-PROG-01,BE-DAILY-01	MEL-68 MEL-69	meloo-backend	chuẩn	Claude
 MEL-86	FE-PROF-02	Hiển thị huy hiệu & thông báo mở khóa	agent-claude,fe,s5,should	BE-PROG-02,FE-PROF-01,FE-SOLO-02,FE-ROOM-02	MEL-85 MEL-73 MEL-49 MEL-59	meloo-frontend	chuẩn	Claude

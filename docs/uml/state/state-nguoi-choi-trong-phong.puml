@@ -40,7 +40,6 @@ state IN_MATCH as "Đang trong trận đấu (IN_MATCH)" {
   state DISCONNECTED_GRACE as "Mất kết nối tạm thời" {
     DISCONNECTED_GRACE : - Server giữ chỗ trong 30 giây (BR-14)
     DISCONNECTED_GRACE : - Trận đấu KHÔNG dừng lại để chờ (BR-14)
-    DISCONNECTED_GRACE : - Mic tự động ngắt kết nối RTC
   }
 
   ROUND_ACTIVE --> DISCONNECTED_GRACE : Mất kết nối WebSocket (đứt mạng)
@@ -53,7 +52,7 @@ IN_MATCH --> MATCH_COMPLETED : Hoàn thành tất cả các vòng đấu\n(5/10/
 
 state MATCH_COMPLETED as "Tổng kết trận đấu" {
   MATCH_COMPLETED : - Xem bảng xếp hạng chung cuộc & danh hiệu
-  MATCH_COMPLETED : - Cả phòng thảo luận qua chat / voice
+  MATCH_COMPLETED : - Cả phòng thảo luận qua chat
 }
 
 MATCH_COMPLETED --> LOBBY_JOINED : Cả phòng quay về sảnh để chơi tiếp\n(Giữ nguyên mã phòng, BR-12)

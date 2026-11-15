@@ -35,8 +35,8 @@
 | Thử thách hằng ngày | Daily challenge | Một bài chung cho mọi người mỗi ngày, mỗi người một lượt, đổi bài lúc 00:00 giờ Việt Nam; có bảng theo ngày riêng, không cộng điểm rank. | BR-25 |
 | Phòng | Room | Nơi 2–5 người chơi trận thời gian thực; số người tối đa là cấu hình. | BR-11 |
 | Phòng tự tạo | Custom room | Phòng do người chơi tạo, riêng hoặc công khai; không tính xếp hạng. | BR-23 |
-| Phòng riêng | Private room | Chỉ vào bằng mã hoặc link; có voice. | BR-11, BR-18 |
-| Phòng công khai | Public room | Phòng tự tạo hiện trong danh sách phòng; không có voice. | BR-11, BR-18 |
+| Phòng riêng | Private room | Chỉ vào bằng mã hoặc link. | BR-11 |
+| Phòng công khai | Public room | Phòng tự tạo hiện trong danh sách phòng. | BR-11 |
 | Mã phòng | Room code | 6 ký tự chữ in hoa và số, không dùng 0, O, 1, I, L. | BR-11 |
 | Sảnh chờ | Lobby | Màn hình trong phòng trước và sau mỗi trận; phòng tự tạo có nút sẵn sàng, phòng ghép trận có đếm ngược. Người vào lúc trận đang chạy chờ ở đây. | BR-12, BR-13, BR-15 |
 | Chủ phòng | Room owner | Người chọn bộ nhạc, số vòng, bấm bắt đầu, mời người khác ra khỏi phòng. Rời phòng thì quyền chuyển cho người vào sớm nhất. Chỉ có ở phòng tự tạo. Không nhầm với chế độ Host ở Phase 2. | BR-12 |
@@ -79,7 +79,6 @@
 | Chat phòng | Room chat | Tin nhắn tối đa 200 ký tự, 1 tin mỗi giây; trong vòng, tin chứa tên bài đáp án (so khớp sau chuẩn hóa) bị chặn. | BR-16 |
 | Từ cấm | Banned words | Danh sách do admin quản lý, dùng để lọc chat và biệt danh. | BR-17, BR-22 |
 | Báo cáo vi phạm | Report | Người chơi báo một tin nhắn vi phạm cho admin xử lý. | BR-17 |
-| Voice | Voice chat | Trò chuyện giọng nói trong phòng riêng; mic mặc định tắt, tự tắt khi đoạn nhạc của chính người đó đang phát và tự bật lại sau đó. | BR-18, BR-19 |
 
 ## Kiến trúc và quy trình
 
@@ -88,7 +87,7 @@
 | Server là trọng tài | Server-authoritative | Đáp án, điểm, đồng hồ do server quyết; client chỉ hiển thị. |
 | Token mờ | Opaque token | Đường dẫn đoạn nhạc không chứa tên bài, hết hạn sau thời gian ngắn, chỉ cấp đúng mức đã mở. |
 | Hàng đợi phòng | Room command queue | Mỗi phòng xử lý lệnh tuần tự trong hàng đợi riêng để tránh race condition. |
-| Modular monolith | Modular monolith | Một ứng dụng Spring Boot chia thành các module (shared, identity, catalog, audio, game, room, chat, voice, progression, daily, admin), chỉ gọi nhau qua package `api/` và sự kiện trong `events/`. |
+| Modular monolith | Modular monolith | Một ứng dụng Spring Boot chia thành các module (shared, identity, catalog, audio, game, room, chat, progression, daily, admin), chỉ gọi nhau qua package `api/` và sự kiện trong `events/`. |
 | Hợp đồng API | API contract | `contracts/openapi.yaml` (REST) và `contracts/asyncapi.yaml` (WebSocket); chốt trước khi code. |
 | MoSCoW | MoSCoW | Phân ưu tiên: Must, Should, Could, Won't. |
 | BR / FR / NFR | — | Quy tắc nghiệp vụ / Yêu cầu chức năng / Yêu cầu phi chức năng. |

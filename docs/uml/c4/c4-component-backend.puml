@@ -13,7 +13,7 @@ System_Ext(auth_providers, "Google OAuth 2.0 / Facebook", "Xác thực danh tín
 Container_Boundary(backend, "Meloo Backend Application") {
     Component(security, "Security & Identity", "Spring Security 7, JWT, Cookie", "Xác thực khách, OAuth2 (Authorization Code + State + PKCE, ADR-005). Cấp JWT in-memory và Cookie Refresh HttpOnly (lưu hash trong DB). Kiểm soát quyền REST & STOMP.")
     
-    Component(room, "Room Module", "Spring STOMP, In-memory Actor Queue", "Điều phối phòng chờ 2-5 người, hàng đợi lệnh tuần tự theo phòng (NFR-08), relay tín hiệu WebRTC (offer/answer/ice).")
+    Component(room, "Room Module", "Spring STOMP, In-memory Actor Queue", "Điều phối phòng chờ 2-5 người, hàng đợi lệnh tuần tự theo phòng (NFR-08).")
     
     Component(game, "Game Engine Module", "Domain Core, TitleNormalizer", "Máy trạng thái vòng đấu (2s->30s), so khớp đáp án tên bài hát sau khi chuẩn hóa (BR-05), tính điểm cơ bản, combo và thưởng tốc độ.")
     
@@ -27,7 +27,6 @@ Container_Boundary(backend, "Meloo Backend Application") {
     
     Component(chat, "Chat Module", "STOMP Messaging", "Xử lý tin nhắn văn bản tức thời trong phòng chơi, lọc từ thô tục và chống spam.")
     
-    Component(voice, "Voice Signaler", "TURN Client, STOMP", "Cấp phát credential TURN tạm thời và hỗ trợ thiết lập mạng WebRTC thoại.")
     
     Component(admin, "Admin Module", "REST Controller, JPA", "Giao diện API quản trị viên duyệt nội dung, quản lý bộ đề thi đấu.")
 
@@ -40,7 +39,6 @@ Rel(fe, catalog, "Tìm kiếm bài hát, xem danh sách bộ đề", "HTTPS / RE
 Rel(fe, game, "Bắt đầu trận chơi đơn, gửi lượt đoán (/api/v1/solo/**)", "HTTPS / REST")
 Rel(fe, room, "Lệnh phòng, sẵn sàng, gửi đoán (/app/rooms/**)", "WSS / STOMP")
 Rel(fe, chat, "Gửi tin nhắn phòng (/app/rooms/{id}/chat)", "WSS / STOMP")
-Rel(fe, voice, "Yêu cầu TURN credential (dự kiến: /api/v1/voice/turn, chờ CT-03)", "HTTPS / REST")
 Rel(fe, progression, "Xem bảng xếp hạng, lịch sử (dự kiến: /api/v1/leaderboard/**, chờ CT-03)", "HTTPS / REST")
 Rel(fe, daily, "Lấy thông tin thử thách ngày (dự kiến: /api/v1/daily/**, chờ CT-03)", "HTTPS / REST")
 

@@ -3,7 +3,7 @@
 - Ngày: 2026-10-21 · Ticket: MEL-26
 
 ## Bối cảnh
-Meloo có nhiều miền nghiệp vụ (identity, catalog, audio, game, room, chat, voice, progression, daily, admin) nhưng chỉ một người làm cùng hai agent, thời gian vài tuần và hạ tầng free tier (một EC2 1 GB RAM, xem ADR-006). Hai agent làm song song nên cần ranh giới module rõ để không sửa chồng file (luật 3 và 4 trong `AGENTS.md`). Hệ thống cũng cần bảo vệ nguyên tắc "server là trọng tài": đáp án chỉ nằm trong module được phép biết.
+Meloo có nhiều miền nghiệp vụ (identity, catalog, audio, game, room, chat, progression, daily, admin) nhưng chỉ một người làm cùng hai agent, thời gian vài tuần và hạ tầng free tier (một EC2 1 GB RAM, xem ADR-006). Hai agent làm song song nên cần ranh giới module rõ để không sửa chồng file (luật 3 và 4 trong `AGENTS.md`). Hệ thống cũng cần bảo vệ nguyên tắc "server là trọng tài": đáp án chỉ nằm trong module được phép biết.
 
 ## Các phương án
 | Phương án | Ưu | Nhược |

@@ -6,8 +6,8 @@ LAYOUT_WITH_LEGEND()
 title Sơ đồ triển khai hạ tầng - Hệ thống đoán nhạc Meloo (Deployment Diagram)
 
 Deployment_Node(user_device, "Thiết bị người dùng", "Desktop / Smartphone (Chrome, Safari, Edge, Firefox)") {
-    Deployment_Node(browser, "Trình duyệt web", "Web Standards: HTML5, ES6+, Web Audio API, WebRTC") {
-        Container(spa_instance, "Frontend SPA Runtime", "React, Zustand, TanStack Query, STOMP Client", "Thực thi logic giao diện, giải mã và phát âm thanh qua Web Audio API, duy trì kết nối STOMP và thiết lập mesh voice chat.")
+    Deployment_Node(browser, "Trình duyệt web", "Web Standards: HTML5, ES6+, Web Audio API") {
+        Container(spa_instance, "Frontend SPA Runtime", "React, Zustand, TanStack Query, STOMP Client", "Thực thi logic giao diện, giải mã và phát âm thanh qua Web Audio API, duy trì kết nối STOMP.")
     }
 }
 
@@ -42,7 +42,6 @@ Deployment_Node(aws, "Amazon Web Services (AWS)", "Region: ap-southeast-1 (Singa
 }
 
 Deployment_Node(ext_services, "External Cloud Services", "SaaS Providers") {
-    System_Ext(turn_server, "Dịch vụ WebRTC TURN / STUN bên ngoài", "Chưa chọn nhà cung cấp chính thức (ví dụ: Metered, Xirsys, Coturn); hỗ trợ chuyển tiếp luồng thoại WebRTC khi NAT đối xứng.")
     System_Ext(deezer_api, "Deezer Music API & CDN", "Cung cấp siêu dữ liệu bài hát và luồng MP3 preview 30s qua URL ký có thời hạn.")
     System_Ext(auth_providers, "Google OAuth 2.0 / Facebook", "Dịch vụ xác thực danh tính người dùng (FR-02, FR-03).")
 }
@@ -56,9 +55,6 @@ Rel(be_container, db_instance, "Truy vấn và ghi dữ liệu", "PostgreSQL Pro
 
 Rel(be_container, deezer_api, "Proxy audio stream và tìm kiếm catalog", "HTTPS (Port 443)")
 Rel(be_container, auth_providers, "Xác minh token danh tính OAuth2", "HTTPS (Port 443)")
-Rel(be_container, turn_server, "Lấy thông tin xác thực TURN tạm thời", "HTTPS (Port 443)")
 
-Rel(spa_instance, turn_server, "Chuyển tiếp gói tin thoại qua TURN Relay (khi NAT đối xứng)", "UDP/TCP 3478, TLS 5349 (SRTP)")
-Rel(spa_instance, spa_instance, "Truyền thoại P2P Mesh trực tiếp giữa các trình duyệt", "WebRTC / SRTP")
 
 @enduml

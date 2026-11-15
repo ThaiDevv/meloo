@@ -10,11 +10,11 @@
 Tài liệu này mô tả Meloo phải làm gì và làm tốt đến mức nào. Đây là đầu vào cho thiết kế (DES-01), lập trình (BE-GAME-01…), kiểm thử và báo cáo.
 
 ### 1.2 Sản phẩm
-Meloo là web game đoán tên bài hát. Mỗi vòng, người chơi nghe đoạn đầu của bản preview 30 giây, mở dần 2 → 5 → 10 → 20 → 30 giây; đoán đúng càng sớm thì càng nhiều điểm. Người chơi có thể chơi một mình, làm thử thách hằng ngày, hoặc vào phòng 2–5 người theo thời gian thực, có chat và voice.
+Meloo là web game đoán tên bài hát. Mỗi vòng, người chơi nghe đoạn đầu của bản preview 30 giây, mở dần 2 → 5 → 10 → 20 → 30 giây; đoán đúng càng sớm thì càng nhiều điểm. Người chơi có thể chơi một mình, làm thử thách hằng ngày, hoặc vào phòng 2–5 người theo thời gian thực, có chat chữ.
 
 ### 1.3 Phạm vi
 - **Trong phạm vi (MVP, môn học):** các yêu cầu Must và Should ở mục 3.
-- **Ngoài phạm vi:** phát cả bài, app iOS, thanh toán thật trong thời gian môn học (Won't).
+- **Ngoài phạm vi:** phát cả bài, app iOS, thanh toán thật trong thời gian môn học, voice chat (Won't). Voice chat (FR-12) bị bỏ ngày 14/11/2026 theo quyết định của PO: WebRTC, TURN server và việc tự tắt mic khi phát nhạc quá phức tạp so với thời gian còn lại; người chơi dùng chat chữ trong phòng (FR-11).
 - **Phase 2 (Could, sau môn học):** Premium, quảng cáo, chế độ Host/Event, bài hát tài trợ, app di động, Redis cho trạng thái phòng, chế độ đội/sinh tồn/giải đấu.
 
 Quy ước ưu tiên (MoSCoW): Must bắt buộc để bảo vệ; Should làm nếu kịp sau Must; Could để Phase 2. Khi trễ thì cắt từ dưới lên, không bao giờ cắt Must.
@@ -89,7 +89,7 @@ Mỗi dòng kiểm chứng được bằng Acceptance Criteria ở ticket Jira t
 | Mã | Yêu cầu | Ưu tiên | Sprint | BR |
 |---|---|---|---|---|
 | FR-11 | Chat chữ trong phòng: chặn tin lộ đáp án, lọc từ cấm, báo cáo vi phạm. | Must | S3 | BR-16, BR-17 |
-| FR-12 | Voice chat trong phòng riêng, mic tự tắt khi đang phát nhạc và tự bật lại sau đó. | Should | S5 | BR-18, BR-19 |
+| FR-12 | ~~Voice chat trong phòng riêng, mic tự tắt khi đang phát nhạc và tự bật lại sau đó.~~ **Đã bỏ ngày 14/11/2026** (PO quyết định; giữ mã để không lệch tham chiếu). | Won't | — | ~~BR-18, BR-19~~ |
 
 ### 3.6 Tiến trình
 
@@ -143,7 +143,7 @@ NFR-01 → NFR-09 lấy từ kế hoạch. NFR-10 → NFR-15 bổ sung ngày 22/
 | FR-05, FR-06 | Mục 2 (Kho nhạc) | P1, P2 |
 | FR-07, FR-08 | Mục 3, 4 (Chơi đơn, thử thách ngày) | P2 |
 | FR-09, FR-10 | Mục 5 (Nhiều người) | P1 |
-| FR-11, FR-12 | Mục 6 (Giao tiếp) | P1 |
+| FR-11 | Mục 6 (Giao tiếp) | P1 |
 | FR-13 → FR-15 | Mục 7 (Thành tích, xếp hạng) | P2 |
 | FR-16, FR-17 | Mục 8 (Quản trị) | P4 |
 | FR-18, FR-19 | Mục 9 (Giao diện, PWA) | P1, P2 |

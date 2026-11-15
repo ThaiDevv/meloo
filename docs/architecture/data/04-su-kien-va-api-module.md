@@ -44,7 +44,7 @@ Payload không chứa token âm thanh, URL preview hay bất kỳ dữ liệu n�
 | Cấp audio token | audio | BE-AUD-01 | game, room, daily | Không |
 | Engine luật chơi | game `domain/` (NamedInterface "engine") | BE-GAME-01 | room, daily | Không |
 | `ActiveRoundQuery` | room | BE-RT-01 | chat | Không |
-| `RoomDirectory` | room | BE-RT-01 | chat, voice | Không |
+| `RoomDirectory` | room | BE-RT-01 | chat | Không |
 | Quản trị người dùng | identity | BE-ID-02 | admin | Thêm: đếm người dùng theo loại và ngày tạo cho dashboard (đã có trong AC BE-ID-02) |
 | Từ cấm, báo cáo chat | chat | BE-CHAT-01 | admin | Không |
 | Lịch bài thử thách ngày | daily | BE-DAILY-01 | admin | Không |

@@ -15,11 +15,10 @@
 - Luồng phụ và ngoại lệ:
   - 1a. Tài khoản hoặc id khách bị khóa (UC-30, UC-29): hệ thống từ chối tạo phòng và báo tài khoản đã bị khóa. (Quyết định PO 22/10 (mục 5, #8))
   - 2a. Phòng công khai: hệ thống thêm phòng vào danh sách phòng công khai (UC-14).
-  - 2b. Phòng riêng: voice chat có trong phòng (UC-23); phòng công khai không có voice.
   - 5a. Phòng trống quá 10 phút: hệ thống tự đóng phòng.
   - 5b. Chủ phòng rời phòng: quyền chủ phòng chuyển cho người vào phòng sớm nhất.
   - Ghi chú: việc kiểm tra bộ nhạc đủ bài làm ở UC-17.
-- Quy tắc nghiệp vụ: BR-09, BR-11, BR-12, BR-15, BR-18, BR-23 (phòng tự tạo không tính xếp hạng), BR-28.
+- Quy tắc nghiệp vụ: BR-09, BR-11, BR-12, BR-15, BR-23 (phòng tự tạo không tính xếp hạng), BR-28.
 - Yêu cầu liên quan: FR-09.
 
 ### UC-13: Vào phòng bằng mã hoặc link

@@ -102,7 +102,6 @@ Bảng đối chiếu tính năng giữa Meloo và các đối thủ trực ti�
 | **Rào cản đăng nhập** | Vào ngay (Khách vãng lai) | Cần tài khoản để lưu điểm | Bắt buộc đăng ký tài khoản | Chơi ngay không cần tài khoản | Chơi ngay |
 | **Kho nhạc Việt Nam** | Chuyên sâu V-pop & Quốc tế | Hoàn toàn không có | Rất hạn chế (< 2%) | Không có (chỉ US-UK) | Rải rác, không chuẩn hóa |
 | **Chơi nhóm thời gian thực** | Có (2–5 người, STOMP) | Có (Realtime WebSocket) | Bất đồng bộ (Turn-based) | Không (Chỉ chơi đơn) | Không (Chỉ chơi đơn) |
-| **Trò chuyện thoại (Voice)** | Tích hợp WebRTC Mesh | Không có | Không có | Không có | Không có |
 | **Cơ chế gợi ý âm thanh** | Mở dần 2s → 30s (5 mức) | Nghe cố định 10s | Nghe cố định 10s | Mở dần 1s → 16s | Nghe cả đoạn 30s |
 | **Chống đoán mò** | Nhập tự do + gợi ý chuẩn hóa | Trắc nghiệm 1/4 | Trắc nghiệm 1/4 | Nhập tự do | Trắc nghiệm 1/4 |
 
@@ -126,7 +125,7 @@ Các yêu cầu chức năng được phân loại theo mô hình MoSCoW, phục
 | **FR-09** | Phòng nhiều người | Tạo phòng chơi riêng bằng mã 6 ký tự hoặc link mời, sảnh chờ, nút sẵn sàng và bắt đầu trận đấu 2–5 người. | **Must** | S3 | BR-11, BR-12, BR-15 |
 | **FR-10** | Phòng công khai & Ghép trận | Danh sách phòng công khai và chế độ ghép trận nhanh tự động (Quick Matchmaking) tính điểm xếp hạng. | **Must** | S4 | BR-10, BR-13, BR-23 |
 | **FR-11** | Giao tiếp phòng | Trò chuyện văn bản (Text Chat) trong phòng chơi, tự động chặn tin nhắn làm lộ đáp án và từ ngữ thô tục. | **Must** | S3 | BR-16, BR-17 |
-| **FR-12** | Giao tiếp phòng | Kênh đàm thoại trực tiếp (Voice Chat WebRTC Mesh) trong phòng riêng, tự ngắt mic khi đang phát nhạc. | **Should** | S3 | BR-18, BR-19 |
+| **FR-12** | Giao tiếp phòng | Đã bỏ ngày 14/11/2026 (trước đây: voice chat trong phòng riêng). Người chơi trao đổi bằng chat chữ (FR-11). | **Won't** | — | — |
 | **FR-13** | Lưu trữ lịch sử | Tự động lưu trữ chi tiết từng vòng đấu, điểm số từng thành viên vào cơ sở dữ liệu khi trận đấu kết thúc. | **Must** | S2 | BR-23, BR-24 |
 | **FR-14** | Bảng xếp hạng | Bảng vinh danh top người chơi theo mùa giải, tuần, và bảng xếp hạng kết quả thử thách ngày. | **Must** | S4 | BR-24, BR-25 |
 | **FR-15** | Hệ thống tiến trình | Hệ thống thành tựu, huy hiệu danh hiệu và thanh tiến trình thăng cấp người chơi. | **Should** | S5 | BR-26 |
@@ -151,7 +150,7 @@ Các chỉ số kỹ thuật và ràng buộc chất lượng được lượng 
 - **NFR-12 (Tối ưu tải trang ban đầu):** Chỉ số Largest Contentful Paint (LCP) trang chủ $\le 2,5\text{ giây}$ trên mạng di động 4G tiêu chuẩn.
 - **NFR-13 (Tiếp cận công bằng - Accessibility):** Giao diện đáp ứng tiêu chuẩn WCAG 2.1 AA, không dùng màu sắc làm phương tiện duy nhất để biểu thị kết quả.
 - **NFR-14 (Cấu trúc phòng linh hoạt):** Hỗ trợ tối đa 5 người chơi mỗi phòng; tự động thích ứng mượt mà khi người chơi vào/ra giữa chừng.
-- **NFR-15 (Trải nghiệm đàm thoại tự nhiên):** Tự động ngắt micro trong lúc phát preview nhạc và tự bật lại ngay sau khi nhạc dừng.
+- **NFR-15 (Khôi phục dịch vụ):** Khôi phục dịch vụ ≤ 1 giờ sau sự cố (RTO); khi cơ sở dữ liệu hỏng và phải khôi phục từ bản sao lưu tự động hằng ngày của RDS, mất tối đa 24 giờ dữ liệu (RPO).
 
 ### 2.3. Quy tắc nghiệp vụ then chốt (Business Rules: BR-01 → BR-29)
 29 quy tắc nghiệp vụ là **Nguồn sự thật tối cao (Single Source of Truth)** điều phối toàn bộ thuật toán backend:
@@ -175,8 +174,8 @@ Các chỉ số kỹ thuật và ràng buộc chất lượng được lượng 
 | **BR-15** | Vòng đời phòng chơi | Phòng tự động giải tán sau 10 phút nếu không có hoạt động hoặc toàn bộ người chơi rời khỏi phòng. Người vào phòng khi trận đang diễn ra sẽ ở trạng thái chờ đến ván sau. |
 | **BR-16** | Chặn chat lộ đáp án | Tin nhắn trong phòng có nội dung chứa tên bài hát đáp án sau chuẩn hóa sẽ bị máy chủ chặn ngay lập tức và phát cảnh báo riêng cho người gửi. |
 | **BR-17** | Lọc từ ngữ thô tục | Toàn bộ tin nhắn thô tục, xúc phạm nằm trong danh mục từ cấm bị chặn hoàn toàn. |
-| **BR-18** | Đàm thoại WebRTC phòng riêng | Kênh thoại chỉ mở trong phòng riêng giữa bạn bè; không áp dụng cho ghép trận ngẫu nhiên. |
-| **BR-19** | Tự ngắt micro khi nghe nhạc | Micro của client tự động tắt khi âm thanh preview đang phát để chống lọt tiếng nhạc sang người chơi khác; tự mở lại khi âm thanh dừng. |
+| **BR-18** | Đã bỏ (14/11/2026) | Meloo không có voice chat; giữ mã để không đánh số lại các BR sau. |
+| **BR-19** | Đã bỏ (14/11/2026) | Đi cùng BR-18; không còn mic nên không cần tự ngắt khi phát nhạc. |
 | **BR-20** | Quyền hạn khách vãng lai | Khách chơi được mọi chế độ; dữ liệu phiên khách (lịch sử, huy hiệu, thống kê) được lưu tạm trong 30 ngày. |
 | **BR-21** | Gộp dữ liệu khi đăng nhập | Khi khách đăng nhập Google/Facebook, toàn bộ tiến trình thi đấu, huy hiệu và lịch sử của phiên khách được tự động gộp vào tài khoản chính thức. |
 | **BR-22** | Tiêu chuẩn biệt danh | Biệt danh có độ dài 3–20 ký tự, không chứa ký tự đặc biệt độc hại và không trùng từ cấm. |
@@ -224,7 +223,7 @@ Biểu diễn toàn cảnh 6 tác nhân và 34 ca sử dụng được phân nh�
 ![Use Case Chơi đơn](../uml/usecase/uc-02-choi-don.png)
 *Hình 3.3: Sơ đồ Use Case phân hệ Chơi đơn và Thử thách hàng ngày*
 
-#### Sơ đồ Use Case Phân hệ Phòng chơi nhiều người & Giao tiếp (UC-12 → UC-23)
+#### Sơ đồ Use Case Phân hệ Phòng chơi nhiều người & Giao tiếp (UC-12 → UC-22)
 ![Use Case Chơi nhiều người](../uml/usecase/uc-03-nhieu-nguoi.png)
 *Hình 3.4: Sơ đồ Use Case phân hệ Phòng chơi nhiều người và tương tác thời gian thực*
 
@@ -252,7 +251,6 @@ Bảo đảm 100% các yêu cầu chức năng trong tài liệu SRS đều đư
 | FR-09 | Phòng chơi nhiều người (Tự tạo) | UC-12, UC-13, UC-16, UC-17, UC-18, UC-19, UC-20 | Bộ use case trọn vẹn cho sảnh và trận đấu |
 | FR-10 | Phòng công khai & Ghép trận nhanh | UC-14, UC-15, UC-20 | Matchmaking tự động do máy chủ điều phối |
 | FR-11 | Trò chuyện văn bản trong phòng | UC-21, UC-22 | Bao gồm extend Báo cáo tin nhắn (UC-22) |
-| FR-12 | Đàm thoại thoại WebRTC | UC-23 | Dành riêng cho phòng riêng bạn bè |
 | FR-13 | Lưu trữ kết quả trận đấu | UC-07, UC-10, UC-18 | Cơ chế tự động kích hoạt bởi server |
 | FR-14 | Bảng xếp hạng mùa & ngày | UC-24 | Vinh danh thành tích người chơi |
 | FR-15 | Hệ thống huy hiệu thành tựu | UC-25 | Include trong xem hồ sơ |
@@ -444,7 +442,6 @@ Sơ đồ thể hiện phạm vi hệ thống Meloo trong tương tác với cá
 - **Khách & Thành viên:** Tương tác qua trình duyệt web trên máy tính hoặc điện thoại thông minh.
 - **Google OAuth 2.0 / Facebook Login:** Cung cấp dịch vụ định danh tập trung an toàn.
 - **Deezer Music API & CDN:** Cung cấp danh mục bài hát phong phú và luồng audio MP3 128 kbps hợp pháp.
-- **External STUN/TURN Services:** Hỗ trợ thiết lập kênh thoại WebRTC Mesh P2P xuyên qua các lớp tường lửa/NAT đối xứng.
 
 ### 4.3. C4 Level 2: Sơ đồ khối thùng chứa (Container Diagram)
 Sơ đồ phân rã các khối phần mềm độc lập cấu thành giải pháp Meloo và công nghệ tương ứng:
@@ -471,7 +468,6 @@ Sơ đồ thể hiện cấu trúc phân rã các module nghiệp vụ nội b�
 - **`game`:** Lõi luật chơi, điều phối máy trạng thái vòng đấu đơn, bộ so khớp tên bài `TitleNormalizer` và bộ tính điểm `ScoreCalculator`.
 - **`room`:** Điều phối phòng thi đấu nhiều người bằng mô hình hàng đợi đơn luồng `RoomActor`, xử lý tin nhắn STOMP.
 - **`chat`:** Kênh trao đổi tin nhắn văn bản, tích hợp bộ kiểm duyệt từ cấm và chống lộ đáp án.
-- **`voice`:** Quản lý thông tin xác thực STUN/TURN và điều phối tín hiệu WebRTC signaling.
 - **`progression`:** Xử lý sự kiện kết thúc trận `MatchFinished` để ghi nhận kết quả bền, tính điểm xếp hạng mùa và thăng cấp.
 - **`daily`:** Quản lý chu kỳ thử thách đoán nhạc hàng ngày, đồng bộ làm mới lúc 00:00 VN.
 - **`admin`:** Điểm cuối REST API dành riêng cho quản trị viên vận hành hệ thống.

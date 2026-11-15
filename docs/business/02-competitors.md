@@ -41,14 +41,14 @@ Ghi chú từng sản phẩm:
 | Ngôn ngữ giao diện | 9 ngôn ngữ, không có tiếng Việt [2] | 17 ngôn ngữ, không có tiếng Việt [5] | Không còn kiểm chứng được vì đã đóng; các nguồn đều viết bằng tiếng Anh [6][13] | Có tiếng Việt [8] | 18 ngôn ngữ, có tiếng Việt [9] | Quiz tiếng Anh, thêm tiếng Tây Ban Nha [10] | Tiếng Việt và tiếng Anh |
 | Có nhạc Việt | Không, theo chơi thử [16]; thể loại và nghệ sĩ nêu ra đều là nhạc quốc tế, K-pop, nhạc Pháp [1][2] | Không có playlist nhạc Việt, theo chơi thử [16] | Không thấy: bài do nhà phát triển chọn từ SoundCloud [7] | Không thấy: chỉ nêu nghệ sĩ và bài hát quốc tế [8][16] | Có quiz nhạc Việt do user tạo, theo chơi thử [16]; danh mục chính thức có pop, cổ điển, K-pop… [14][15] | Không thấy: chỉ 11 quốc gia, không có Việt Nam [10] | Có: kho nhạc lọc theo quốc gia, ca sĩ, thập niên |
 | Nhiều người realtime | Có: phòng mời bằng link hoặc mã [3] | Có: đấu trực tiếp 1-1, phòng riêng trên app [5] | Không thấy [7][13] | Không thấy: chỉ chơi đơn (1 người) [8][16] | Có: tối đa 10 người (miễn phí) [9] | Không thấy; chỉ thách bạn bè qua điểm [10] | Có: phòng 2–5 người, mã 6 ký tự hoặc link (BR-11) |
-| Voice | Không, theo chơi thử [16]; có chat chữ [3] | Không thấy voice; chỉ có nhắn tin và chat chữ trong app [5][16] | Không thấy [7] | Không thấy [8][16] | Không thấy voice tích hợp (dùng Zoom/Discord ngoài) [9][16] | Không thấy [10] | Có trong phòng riêng, mic mặc định tắt (BR-18) · ưu tiên Should |
+| Voice | Không, theo chơi thử [16]; có chat chữ [3] | Không thấy voice; chỉ có nhắn tin và chat chữ trong app [5][16] | Không thấy [7] | Không thấy [8][16] | Không thấy voice tích hợp (dùng Zoom/Discord ngoài) [9][16] | Không thấy [10] | Không: đã bỏ khỏi phạm vi ngày 14/11/2026 (BR-18, BR-19 hết hiệu lực); có chat chữ (BR-16) |
 | Thử thách ngày | Có quiz hằng ngày [2] | Không thấy [5] | Có: "song of the day" [13] | Không thấy: "không giới hạn theo ngày" [8][16] | Không thấy [9] | Không thấy [10] | Có: một bài chung mỗi ngày, đổi lúc 00:00 giờ Việt Nam (BR-25) · ưu tiên Should |
 | Giá | Miễn phí; có Premium tháng/năm, trang không ghi giá [1][12] | Miễn phí kèm mua trong app; SongPop Plus 9,99 USD (App Store Mỹ) [5] | Miễn phí; đã đóng cửa từ 5/5/2023 [6] | Miễn phí, không cần tài khoản [8] | Go miễn phí (≤ 10 người); Kahoot!+ Gold 12,99 USD/tháng khi trả theo năm (156 USD/năm, giá khuyến mãi) hoặc 24,99 USD/tháng [9] | Chỉ cho Spotify Premium [10] | Miễn phí trong thời gian môn học; freemium ở Phase 2 (BIZ-08) |
 | Cách đoán | Trả lời nhanh để được nhiều điểm; Autocomplete mode: gõ chữ, có gợi ý, tìm đúng tên bài và nghệ sĩ [1][3] | Chọn 1 trong 4, nhanh hơn được nhiều điểm [4] | Gõ tên bài, đoạn mở dần 1→16 giây [7] | Chọn 1 trong 4 trong 15 giây [8] | Chọn đáp án; quiz tự soạn hoặc có sẵn, có quiz luyện nghe [9][15] | Câu đố nhiều dạng, có nhận diện bài [10] | Tìm tên bài trên toàn kho (không dấu); đoạn mở dần 2→5→10→20→30 giây; điểm theo mức (BR-01, BR-02, BR-05) |
 
 Dòng "Cách đoán" không có trong yêu cầu ticket; thêm vào vì đây là nơi Meloo khác rõ nhất về luật chơi.
 
-Cột Meloo lấy từ tài liệu kế hoạch dự án (phạm vi sản phẩm và BR-01…BR-29), chưa phải sản phẩm đã chạy. Voice (S5) và thử thách ngày (S4) là ưu tiên Should, có thể bị cắt nếu trễ.
+Cột Meloo lấy từ tài liệu kế hoạch dự án (phạm vi sản phẩm và BR-01…BR-29), chưa phải sản phẩm đã chạy. Thử thách ngày (S4) là ưu tiên Should. Voice (S5) ban đầu là Should, đã bị cắt ngày 14/11/2026.
 
 ## 4. Ba điểm khác biệt của Meloo
 
@@ -68,7 +68,7 @@ Vì vậy điểm khác biệt của Meloo là: game đoán nhạc chuyên biệ
 - SongTrivia có phòng realtime và chat chữ [3], nhưng không có voice chat [16].
 - musci.io chỉ hỗ trợ chơi đơn một mình, không thấy chế độ nhiều người chơi hay phòng chơi [8][16].
 
-Meloo là sản phẩm duy nhất gom trọn vẹn trong một trang web: mã phòng 6 ký tự hoặc link (BR-11), chơi ngay không cần tài khoản (BR-20), chat chữ tự chặn lộ đáp án (BR-16), và voice chat tích hợp ngay trong phòng riêng (BR-18, BR-19). Nhóm bạn vào là chơi và trò chuyện trực tiếp được ngay, không phải ghép một game nước ngoài với Discord như giả thuyết H1 của BIZ-02.
+Meloo là sản phẩm duy nhất gom trọn vẹn trong một trang web: mã phòng 6 ký tự hoặc link (BR-11), chơi ngay không cần tài khoản (BR-20), và chat chữ tự chặn lộ đáp án (BR-16), trên nhạc Việt và giao diện tiếng Việt. Meloo không tích hợp voice (bỏ ngày 14/11/2026): nhóm bạn vẫn có thể gọi nhau qua Discord hay Zalo, nhưng không phải ghép một game nước ngoài không có nhạc Việt như giả thuyết H1 của BIZ-02.
 
 ### 4.3. Luật "nghe càng ít, điểm càng cao" cho cả chơi đơn lẫn nhiều người
 - Heardle có đoạn nhạc mở dần [7] và một bài mỗi ngày [13], nhưng không thấy chế độ nhiều người và đã đóng cửa từ tháng 5/2023 [6].
@@ -127,7 +127,7 @@ Nguồn của cột Meloo: tài liệu "Meloo — Kế hoạch dự án" của T
 ## 8. Câu hỏi bảo vệ
 
 1. **Đã có SongTrivia chơi realtime với bạn, sao còn làm Meloo?**
-   Danh sách ngôn ngữ của SongTrivia không có tiếng Việt [2]. Khi chơi thử, SongTrivia hoàn toàn không có nhạc Việt và không có voice chat (chỉ có chat chữ) [3][16]. Meloo nhắm vào nhóm bạn người Việt nghe nhạc Việt, có giao diện tiếng Việt và tích hợp voice chat ngay trong web mà không cần cài thêm phần mềm.
+   Danh sách ngôn ngữ của SongTrivia không có tiếng Việt [2]. Khi chơi thử, SongTrivia hoàn toàn không có nhạc Việt và không có voice chat (chỉ có chat chữ) [3][16]. Meloo nhắm vào nhóm bạn người Việt nghe nhạc Việt, có giao diện tiếng Việt, kho nhạc Việt và chơi ngay trên web mà không cần cài thêm phần mềm.
 2. **Kahoot! có tiếng Việt và có sẵn quiz nhạc, sao không dùng Kahoot!?**
    Kahoot! có quiz nhạc chơi sẵn, kể cả quiz luyện nghe [14][15], và có cả quiz nhạc Việt do cộng đồng tạo trong Discover [16]. Nhưng Kahoot! là nền tảng quiz chung: mỗi quiz là một bộ câu hỏi tĩnh soạn sẵn, không thấy voice tích hợp (phải mở song song Zoom/Discord), và không thấy cơ chế nghe mở dần theo mức điểm [9][16]. Meloo là game đoán nhạc chuyên biệt: bài lấy từ kho nhạc chuẩn hóa lọc theo ca sĩ, thập niên, cấp audio mờ chống gian lận, tính điểm theo mức nghe 5 mức (BR-01, BR-02).
 3. **Spotify đã có Music Quiz, Meloo cạnh tranh thế nào?**

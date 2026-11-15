@@ -50,7 +50,6 @@ rectangle "**Meloo**" as sys {
   rectangle "Giao tiếp" as G3 {
     usecase "UC-21\nNhắn tin trong phòng" as UC21
     usecase "UC-22\nBáo cáo tin nhắn vi phạm" as UC22
-    usecase "UC-23\nTrò chuyện bằng voice\n(phòng riêng)" as UC23
   }
   rectangle "Chơi nhiều người" as G4 {
     usecase "UC-12\nTạo phòng" as UC12
@@ -95,7 +94,6 @@ Khach -- UC18
 Khach -- UC20
 Khach -- UC21
 Khach -- UC22
-Khach -- UC23
 Khach -- UC24
 Khach -- UC33
 Khach -- UC34

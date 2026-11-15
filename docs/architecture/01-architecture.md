@@ -9,7 +9,7 @@
 
 ## 1. Tổng quan Kiến trúc
 
-Meloo là nền tảng web game đoán tên bài hát trực tuyến theo thời gian thực. Mỗi vòng đấu mở dần đoạn preview âm thanh theo các mốc 2 → 5 → 10 → 20 → 30 giây; người chơi đoán càng sớm càng nhận được nhiều điểm. Hệ thống hỗ trợ chế độ chơi đơn (Solo), thử thách hàng ngày (Daily Challenge) và phòng chơi nhiều người trực tiếp (Multiplayer Room 2–5 người) tích hợp tính năng trò chuyện thoại (Voice Chat).
+Meloo là nền tảng web game đoán tên bài hát trực tuyến theo thời gian thực. Mỗi vòng đấu mở dần đoạn preview âm thanh theo các mốc 2 → 5 → 10 → 20 → 30 giây; người chơi đoán càng sớm càng nhận được nhiều điểm. Hệ thống hỗ trợ chế độ chơi đơn (Solo), thử thách hàng ngày (Daily Challenge) và phòng chơi nhiều người trực tiếp (Multiplayer Room 2–5 người) có chat chữ trong phòng.
 
 ### 1.1. Triết lý Thiết kế Cốt lõi
 1. **Server là trọng tài tối cao:** Toàn bộ đáp án bài hát, thuật toán chấm điểm, chuỗi combo và đồng hồ đếm ngược của vòng chơi đều do máy chủ backend quyết định. Tuyệt đối không để lộ thông tin bài hát (tên bài, nghệ sĩ, ID, URL nguồn gốc) qua bất kỳ API response, thông điệp WebSocket hay log hệ thống nào trước khi vòng chơi kết thúc (NFR-07).
@@ -41,7 +41,6 @@ Sơ đồ mô tả vị trí của hệ thống Meloo trong mối quan hệ vớ
 - **Quản trị viên (Admin):** Người điều hành quản lý danh mục bài hát, ca sĩ, thể loại, tạo bộ đề thi đấu và kiểm duyệt báo cáo.
 - **Nhà cung cấp định danh (Google OAuth 2.0 / Facebook):** Xác thực định danh người dùng an toàn, cấp Authorization Code / ID Token để backend kiểm tra và quản lý tài khoản.
 - **Deezer Music API & CDN:** Nhà cung cấp danh mục bài hát và nguồn phát luồng audio preview định dạng MP3 128 kbps (ADR-003, đề xuất).
-- **Dịch vụ WebRTC STUN/TURN bên ngoài:** Cung cấp máy chủ STUN và TURN relay (chưa chọn nhà cung cấp chính thức; ví dụ: Metered, Xirsys, Twilio, hoặc Coturn tự host) để thiết lập kênh thoại WebRTC Mesh P2P giữa các người chơi khi bị chặn bởi tường lửa hoặc NAT đối xứng.
 
 ---
 
@@ -55,14 +54,14 @@ Sơ đồ phân rã hệ thống Meloo thành các container phần mềm độc
 **Chi tiết các container:**
 1. **Frontend Single-Page Application (SPA):**
    - **Công nghệ:** React 19, TypeScript (strict mode), Vite, Tailwind CSS, shadcn/ui, TanStack Query, Zustand, Web Audio API, STOMP client (@stomp/stompjs).
-   - **Nhiệm vụ:** Hiển thị giao diện người dùng, quản lý máy trạng thái vòng chơi tại client, xử lý phát preview chính xác từng phân đoạn thời gian bằng Web Audio API, duy trì kết nối STOMP qua WebSocket và điều khiển kết nối thoại WebRTC P2P Mesh giữa các người chơi trong phòng.
+   - **Nhiệm vụ:** Hiển thị giao diện người dùng, quản lý máy trạng thái vòng chơi tại client, xử lý phát preview chính xác từng phân đoạn thời gian bằng Web Audio API và duy trì kết nối STOMP qua WebSocket.
    - **Triển khai:** Lưu trữ và phân phối toàn cầu qua mạng biên Vercel Edge Network.
 2. **Reverse Proxy & TLS Gateway (Caddy):**
    - **Công nghệ:** Caddy 2 (chạy trong Docker container trên máy chủ EC2).
    - **Nhiệm vụ:** Điểm đón nhận lưu lượng duy nhất từ Internet vào backend; tự động cấu hình và gia hạn chứng chỉ bảo mật HTTPS (Let's Encrypt); định tuyến các yêu cầu REST API (`/api/**`) và tự động nâng cấp kết nối WebSocket (`/ws`) phục vụ giao thức STOMP; bảo vệ địa chỉ IP thật của máy khách bằng việc gán tiêu đề `X-Forwarded-For`.
 3. **Backend Application (Modular Monolith):**
    - **Công nghệ:** Java 21, Spring Boot 4.x, Spring Modulith, Spring Security 7, Spring WebSocket (Simple Broker).
-   - **Nhiệm vụ:** Máy chủ ứng dụng xử lý toàn bộ logic nghiệp vụ: xác thực danh tính (JWT & Cookie), điều phối phòng chơi bằng hàng đợi lệnh tuần tự trong bộ nhớ (In-memory room actor queue), tính điểm và combo, so khớp đáp án tên bài hát sau chuẩn hóa (BR-05, TitleNormalizer), proxy luồng âm thanh cắt theo byte CBR qua token HMAC, và chuyển tiếp tín hiệu WebRTC signaling (SDP Offer/Answer, ICE Candidate).
+   - **Nhiệm vụ:** Máy chủ ứng dụng xử lý toàn bộ logic nghiệp vụ: xác thực danh tính (JWT & Cookie), điều phối phòng chơi bằng hàng đợi lệnh tuần tự trong bộ nhớ (In-memory room actor queue), tính điểm và combo, so khớp đáp án tên bài hát sau chuẩn hóa (BR-05, TitleNormalizer) và proxy luồng âm thanh cắt theo byte CBR qua token HMAC.
 4. **Cơ sở dữ liệu (Database):**
    - **Công nghệ:** PostgreSQL 17 (AWS RDS).
    - **Nhiệm vụ:** Lưu trữ quan hệ có cấu trúc: người dùng, vai trò phân quyền, bảng lưu hash refresh token, kho dữ liệu âm nhạc (bài hát, nghệ sĩ, album, bộ đề), lịch sử các trận đấu, tổng điểm các trận xếp hạng (BR-24) và kết quả thử thách ngày. Cơ chế Flyway quản lý phiên bản migration.
@@ -87,9 +86,8 @@ Sơ đồ thể hiện cấu trúc bên trong của Backend Modular Monolith, ph
 - **`catalog`:** Quản lý kho bài hát, danh mục ca sĩ, thể loại và bộ đề (playlists); tích hợp adapter tìm kiếm và đồng bộ bài hát từ Deezer API.
 - **`audio`:** Dịch vụ streaming proxy audio. Cấp phát token mờ HMAC thời hạn ngắn (≤ 2 phút) cho từng người chơi và mức nghe; thực hiện proxy trực tiếp luồng byte MP3 từ CDN Deezer và cắt độ dài byte dựa trên bitrate danh định 128 kbps (~16 KB/s), đảm bảo máy chủ không tốn dung lượng đĩa và không bị tràn bộ nhớ heap (ADR-008).
 - **`game`:** Trọng tâm luật chơi. Điều phối máy trạng thái vòng đấu (mức 2s → 30s), so khớp chuỗi đoán tên bài hát sau chuẩn hóa ký tự Unicode và loại bỏ ký tự phụ (BR-05, `TitleNormalizer`), tính điểm cơ bản, điểm thưởng combo và thưởng tốc độ (BR-01..BR-08).
-- **`room`:** Quản lý phòng chờ thi đấu nhiều người (2–5 người). Mỗi phòng vận hành một hàng đợi lệnh đơn luồng trong bộ nhớ (In-memory actor queue) để tuần tự hóa các hành động (sẵn sàng, đổi cài đặt, đoán bài), loại bỏ hoàn toàn hiện tượng tranh chấp điều kiện (Race condition - NFR-08). Xử lý STOMP broker và relay tín hiệu WebRTC.
+- **`room`:** Quản lý phòng chờ thi đấu nhiều người (2–5 người). Mỗi phòng vận hành một hàng đợi lệnh đơn luồng trong bộ nhớ (In-memory actor queue) để tuần tự hóa các hành động (sẵn sàng, đổi cài đặt, đoán bài), loại bỏ hoàn toàn hiện tượng tranh chấp điều kiện (Race condition - NFR-08). Xử lý STOMP broker.
 - **`chat`:** Kênh trao đổi tin nhắn văn bản tức thời trong phòng chơi qua WebSocket STOMP, tích hợp bộ lọc từ cấm và chống spam.
-- **`voice`:** Cung cấp thông tin xác thực STUN/TURN tạm thời và điều phối kênh thiết lập cuộc gọi thoại WebRTC mesh giữa các thành viên trong phòng.
 - **`progression`:** Lắng nghe sự kiện kết thúc ván đấu (`MatchFinished`, DES-01) để tính toán lại tổng điểm các trận xếp hạng (BR-24), cộng điểm kinh nghiệm, kiểm tra lên cấp và lưu lịch sử trận đấu.
 - **`daily`:** Quản lý thử thách đoán nhạc hàng ngày; bộ đề chung cho toàn bộ cộng đồng được đổi vào **00:00 giờ Việt Nam** (BR-25) mỗi ngày.
 - **`admin`:** Cung cấp các điểm cuối REST API dành riêng cho quản trị viên nhằm duyệt bài hát, cấu hình hệ thống và quản trị báo cáo vi phạm.
@@ -108,12 +106,11 @@ Kiến trúc triển khai vật lý được thiết kế theo mô hình kết h
 
 | Tầng triển khai | Nền tảng / Công nghệ | Vai trò kỹ thuật & Cấu hình |
 |---|---|---|
-| **Client Layer** | Trình duyệt người dùng (Desktop / Mobile) | Chạy mã nguồn JavaScript/Wasm; giải mã âm thanh Web Audio API; kết nối WSS STOMP; truyền âm thanh WebRTC P2P Mesh (SRTP). |
+| **Client Layer** | Trình duyệt người dùng (Desktop / Mobile) | Chạy mã nguồn JavaScript/Wasm; giải mã âm thanh Web Audio API; kết nối WSS STOMP. |
 | **Edge / CDN Layer** | Vercel Edge Network | Phân phối mã nguồn tĩnh (HTML, JS, CSS, sound effects) toàn cầu; tự động deploy bản Production từ nhánh `main` và bản Preview riêng cho mỗi Pull Request. |
 | **DNS / Security Layer** | Cloudflare DNS | Quản lý tên miền; thiết lập CNAME trỏ tới Vercel cho frontend và bản ghi A trỏ tới IP máy chủ EC2 cho API (`api.<domain>`); hỗ trợ chống tấn công từ chối dịch vụ (DDoS). |
 | **Compute Layer** | AWS EC2 `t3.micro` (Default Subnet) | Máy chủ 1 vCPU, 1 GB RAM, 2 GB Swapfile, 25 GiB gp3 SSD (`aws-setup.md:33,126`). Chạy Docker Compose gồm **Caddy 2** (mở cổng 80, 443) và **Spring Boot Backend** (chỉ mở cổng 8080 trong mạng nội bộ `meloo-internal`). |
 | **Database Layer** | AWS RDS PostgreSQL 17 (Default DB Subnet Group) | Cơ sở dữ liệu tên `meloo` (`aws-setup.md:212`); DB subnet group `default`, `Publicly Accessible = No`; chỉ chấp nhận truy cập cổng 5432 từ Security Group của EC2 (`meloo-ec2-sg`); sao lưu tự động hàng ngày. |
-| **Voice Relay Layer** | Dịch vụ WebRTC TURN bên ngoài | Máy chủ STUN/TURN (chưa chọn nhà cung cấp chính thức; ví dụ Metered, Xirsys, Coturn) chuyển tiếp các gói thoại WebRTC mã hóa qua UDP/TCP cổng 3478 và TURNS TLS cổng 5349 khi các client nằm sau NAT đối xứng. |
 
 ### 3.2. Cấu hình An toàn Mạng (AWS Security Groups)
 Theo cấu hình tại script `infra/aws/setup-security-groups.sh`:

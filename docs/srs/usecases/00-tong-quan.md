@@ -25,7 +25,7 @@
 | Tổng quát | `docs/uml/usecase/uc-00-tong-quat.png` | 6 tác nhân và đủ 34 use case, gom theo phân hệ |
 | Tài khoản | `docs/uml/usecase/uc-01-tai-khoan.png` | UC-01 → UC-05 |
 | Chơi đơn | `docs/uml/usecase/uc-02-choi-don.png` | UC-06 → UC-11 |
-| Chơi nhiều người và giao tiếp | `docs/uml/usecase/uc-03-nhieu-nguoi.png` | UC-12 → UC-23 |
+| Chơi nhiều người và giao tiếp | `docs/uml/usecase/uc-03-nhieu-nguoi.png` | UC-12 → UC-22 |
 | Xếp hạng và tiến trình | `docs/uml/usecase/uc-04-xep-hang.png` | UC-24, UC-25, UC-04 |
 | Quản trị | `docs/uml/usecase/uc-05-quan-tri.png` | UC-26 → UC-32 |
 | Chi tiết từng use case | `docs/uml/usecase/chi-tiet/uc-<mã>-<tên>.png` | 14 sơ đồ riêng cho 14 use case đã đặc tả: use case đó, tác nhân liên quan và các use case include/extend trực tiếp |
@@ -60,7 +60,7 @@ Tên dạng động từ + danh từ. Cột "Đặc tả" cho biết use case đ
 | UC-20 | Chơi lại trong phòng | Khách | FR-09, FR-10 | — |
 | UC-21 | Nhắn tin trong phòng | Khách | FR-11 | `03-nhieu-nguoi.md` |
 | UC-22 | Báo cáo tin nhắn vi phạm (extend của UC-21) | Khách | FR-11 | — |
-| UC-23 | Trò chuyện bằng voice (phòng riêng) | Khách | FR-12 | — |
+| UC-23 | ~~Trò chuyện bằng voice (phòng riêng)~~ Đã bỏ ngày 14/11/2026 | — | ~~FR-12~~ | — |
 | UC-24 | Xem bảng xếp hạng | Khách | FR-14 | `04-xep-hang-quan-tri.md` |
 | UC-25 | Xem huy hiệu | Khách | FR-15 | — |
 | UC-26 | Xem dashboard số liệu | Quản trị viên | FR-16 | — |
@@ -94,7 +94,7 @@ Bảng này bổ sung cho mục 5 của `01-srs.md` (SRS v1 để lại cho DOC-
 | FR-09 | Must | UC-12, UC-13, UC-16, UC-17, UC-18, UC-19, UC-20 |
 | FR-10 | Must | UC-14, UC-15, UC-20 |
 | FR-11 | Must | UC-21, UC-22 |
-| FR-12 | Should | UC-23 |
+| FR-12 | Won't (đã bỏ 14/11/2026) | — |
 | FR-13 | Must | UC-04 (xem), UC-07, UC-10, UC-18 (hệ thống lưu lịch sử khi trận kết thúc) |
 | FR-14 | Must | UC-07, UC-10, UC-24 |
 | FR-15 | Should | UC-25 |

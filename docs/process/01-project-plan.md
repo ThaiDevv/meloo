@@ -1,6 +1,6 @@
 # PM-09 · Kế hoạch dự án Meloo (CLO3)
 
-> Ticket: MEL-115 · Phiên bản: 1.0 · Cập nhật: 02/11/2026  
+> Ticket: MEL-115 · Phiên bản: 1.1 · Cập nhật: 02/11/2026; 14/11/2026 bỏ voice chat (4 ticket E08 chuyển sang Won't, xem `docs/srs/02-business-rules.md` mục 2.5)  
 > Chuẩn đầu ra môn học: **CLO3** ("Xây dựng và vận hành quy trình hoạt động nhóm hiệu quả, chuyên nghiệp").  
 > Tài liệu liên quan: Quy trình làm việc nhóm [02-working-process.md](02-working-process.md), Hướng dẫn Harness [harness.md](harness.md), Luật chung [AGENTS.md](../../AGENTS.md).
 
@@ -16,7 +16,7 @@ Meloo ra đời nhằm giải quyết nhu cầu giải trí và gắn kết nhó
 - Khi muốn chơi cùng nhau, các nhóm bạn phải kết hợp thủ công giữa web game nước ngoài và Discord/Google Meet để trò chuyện, khiến thời gian chuẩn bị và rủ rê kéo dài quá mức so với ván chơi 10 phút.
 
 ### 1.2. Mục tiêu dự án (Project Objectives)
-- **Mục tiêu sản phẩm:** Xây dựng một web game đoán nhạc thời gian thực (realtime) có giao diện tiếng Việt thân thiện, vào phòng tức thì qua một đường link (không cần cài app hay đăng ký tài khoản bắt buộc), tích hợp sẵn phòng chơi 2–5 người, chat văn bản và voice chat WebRTC.
+- **Mục tiêu sản phẩm:** Xây dựng một web game đoán nhạc thời gian thực (realtime) có giao diện tiếng Việt thân thiện, vào phòng tức thì qua một đường link (không cần cài app hay đăng ký tài khoản bắt buộc), tích hợp sẵn phòng chơi 2–5 người và chat văn bản.
 - **Mục tiêu kỹ thuật:** Triển khai kiến trúc hướng module (Spring Modulith) kết hợp STOMP WebSocket trên nền Java 21 / Spring Boot 4.x và React / TypeScript. Server đóng vai trò trọng tài độc quyền bảo mật đáp án tuyệt đối bằng token âm thanh mờ HMAC hết hạn ngắn.
 - **Mục tiêu học phần & nhóm:** Vận hành mô hình phối hợp giữa một người (Product Owner / Tech Lead) và các AI Coding Agent (Codex, Claude, Antigravity) theo quy trình Agile/Scrum chuyên nghiệp, kiểm soát chất lượng qua CI/CD và hợp đồng API-first, đáp ứng chuẩn đầu ra CLO3.
 
@@ -31,9 +31,9 @@ Toàn bộ 136 ticket công việc (không tính 14 Epic quản lý danh mục) 
 | Phân loại | Số lượng | Tỷ lệ | Định nghĩa & Phạm vi chức năng cụ thể |
 |---|---|---|---|
 | **Must Have** | **99 tickets** | **72.8%** | **Bắt buộc phải có để hệ thống hoạt động và nộp đồ án:**<br>- Chơi đơn: 5 mức nghe mở dần (2s, 5s, 10s, 20s, 30s), tìm kiếm không dấu, tính điểm Heardle chuẩn hóa, token âm thanh mờ.<br>- Phòng nhiều người: Tạo phòng, vào bằng mã/link, hàng đợi lệnh tuần tự qua single-thread executor (ADR-007), đồng bộ đồng hồ server 45s, bảng xếp hạng trận đấu.<br>- Hợp đồng API-first (OpenAPI, AsyncAPI), hạ tầng Docker/Caddy, xác thực JWT khách & tài khoản, CI/CD tự động, tài liệu môn học bắt buộc (SRS, UML, Architecture, Test Plan, Báo cáo cuối kỳ). |
-| **Should Have** | **28 tickets** | **20.6%** | **Tính năng quan trọng, hoàn thiện trải nghiệm người dùng:**<br>- Voice chat WebRTC trong phòng riêng qua STOMP signaling.<br>- Đăng nhập mạng xã hội (Google OAuth2, Facebook Login), cơ chế xóa tài khoản chuẩn bảo mật.<br>- Hệ thống tiến trình: Cấp bậc, huy hiệu thành tích, lịch sử thi đấu, bảng xếp hạng tuần.<br>- Giao diện PWA có thể cài đặt trên điện thoại di động, trang quản trị Admin cơ bản, kiểm thử tải k6. |
+| **Should Have** | **24 tickets** | **17.6%** | **Tính năng quan trọng, hoàn thiện trải nghiệm người dùng:**<br>- Đăng nhập mạng xã hội (Google OAuth2, Facebook Login), cơ chế xóa tài khoản chuẩn bảo mật.<br>- Hệ thống tiến trình: Cấp bậc, huy hiệu thành tích, lịch sử thi đấu, bảng xếp hạng tuần.<br>- Giao diện PWA có thể cài đặt trên điện thoại di động, trang quản trị Admin cơ bản, kiểm thử tải k6. |
 | **Could Have** | **8 tickets** | **5.9%** | **Tính năng giá trị gia tăng, chỉ làm khi còn thừa thời gian:**<br>- Bộ đề tùy chỉnh chuyên biệt dành cho giáo viên, streamer, sự kiện nhóm.<br>- Thử nghiệm tính năng chia sẻ kết quả mở rộng.<br>- Dọn dẹp tài liệu và tối ưu hóa harness hợp đồng nâng cao (HAR-02). |
-| **Won't Have (MVP)** | **0 tickets (Jira backlog) / Theo SRS** | **0.0%** | **Không thực hiện trong phạm vi đồ án môn học (theo SRS `docs/srs/01-srs.md`):**<br>- Thanh toán tiền thật qua cổng thanh toán (chỉ giữ mô hình gói Premium giả lập cho đề án kinh doanh Phase 2).<br>- Ứng dụng di động Native iOS / Android trên App Store / CH Play (dùng PWA để thay thế).<br>- Kiến trúc microservices phân tán lớn; nhận diện giọng nói để đoán bài. |
+| **Won't Have (MVP)** | **4 tickets (E08 đã hủy) / Theo SRS** | **2.9%** | **Không thực hiện trong phạm vi đồ án môn học (theo SRS `docs/srs/01-srs.md`):**<br>- Voice chat WebRTC trong phòng riêng (bỏ ngày 14/11/2026; trước đó là Should, 4 ticket MEL-80..83).<br>- Thanh toán tiền thật qua cổng thanh toán (chỉ giữ mô hình gói Premium giả lập cho đề án kinh doanh Phase 2).<br>- Ứng dụng di động Native iOS / Android trên App Store / CH Play (dùng PWA để thay thế).<br>- Kiến trúc microservices phân tán lớn; nhận diện giọng nói để đoán bài. |
 | *Chưa gán nhãn MoSCoW* | 1 ticket | 0.7% | MEL-128 (Ticket bổ sung hợp đồng trong S1: ghi `REFRESH_RACE` vào contract). |
 | **Tổng cộng (Tasks/Stories)** | **136 tickets** | **100%** | **136 tasks/stories thực tế (cộng 14 Epics quản lý danh mục = 150 Jira issues).** |
 
@@ -118,7 +118,7 @@ Dự án được tổ chức thành 7 sprint liên hoàn với mục tiêu và 
 - **Kế hoạch Jira:** 16 tickets (0 Done, 0 In Progress, 16 To Do).
 
 ### Sprint 5 · Hoàn thiện & Kiểm định (23/11/2026 – 29/11/2026) — *Sắp diễn ra*
-- **Mục tiêu:** Tích hợp Voice chat WebRTC trong phòng riêng; đăng nhập Facebook; hệ thống huy hiệu thành tích; hỗ trợ PWA cài đặt trên di động; rà quét bảo mật toàn diện OWASP; kiểm thử tải k6; nghiệm thu người dùng UAT; **đóng băng tính năng vào 23:59 ngày 29/11/2026**.
+- **Mục tiêu:** Đăng nhập Facebook; hệ thống huy hiệu thành tích; hỗ trợ PWA cài đặt trên di động; rà quét bảo mật toàn diện OWASP; kiểm thử tải k6; nghiệm thu người dùng UAT; **đóng băng tính năng vào 23:59 ngày 29/11/2026**.
 - **Kế hoạch Jira:** 18 tickets (0 Done, 0 In Progress, 18 To Do).
 
 ### Sprint 6 · Phát hành & Bảo vệ (30/11/2026 – 02/12/2026) — *Sắp diễn ra*
@@ -147,16 +147,16 @@ Hệ thống Meloo được phân rã thành 14 Epic quản lý danh mục trên
 | **E05 (MEL-5)** | Kho nhạc | 9 | 7 | 0 | 2 | 7 Must, 2 Should |
 | **E06 (MEL-6)** | Luật chơi, chơi đơn & thử thách ngày | 14 | 9 | 0 | 5 | 7 Must, 7 Should |
 | **E07 (MEL-7)** | Nhiều người chơi & chat | 11 | 2 | 0 | 9 | 11 Must |
-| **E08 (MEL-8)** | Voice chat | 4 | 0 | 0 | 4 | 4 Should |
+| **E08 (MEL-8)** | Voice chat (đã hủy 14/11/2026) | 4 | 0 | 0 | 4 | 4 Won't |
 | **E09 (MEL-9)** | Tiến trình & xếp hạng | 5 | 0 | 0 | 5 | 3 Must, 2 Should |
 | **E10 (MEL-10)** | Quản trị & kiểm duyệt | 4 | 0 | 0 | 4 | 4 Must |
 | **E11 (MEL-11)** | Hạ tầng & vận hành | 8 | 4 | 0 | 4 | 5 Must, 3 Should |
 | **E12 (MEL-12)** | Kiểm thử & chất lượng | 7 | 1 | 0 | 6 | 6 Must, 1 Should |
 | **E13 (MEL-13)** | Bàn giao cuối kỳ | 4 | 0 | 0 | 4 | 4 Must |
 | **E14 (MEL-14)** | Phase 2 — Kinh doanh & mở rộng | 7 | 0 | 0 | 7 | 7 Could |
-| *Tiểu kết 14 Epic* | *Các ticket gắn parent vào 14 Epic* | **124** | **54** | **3** | **67** | **90 Must, 27 Should, 7 Could** |
+| *Tiểu kết 14 Epic* | *Các ticket gắn parent vào 14 Epic* | **124** | **54** | **3** | **67** | **90 Must, 23 Should, 4 Won't, 7 Could** |
 | *Ticket bổ sung* | *Các ticket kỹ thuật phát sinh (MEL-122..128, 146, 149..152)* | **12** | **7** | **0** | **5** | **9 Must, 1 Should, 1 Could, 1 khác** |
-| **Tổng cộng (Tasks)** | **136 ticket công việc (cộng 14 Epic = 150 Jira issues)** | **136** | **61** | **3** | **72** | **99 Must, 28 Should, 8 Could, 1 khác** |
+| **Tổng cộng (Tasks)** | **136 ticket công việc (cộng 14 Epic = 150 Jira issues)** | **136** | **61** | **3** | **72** | **99 Must, 24 Should, 4 Won't, 8 Could, 1 khác** |
 
 *Vì sao làm vậy:* Việc bóc tách rõ ràng giữa 14 ticket loại Epic (danh mục) và 136 ticket công việc thực tế loại bỏ hoàn toàn sự mâu thuẫn số liệu, giúp hội đồng và Tech Lead có được con số chính xác tuyệt đối khi đối chiếu với hệ thống Jira.
 
@@ -192,5 +192,5 @@ Hệ thống Meloo được phân rã thành 14 Epic quản lý danh mục trên
    **Trả lời:** Em đóng vai trò Product Owner và Tech Lead, chỉ đạo trực tiếp các AI Agent chuyên trách (Codex làm backend/infra, Claude làm frontend/contract/docs, Antigravity hỗ trợ linh hoạt). Toàn bộ quy trình được tự động hóa qua harness, kiểm soát bằng 5 tiêu chí Definition of Ready và CI chặn cứng, giúp em tập trung vào duyệt thiết kế, kiểm tra nghiệp vụ và nghiệm thu chất lượng thay vì mất thời gian gõ boilerplate.
 2. **Thầy/Cô hỏi:** *Nếu nguồn phát nhạc Deezer gặp trục trặc về bản quyền hoặc đường truyền thì giải pháp dự phòng là gì?*  
    **Trả lời:** Nhóm đã thiết kế kiến trúc qua interface `MusicProvider` (ADR-003, `catalog/provider/`). Cơ chế proxy token mờ của hệ thống (ADR-008) độc lập với nguồn phát gốc, cho phép backend trỏ tới bất kỳ nguồn audio hợp pháp nào khác do Tech Lead cấu hình mà không làm thay đổi logic game-core hay giao diện người dùng.
-3. **Thầy/Cô hỏi:** *Cơ sở nào để bạn phân chia tỷ lệ 72.8% Must Have và 20.6% Should Have trong backlog?*  
-   **Trả lời:** Tỷ lệ này được xây dựng dựa trên yêu cầu học thuật của đồ án môn học kết hợp ma trận rủi ro: Nhóm ưu tiên tuyệt đối cho trải nghiệm chơi mượt mà không cần đăng ký, tính toàn vẹn của luật chơi và toàn bộ hồ sơ tài liệu bắt buộc theo đề cương môn học (Must Have). Các tính năng như Voice chat hay PWA (Should Have) là giá trị gia tăng, sẵn sàng cắt giảm nếu tiến độ bị đe dọa mà không làm mất đi tính hoàn chỉnh của đề tài.
+3. **Thầy/Cô hỏi:** *Cơ sở nào để bạn phân chia tỷ lệ 72.8% Must Have và 17.6% Should Have trong backlog?*  
+   **Trả lời:** Tỷ lệ này được xây dựng dựa trên yêu cầu học thuật của đồ án môn học kết hợp ma trận rủi ro: Nhóm ưu tiên tuyệt đối cho trải nghiệm chơi mượt mà không cần đăng ký, tính toàn vẹn của luật chơi và toàn bộ hồ sơ tài liệu bắt buộc theo đề cương môn học (Must Have). Các tính năng như PWA hay huy hiệu (Should Have) là giá trị gia tăng, sẵn sàng cắt giảm nếu tiến độ bị đe dọa mà không làm mất đi tính hoàn chỉnh của đề tài. Voice chat là ví dụ thực tế: ban đầu là Should, ngày 14/11/2026 được cắt (chuyển Won't) vì WebRTC và TURN server rủi ro cao so với thời gian còn lại, trong khi chat chữ đã đáp ứng nhu cầu trao đổi trong phòng.

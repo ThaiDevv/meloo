@@ -6,7 +6,7 @@ Thư mục này chứa sơ đồ triển khai hạ tầng thực tế của Melo
 
 | Tên sơ đồ | File nguồn | Ảnh xuất | Mô tả |
 |---|---|---|---|
-| **Sơ đồ triển khai hạ tầng** | [`deployment.puml`](deployment.puml) | ![Deployment Diagram](deployment.png) | Triển khai phân tán: Vercel (Edge CDN Static Hosting), Cloudflare (DNS), AWS EC2 Singapore (Docker Compose với Caddy Reverse Proxy & Spring Boot Backend), AWS RDS PostgreSQL 17 (Default DB Subnet Group, Public Access = No, SG chỉ nhận 5432 từ EC2) và Dịch vụ WebRTC TURN ngoài. |
+| **Sơ đồ triển khai hạ tầng** | [`deployment.puml`](deployment.puml) | ![Deployment Diagram](deployment.png) | Triển khai phân tán: Vercel (Edge CDN Static Hosting), Cloudflare (DNS), AWS EC2 Singapore (Docker Compose với Caddy Reverse Proxy & Spring Boot Backend), AWS RDS PostgreSQL 17 (Default DB Subnet Group, Public Access = No, SG chỉ nhận 5432 từ EC2) cùng hai dịch vụ ngoài: Deezer và Google OAuth. |
 
 ## Các thành phần chính trong hạ tầng
 
@@ -33,11 +33,6 @@ Thư mục này chứa sơ đồ triển khai hạ tầng thực tế của Melo
    - Security Group `meloo-rds-sg`: Chỉ chấp nhận kết nối TCP cổng 5432 bắt nguồn từ `meloo-ec2-sg` (cách ly truy cập mạng).
    - Cơ chế sao lưu tự động (Automated Backups) hàng ngày đảm bảo RPO ≤ 24 giờ (NFR-15).
    - *(Ghi chú cải tiến tương lai: khi nâng cấp hệ thống có thể cấu hình Private Subnet chuyên biệt không có Internet Gateway).*
-
-5. **Dịch vụ WebRTC STUN/TURN bên ngoài:**
-   - Chưa chọn nhà cung cấp chính thức (ví dụ: Metered, Xirsys, Twilio, hoặc Coturn tự host).
-   - Hỗ trợ thiết lập kênh thoại WebRTC Mesh P2P giữa các trình duyệt.
-   - Chuyển tiếp luồng âm thanh thoại qua TURN Relay khi người chơi nằm sau mạng tường lửa hoặc NAT đối xứng (Symmetric NAT).
 
 ## Cách biên dịch lại sơ đồ
 Sử dụng Docker image `plantuml/plantuml`:

@@ -1,3 +1,14 @@
+# Bộ ảnh sơ đồ cập nhật ngày 15/11/2026
+
+Bộ nộp mới đã bỏ voice chat, cập nhật luật rank và đối chiếu lớp với code, chia thành đúng ba thư mục theo yêu cầu giảng viên:
+
+- [Gói ZIP bàn giao — chỉ 3 folder và 21 ảnh PNG](MELOO-Bo-so-do-giua-ky.zip).
+- [Kiến trúc hệ thống — 4 ảnh](ban-nop-giua-ky/01-kien-truc-he-thong/).
+- [Lược đồ use case — 7 ảnh](ban-nop-giua-ky/02-luoc-do-usecase/).
+- [Lược đồ lớp — 10 ảnh](ban-nop-giua-ky/03-luoc-do-lop/).
+
+Phần dưới mô tả bản thuyết minh trước lần cập nhật này.
+
 # Hồ sơ Thuyết minh Chi tiết Thiết kế Hệ thống Meloo (Mốc 2)
 
 > **Mã tài liệu:** DOC-05 · **Mã ticket Jira:** MEL-62 · **Mốc bàn giao:** Mốc 2 (Sprint S3)  

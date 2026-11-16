@@ -4,6 +4,8 @@ import com.meloo.daily.events.DailyAttemptFinished;
 import com.meloo.game.domain.RoundOutcome;
 import com.meloo.game.events.MatchEndStatus;
 import com.meloo.game.events.MatchFinished;
+import com.meloo.identity.api.DeletedAccounts;
+import com.meloo.identity.events.AccountDeleted;
 import com.meloo.identity.events.GuestMerged;
 import com.meloo.progression.events.AchievementUnlocked;
 import com.meloo.progression.service.ProgressionWriter;
@@ -24,13 +26,19 @@ public class AchievementService {
   private final ProgressionWriter writer;
   private final ApplicationEventPublisher events;
   private final Clock clock;
+  private final DeletedAccounts deletedAccounts;
 
   public AchievementService(
-      JdbcTemplate jdbc, ProgressionWriter writer, ApplicationEventPublisher events, Clock clock) {
+      JdbcTemplate jdbc,
+      ProgressionWriter writer,
+      ApplicationEventPublisher events,
+      Clock clock,
+      DeletedAccounts deletedAccounts) {
     this.jdbc = jdbc;
     this.writer = writer;
     this.events = events;
     this.clock = clock;
+    this.deletedAccounts = deletedAccounts;
   }
 
   public void matchFinished(MatchFinished event) {
@@ -45,8 +53,14 @@ public class AchievementService {
             .sorted()
             .toList();
     owners.forEach(this::lock);
+    // Follow the merged writer's order: global 68068, sorted owner 69, sorted account 84.
+    var checked = new java.util.HashSet<UUID>(owners);
+    event.players().stream().map(p -> p.userId()).filter(Objects::nonNull).forEach(checked::add);
+    var deleted = deletedAccounts.findDeleted(checked);
     for (var player : event.players()) {
-      if (player.userId() == null) continue;
+      if (player.userId() == null
+          || deleted.contains(player.userId())
+          || deleted.contains(owner(player.userId()))) continue;
       long correct =
           player.results().stream().filter(r -> r.outcome() == RoundOutcome.CORRECT).count();
       long fast =
@@ -72,13 +86,14 @@ public class AchievementService {
           fast,
           AchievementMetrics.combo(player.results()));
     }
-    owners.forEach(this::evaluate);
+    owners.stream().filter(id -> !deleted.contains(id)).forEach(this::evaluate);
   }
 
   public void dailyFinished(DailyAttemptFinished event) {
     jdbc.execute("select pg_advisory_xact_lock_shared(68068)");
     UUID user = owner(event.userId());
     lock(user);
+    if (!deletedAccounts.findDeleted(List.of(event.userId(), user)).isEmpty()) return;
     jdbc.update(
         """
         insert into achievement_fact(kind,source_id,participant_id,owner_id,ended_at,
@@ -96,12 +111,22 @@ public class AchievementService {
   public void guestMerged(GuestMerged event) {
     // The existing writer transfers unlocks with LEAST and persists the guest alias. Calling it
     // here makes either listener order safe; both use the same exclusive merge lock.
+    jdbc.execute("select pg_advisory_xact_lock(68068)");
+    if (!deletedAccounts.findDeleted(List.of(event.guestId(), event.userId())).isEmpty()) return;
     writer.merge(event);
     jdbc.update(
         "update achievement_fact set owner_id = ? where owner_id = ?",
         event.userId(),
         event.guestId());
     evaluate(event.userId());
+  }
+
+  public void accountDeleted(AccountDeleted event) {
+    jdbc.execute("select pg_advisory_xact_lock(68068)");
+    jdbc.update(
+        "delete from achievement_fact where owner_id = ? or participant_id = ?",
+        event.userId(),
+        event.userId());
   }
 
   private UUID owner(UUID participant) {

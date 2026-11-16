@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.meloo.IntegrationTest;
 import com.meloo.daily.events.DailyAttemptFinished;
 import com.meloo.game.events.*;
+import com.meloo.identity.events.AccountDeleted;
 import com.meloo.identity.events.GuestMerged;
 import com.meloo.progression.events.AchievementUnlocked;
 import java.time.Instant;
@@ -225,6 +226,146 @@ class AchievementIntegrationTest extends IntegrationTest {
             jdbc.queryForObject(
                 "select count(*) from achievement_fact where owner_id=?", Integer.class, user))
         .isEqualTo(8);
+  }
+
+  @Test
+  void lateMatchDailyAndMergeSkipDeletedSourceAndOwnerWhilePreservingOthers() {
+    UUID deleted = account(), live = account(), guest = account();
+    tombstone(deleted);
+    var original = match(deleted, MatchType.PRIVATE_ROOM, 5, 1, 1, 1);
+    var livePlayer = match(live, MatchType.PRIVATE_ROOM, 5, 1, 1, 1).players().getFirst();
+    service.matchFinished(
+        new MatchFinished(
+            original.eventId(),
+            original.matchId(),
+            original.type(),
+            original.mode(),
+            false,
+            original.status(),
+            5,
+            null,
+            null,
+            original.startedAt(),
+            original.endedAt(),
+            original.rounds(),
+            List.of(original.players().getFirst(), livePlayer)));
+    service.dailyFinished(daily(deleted, 1, true));
+    service.guestMerged(new GuestMerged(UUID.randomUUID(), deleted, live, Instant.now()));
+    service.guestMerged(new GuestMerged(UUID.randomUUID(), guest, deleted, Instant.now()));
+    assertThat(unlocked(deleted)).isEmpty();
+    assertThat(unlocked(live)).hasSize(3);
+    assertThat(facts(deleted)).isZero();
+    assertThat(
+            jdbc.queryForObject(
+                "select count(*) from progression_guest_merge where guest_id=?",
+                Integer.class,
+                guest))
+        .isZero();
+    jdbc.update(
+        "insert into progression_guest_merge(guest_id,user_id) values (?,?)", guest, deleted);
+    service.matchFinished(match(guest, MatchType.SOLO, 5, 1, 1, 2));
+    service.dailyFinished(daily(guest, 2, true));
+    assertThat(facts(deleted)).isZero();
+    assertThat(unlocked(guest)).isEmpty();
+  }
+
+  @Test
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
+  void committedDeletionScrubsFactsAndUnlocksIdempotentlyThenRejectsLateReplay() {
+    UUID user = account();
+    var source = match(user, MatchType.SOLO, 5, 1, 1, 1);
+    service.matchFinished(source);
+    service.dailyFinished(daily(user, 1, true));
+    assertThat(facts(user)).isEqualTo(2);
+    new TransactionTemplate(transactions)
+        .executeWithoutResult(
+            tx -> {
+              tombstone(user);
+              publisher.publishEvent(new AccountDeleted(user));
+            });
+    await()
+        .atMost(java.time.Duration.ofSeconds(15))
+        .untilAsserted(
+            () -> {
+              assertThat(facts(user)).isZero();
+              assertThat(unlocked(user)).isEmpty();
+            });
+    service.accountDeleted(new AccountDeleted(user));
+    service.matchFinished(source);
+    service.dailyFinished(daily(user, 2, true));
+    assertThat(facts(user)).isZero();
+    assertThat(unlocked(user)).isEmpty();
+  }
+
+  @Test
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
+  void deletionWaitsForInFlightAchievementWriteThenScrubsIt() throws Exception {
+    UUID user = account();
+    var written = new java.util.concurrent.CountDownLatch(1);
+    var release = new java.util.concurrent.CountDownLatch(1);
+    try (var executor = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+      var write =
+          executor.submit(
+              () ->
+                  new TransactionTemplate(transactions)
+                      .executeWithoutResult(
+                          tx -> {
+                            service.matchFinished(match(user, MatchType.SOLO, 5, 1, 1, 1));
+                            written.countDown();
+                            try {
+                              if (!release.await(10, java.util.concurrent.TimeUnit.SECONDS))
+                                throw new IllegalStateException("Release timed out");
+                            } catch (InterruptedException e) {
+                              Thread.currentThread().interrupt();
+                              throw new IllegalStateException(e);
+                            }
+                          }));
+      try {
+        assertThat(written.await(10, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+        var deletion =
+            executor.submit(
+                () ->
+                    new TransactionTemplate(transactions)
+                        .executeWithoutResult(
+                            tx -> {
+                              jdbc.queryForList(
+                                  "select pg_advisory_xact_lock(hashtextextended(?,84))",
+                                  user.toString());
+                              tombstone(user);
+                              publisher.publishEvent(new AccountDeleted(user));
+                            }));
+        await()
+            .atMost(java.time.Duration.ofSeconds(5))
+            .until(
+                () ->
+                    jdbc.queryForObject(
+                        "select exists(select 1 from pg_locks where locktype='advisory' and not granted)",
+                        Boolean.class));
+        release.countDown();
+        write.get(10, java.util.concurrent.TimeUnit.SECONDS);
+        deletion.get(10, java.util.concurrent.TimeUnit.SECONDS);
+      } finally {
+        release.countDown();
+      }
+    }
+    await()
+        .atMost(java.time.Duration.ofSeconds(15))
+        .untilAsserted(
+            () -> {
+              assertThat(facts(user)).isZero();
+              assertThat(unlocked(user)).isEmpty();
+            });
+  }
+
+  private void tombstone(UUID user) {
+    jdbc.update(
+        "update app_user set merged_into_id=id,status='LOCKED',lock_reason='Account deleted' where id=?",
+        user);
+  }
+
+  private int facts(UUID user) {
+    return jdbc.queryForObject(
+        "select count(*) from achievement_fact where owner_id=?", Integer.class, user);
   }
 
   private List<String> unlocked(UUID user) {

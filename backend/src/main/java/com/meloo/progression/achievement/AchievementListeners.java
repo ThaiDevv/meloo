@@ -2,6 +2,7 @@ package com.meloo.progression.achievement;
 
 import com.meloo.daily.events.DailyAttemptFinished;
 import com.meloo.game.events.MatchFinished;
+import com.meloo.identity.events.AccountDeleted;
 import com.meloo.identity.events.GuestMerged;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
@@ -22,6 +23,11 @@ public class AchievementListeners {
   @ApplicationModuleListener
   public void dailyFinished(DailyAttemptFinished event) {
     service.dailyFinished(event);
+  }
+
+  @ApplicationModuleListener
+  public void accountDeleted(AccountDeleted event) {
+    service.accountDeleted(event);
   }
 
   @ApplicationModuleListener

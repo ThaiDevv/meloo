@@ -37,6 +37,10 @@ test.describe('Solo Game Flow (MEL-50 / QA-01)', () => {
       await fiveRoundsInput.check({ force: true })
     }
 
+    // Keep round selection deterministic while leaving the decoy available in catalog search.
+    await page.getByRole('tab', { name: /Bộ đề|Playlists|By playlist/i }).click()
+    await page.getByRole('button', { name: /Bộ chuẩn Meloo|Meloo Standard Set/i }).click()
+
     const startMatchBtn = page.getByRole('button', { name: /Vào trận|Start match|Bắt đầu/i })
     await expect(startMatchBtn).toBeVisible({ timeout: 10_000 })
     await startMatchBtn.click()

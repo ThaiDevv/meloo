@@ -2,6 +2,7 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { RoomChat } from '@/features/chat'
+import { useAchievementNotifications } from '@/features/profile/achievements'
 import { GameRound, RoundReveal } from '@/features/game-core'
 import { SnippetPlayer } from '@/features/game-core/audio/snippetPlayer'
 import type { RoundResult, RoundState } from '@/features/game-core'
@@ -91,6 +92,7 @@ export function LiveMatch({ initialRoom }: { initialRoom: RoomResponse }) {
   const me = useAuthStore((auth) => auth.user?.id ?? null)
   const roomId = initialRoom.roomId
   const [state, dispatch] = useReducer(matchReducer, initialRoom, initialState)
+  useAchievementNotifications(state.phase === 'finished')
   // One player for the whole match: it decodes the clip while the round is prepared and the round
   // screen then plays that same buffer, so nothing is downloaded again once the clock runs.
   const [player] = useState(() => new SnippetPlayer())

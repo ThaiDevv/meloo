@@ -5,6 +5,9 @@ import { I18nextProvider } from 'react-i18next'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import i18n from '@/i18n'
+import { http, HttpResponse } from 'msw'
+import { useToastStore } from '@/shared/ui/toast-store'
+import achievements from '../../../../../contracts/examples/progression/list-my-achievements.200.json'
 import { server } from '@/mocks/server'
 import { gameAudioHandlers } from '../../game-core/mocks'
 import { useAuthStore } from '@/shared/api/authStore'
@@ -385,6 +388,46 @@ const finished = {
 }
 
 describe('the podium', () => {
+  it('announces new achievements after MATCH_FINISHED, keeping gameplay quiet (MEL-86)', async () => {
+    let unlocked = false
+    let calls = 0
+    useToastStore.setState({ toasts: [] })
+    server.use(
+      http.get('*/api/v1/me/achievements', () => {
+        calls++
+        return HttpResponse.json(
+          unlocked
+            ? achievements
+            : {
+                ...achievements,
+                unlockedCount: 0,
+                items: achievements.items.map((item) => ({
+                  ...item,
+                  unlocked: false,
+                  unlockedAt: null,
+                })),
+              },
+        )
+      }),
+    )
+    renderMatch()
+    await goLive()
+    await waitFor(() => {
+      expect(calls).toBe(1)
+    })
+    await screen.findByText('Vòng 2 / 10')
+    expect(useToastStore.getState().toasts).toHaveLength(0)
+    unlocked = true
+    emit(BOARD, finished)
+    await screen.findByRole('heading', { name: 'Bục vinh danh' })
+    await waitFor(() => {
+      expect(
+        useToastStore.getState().toasts.some((item) => item.title === 'Mở khóa huy hiệu'),
+      ).toBe(true)
+    })
+    useToastStore.setState({ toasts: [] })
+  })
+
   it('shows the top three and "Chơi lại" takes the room back to its lobby (BR-12)', async () => {
     renderMatch()
     await goLive()

@@ -80,5 +80,15 @@
     "stats": "Could not load your statistics. Please try again.",
     "history": "Could not load your match history. Please try again.",
     "detail": "Could not load this match. Please try again."
+  },
+  "achievements": {
+    "heading": "Achievements",
+    "count": "{{unlocked}} / {{total}} achievements unlocked",
+    "unlocked": "Unlocked",
+    "locked": "Locked",
+    "date": "Unlocked on {{date}}",
+    "error": "Could not load achievements. Please try again.",
+    "empty": "No achievements in the catalog yet.",
+    "toast": "Achievement unlocked"
   }
 }

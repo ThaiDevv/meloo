@@ -2,12 +2,16 @@ package com.meloo.identity.web;
 
 import com.meloo.generated.api.IdentityApi;
 import com.meloo.generated.model.AuthSessionDto;
+import com.meloo.generated.model.FacebookDataDeletionRequestDto;
+import com.meloo.generated.model.FacebookDataDeletionResponseDto;
 import com.meloo.generated.model.GuestRequestDto;
 import com.meloo.generated.model.MeDto;
 import com.meloo.generated.model.OAuthLinkRequestDto;
 import com.meloo.generated.model.OAuthProviderSlugDto;
 import com.meloo.identity.config.IdentityProperties;
 import com.meloo.identity.oauth.OAuthLinkService;
+import com.meloo.identity.service.AccountDeletionService;
+import com.meloo.identity.service.FacebookDataDeletion;
 import com.meloo.identity.service.GuestAuthService;
 import com.meloo.identity.service.GuestRateLimiter;
 import com.meloo.identity.service.NicknameValidator;
@@ -21,6 +25,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -34,6 +39,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class IdentityController implements IdentityApi {
 
   private final ObjectProvider<OAuthLinkService> oauthLink;
+  private final AccountDeletionService deletion;
+  private final FacebookDataDeletion facebookDeletion;
   private final GuestAuthService guestAuthService;
   private final GuestRateLimiter guestRateLimiter;
   private final NicknameValidator nicknameValidator;
@@ -44,6 +51,8 @@ public class IdentityController implements IdentityApi {
 
   public IdentityController(
       ObjectProvider<OAuthLinkService> oauthLink,
+      AccountDeletionService deletion,
+      FacebookDataDeletion facebookDeletion,
       GuestAuthService guestAuthService,
       GuestRateLimiter guestRateLimiter,
       NicknameValidator nicknameValidator,
@@ -52,6 +61,8 @@ public class IdentityController implements IdentityApi {
       HttpServletRequest request,
       HttpServletResponse response) {
     this.oauthLink = oauthLink;
+    this.deletion = deletion;
+    this.facebookDeletion = facebookDeletion;
     this.guestAuthService = guestAuthService;
     this.guestRateLimiter = guestRateLimiter;
     this.nicknameValidator = nicknameValidator;
@@ -65,7 +76,7 @@ public class IdentityController implements IdentityApi {
   public ResponseEntity<AuthSessionDto> linkOAuthProvider(
       OAuthProviderSlugDto provider, OAuthLinkRequestDto body) {
     var service = oauthLink.getIfAvailable();
-    if (service == null || provider != OAuthProviderSlugDto.GOOGLE) {
+    if (service == null) {
       throw new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "OAuth provider unavailable");
     }
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -73,7 +84,9 @@ public class IdentityController implements IdentityApi {
       throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Bearer token required");
     }
     return ResponseEntity.ok(
-        service.link(body, UUID.fromString(jwt.getSubject()), request, response).session());
+        service
+            .link(provider.getValue(), body, UUID.fromString(jwt.getSubject()), request, response)
+            .session());
   }
 
   @Override
@@ -142,6 +155,26 @@ public class IdentityController implements IdentityApi {
 
     MeDto me = guestAuthService.getMe(userId);
     return ResponseEntity.ok(me);
+  }
+
+  @Override
+  public ResponseEntity<Void> deleteMyAccount() {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
+      throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Bearer token required");
+    }
+    deletion.deleteMyAccount(UUID.fromString(jwt.getSubject()));
+    return ResponseEntity.noContent()
+        .header(HttpHeaders.SET_COOKIE, buildClearRefreshCookie().toString())
+        .build();
+  }
+
+  @Override
+  public ResponseEntity<FacebookDataDeletionResponseDto> handleFacebookDataDeletion(
+      FacebookDataDeletionRequestDto body) {
+    return ResponseEntity.ok()
+        .cacheControl(CacheControl.noStore())
+        .body(facebookDeletion.handle(body.getSignedRequest()));
   }
 
   private ResponseCookie buildRefreshCookie(String rawToken, Duration maxAge) {

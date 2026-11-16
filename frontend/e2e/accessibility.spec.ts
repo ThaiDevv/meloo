@@ -23,6 +23,15 @@ test.describe('Accessibility & Keyboard Navigation (NFR-13)', () => {
     // Select 5 rounds (matches E2E seed dataset)
     await page.locator('input[name="rounds"][value="5"]').check({ force: true })
 
+    // The whole catalog includes a decoy; only the standard playlist has five correct-title songs.
+    const playlistsTab = page.getByRole('tab', { name: /Bộ đề|Playlists|By playlist/i })
+    await playlistsTab.focus()
+    await page.keyboard.press('Enter')
+    const playlist = page.getByRole('button', { name: /Bộ chuẩn Meloo|Meloo Standard Set/i })
+    await expect(playlist).toBeVisible()
+    await playlist.focus()
+    await page.keyboard.press('Enter')
+
     // 2. Start a match using keyboard navigation
     const startButton = page.getByRole('button', { name: /Vào trận|Start match|Bắt đầu|Start/i })
     await startButton.focus()
@@ -85,6 +94,9 @@ test.describe('Accessibility & Keyboard Navigation (NFR-13)', () => {
 
     // Select 5 rounds (matches E2E seed dataset)
     await page.locator('input[name="rounds"][value="5"]').check({ force: true })
+
+    await page.getByRole('tab', { name: /Bộ đề|Playlists|By playlist/i }).click()
+    await page.getByRole('button', { name: /Bộ chuẩn Meloo|Meloo Standard Set/i }).click()
 
     // Start match to inspect game round ARIA semantics
     const startButton = page.getByRole('button', { name: /Vào trận|Start match|Bắt đầu|Start/i })

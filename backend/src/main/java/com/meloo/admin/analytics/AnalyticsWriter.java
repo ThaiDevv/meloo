@@ -1,6 +1,7 @@
 package com.meloo.admin.analytics;
 
 import com.meloo.admin.config.AdminProperties;
+import com.meloo.identity.api.DeletedAccounts;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
@@ -20,13 +21,19 @@ public class AnalyticsWriter {
   private final ObjectMapper json;
   private final Clock clock;
   private final AdminProperties properties;
+  private final DeletedAccounts deletedAccounts;
 
   public AnalyticsWriter(
-      JdbcTemplate jdbc, ObjectMapper json, Clock clock, AdminProperties properties) {
+      JdbcTemplate jdbc,
+      ObjectMapper json,
+      Clock clock,
+      AdminProperties properties,
+      DeletedAccounts deletedAccounts) {
     this.jdbc = jdbc;
     this.json = json;
     this.clock = clock;
     this.properties = properties;
+    this.deletedAccounts = deletedAccounts;
   }
 
   @Transactional
@@ -51,6 +58,20 @@ public class AnalyticsWriter {
     if (Boolean.TRUE.equals(exists)) return;
     var props = new HashMap<String, Object>(details);
     props.put("eventId", eventId);
+    var ids = new java.util.HashSet<UUID>();
+    if (userId != null) ids.add(userId);
+    Object target = props.get("userId");
+    if (target instanceof UUID id) ids.add(id);
+    Object players = props.get("players");
+    if (players instanceof java.util.Collection<?> list) {
+      list.stream().filter(UUID.class::isInstance).map(UUID.class::cast).forEach(ids::add);
+    }
+    var deleted = deletedAccounts.findDeleted(ids);
+    if (userId != null && deleted.contains(userId)) userId = null;
+    if (target instanceof UUID id && deleted.contains(id)) props.remove("userId");
+    if (players instanceof java.util.Collection<?> list) {
+      props.put("players", list.stream().filter(p -> !deleted.contains(p)).toList());
+    }
     jdbc.update(
         """
         insert into analytics_event(event_type, user_id, props, occurred_at, created_at)

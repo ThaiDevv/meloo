@@ -13,7 +13,8 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: 'pnpm dev',
+    // Measure the built app in CI, without the dev server's module transformation overhead.
+    command: process.env.CI ? 'pnpm build && pnpm preview --port 5173 --strictPort' : 'pnpm dev',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
     env: { VITE_API_MOCK: process.env.VITE_API_MOCK ?? 'true' },

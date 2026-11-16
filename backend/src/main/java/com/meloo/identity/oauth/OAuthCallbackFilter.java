@@ -30,10 +30,14 @@ public final class OAuthCallbackFilter extends OncePerRequestFilter {
     response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store");
     response.setHeader("Referrer-Policy", "no-referrer");
     if (request.getMethod().equals("GET")
-        && request.getServletPath().equals(OAuthLoginSupport.BASE + "/google/callback")) {
+        && request
+            .getServletPath()
+            .matches(OAuthLoginSupport.BASE + "/(google|facebook)/callback")) {
       var authorization = states.loadAuthorizationRequest(request);
       String code = request.getParameter("code");
+      String provider = request.getServletPath().split("/")[5];
       if (authorization == null
+          || !provider.equals(authorization.getAttribute("registration_id"))
           || request.getParameter("error") != null
           || code == null
           || code.isBlank()
@@ -51,7 +55,9 @@ public final class OAuthCallbackFilter extends OncePerRequestFilter {
       if (request.getMethod().equals("GET")
           && request
               .getRequestURI()
-              .equals(request.getContextPath() + OAuthLoginSupport.BASE + "/google")) {
+              .matches(
+                  java.util.regex.Pattern.quote(request.getContextPath() + OAuthLoginSupport.BASE)
+                      + "/(google|facebook)")) {
         support.resolve(
             request); // Validate before the redirect filter translates resolver failures into 500.
       }

@@ -5,6 +5,7 @@ import com.meloo.game.events.MatchFinished;
 import com.meloo.game.events.MatchType;
 import com.meloo.game.events.PlayerSummary;
 import com.meloo.game.events.RoundPlayerResult;
+import com.meloo.identity.api.DeletedAccounts;
 import com.meloo.identity.events.GuestMerged;
 import com.meloo.progression.domain.RankPoints;
 import com.meloo.progression.events.RankPointsApplied;
@@ -30,12 +31,18 @@ public class ProgressionWriter {
   private final NamedParameterJdbcTemplate named;
   private final ApplicationEventPublisher events;
   private final Clock clock;
+  private final DeletedAccounts deletedAccounts;
 
-  public ProgressionWriter(JdbcTemplate jdbc, ApplicationEventPublisher events, Clock clock) {
+  public ProgressionWriter(
+      JdbcTemplate jdbc,
+      ApplicationEventPublisher events,
+      Clock clock,
+      DeletedAccounts deletedAccounts) {
     this.jdbc = jdbc;
     this.named = new NamedParameterJdbcTemplate(jdbc);
     this.events = events;
     this.clock = clock;
+    this.deletedAccounts = deletedAccounts;
   }
 
   public void record(MatchFinished event) {
@@ -71,6 +78,10 @@ public class ProgressionWriter {
             id ->
                 jdbc.queryForList(
                     "select pg_advisory_xact_lock(hashtextextended(?, 69))", id.toString()));
+
+    var checkedIds = new java.util.HashSet<UUID>(participantIds);
+    checkedIds.addAll(owners.values());
+    var deleted = deletedAccounts.findDeleted(checkedIds);
 
     boolean ranked =
         event.ranked()
@@ -121,6 +132,10 @@ public class ProgressionWriter {
     for (PlayerSummary player : event.players()) {
       UUID owner =
           player.userId() == null ? null : owners.getOrDefault(player.userId(), player.userId());
+      boolean erased =
+          (player.userId() != null && deleted.contains(player.userId()))
+              || (owner != null && deleted.contains(owner));
+      if (erased) owner = null;
       boolean guest = player.isGuest() && !owners.containsKey(player.userId());
       boolean eligible = ranked && !player.isGuest() && owner != null;
       Integer delta = null;
@@ -179,9 +194,9 @@ public class ProgressionWriter {
           """,
           playerId,
           event.matchId(),
-          player.userId(),
+          erased ? null : player.userId(),
           owner,
-          player.nickname(),
+          erased ? "Deleted user" : player.nickname(),
           player.isGuest(),
           player.totalScore(),
           player.left() && ranked ? event.players().size() : player.rank(),
@@ -226,6 +241,7 @@ public class ProgressionWriter {
 
   public void merge(GuestMerged event) {
     jdbc.execute("select pg_advisory_xact_lock(68068)");
+    if (!deletedAccounts.findDeleted(List.of(event.guestId(), event.userId())).isEmpty()) return;
     int inserted =
         jdbc.update(
             """

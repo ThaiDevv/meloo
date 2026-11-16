@@ -2,6 +2,7 @@ package com.meloo.progression.web;
 
 import com.meloo.generated.api.ProgressionApi;
 import com.meloo.generated.model.*;
+import com.meloo.progression.achievement.AchievementQueries;
 import com.meloo.progression.service.ProgressionProfiles;
 import com.meloo.progression.service.ProgressionQueries;
 import com.meloo.shared.api.ApiException;
@@ -21,10 +22,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class ProgressionController implements ProgressionApi {
   private final ProgressionQueries queries;
   private final ProgressionProfiles profiles;
+  private final AchievementQueries achievements;
 
-  public ProgressionController(ProgressionQueries queries, ProgressionProfiles profiles) {
+  public ProgressionController(
+      ProgressionQueries queries, ProgressionProfiles profiles, AchievementQueries achievements) {
     this.queries = queries;
     this.profiles = profiles;
+    this.achievements = achievements;
   }
 
   @Override
@@ -59,6 +63,11 @@ public class ProgressionController implements ProgressionApi {
   @Override
   public ResponseEntity<RankLeaderboardPageDto> getAllTimeLeaderboard(Integer page, Integer size) {
     return ResponseEntity.ok(queries.leaderboard(caller(), page, size));
+  }
+
+  @Override
+  public ResponseEntity<AchievementListResponseDto> listMyAchievements() {
+    return ResponseEntity.ok(achievements.list(caller()));
   }
 
   private static UUID caller() {

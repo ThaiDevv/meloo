@@ -79,12 +79,14 @@ public final class OAuthStateRepository
               .authorizationUri(state.authorizationUri())
               .clientId(state.clientId())
               .redirectUri(state.redirectUri())
-              .scopes(Set.of("email", "profile"))
+              .scopes(
+                  "facebook".equals(state.attributes().get("registration_id"))
+                      ? Set.of("email", "public_profile")
+                      : Set.of("email", "profile"))
               .state(state.state())
               .attributes(
                   a -> {
                     a.putAll(state.attributes());
-                    a.put("registration_id", "google");
                   })
               .additionalParameters(
                   Map.of("code_challenge", state.challenge(), "code_challenge_method", "S256"))

@@ -38,6 +38,8 @@ public interface AppUserRepository extends JpaRepository<AppUser, UUID> {
 
   boolean existsByIdAndMergedIntoIdIsNotNull(UUID id);
 
+  boolean existsByIdAndMergedIntoId(UUID id, UUID mergedIntoId);
+
   /**
    * Checks whether a user exists with the specified ID and status.
    *

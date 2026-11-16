@@ -6,7 +6,7 @@ import com.meloo.shared.api.ApiException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.UUID;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.client.endpoint.OAuth2AuthorizationCodeGrantRequest;
 import org.springframework.security.oauth2.client.endpoint.RestClientAuthorizationCodeTokenResponseClient;
@@ -19,7 +19,8 @@ import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationResp
 import org.springframework.stereotype.Service;
 
 @Service
-@ConditionalOnProperty(name = "meloo.identity.oauth.enabled", havingValue = "true")
+@ConditionalOnExpression(
+    "${meloo.identity.oauth.enabled:false} || ${meloo.identity.facebook.enabled:false}")
 public class OAuthLinkService {
   private final OAuthStateRepository states;
   private final OAuthLoginSupport support;
@@ -45,9 +46,19 @@ public class OAuthLinkService {
       UUID caller,
       HttpServletRequest request,
       HttpServletResponse response) {
+    return link("google", body, caller, request, response);
+  }
+
+  public GuestAuthService.AuthResult link(
+      String provider,
+      OAuthLinkRequestDto body,
+      UUID caller,
+      HttpServletRequest request,
+      HttpServletResponse response) {
     request.setAttribute("submittedOAuthState", body.getState());
     var authorization = states.removeAuthorizationRequest(request, response);
     if (authorization == null
+        || !provider.equals(authorization.getAttribute("registration_id"))
         || !"link".equals(authorization.getAttribute("mode"))
         || !caller.toString().equals(authorization.getAttribute("userId"))
         || (body.getRedirectUri() != null
@@ -55,7 +66,7 @@ public class OAuthLinkService {
       throw new ApiException(HttpStatus.BAD_REQUEST, "OAUTH_STATE_INVALID", "Invalid OAuth state");
     }
     try {
-      var client = clients.findByRegistrationId("google");
+      var client = clients.findByRegistrationId(provider);
       var callback =
           OAuth2AuthorizationResponse.success(body.getCode())
               .state(body.getState())

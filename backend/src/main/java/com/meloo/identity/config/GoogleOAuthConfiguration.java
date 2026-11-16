@@ -6,7 +6,7 @@ import com.meloo.identity.oauth.OAuthStateRepository;
 import com.meloo.identity.service.OAuthAccountService;
 import java.time.Clock;
 import java.time.Duration;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -25,29 +25,39 @@ import org.springframework.web.client.RestClient;
 import tools.jackson.databind.ObjectMapper;
 
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties({GoogleOAuthProperties.class, AdminEmailsProperties.class})
+@EnableConfigurationProperties({
+  GoogleOAuthProperties.class,
+  FacebookOAuthProperties.class,
+  AdminEmailsProperties.class
+})
 public class GoogleOAuthConfiguration {
   @Configuration(proxyBeanMethods = false)
-  @ConditionalOnProperty(name = "meloo.identity.oauth.enabled", havingValue = "true")
+  @ConditionalOnExpression(
+      "${meloo.identity.oauth.enabled:false} || ${meloo.identity.facebook.enabled:false}")
   static class Enabled {
     @Bean
-    ClientRegistrationRepository googleClientRegistrationRepository(GoogleOAuthProperties p) {
-      return new InMemoryClientRegistrationRepository(
-          ClientRegistration.withRegistrationId("google")
-              .clientId(p.clientId())
-              .clientSecret(p.clientSecret())
-              .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
-              .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-              .redirectUri("{baseUrl}/api/v1/auth/oauth2/{registrationId}/callback")
-              .scope("email", "profile")
-              .authorizationUri(p.authorizationUri())
-              .tokenUri(p.tokenUri())
-              .userInfoUri(p.userInfoUri())
-              .userNameAttributeName("sub")
-              .clientName("Google")
-              .clientSettings(
-                  ClientRegistration.ClientSettings.builder().requireProofKey(true).build())
-              .build());
+    ClientRegistrationRepository googleClientRegistrationRepository(
+        GoogleOAuthProperties p, FacebookOAuthProperties facebook) {
+      var registrations = new java.util.ArrayList<ClientRegistration>();
+      if (p.enabled())
+        registrations.add(
+            ClientRegistration.withRegistrationId("google")
+                .clientId(p.clientId())
+                .clientSecret(p.clientSecret())
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .redirectUri("{baseUrl}/api/v1/auth/oauth2/{registrationId}/callback")
+                .scope("email", "profile")
+                .authorizationUri(p.authorizationUri())
+                .tokenUri(p.tokenUri())
+                .userInfoUri(p.userInfoUri())
+                .userNameAttributeName("sub")
+                .clientName("Google")
+                .clientSettings(
+                    ClientRegistration.ClientSettings.builder().requireProofKey(true).build())
+                .build());
+      if (facebook.enabled()) registrations.add(facebook.registration());
+      return new InMemoryClientRegistrationRepository(registrations);
     }
 
     @Bean

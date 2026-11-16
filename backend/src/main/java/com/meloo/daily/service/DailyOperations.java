@@ -23,6 +23,7 @@ import com.meloo.generated.model.DailyResultDto;
 import com.meloo.generated.model.DailyRoundStateDto;
 import com.meloo.generated.model.DailyTodayResponseDto;
 import com.meloo.identity.api.AccountLockQuery;
+import com.meloo.identity.api.DeletedAccounts;
 import com.meloo.identity.events.GuestMerged;
 import com.meloo.shared.api.ApiException;
 import java.time.Clock;
@@ -55,6 +56,7 @@ public class DailyOperations implements DailyAdminApi {
   private final DailyProperties properties;
   private final ApplicationEventPublisher events;
   private final Clock clock;
+  private final DeletedAccounts deletedAccounts;
 
   public DailyOperations(
       DailyAttemptRepository attempts,
@@ -66,7 +68,8 @@ public class DailyOperations implements DailyAdminApi {
       DailyLeaderboard leaderboard,
       DailyProperties properties,
       ApplicationEventPublisher events,
-      Clock clock) {
+      Clock clock,
+      DeletedAccounts deletedAccounts) {
     this.attempts = attempts;
     this.challenges = challenges;
     this.locks = locks;
@@ -77,6 +80,7 @@ public class DailyOperations implements DailyAdminApi {
     this.properties = properties;
     this.events = events;
     this.clock = clock;
+    this.deletedAccounts = deletedAccounts;
   }
 
   public LocalDate today() {
@@ -387,6 +391,7 @@ public class DailyOperations implements DailyAdminApi {
     List.of(event.guestId(), event.userId()).stream()
         .sorted()
         .forEach(id -> locks.acquire("player:" + id));
+    if (!deletedAccounts.findDeleted(List.of(event.guestId(), event.userId())).isEmpty()) return;
     if (locks.merged(event.guestId())) {
       return;
     }

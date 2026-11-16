@@ -76,6 +76,13 @@ public class IdentitySecurityRules implements ModuleSecurityRules {
         HttpRule.permitAll(HttpMethod.POST, "/api/v1/auth/refresh"),
         HttpRule.permitAll(HttpMethod.POST, "/api/v1/auth/logout"),
         HttpRule.authenticated(HttpMethod.GET, "/api/v1/me"),
+        HttpRule.authenticated(HttpMethod.DELETE, "/api/v1/me"),
+        HttpRule.permitAll(HttpMethod.POST, "/api/v1/auth/oauth2/facebook/data-deletion"),
+        HttpRule.permitAll(
+            HttpMethod.GET,
+            "/api/v1/auth/oauth2/facebook",
+            "/api/v1/auth/oauth2/facebook/callback"),
+        HttpRule.authenticated(HttpMethod.POST, "/api/v1/auth/oauth2/facebook/link"),
         HttpRule.permitAll(
             HttpMethod.GET, "/api/v1/auth/oauth2/google", "/api/v1/auth/oauth2/google/callback"),
         HttpRule.authenticated(HttpMethod.POST, "/api/v1/auth/oauth2/google/link"));

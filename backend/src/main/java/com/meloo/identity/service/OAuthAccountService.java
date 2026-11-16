@@ -91,7 +91,23 @@ public class OAuthAccountService {
       @Nullable UUID boundUserId,
       @Nullable String boundTokenHash,
       boolean link) {
-    if (!emailVerified || email == null || email.isBlank() || email.length() > 254) {
+    return login(
+        AuthProvider.GOOGLE, subject, email, emailVerified, boundUserId, boundTokenHash, link);
+  }
+
+  @Transactional
+  public GuestAuthService.AuthResult login(
+      AuthProvider provider,
+      String subject,
+      String email,
+      boolean emailVerified,
+      @Nullable UUID boundUserId,
+      @Nullable String boundTokenHash,
+      boolean link) {
+    if (provider == AuthProvider.GOOGLE && !emailVerified) {
+      throw failure("OAUTH_EMAIL_UNVERIFIED");
+    }
+    if (email == null || email.isBlank() || email.length() > 254) {
       throw failure("OAUTH_EMAIL_UNVERIFIED");
     }
     if (subject == null || subject.isBlank() || subject.length() > 128) {
@@ -99,19 +115,28 @@ public class OAuthAccountService {
     }
     email = email.trim().toLowerCase(Locale.ROOT);
     final String verifiedEmail = email;
-    // Serialize new identities and email auto-linking across application instances, before row
-    // locks.
-    for (String key : new TreeSet<>(List.of("email:" + email, "google:" + subject))) {
+    // Lock both keys before row locks, including unverified email collisions.
+    for (String key : new TreeSet<>(List.of("email:" + email, provider.name() + ":" + subject))) {
       entityManager
           .createNativeQuery("select 1 from pg_advisory_xact_lock(hashtextextended(:key, 0))")
           .setParameter("key", key)
           .getSingleResult();
     }
-    var identity = identities.findByProviderAndProviderSubject(AuthProvider.GOOGLE, subject);
+    var identity = identities.findByProviderAndProviderSubject(provider, subject);
+    AppUser emailOwner = users.findByEmail(verifiedEmail).orElse(null);
+    // Facebook does not attest email verification. Only an authenticated registered link may
+    // claim an existing account; do not reserve the unverified email or bootstrap admin rights.
+    boolean explicitLink = link && boundUserId != null;
+    if (!emailVerified
+        && identity.isEmpty()
+        && emailOwner != null
+        && !(explicitLink && emailOwner.getId().equals(boundUserId))) {
+      throw failure("OAUTH_EMAIL_UNVERIFIED");
+    }
     AppUser target =
         identity
             .map(i -> users.findById(i.getUserId()).orElseThrow())
-            .orElseGet(() -> users.findByEmail(verifiedEmail).orElse(null));
+            .orElse(emailVerified ? emailOwner : null);
     // Row locks are ordered consistently when merging two existing accounts.
     TreeSet<UUID> ids = new TreeSet<>();
     if (boundUserId != null) {
@@ -140,6 +165,12 @@ public class OAuthAccountService {
       target = locked.get(target.getId());
       active(target);
     }
+    if (provider == AuthProvider.FACEBOOK
+        && link
+        && bound != null
+        && bound.getKind() != UserKind.REGISTERED) {
+      throw failure("OAUTH_STATE_INVALID");
+    }
     if (link && bound == null) {
       throw failure("OAUTH_STATE_INVALID");
     }
@@ -167,7 +198,7 @@ public class OAuthAccountService {
                       bound == null
                           ? "Player_" + UUID.randomUUID().toString().substring(0, 8)
                           : bound.getNickname())
-                  .email(email)
+                  .email(emailVerified ? email : null)
                   .avatarId(bound == null ? null : bound.getAvatarId())
                   .profileCompleted(hasCompleteGuestProfile(bound))
                   .createdAt(clock.instant())
@@ -175,7 +206,7 @@ public class OAuthAccountService {
                   .build());
       registered = true;
     }
-    if (admins.emails().contains(email) && email.equals(target.getEmail())) {
+    if (emailVerified && admins.emails().contains(email) && email.equals(target.getEmail())) {
       target.setRole(UserRole.ADMIN);
     }
     target.setLastActiveAt(clock.instant());
@@ -183,7 +214,7 @@ public class OAuthAccountService {
       identities.save(
           AuthIdentity.builder()
               .id(UUID.randomUUID())
-              .provider(AuthProvider.GOOGLE)
+              .provider(provider)
               .providerSubject(subject)
               .userId(target.getId())
               .createdAt(clock.instant())

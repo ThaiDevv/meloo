@@ -2,6 +2,7 @@ package com.meloo.identity.oauth;
 
 import com.meloo.identity.config.GoogleOAuthProperties;
 import com.meloo.identity.config.IdentityProperties;
+import com.meloo.identity.persistence.AuthProvider;
 import com.meloo.identity.service.GuestAuthService;
 import com.meloo.identity.service.OAuthAccountService;
 import com.meloo.identity.service.RefreshTokenService;
@@ -115,10 +116,12 @@ public final class OAuthLoginSupport implements OAuth2AuthorizationRequestResolv
   public GuestAuthService.AuthResult finish(
       OAuth2User user, OAuth2AuthorizationRequest authorization) {
     String bound = authorization.getAttribute("userId");
+    boolean facebook = "facebook".equals(authorization.getAttribute("registration_id"));
     return accounts.login(
-        user.getAttribute("sub"),
+        facebook ? AuthProvider.FACEBOOK : AuthProvider.GOOGLE,
+        user.getAttribute(facebook ? "id" : "sub"),
         user.getAttribute("email"),
-        Boolean.TRUE.equals(user.getAttribute("email_verified")),
+        !facebook && Boolean.TRUE.equals(user.getAttribute("email_verified")),
         bound == null ? null : UUID.fromString(bound),
         authorization.getAttribute("tokenHash"),
         "link".equals(authorization.getAttribute("mode")));
@@ -172,7 +175,7 @@ public final class OAuthLoginSupport implements OAuth2AuthorizationRequestResolv
         UriComponentsBuilder.fromUri(properties.spaOrigin())
             .replacePath("/auth/callback")
             .queryParam("mode", "link")
-            .queryParam("provider", "google")
+            .queryParam("provider", (String) authorization.getAttribute("registration_id"))
             .queryParam("code", code)
             .queryParam("state", state);
     if (authorization.getAttribute("returnTo") != null) {

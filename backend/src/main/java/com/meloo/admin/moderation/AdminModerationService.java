@@ -7,29 +7,90 @@ import com.meloo.identity.api.UserAccounts;
 import com.meloo.shared.api.ApiException;
 import java.text.Normalizer;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
-@Transactional
 public class AdminModerationService {
   private final UserAccounts users;
   private final ChatAdminApi chat;
   private final AuditTrail audit;
   private final JdbcTemplate jdbc;
+  private final TransactionTemplate transaction;
 
   public AdminModerationService(
-      UserAccounts users, ChatAdminApi chat, AuditTrail audit, JdbcTemplate jdbc) {
+      UserAccounts users,
+      ChatAdminApi chat,
+      AuditTrail audit,
+      JdbcTemplate jdbc,
+      PlatformTransactionManager transactions) {
     this.users = users;
     this.chat = chat;
     this.audit = audit;
     this.jdbc = jdbc;
+    this.transaction = new TransactionTemplate(transactions);
+    this.transaction.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
   }
 
   public UserAccount lock(UUID actor, UUID id, boolean locked, @Nullable String reason) {
+    return execute(() -> lockOnce(actor, id, locked, reason));
+  }
+
+  public UserAccount role(UUID actor, UUID id, String role) {
+    return execute(() -> roleOnce(actor, id, role));
+  }
+
+  public ChatReportDto resolve(
+      UUID actor, UUID id, ReportStatus status, boolean lockSender, @Nullable String reason) {
+    return execute(() -> resolveOnce(actor, id, status, lockSender, reason));
+  }
+
+  public BannedWordDto word(UUID actor, @Nullable UUID id, String word) {
+    return execute(() -> wordOnce(actor, id, word));
+  }
+
+  public void deleteWord(UUID actor, UUID id) {
+    execute(
+        () -> {
+          deleteWordOnce(actor, id);
+          return null;
+        });
+  }
+
+  private <T> T execute(Supplier<T> work) {
+    // A report resolution may call lock: keep that mutation and both audits in its transaction.
+    if (TransactionSynchronizationManager.isActualTransactionActive()) {
+      if (!Integer.valueOf(TransactionDefinition.ISOLATION_REPEATABLE_READ)
+          .equals(TransactionSynchronizationManager.getCurrentTransactionIsolationLevel())) {
+        throw new IllegalStateException("Admin moderation requires repeatable-read isolation");
+      }
+      return work.get();
+    }
+    for (int attempt = 0; ; attempt++) {
+      try {
+        return transaction.execute(status -> work.get());
+      } catch (DataAccessException failure) {
+        // A concurrent identity writer must never be overwritten by a stale managed snapshot.
+        // PostgreSQL aborts that transaction; retry the complete use case with a fresh snapshot.
+        boolean serializationFailure = false;
+        for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+          if (cause instanceof java.sql.SQLException sql && "40001".equals(sql.getSQLState()))
+            serializationFailure = true;
+        }
+        if (!serializationFailure || attempt >= 2) throw failure;
+      }
+    }
+  }
+
+  private UserAccount lockOnce(UUID actor, UUID id, boolean locked, @Nullable String reason) {
     if (actor.equals(id) && locked) throw selfAction();
     if (locked && (reason == null || reason.isBlank())) throw invalid("A lock reason is required");
     serialize("user", id);
@@ -47,7 +108,7 @@ public class AdminModerationService {
     return after;
   }
 
-  public UserAccount role(UUID actor, UUID id, String role) {
+  private UserAccount roleOnce(UUID actor, UUID id, String role) {
     if (actor.equals(id) && !"ADMIN".equals(role)) throw selfAction();
     serialize("user", id);
     var before = users.get(id);
@@ -59,7 +120,7 @@ public class AdminModerationService {
     return after;
   }
 
-  public ChatReportDto resolve(
+  private ChatReportDto resolveOnce(
       UUID actor, UUID id, ReportStatus status, boolean lockSender, @Nullable String reason) {
     if (lockSender && status != ReportStatus.ACTIONED)
       throw invalid("Locking requires ACTIONED status");
@@ -72,7 +133,7 @@ public class AdminModerationService {
     return after;
   }
 
-  public BannedWordDto word(UUID actor, @Nullable UUID id, String word) {
+  private BannedWordDto wordOnce(UUID actor, @Nullable UUID id, String word) {
     if (id != null) serialize("word", id);
     var before =
         id == null
@@ -92,7 +153,7 @@ public class AdminModerationService {
     return after;
   }
 
-  public void deleteWord(UUID actor, UUID id) {
+  private void deleteWordOnce(UUID actor, UUID id) {
     serialize("word", id);
     var before = chat.findBannedWordById(id).orElseThrow(() -> missing("WORD_NOT_FOUND"));
     chat.deleteBannedWord(id);

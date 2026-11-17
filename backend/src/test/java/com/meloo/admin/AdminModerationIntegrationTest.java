@@ -14,6 +14,7 @@ import com.meloo.admin.moderation.AdminModerationService;
 import com.meloo.chat.api.ChatAdminApi;
 import com.meloo.chat.api.ChatContextMessage;
 import com.meloo.daily.events.DailyAttemptFinished;
+import com.meloo.identity.api.UserAccounts;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jwt.*;
@@ -23,8 +24,13 @@ import java.security.MessageDigest;
 import java.sql.Timestamp;
 import java.time.*;
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -73,6 +79,7 @@ class AdminModerationIntegrationTest extends IntegrationTest {
   @Autowired ApplicationEventPublisher events;
   @Autowired PlatformTransactionManager transactions;
   @MockitoSpyBean AuditTrail audit;
+  @MockitoSpyBean UserAccounts accounts;
   private UUID admin;
   private UUID user;
 
@@ -402,6 +409,48 @@ class AdminModerationIntegrationTest extends IntegrationTest {
             jdbc.queryForObject(
                 "select count(*) from audit_log where target_id=?", Integer.class, user.toString()))
         .isZero();
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"lock", "role"})
+  void concurrentProfileUpdateIsPreservedInMutationAndAudit(String action) throws Exception {
+    String nickname = "Concurrent" + user.toString().substring(0, 6);
+    var intercepted = new AtomicBoolean();
+    try (var pool = Executors.newSingleThreadExecutor()) {
+      doAnswer(
+              call -> {
+                Object snapshot = call.callRealMethod();
+                if (intercepted.compareAndSet(false, true)) {
+                  pool.submit(() -> accounts.updateNickname(user, nickname))
+                      .get(20, TimeUnit.SECONDS);
+                }
+                return snapshot;
+              })
+          .when(accounts)
+          .get(user);
+      var result =
+          action.equals("lock")
+              ? moderation.lock(admin, user, true, "Reason")
+              : moderation.role(admin, user, "ADMIN");
+      assertThat(result.nickname()).isEqualTo(nickname);
+      assertThat(
+              jdbc.queryForObject("select nickname from app_user where id=?", String.class, user))
+          .isEqualTo(nickname);
+      var detail =
+          json.readTree(
+              jdbc.queryForObject(
+                  "select detail::text from audit_log where target_id=?",
+                  String.class,
+                  user.toString()));
+      assertThat(detail.at("/before/nickname").asString()).isEqualTo(nickname);
+      assertThat(detail.at("/after/nickname").asString()).isEqualTo(nickname);
+      assertThat(
+              jdbc.queryForObject(
+                  "select count(*) from audit_log where target_id=?",
+                  Integer.class,
+                  user.toString()))
+          .isEqualTo(1);
+    }
   }
 
   private UUID account(String role) {

@@ -390,6 +390,20 @@ class AdminModerationIntegrationTest extends IntegrationTest {
         .isEqualTo(1);
   }
 
+  @Test
+  void guestCannotBePromotedAndRejectedChangeDoesNotWriteAudit() throws Exception {
+    jdbc.update("update app_user set kind='GUEST' where id=?", user);
+    perform(put("/api/v1/admin/users/" + user + "/role"), "{\"role\":\"ADMIN\"}")
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    assertThat(jdbc.queryForObject("select role from app_user where id=?", String.class, user))
+        .isEqualTo("USER");
+    assertThat(
+            jdbc.queryForObject(
+                "select count(*) from audit_log where target_id=?", Integer.class, user.toString()))
+        .isZero();
+  }
+
   private UUID account(String role) {
     UUID id = UUID.randomUUID();
     jdbc.update(

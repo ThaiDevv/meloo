@@ -51,6 +51,8 @@ public class AdminModerationService {
     if (actor.equals(id) && !"ADMIN".equals(role)) throw selfAction();
     serialize("user", id);
     var before = users.get(id);
+    if (!"REGISTERED".equals(before.kind()))
+      throw invalid("Only registered accounts can change role");
     users.setRole(id, role);
     var after = users.get(id);
     audit.append(actor, "USER_ROLE_CHANGED", "USER", id.toString(), null, before, after);

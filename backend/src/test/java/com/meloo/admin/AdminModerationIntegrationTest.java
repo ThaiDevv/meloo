@@ -180,7 +180,9 @@ class AdminModerationIntegrationTest extends IntegrationTest {
             get("/api/v1/admin/users")
                 .param("q", "p" + user.toString().substring(0, 12))
                 .header("Authorization", token(admin, "ADMIN")))
-        .andExpect(status().isOk());
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.totalItems").value(1))
+        .andExpect(jsonPath("$.items[0].rankPoints").value(145));
     mvc.perform(get("/api/v1/admin/users/" + user).header("Authorization", token(admin, "ADMIN")))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.rankPoints").value(145));
@@ -364,6 +366,28 @@ class AdminModerationIntegrationTest extends IntegrationTest {
             jdbc.queryForObject(
                 "select count(*) from daily_challenge where challenge_date=?", Integer.class, date))
         .isZero();
+  }
+
+  @Test
+  void moderationErrorsMatchContractAndDuplicateWordDoesNotWriteAudit() throws Exception {
+    UUID missing = UUID.randomUUID();
+    mvc.perform(
+            get("/api/v1/admin/users/" + missing).header("Authorization", token(admin, "ADMIN")))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+    perform(delete("/api/v1/admin/banned-words/" + missing), "")
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("BANNED_WORD_NOT_FOUND"));
+    String word = "duplicate" + missing.toString().replace("-", "");
+    perform(post("/api/v1/admin/banned-words"), json.writeValueAsString(Map.of("word", word)))
+        .andExpect(status().isCreated());
+    perform(post("/api/v1/admin/banned-words"), json.writeValueAsString(Map.of("word", word)))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("BANNED_WORD_ALREADY_EXISTS"));
+    assertThat(
+            jdbc.queryForObject(
+                "select count(*) from audit_log where actor_id=?", Integer.class, admin))
+        .isEqualTo(1);
   }
 
   private UUID account(String role) {

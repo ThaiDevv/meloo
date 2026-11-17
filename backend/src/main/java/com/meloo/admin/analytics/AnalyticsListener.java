@@ -1,5 +1,6 @@
 package com.meloo.admin.analytics;
 
+import com.meloo.daily.events.DailyAttemptFinished;
 import com.meloo.game.events.MatchEndStatus;
 import com.meloo.game.events.MatchFinished;
 import com.meloo.game.events.MatchStarted;
@@ -17,6 +18,22 @@ public class AnalyticsListener {
 
   public AnalyticsListener(AnalyticsWriter writer) {
     this.writer = writer;
+  }
+
+  @ApplicationModuleListener
+  public void on(DailyAttemptFinished event) {
+    writer.record(
+        event.eventId(),
+        "DAILY_ATTEMPT_FINISHED",
+        event.userId(),
+        event.finishedAt(),
+        Map.of(
+            "challengeDate",
+            event.challengeDate(),
+            "status",
+            event.status(),
+            "outcome",
+            event.outcome()));
   }
 
   @ApplicationModuleListener

@@ -3,16 +3,25 @@ package com.meloo.admin.web;
 import com.meloo.admin.analytics.DashboardService;
 import com.meloo.admin.audit.AuditQueries;
 import com.meloo.admin.catalog.AdminCatalogService;
+import com.meloo.admin.daily.AdminDailyService;
+import com.meloo.admin.moderation.AdminModerationService;
 import com.meloo.catalog.api.AdminPlaylistView;
 import com.meloo.catalog.api.AdminTrackQuery;
 import com.meloo.catalog.api.AdminTrackView;
 import com.meloo.catalog.api.CatalogAdminApi;
 import com.meloo.catalog.api.TrackMetadataUpdate;
+import com.meloo.chat.api.ChatAdminApi;
+import com.meloo.chat.api.ReportStatus;
 import com.meloo.generated.api.AdminApi;
 import com.meloo.generated.model.*;
+import com.meloo.identity.api.UserAccounts;
+import com.meloo.progression.api.RankPointsQuery;
+import com.meloo.shared.api.ApiException;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,6 +29,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @PreAuthorize("@adminAccess.allowed()")
 public class AdminController implements AdminApi {
+  private final AdminModerationService moderation;
+  private final AdminDailyService daily;
+  private final ChatAdminApi chat;
+  private final UserAccounts users;
+  private final RankPointsQuery ranks;
   private final AdminAccess access;
   private final CatalogAdminApi catalog;
   private final AdminCatalogService writes;
@@ -31,7 +45,17 @@ public class AdminController implements AdminApi {
       CatalogAdminApi catalog,
       AdminCatalogService writes,
       DashboardService dashboard,
-      AuditQueries audit) {
+      AuditQueries audit,
+      AdminModerationService moderation,
+      AdminDailyService daily,
+      ChatAdminApi chat,
+      UserAccounts users,
+      RankPointsQuery ranks) {
+    this.moderation = moderation;
+    this.daily = daily;
+    this.chat = chat;
+    this.users = users;
+    this.ranks = ranks;
     this.access = access;
     this.catalog = catalog;
     this.writes = writes;
@@ -165,6 +189,128 @@ public class AdminController implements AdminApi {
       Integer page,
       Integer size) {
     return ResponseEntity.ok(audit.list(actor, action, type, from, to, page, size));
+  }
+
+  @Override
+  public ResponseEntity<AdminUserDto> getAdminUser(UUID id) {
+    var user = users.get(id);
+    return ResponseEntity.ok(
+        ModerationViews.user(user, ranks.findAll(java.util.List.of(id)).get(id)));
+  }
+
+  @Override
+  public ResponseEntity<AdminUserPageDto> listAdminUsers(
+      @Nullable String q,
+      @Nullable UserKindDto kind,
+      @Nullable UserRoleDto role,
+      @Nullable UserAccountStatusDto status,
+      Integer page,
+      Integer size) {
+    if (kind != null || role != null || status != null) {
+      throw new ApiException(
+          HttpStatus.NOT_IMPLEMENTED,
+          "NOT_IMPLEMENTED",
+          "Identity API does not support kind, role or status filters yet");
+    }
+    var result = users.search(q == null ? "" : q, page, size);
+    var points =
+        ranks.findAll(result.items().stream().map(com.meloo.identity.api.UserAccount::id).toList());
+    return ResponseEntity.ok(
+        new AdminUserPageDto()
+            .page(page)
+            .size(size)
+            .totalItems(result.total())
+            .totalPages(Math.toIntExact((result.total() + size - 1) / size))
+            .items(
+                result.items().stream()
+                    .map(user -> ModerationViews.user(user, points.get(user.id())))
+                    .toList()));
+  }
+
+  @Override
+  public ResponseEntity<AdminUserDto> updateAdminUserLock(
+      UUID id, AdminUserLockRequestDto request) {
+    var user = moderation.lock(access.actor(), id, request.getLocked(), request.getReason());
+    return ResponseEntity.ok(
+        ModerationViews.user(user, ranks.findAll(java.util.List.of(id)).get(id)));
+  }
+
+  @Override
+  public ResponseEntity<AdminUserDto> updateAdminUserRole(
+      UUID id, AdminUserRoleRequestDto request) {
+    var user = moderation.role(access.actor(), id, request.getRole().getValue());
+    return ResponseEntity.ok(
+        ModerationViews.user(user, ranks.findAll(java.util.List.of(id)).get(id)));
+  }
+
+  @Override
+  public ResponseEntity<AdminChatReportPageDto> listAdminChatReports(
+      ChatReportStatusDto status, Integer page, Integer size) {
+    var reports = chat.listReports(ReportStatus.valueOf(status.getValue()));
+    return ResponseEntity.ok(
+        new AdminChatReportPageDto()
+            .page(page)
+            .size(size)
+            .totalItems((long) reports.size())
+            .totalPages((reports.size() + size - 1) / size)
+            .items(
+                reports.stream()
+                    .skip((long) page * size)
+                    .limit(size)
+                    .map(ModerationViews::report)
+                    .toList()));
+  }
+
+  @Override
+  public ResponseEntity<AdminChatReportDto> resolveAdminChatReport(
+      UUID id, AdminResolveChatReportRequestDto request) {
+    return ResponseEntity.ok(
+        ModerationViews.report(
+            moderation.resolve(
+                access.actor(),
+                id,
+                ReportStatus.valueOf(request.getStatus().getValue()),
+                Boolean.TRUE.equals(request.getLockSender()),
+                request.getLockReason())));
+  }
+
+  @Override
+  public ResponseEntity<AdminBannedWordListResponseDto> listAdminBannedWords() {
+    return ResponseEntity.ok(
+        new AdminBannedWordListResponseDto(
+            chat.listBannedWords().stream().map(ModerationViews::word).toList()));
+  }
+
+  @Override
+  public ResponseEntity<AdminBannedWordDto> createAdminBannedWord(
+      AdminBannedWordRequestDto request) {
+    return ResponseEntity.status(201)
+        .body(ModerationViews.word(moderation.word(access.actor(), null, request.getWord())));
+  }
+
+  @Override
+  public ResponseEntity<AdminBannedWordDto> updateAdminBannedWord(
+      UUID id, AdminBannedWordRequestDto request) {
+    return ResponseEntity.ok(
+        ModerationViews.word(moderation.word(access.actor(), id, request.getWord())));
+  }
+
+  @Override
+  public ResponseEntity<Void> deleteAdminBannedWord(UUID id) {
+    moderation.deleteWord(access.actor(), id);
+    return ResponseEntity.noContent().build();
+  }
+
+  @Override
+  public ResponseEntity<AdminDailyScheduleResponseDto> listAdminDailySchedule(
+      @Nullable LocalDate from, @Nullable LocalDate to) {
+    return ResponseEntity.ok(new AdminDailyScheduleResponseDto(daily.list(from, to)));
+  }
+
+  @Override
+  public ResponseEntity<AdminDailyScheduleItemDto> scheduleAdminDailyChallenge(
+      LocalDate date, AdminScheduleDailyRequestDto request) {
+    return ResponseEntity.ok(daily.schedule(access.actor(), date, request.getTrackId()));
   }
 
   private static AdminTrackDto track(AdminTrackView t) {

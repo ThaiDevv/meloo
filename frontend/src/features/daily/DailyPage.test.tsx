@@ -11,6 +11,7 @@ import { useAuthStore } from '@/shared/api/authStore'
 import { apiClient } from '@/shared/api/client'
 import { useToastStore } from '@/shared/ui/toast-store'
 import notStarted from '../../../../contracts/examples/daily/get-daily-today.not-started.200.json'
+import achievements from '../../../../contracts/examples/progression/list-my-achievements.200.json'
 import solved from '../../../../contracts/examples/daily/get-daily-today.solved.200.json'
 import { DailyPage } from './DailyPage'
 import { resetDailyMock } from './mocks'
@@ -71,6 +72,22 @@ afterEach(() => {
 })
 
 describe('DailyPage: before the attempt', () => {
+  it('announces unseen achievements on the completed daily summary (MEL-86)', async () => {
+    const id = 'daily-achievement-integration'
+    signInAs(id)
+    localStorage.setItem(`meloo:achievements:seen:${id}`, '{}')
+    server.use(
+      http.get('*/api/v1/me/achievements', () => HttpResponse.json(achievements)),
+      http.get('*/api/v1/daily/today', () => HttpResponse.json(solved)),
+    )
+    renderPage()
+    await waitFor(() => {
+      expect(
+        useToastStore.getState().toasts.some((item) => item.title === 'Mở khóa huy hiệu'),
+      ).toBe(true)
+    })
+  })
+
   it('shows the streak the server counted and a start button', async () => {
     renderPage()
 

@@ -7,6 +7,7 @@ import { EmptyState } from '@/shared/ui/EmptyState'
 import { ErrorState } from '@/shared/ui/ErrorState'
 import { Skeleton } from '@/shared/ui/Skeleton'
 import { useMyMatches, useMyProfile, useMyStats } from './api/profileApi'
+import { AchievementsGrid } from './achievements'
 import { MatchHistory, MatchHistorySkeleton } from './components/MatchHistory'
 import { StatsPanel, StatsSkeleton } from './components/StatsPanel'
 import { pageIndexFromParam } from './lib/format'
@@ -17,6 +18,7 @@ export function ProfilePage() {
   return (
     <div className="mx-auto w-full max-w-5xl space-y-12 px-4 py-10 lg:py-16">
       <ProfileHeader />
+      <AchievementsGrid />
       <section aria-labelledby="stats-heading" className="space-y-4">
         <h2 id="stats-heading" className="font-display text-2xl font-extrabold tracking-tight">
           {t('stats.heading')}

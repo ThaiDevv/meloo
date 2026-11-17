@@ -8,6 +8,8 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import i18n from '@/i18n'
 import { server } from '@/mocks/server'
 import { apiClient } from '@/shared/api/client'
+import { useAuthStore } from '@/shared/api/authStore'
+import achievements from '../../../../../contracts/examples/progression/list-my-achievements.200.json'
 import { useSessionStore } from '@/shared/session/store'
 import { useToastStore } from '@/shared/ui/toast-store'
 import correctExample from '../../../../../contracts/examples/game/submit-guess.200.correct.json'
@@ -116,6 +118,27 @@ afterEach(() => {
 })
 
 describe('SoloPlayPage', () => {
+  it('announces unseen achievements only when the finished summary opens (MEL-86)', async () => {
+    const id = 'solo-achievement-integration'
+    useAuthStore.setState({
+      user: { id, kind: 'GUEST', role: 'USER', nickname: id, createdAt: '2026-10-29T00:00:00Z' },
+    })
+    localStorage.setItem(`meloo:achievements:seen:${id}`, '{}')
+    server.use(
+      http.get('*/api/v1/me/achievements', () => HttpResponse.json(achievements)),
+      http.get('*/api/v1/solo/matches/active', () => HttpResponse.json({}, { status: 404 })),
+      http.get('*/api/v1/solo/matches/:matchId/result', () => HttpResponse.json(resultExample)),
+    )
+    renderAt(`/solo/${resultExample.matchId}`)
+    await screen.findByRole('heading', { name: 'Tổng kết trận luyện tập' })
+    await waitFor(() => {
+      expect(
+        useToastStore.getState().toasts.some((item) => item.title === 'Mở khóa huy hiệu'),
+      ).toBe(true)
+    })
+    useAuthStore.getState().clear()
+  })
+
   it('plays a practice match from the intro to the summary, every figure from the server', async () => {
     const user = userEvent.setup()
     const matchId = await createMatch('PRACTICE', 5)

@@ -1,4 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
+import { useAchievementNotifications } from '@/features/profile/achievements'
 import { useTranslation } from 'react-i18next'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useDailyScope } from '@/shared/daily'
@@ -30,6 +31,9 @@ function DailyScreen() {
   const navigate = useNavigate()
   const scope = useDailyScope()
   const today = useDailyToday()
+  useAchievementNotifications(
+    today.data ? today.data.status === 'SOLVED' || today.data.status === 'UNSOLVED' : null,
+  )
   const { start } = useDailyActions()
 
   if (today.isPending) return <DailySkeleton />

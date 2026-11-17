@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Navigate, useBlocker, useNavigate, useParams } from 'react-router-dom'
 import { toast } from '@/shared/ui/toast-store'
+import { useAchievementNotifications } from '@/features/profile/achievements'
 import { CreateSoloMatchError, useCreateSoloMatch } from '../setup/api/useCreateSoloMatch'
 import {
   SoloApiError,
@@ -38,6 +39,12 @@ export function SoloPlayPage() {
 function SoloMatchScreen({ matchId }: { matchId: string }) {
   const load = useSoloMatchLoad(matchId)
   const [ended, setEnded] = useState<MatchResult | null>(null)
+  useAchievementNotifications(
+    !load.data || (load.data.kind !== 'active' && load.data.kind !== 'finished')
+      ? null
+      : ended?.status === 'FINISHED' ||
+          (load.data.kind === 'finished' && load.data.result.status === 'FINISHED'),
+  )
 
   if (load.isPending) return <MatchSkeleton />
   if (load.isError) {

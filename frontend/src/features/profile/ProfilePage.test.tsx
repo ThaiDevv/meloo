@@ -4,10 +4,11 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse, delay } from 'msw'
 import { I18nextProvider } from 'react-i18next'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import i18n from '@/i18n'
 import { server } from '@/mocks/server'
 import statsExample from '../../../../contracts/examples/progression/get-my-stats.200.json'
+import achievementsExample from '../../../../contracts/examples/progression/list-my-achievements.200.json'
 import { profileHandlers } from './mocks'
 import { ProfilePage } from './ProfilePage'
 
@@ -72,6 +73,16 @@ function statValue(term: string) {
 }
 
 describe('ProfilePage', () => {
+  beforeEach(() => {
+    server.use(http.get('*/api/v1/me/achievements', () => HttpResponse.json(achievementsExample)))
+  })
+
+  it('mounts the achievements grid on the profile', async () => {
+    server.use(...profileHandlers)
+    renderPage()
+    expect(await screen.findByText('Chiến thắng đầu tay')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Huy hiệu thành tích' })).toBeInTheDocument()
+  })
   it('shows the nickname, rank points and XP from the profile', async () => {
     server.use(...profileHandlers)
     renderPage()
@@ -214,8 +225,8 @@ describe('ProfilePage', () => {
     const { container } = renderPage()
 
     expect(screen.getByRole('heading', { level: 1, name: 'Hồ sơ' })).toBeInTheDocument()
-    expect(container.querySelectorAll('[aria-busy="true"]')).toHaveLength(3)
-    expect(screen.getAllByText('Đang tải…')).toHaveLength(2)
+    expect(container.querySelectorAll('[aria-busy="true"]')).toHaveLength(4)
+    expect(screen.getAllByText('Đang tải…')).toHaveLength(3)
   })
 
   it('shows an error with retry per section, and recovers on retry (AC3)', async () => {

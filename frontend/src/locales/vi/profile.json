@@ -80,5 +80,15 @@
     "stats": "Không tải được thống kê. Hãy thử lại.",
     "history": "Không tải được lịch sử trận. Hãy thử lại.",
     "detail": "Không tải được chi tiết trận. Hãy thử lại."
+  },
+  "achievements": {
+    "heading": "Huy hiệu thành tích",
+    "count": "Đã mở {{unlocked}} / {{total}} huy hiệu",
+    "unlocked": "Đã mở khóa",
+    "locked": "Chưa mở khóa",
+    "date": "Mở khóa ngày {{date}}",
+    "error": "Không tải được huy hiệu. Hãy thử lại.",
+    "empty": "Chưa có huy hiệu trong bộ sưu tập.",
+    "toast": "Mở khóa huy hiệu"
   }
 }

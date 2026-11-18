@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -71,6 +71,44 @@ describe('CatalogPage', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Bật bài Nơi Này Có Anh' }))
     expect(await screen.findByText('Đã bật Nơi Này Có Anh')).toBeInTheDocument()
     expect(bodies[1]).toEqual({ enabled: true, disabledReason: null })
+  })
+
+  it('clears a canceled reason for the next song but preserves it after a failed disable', async () => {
+    let calls = 0
+    server.use(
+      http.get('*/api/v1/admin/tracks', () =>
+        HttpResponse.json({
+          ...tracksExample,
+          items: [
+            tracksExample.items[0],
+            { ...tracksExample.items[0], id: 'other-track', title: 'Bài khác' },
+          ],
+        }),
+      ),
+      http.put('*/api/v1/admin/tracks/:id/status', () => {
+        calls++
+        return calls === 1
+          ? HttpResponse.json({}, { status: 409 })
+          : HttpResponse.json({ ...tracksExample.items[0], title: 'Bài khác', enabled: false })
+      }),
+    )
+    renderAdmin(<CatalogPage />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Tắt bài Nơi Này Có Anh' }))
+    await userEvent.type(screen.getByLabelText('Lý do (không bắt buộc)'), 'Lý do bài A')
+    await userEvent.click(screen.getByRole('button', { name: 'Hủy' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Tắt bài Bài khác' }))
+    expect(screen.getByLabelText('Lý do (không bắt buộc)')).toHaveValue('')
+    await userEvent.type(screen.getByLabelText('Lý do (không bắt buộc)'), 'Lý do bài B')
+    await userEvent.click(screen.getByRole('button', { name: 'Tắt bài' }))
+    await waitFor(() => {
+      expect(calls).toBe(1)
+    })
+    await screen.findByText('Mã đã tồn tại hoặc thao tác bị chặn.')
+    expect(screen.getByLabelText('Lý do (không bắt buộc)')).toHaveValue('Lý do bài B')
+    await userEvent.click(screen.getByRole('button', { name: 'Tắt bài' }))
+    await screen.findByText('Đã tắt Bài khác')
+    await userEvent.click(screen.getByRole('button', { name: 'Tắt bài Nơi Này Có Anh' }))
+    expect(screen.getByLabelText('Lý do (không bắt buộc)')).toHaveValue('')
   })
 
   it('imports tracks from the provider and shows the summary', async () => {

@@ -77,9 +77,13 @@ public class AnalyticsQueries {
 
   /** DAU/WAU count distinct players starting or completing a game, including guests. */
   public Snapshot snapshot() {
+    return snapshot(excludedPlayers());
+  }
+
+  public Snapshot snapshot(Set<UUID> excluded) {
     LocalDate today = LocalDate.now(clock.withZone(VIETNAM));
     var params =
-        new MapSqlParameterSource("excluded", excludedPlayers())
+        new MapSqlParameterSource("excluded", excluded)
             .addValue("today", today)
             .addValue("weekStart", today.minusDays(6));
     long dau =
@@ -151,10 +155,12 @@ public class AnalyticsQueries {
    * Days without activity are zero-filled so charts keep a continuous axis.
    */
   public List<DailyActivity> daily(LocalDate from, LocalDate to) {
+    return daily(from, to, excludedPlayers());
+  }
+
+  public List<DailyActivity> daily(LocalDate from, LocalDate to, Set<UUID> excluded) {
     var params =
-        new MapSqlParameterSource("excluded", excludedPlayers())
-            .addValue("from", from)
-            .addValue("to", to);
+        new MapSqlParameterSource("excluded", excluded).addValue("from", from).addValue("to", to);
     var players = new HashMap<LocalDate, long[]>();
     jdbc.query(
         PLAYER_DAYS
@@ -194,7 +200,7 @@ public class AnalyticsQueries {
   }
 
   /** Admins and configured accounts never count as players. */
-  private Set<UUID> excludedPlayers() {
+  public Set<UUID> excludedPlayers() {
     var excluded = new HashSet<>(properties.excludedUserIds());
     // Public identity API is paged, rather than doing one get() per player or reading its tables.
     for (int page = 0; ; page++) {

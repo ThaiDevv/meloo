@@ -41,7 +41,8 @@
       "onlinePlayers": "Người đang chơi",
       "openChatReports": "Báo cáo chat chờ xử lý",
       "enabledTracks": "Bài đang bật",
-      "disabledHint": "{{count}} bài đang tắt"
+      "disabledHint": "{{count}} bài đang tắt",
+      "notCollected": "Chưa thu thập số liệu"
     },
     "analytics": {
       "title": "Theo ngày",
@@ -51,7 +52,8 @@
       "wau": "Người chơi 7 ngày",
       "returningRate": "Quay lại ≥ 2 ngày (beta)",
       "guestConversion": "Khách tạo tài khoản",
-      "betaNotSet": "Chưa đặt ngày mở beta"
+      "betaNotSet": "Chưa đặt ngày mở beta",
+      "updating": "Đang tải khoảng mới; số liệu hiện tại thuộc khoảng trước."
     },
     "charts": {
       "players": "Người chơi mỗi ngày",
@@ -60,8 +62,14 @@
       "playersSummary": "Người chơi mỗi ngày từ {{from}} đến {{to}}, cao nhất {{active}} người.",
       "matches": "Trận mỗi ngày",
       "matchesSummary": "Tổng {{total}} trận từ {{from}} đến {{to}}.",
-      "returningShare": "Tỉ lệ người chơi quay lại",
-      "returningShareSummary": "Tỉ lệ người chơi quay lại từ {{from}} đến {{to}}, ngày gần nhất {{latest}}."
+      "returningShare": "Đã chơi từ ngày trước (%)",
+      "returningShareSummary": "Tỉ lệ người chơi quay lại từ {{from}} đến {{to}}, ngày gần nhất {{latest}}.",
+      "returningShareDefinition": "Trong người chơi của ngày đó, tỉ lệ đã chơi ở một ngày trước trong dữ liệu còn lưu."
+    },
+    "table": {
+      "show": "Xem số liệu theo ngày",
+      "caption": "Số liệu: {{title}}",
+      "day": "Ngày"
     }
   },
   "catalog": {
@@ -159,9 +167,9 @@
       "selected": "Bài đã chọn ({{count}})",
       "min": "Cần ít nhất {{min}} bài.",
       "none": "Chưa chọn bài nào.",
-      "unknown": "Bài #{{id}}",
       "remove": "Bỏ {{track}} khỏi bộ đề",
-      "removeShort": "Bỏ"
+      "removeShort": "Bỏ",
+      "missing": "Bài không còn trong kho (#{{id}})"
     },
     "picker": {
       "title": "Thêm bài",
@@ -174,6 +182,12 @@
       "added": "Đã thêm"
     },
     "readOnly": "Bộ chuẩn được quản lý tự động.",
-    "partialSave": "Một số thay đổi có thể đã được lưu. Kiểm tra danh sách trước khi thử lại."
+    "partialSave": "Một số thay đổi có thể đã được lưu. Kiểm tra danh sách trước khi thử lại.",
+    "discard": {
+      "title": "Bỏ thay đổi chưa lưu?",
+      "description": "Các thay đổi trong bộ đề này chưa được lưu.",
+      "keep": "Tiếp tục sửa",
+      "confirm": "Bỏ thay đổi"
+    }
   }
 }

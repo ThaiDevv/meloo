@@ -21,10 +21,14 @@ export interface TrackFilters {
   size?: number
 }
 
-export async function fetchAdminTracks(filters: TrackFilters): Promise<AdminTrackPage> {
+export async function fetchAdminTracks(
+  filters: TrackFilters,
+  signal?: AbortSignal,
+): Promise<AdminTrackPage> {
   const { size = TRACK_PAGE_SIZE, ...rest } = filters
   const { data, error, response } = await apiClient.GET('/api/v1/admin/tracks', {
     params: { query: { ...rest, size } },
+    signal,
   })
   if (!data) throw new AdminApiError('listAdminTracks', response.status, error)
   return data
@@ -36,7 +40,7 @@ export function useAdminTracks(filters: TrackFilters, enabled = true) {
     queryKey: ['admin', 'tracks', filters],
     enabled,
     placeholderData: keepPreviousData,
-    queryFn: () => fetchAdminTracks(filters),
+    queryFn: ({ signal }) => fetchAdminTracks(filters, signal),
   })
 }
 

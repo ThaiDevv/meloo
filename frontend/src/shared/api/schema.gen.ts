@@ -971,7 +971,8 @@ export interface paths {
          *     `returningPlayers` of a day counts active players of that day who had played on an earlier retained day.
          *     `returningRate` is the beta KPI "players returning on at least 2 different days" (null until the beta
          *     window is configured, with a null `rate` when no player is eligible); `guestConversion` is the share of guests that
-         *     merged into an account. Responses never contain nicknames or track data.
+         *     merged into an account. Match counts include all matches finished with status FINISHED, including matches played by excluded
+         *     accounts; exclusions apply only to player counts and ratios. Responses never contain nicknames or track data.
          */
         get: operations["getAdminAnalytics"];
         put?: never;

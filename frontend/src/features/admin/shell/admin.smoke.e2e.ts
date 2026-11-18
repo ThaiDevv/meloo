@@ -18,16 +18,24 @@ const trackId = (i: number) => `22222222-2222-4222-8222-22222222220${String(i)}`
 test('admin dashboard, catalog mutations and playlist create/edit work at desktop and mobile sizes', async ({
   page,
 }) => {
+  // Keep screenshot fixtures independent of external font service availability.
+  await page.route('https://fonts.googleapis.com/**', (route) =>
+    route.fulfill({ contentType: 'text/css', body: '' }),
+  )
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
   const tracks: Track[] = Array.from({ length: 6 }, (_, i) => ({
     ...trackExample,
     provider: 'DEEZER',
-    disabledReason: null,
+    disabledReason: i === 5 ? 'Preview lỗi' : null,
+    enabled: i !== 5,
     id: trackId(i + 1),
     title: `${trackExample.title} ${String(i + 1)}`,
   }))
-  let playlists: Playlist[] = [playlist]
+  let playlists: Playlist[] = [
+    { ...playlist, trackIds: tracks.map((track) => track.id), enabledTrackCount: 5 },
+  ]
+  let removedTracks: unknown
   let lastQuery = ''
   await page.route('**/api/v1/**', async (route) => {
     const request = route.request()
@@ -37,7 +45,8 @@ test('admin dashboard, catalog mutations and playlist create/edit work at deskto
     const json = (body: unknown, status = 200) => route.fulfill({ json: body, status })
     if (path === '/api/v1/auth/refresh')
       return json({ ...session, user: { ...user, role: 'ADMIN' } })
-    if (path === '/api/v1/admin/dashboard') return json(dashboard)
+    if (path === '/api/v1/admin/dashboard')
+      return json({ ...dashboard, activeRooms: 0, onlinePlayers: 0 })
     if (path === '/api/v1/admin/analytics') {
       // Mount Recharts after web fonts settle: its text measurement cache otherwise depends on timing.
       await page.evaluate(() => document.fonts.ready.then(() => true))
@@ -83,6 +92,18 @@ test('admin dashboard, catalog mutations and playlist create/edit work at deskto
       playlists = [...playlists, saved]
       return json(saved, 201)
     }
+    if (
+      path.startsWith('/api/v1/admin/playlists/') &&
+      path.endsWith('/tracks') &&
+      method === 'DELETE'
+    ) {
+      const body = request.postDataJSON() as { trackIds: string[] }
+      removedTracks = body.trackIds
+      const saved = playlists.find((item) => path.includes(item.id))
+      if (!saved) return json({}, 404)
+      saved.trackIds = saved.trackIds.filter((id) => !body.trackIds.includes(id))
+      return json(saved)
+    }
     if (path.startsWith('/api/v1/admin/playlists/') && method === 'PUT') {
       const body = request.postDataJSON() as { nameVi: string; nameEn: string; enabled: boolean }
       const saved = playlists.find((item) => path.endsWith(item.id))
@@ -101,6 +122,10 @@ test('admin dashboard, catalog mutations and playlist create/edit work at deskto
   }
   await page.getByRole('button', { name: '7 ngày' }).click()
   await expect(page.getByRole('button', { name: '7 ngày' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('region', { name: 'Theo ngày' })).toHaveAttribute(
+    'aria-busy',
+    'false',
+  )
   await expect(page).toHaveScreenshot('dashboard-desktop.png', {
     fullPage: true,
     animations: 'disabled',
@@ -141,6 +166,36 @@ test('admin dashboard, catalog mutations and playlist create/edit work at deskto
   )
 
   await page.getByRole('link', { name: 'Bộ đề', exact: true }).click()
+  await page.getByRole('button', { name: /Sửa bộ đề Indie/ }).click()
+  const removeDisabled = page.getByRole('button', {
+    name: 'Bỏ Nơi Này Có Anh 6 · Sơn Tùng M-TP khỏi bộ đề',
+    exact: true,
+  })
+  await expect(removeDisabled).toBeVisible()
+  await expect(page.getByText('Sơn Tùng M-TP · Đang tắt', { exact: true })).toBeVisible()
+  await expect(
+    page.getByRole('button', {
+      name: 'Bỏ Nơi Này Có Anh 1 · Sơn Tùng M-TP khỏi bộ đề',
+      exact: true,
+    }),
+  ).toBeVisible()
+  await page.evaluate(() => {
+    window.scrollTo(0, 0)
+  })
+  await expect(page).toHaveScreenshot('playlist-existing-mobile.png', {
+    fullPage: true,
+    animations: 'disabled',
+  })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  )
+  await removeDisabled.click()
+  await page.getByRole('button', { name: 'Lưu', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Tạo bộ đề', exact: true })).toBeVisible()
+  expect(removedTracks).toEqual([trackId(6)])
+  while (await page.getByRole('button', { name: 'Ẩn thông báo' }).count()) {
+    await page.getByRole('button', { name: 'Ẩn thông báo' }).first().click()
+  }
   await page.getByRole('button', { name: 'Tạo bộ đề', exact: true }).click()
   await page.getByLabel('Mã', { exact: true }).fill('browser-set')
   await page.getByLabel('Tên tiếng Việt').fill('Bộ đề kiểm tra')

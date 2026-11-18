@@ -1,13 +1,18 @@
-import { screen, within } from '@testing-library/react'
+import { screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { http, HttpResponse } from 'msw'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { delay, http, HttpResponse } from 'msw'
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import analyticsExample from '../../../../../contracts/examples/admin/get-admin-analytics.200.json'
 import { server } from '@/mocks/server'
 import { renderAdmin } from '../shell/testing'
 import { AdminDashboardPage } from './AdminDashboardPage'
 import { returningShare } from './lib'
 import { adminDashboardHandlers } from './mocks'
+
+// Unit assertions cover the data; Playwright covers loading/rendering the real chart chunk.
+beforeAll(async () => {
+  await import('./components/DailyChart')
+})
 
 beforeEach(() => {
   server.use(...adminDashboardHandlers)
@@ -20,6 +25,7 @@ describe('AdminDashboardPage', () => {
     expect(within(kpi).getByText('Tài khoản đã đăng ký').nextSibling).toHaveTextContent('412')
     expect(within(kpi).getByText('Trận hôm nay').nextSibling).toHaveTextContent('142')
     expect(within(kpi).getByText('14 bài đang tắt')).toBeInTheDocument()
+    expect(within(kpi).getAllByText('Chưa thu thập số liệu')).toHaveLength(2)
   })
 
   it('shows daily analytics: KPIs and the three charts with readable summaries', async () => {
@@ -32,7 +38,9 @@ describe('AdminDashboardPage', () => {
     expect(
       within(section).getByText(`Tổng ${total.toLocaleString('vi')} trận từ 30-10 đến 28-11.`),
     ).toBeInTheDocument()
-    expect(within(section).getByText('Tỉ lệ người chơi quay lại')).toBeInTheDocument()
+    expect(
+      within(section).getByRole('figure', { name: 'Đã chơi từ ngày trước (%)' }),
+    ).toBeInTheDocument()
   })
 
   it('asks the server again when another range is picked', async () => {
@@ -48,6 +56,39 @@ describe('AdminDashboardPage', () => {
     await userEvent.click(screen.getByRole('button', { name: '7 ngày' }))
     expect(screen.getByRole('button', { name: '7 ngày' })).toHaveAttribute('aria-pressed', 'true')
     expect(asked).toEqual(['30', '7'])
+  })
+
+  it('marks old-period data as busy while a new range is loading', async () => {
+    server.use(
+      http.get('*/api/v1/admin/analytics', async ({ request }) => {
+        if (new URL(request.url).searchParams.get('days') === '7') await delay(200)
+        return HttpResponse.json(analyticsExample)
+      }),
+    )
+    renderAdmin(<AdminDashboardPage />)
+    await screen.findByText('19/52 người chơi')
+    await userEvent.click(screen.getByRole('button', { name: '7 ngày' }))
+    const region = screen.getByRole('region', { name: 'Theo ngày' })
+    expect(region).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByRole('status')).toHaveTextContent('Đang tải khoảng mới')
+    await waitFor(() => expect(region).toHaveAttribute('aria-busy', 'false'))
+    expect(screen.queryByText(/Đang tải khoảng mới/)).not.toBeInTheDocument()
+  })
+
+  it('exposes the same daily chart values in a keyboard-accessible data table', async () => {
+    renderAdmin(<AdminDashboardPage />)
+    const controls = await screen.findAllByText('Xem số liệu theo ngày')
+    const first = controls.at(0)
+    const day = analyticsExample.daily.at(0)
+    if (!first || !day) throw new Error('Missing chart fixture')
+    await userEvent.click(first)
+    const table = screen.getByRole('table', { name: 'Số liệu: Người chơi mỗi ngày' })
+    const row = within(table).getByRole('row', { name: new RegExp(day.day) })
+    expect(
+      within(row)
+        .getAllByRole('cell')
+        .map((cell) => cell.textContent),
+    ).toEqual([day.activePlayers.toLocaleString('vi'), day.returningPlayers.toLocaleString('vi')])
   })
 
   it('says the beta KPI is unavailable when the server has no beta window', async () => {

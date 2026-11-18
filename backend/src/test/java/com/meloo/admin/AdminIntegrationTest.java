@@ -246,6 +246,7 @@ class AdminIntegrationTest extends IntegrationTest {
     target.on(match(first, at("2026-11-29"), null, MatchEndStatus.FINISHED, false));
     target.on(match(second, at("2026-11-29"), null, MatchEndStatus.FINISHED, false));
     target.on(match(ADMIN, at("2026-11-29"), null, MatchEndStatus.FINISHED, false));
+    clearInvocations(users);
     mvc.perform(
             get("/api/v1/admin/analytics")
                 .param("days", "7")
@@ -268,6 +269,8 @@ class AdminIntegrationTest extends IntegrationTest {
         .andExpect(jsonPath("$.returningRate.denominator").value(1))
         .andExpect(jsonPath("$.returningRate.numerator").value(1))
         .andExpect(jsonPath("$.guestConversion.rate").value(nullValue()));
+    // Both the snapshot and daily series share one exclusion scan within this request.
+    verify(users, times(1)).search("", 0, 100);
     mvc.perform(
             get("/api/v1/admin/analytics")
                 .param("days", "6")

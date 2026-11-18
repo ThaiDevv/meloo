@@ -83,7 +83,9 @@ function Snapshot() {
             hint={
               key === 'enabledTracks'
                 ? t('dashboard.kpi.disabledHint', { count: d.disabledTracks })
-                : undefined
+                : key === 'activeRooms' || key === 'onlinePlayers'
+                  ? t('dashboard.kpi.notCollected')
+                  : undefined
             }
           />
         ))}
@@ -109,7 +111,7 @@ function Analytics() {
       : t('dashboard.analytics.betaNotSet')
 
   return (
-    <section aria-labelledby="admin-analytics" className="space-y-4">
+    <section aria-labelledby="admin-analytics" className="space-y-4" aria-busy={query.isFetching}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="admin-analytics" className="text-lg font-semibold">
           {t('dashboard.analytics.title')}
@@ -131,6 +133,11 @@ function Analytics() {
         </div>
       </div>
 
+      {query.isPlaceholderData ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          {t('dashboard.analytics.updating')}
+        </p>
+      ) : null}
       {query.isPending ? (
         <KpiSkeleton count={4} />
       ) : query.isError ? (
@@ -207,6 +214,7 @@ function Charts({ daily }: { daily: AdminAnalyticsDay[] }) {
       <div className="min-w-0">
         <DailyChart
           title={t('dashboard.charts.returningShare')}
+          description={t('dashboard.charts.returningShareDefinition')}
           summary={t('dashboard.charts.returningShareSummary', {
             ...range,
             latest:

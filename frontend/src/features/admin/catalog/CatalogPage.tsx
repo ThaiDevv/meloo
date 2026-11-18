@@ -257,16 +257,18 @@ function TrackTable({ tracks }: { tracks: AdminTrack[] }) {
           ))}
         </tbody>
       </table>
-      <DisableTrackDialog
-        track={disabling}
-        pending={status.isPending}
-        onClose={() => {
-          setDisabling(null)
-        }}
-        onConfirm={(reason) => {
-          if (disabling) change(disabling, false, reason)
-        }}
-      />
+      {disabling ? (
+        <DisableTrackDialog
+          track={disabling}
+          pending={status.isPending}
+          onClose={() => {
+            setDisabling(null)
+          }}
+          onConfirm={(reason) => {
+            change(disabling, false, reason)
+          }}
+        />
+      ) : null}
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { delay, http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -32,6 +32,7 @@ async function searchTracks() {
 }
 async function edit() {
   await userEvent.click(await screen.findByRole('button', { name: /Sửa bộ đề Indie/ }))
+  await screen.findByRole('button', { name: 'Bỏ Bài hát 1 · Sơn Tùng M-TP khỏi bộ đề' })
 }
 
 describe('PlaylistsPage', () => {
@@ -95,7 +96,9 @@ describe('PlaylistsPage', () => {
     await edit()
     await searchTracks()
     await userEvent.click(screen.getByRole('button', { name: 'Thêm Bài hát 6' }))
-    await userEvent.click(screen.getByRole('button', { name: `Bỏ Bài #${trackId(1)} khỏi bộ đề` }))
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Bỏ Bài hát 1 · Sơn Tùng M-TP khỏi bộ đề' }),
+    )
     await userEvent.clear(screen.getByLabelText('Tên tiếng Việt'))
     await userEvent.type(screen.getByLabelText('Tên tiếng Việt'), 'Bộ mới')
     await userEvent.click(screen.getByRole('button', { name: 'Lưu' }))
@@ -122,7 +125,9 @@ describe('PlaylistsPage', () => {
     renderAdmin(<PlaylistsPage />)
     await edit()
     await userEvent.click(screen.getByLabelText('Bật bộ đề'))
-    await userEvent.click(screen.getByRole('button', { name: `Bỏ Bài #${trackId(1)} khỏi bộ đề` }))
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Bỏ Bài hát 1 · Sơn Tùng M-TP khỏi bộ đề' }),
+    )
     await userEvent.click(screen.getByRole('button', { name: 'Lưu' }))
     expect(screen.getByRole('button', { name: 'Về danh sách' })).toBeDisabled()
     expect(screen.getByLabelText('Tên tiếng Việt')).toBeDisabled()
@@ -144,7 +149,9 @@ describe('PlaylistsPage', () => {
     await edit()
     await searchTracks()
     await userEvent.click(screen.getByRole('button', { name: 'Thêm Bài hát 6' }))
-    await userEvent.click(screen.getByRole('button', { name: `Bỏ Bài #${trackId(1)} khỏi bộ đề` }))
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Bỏ Bài hát 1 · Sơn Tùng M-TP khỏi bộ đề' }),
+    )
     await userEvent.click(screen.getByRole('button', { name: 'Lưu' }))
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent('Bộ đề đang bật cần ít nhất 5 bài đang bật.')
@@ -153,6 +160,101 @@ describe('PlaylistsPage', () => {
     expect(additions).toBe(1)
     await waitFor(() => expect(screen.getByRole('button', { name: 'Lưu' })).toBeEnabled())
   })
+  it('resolves existing enabled and disabled selections across catalog pages and removes the named disabled song', async () => {
+    const selectedIds = tracks.map((track) => track.id)
+    const existing = { ...example, trackIds: selectedIds, enabledTrackCount: 5 }
+    const disabled = { ...tracks[5], enabled: false, disabledReason: 'Preview lỗi' }
+    const filler = Array.from({ length: 95 }, (_, i) => ({
+      ...tracks[0],
+      id: `other-${String(i)}`,
+      title: `Khác ${String(i)}`,
+    }))
+    const asked: URLSearchParams[] = []
+    let removed: unknown
+    server.use(
+      http.get('*/api/v1/admin/playlists', () => HttpResponse.json({ items: [existing] })),
+      http.get('*/api/v1/admin/tracks', ({ request }) => {
+        const params = new URL(request.url).searchParams
+        asked.push(params)
+        const page = Number(params.get('page'))
+        return HttpResponse.json({
+          page,
+          size: 50,
+          totalItems: 101,
+          totalPages: 3,
+          items:
+            page === 0
+              ? [...tracks.slice(0, 5), ...filler.slice(0, 45)]
+              : [disabled, ...filler.slice(45, 94)],
+        })
+      }),
+      http.delete('*/api/v1/admin/playlists/:id/tracks', async ({ request }) => {
+        removed = await request.json()
+        return HttpResponse.json({ ...existing, trackIds: selectedIds.slice(0, 5) })
+      }),
+    )
+    renderAdmin(<PlaylistsPage />)
+    await edit()
+    const selected = screen.getByRole('region', { name: 'Bài đã chọn (6)' })
+    expect(
+      within(selected).getByRole('button', { name: 'Bỏ Bài hát 6 · Sơn Tùng M-TP khỏi bộ đề' }),
+    ).toBeInTheDocument()
+    expect(within(selected).getByText('Sơn Tùng M-TP · Đang tắt')).toBeInTheDocument()
+    expect(within(selected).queryByText(/Bài #/)).not.toBeInTheDocument()
+    expect(asked.map((params) => params.get('page'))).toEqual(['0', '1'])
+    for (const params of asked) {
+      expect(params.get('enabled')).toBeNull()
+      expect(params.get('q')).toBeNull()
+      expect(params.get('size')).toBe('50')
+    }
+    await userEvent.click(
+      within(selected).getByRole('button', { name: 'Bỏ Bài hát 6 · Sơn Tùng M-TP khỏi bộ đề' }),
+    )
+    expect(
+      screen.getByRole('button', { name: 'Bỏ Bài hát 1 · Sơn Tùng M-TP khỏi bộ đề' }),
+    ).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Lưu' }))
+    await screen.findByText('Đã lưu bộ đề')
+    expect(removed).toEqual({ trackIds: [trackId(6)] })
+  })
+
+  it('blocks saving during metadata failure and retries without discarding the edit', async () => {
+    server.use(http.get('*/api/v1/admin/tracks', () => HttpResponse.json({}, { status: 500 })))
+    renderAdmin(<PlaylistsPage />)
+    await userEvent.click(await screen.findByRole('button', { name: /Sửa bộ đề Indie/ }))
+    await userEvent.type(screen.getByLabelText('Tên tiếng Việt'), ' nháp')
+    await screen.findByRole('button', { name: 'Thử lại' })
+    expect(screen.getByRole('button', { name: 'Lưu' })).toBeDisabled()
+    server.use(
+      http.get('*/api/v1/admin/tracks', () =>
+        HttpResponse.json({
+          items: tracks,
+          page: 0,
+          size: 50,
+          totalItems: 6,
+          totalPages: 1,
+        }),
+      ),
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Thử lại' }))
+    await screen.findByRole('button', { name: 'Bỏ Bài hát 1 · Sơn Tùng M-TP khỏi bộ đề' })
+    expect(screen.getByLabelText('Tên tiếng Việt')).toHaveValue(`${example.nameVi} nháp`)
+    expect(screen.getByRole('button', { name: 'Lưu' })).toBeEnabled()
+  })
+
+  it('confirms leaving an unsaved edit and can keep the draft', async () => {
+    renderAdmin(<PlaylistsPage />)
+    await edit()
+    await userEvent.type(screen.getByLabelText('Tên tiếng Việt'), ' nháp')
+    await userEvent.click(screen.getByRole('button', { name: 'Hủy' }))
+    const dialog = screen.getByRole('dialog', { name: 'Bỏ thay đổi chưa lưu?' })
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Tiếp tục sửa' }))
+    expect(screen.getByLabelText('Tên tiếng Việt')).toHaveValue(`${example.nameVi} nháp`)
+    await userEvent.click(screen.getByRole('button', { name: 'Về danh sách' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Bỏ thay đổi' }))
+    expect(await screen.findByRole('button', { name: 'Tạo bộ đề' })).toBeInTheDocument()
+  })
+
   it('shows standard playlists as read-only and handles an empty list', async () => {
     server.use(
       http.get('*/api/v1/admin/playlists', () =>

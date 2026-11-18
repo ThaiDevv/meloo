@@ -62,9 +62,10 @@ public class DashboardService {
     var now = clock.instant();
     var to = LocalDate.ofInstant(now, AnalyticsQueries.VIETNAM);
     var from = to.minusDays(days - 1L);
-    var snapshot = analytics.snapshot();
+    var excluded = analytics.excludedPlayers();
+    var snapshot = analytics.snapshot(excluded);
     var daily =
-        analytics.daily(from, to).stream()
+        analytics.daily(from, to, excluded).stream()
             .map(
                 d ->
                     new AdminAnalyticsDayDto(

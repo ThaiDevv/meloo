@@ -41,7 +41,8 @@
       "onlinePlayers": "Players online",
       "openChatReports": "Open chat reports",
       "enabledTracks": "Enabled tracks",
-      "disabledHint": "{{count}} disabled"
+      "disabledHint": "{{count}} disabled",
+      "notCollected": "Metrics not collected yet"
     },
     "analytics": {
       "title": "By day",
@@ -51,7 +52,8 @@
       "wau": "Players, 7 days",
       "returningRate": "Returned on 2+ days (beta)",
       "guestConversion": "Guests who signed up",
-      "betaNotSet": "Beta start date not set"
+      "betaNotSet": "Beta start date not set",
+      "updating": "Loading the new period; the figures shown are from the previous period."
     },
     "charts": {
       "players": "Players per day",
@@ -60,8 +62,14 @@
       "playersSummary": "Players per day from {{from}} to {{to}}, peak {{active}}.",
       "matches": "Matches per day",
       "matchesSummary": "{{total}} matches from {{from}} to {{to}}.",
-      "returningShare": "Returning player share",
-      "returningShareSummary": "Returning player share from {{from}} to {{to}}, latest {{latest}}."
+      "returningShare": "Played on an earlier day (%)",
+      "returningShareSummary": "Returning player share from {{from}} to {{to}}, latest {{latest}}.",
+      "returningShareDefinition": "Share of that day’s players who played on an earlier day within retained data."
+    },
+    "table": {
+      "show": "View daily values",
+      "caption": "Data: {{title}}",
+      "day": "Date"
     }
   },
   "catalog": {
@@ -159,9 +167,9 @@
       "selected": "Selected tracks ({{count}})",
       "min": "Pick at least {{min}} tracks.",
       "none": "No tracks selected.",
-      "unknown": "Track #{{id}}",
       "remove": "Remove {{track}} from the playlist",
-      "removeShort": "Remove"
+      "removeShort": "Remove",
+      "missing": "Track no longer in catalog (#{{id}})"
     },
     "picker": {
       "title": "Add tracks",
@@ -174,6 +182,12 @@
       "added": "Added"
     },
     "readOnly": "Standard sets are managed automatically.",
-    "partialSave": "Some changes may have been saved. Check the list before retrying."
+    "partialSave": "Some changes may have been saved. Check the list before retrying.",
+    "discard": {
+      "title": "Discard unsaved changes?",
+      "description": "Changes to this playlist have not been saved.",
+      "keep": "Keep editing",
+      "confirm": "Discard changes"
+    }
   }
 }

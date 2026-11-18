@@ -21,8 +21,7 @@ export function DisableTrackDialog({ track, pending, onClose, onConfirm }: Props
     <Dialog
       open={track !== null}
       onClose={() => {
-        setReason('')
-        onClose()
+        if (!pending) onClose()
       }}
       title={t('catalog.disable.title')}
       description={track ? t('catalog.disable.description', { title: track.title }) : undefined}
@@ -32,12 +31,12 @@ export function DisableTrackDialog({ track, pending, onClose, onConfirm }: Props
         onSubmit={(event) => {
           event.preventDefault()
           onConfirm(reason.trim() || undefined)
-          setReason('')
         }}
       >
         <Field label={t('catalog.disable.reason')} htmlFor="disable-reason">
           <Input
             id="disable-reason"
+            disabled={pending}
             maxLength={200}
             value={reason}
             onChange={(e) => {
@@ -46,7 +45,7 @@ export function DisableTrackDialog({ track, pending, onClose, onConfirm }: Props
           />
         </Field>
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={onClose}>
+          <Button type="button" variant="ghost" disabled={pending} onClick={onClose}>
             {t('cancel')}
           </Button>
           <Button type="submit" variant="destructive" disabled={pending}>

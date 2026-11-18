@@ -1,10 +1,6 @@
 import { act, cleanup, render, screen } from '@testing-library/react'
 import { RouterProvider, createMemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { server } from '@/mocks/server'
-import { adminDashboardHandlers } from '@/features/admin/dashboard/mocks'
-import { adminCatalogHandlers } from '@/features/admin/catalog/mocks'
-import { adminPlaylistHandlers } from '@/features/admin/playlists/mocks'
 import { Providers } from './providers'
 import { appRoutes } from './routes'
 import { useSessionStore } from '@/shared/session/store'
@@ -36,7 +32,6 @@ describe('app routes', () => {
     ['/admin/catalog', 'Nơi Này Có Anh'],
     ['/admin/playlists', 'Bộ chuẩn V-Pop'],
   ])('%s renders the admin page', async (path, content) => {
-    server.use(...adminDashboardHandlers, ...adminCatalogHandlers, ...adminPlaylistHandlers)
     renderAt(path)
     expect(await screen.findByText(content)).toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: 'Menu quản trị' })).toBeInTheDocument()

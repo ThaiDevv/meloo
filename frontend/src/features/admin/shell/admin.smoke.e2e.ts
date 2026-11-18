@@ -39,6 +39,8 @@ test('admin dashboard, catalog mutations and playlist create/edit work at deskto
       return json({ ...session, user: { ...user, role: 'ADMIN' } })
     if (path === '/api/v1/admin/dashboard') return json(dashboard)
     if (path === '/api/v1/admin/analytics') {
+      // Mount Recharts after web fonts settle: its text measurement cache otherwise depends on timing.
+      await page.evaluate(() => document.fonts.ready.then(() => true))
       const days = Number(url.searchParams.get('days') ?? 30)
       return json({ ...analytics, daily: analytics.daily.slice(-days) })
     }

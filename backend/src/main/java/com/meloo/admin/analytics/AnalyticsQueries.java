@@ -8,8 +8,11 @@ import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -17,7 +20,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Internal KPIs pending a CT extension. Only retained events can contribute to these metrics. */
+/** KPIs for the admin dashboard and analytics API. Only retained events contribute. */
 @Service
 @Transactional(readOnly = true)
 public class AnalyticsQueries {
@@ -74,18 +77,11 @@ public class AnalyticsQueries {
 
   /** DAU/WAU count distinct players starting or completing a game, including guests. */
   public Snapshot snapshot() {
+    return snapshot(excludedPlayers());
+  }
+
+  public Snapshot snapshot(Set<UUID> excluded) {
     LocalDate today = LocalDate.now(clock.withZone(VIETNAM));
-    var excluded = new HashSet<>(properties.excludedUserIds());
-    // Public identity API is paged, rather than doing one get() per player or reading its tables.
-    for (int page = 0; ; page++) {
-      var batch = users.search("", page, 100);
-      batch.items().stream()
-          .filter(u -> "ADMIN".equals(u.role()))
-          .forEach(u -> excluded.add(u.id()));
-      if ((long) (page + 1) * 100 >= batch.total()) break;
-    }
-    // Keep NOT IN well formed when the configured exclusion set is empty.
-    if (excluded.isEmpty()) excluded.add(new UUID(0, 0));
     var params =
         new MapSqlParameterSource("excluded", excluded)
             .addValue("today", today)
@@ -154,6 +150,71 @@ public class AnalyticsQueries {
     return new Snapshot(dau, wau, matches, conversion, returning, popular);
   }
 
+  /**
+   * One row per Vietnam day in [from, to] with active and returning players and finished matches.
+   * Days without activity are zero-filled so charts keep a continuous axis.
+   */
+  public List<DailyActivity> daily(LocalDate from, LocalDate to) {
+    return daily(from, to, excludedPlayers());
+  }
+
+  public List<DailyActivity> daily(LocalDate from, LocalDate to, Set<UUID> excluded) {
+    var params =
+        new MapSqlParameterSource("excluded", excluded).addValue("from", from).addValue("to", to);
+    var players = new HashMap<LocalDate, long[]>();
+    jdbc.query(
+        PLAYER_DAYS
+            + """
+        , firsts as (select player, min(day) as first_day from days group by player)
+        select d.day, count(*) as active, count(*) filter (where f.first_day < d.day) as returning
+        from days d join firsts f on f.player = d.player
+        where d.day between :from and :to group by d.day
+        """,
+        params,
+        rs -> {
+          players.put(
+              rs.getObject("day", LocalDate.class),
+              new long[] {rs.getLong("active"), rs.getLong("returning")});
+        });
+    var matches = new HashMap<LocalDate, Long>();
+    jdbc.query(
+        """
+        select (occurred_at at time zone 'Asia/Ho_Chi_Minh')::date as day, count(*) as total
+        from analytics_event where event_type = 'MATCH_FINISHED' and props ->> 'status' = 'FINISHED'
+          and occurred_at >= :fromInstant and occurred_at < :toInstant
+        group by day
+        """,
+        new MapSqlParameterSource(
+                "fromInstant", Timestamp.from(from.atStartOfDay(VIETNAM).toInstant()))
+            .addValue(
+                "toInstant", Timestamp.from(to.plusDays(1).atStartOfDay(VIETNAM).toInstant())),
+        rs -> {
+          matches.put(rs.getObject("day", LocalDate.class), rs.getLong("total"));
+        });
+    var result = new ArrayList<DailyActivity>();
+    for (var day = from; !day.isAfter(to); day = day.plusDays(1)) {
+      var p = players.getOrDefault(day, new long[2]);
+      result.add(new DailyActivity(day, p[0], p[1], matches.getOrDefault(day, 0L)));
+    }
+    return result;
+  }
+
+  /** Admins and configured accounts never count as players. */
+  public Set<UUID> excludedPlayers() {
+    var excluded = new HashSet<>(properties.excludedUserIds());
+    // Public identity API is paged, rather than doing one get() per player or reading its tables.
+    for (int page = 0; ; page++) {
+      var batch = users.search("", page, 100);
+      batch.items().stream()
+          .filter(u -> "ADMIN".equals(u.role()))
+          .forEach(u -> excluded.add(u.id()));
+      if ((long) (page + 1) * 100 >= batch.total()) break;
+    }
+    // Keep NOT IN well formed when the configured exclusion set is empty.
+    if (excluded.isEmpty()) excluded.add(new UUID(0, 0));
+    return excluded;
+  }
+
   public int matchesToday() {
     return Math.toIntExact(
         count(
@@ -188,6 +249,9 @@ public class AnalyticsQueries {
   }
 
   public record MatchesPerDay(LocalDate day, long matches) {}
+
+  public record DailyActivity(
+      LocalDate day, long activePlayers, long returningPlayers, long matches) {}
 
   public record PopularPlaylist(UUID playlistId, long matches) {}
 

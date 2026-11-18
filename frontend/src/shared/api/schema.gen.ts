@@ -956,6 +956,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get daily player, match and returning-player analytics
+         * @description Requires role `ADMIN` (403 `FORBIDDEN` otherwise). Returns usage analytics computed from retained analytics
+         *     events. Player counts exclude administrators and configured excluded accounts. `daily` has exactly one entry per Vietnam
+         *     calendar day (`Asia/Ho_Chi_Minh`) from `from` to `to` inclusive (`to` is today), with zero-filled days.
+         *     `returningPlayers` of a day counts active players of that day who had played on an earlier retained day.
+         *     `returningRate` is the beta KPI "players returning on at least 2 different days" (null until the beta
+         *     window is configured, with a null `rate` when no player is eligible); `guestConversion` is the share of guests that
+         *     merged into an account. Match counts include all matches finished with status FINISHED, including matches played by excluded
+         *     accounts; exclusions apply only to player counts and ratios. Responses never contain nicknames or track data.
+         */
+        get: operations["getAdminAnalytics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/tracks": {
         parameters: {
             query?: never;
@@ -2205,6 +2232,41 @@ export interface components {
             disabledTracks: number;
             totalRegisteredUsers: number;
             totalGuestsToday: number;
+            /** Format: date-time */
+            serverTime: string;
+        };
+        /** @description A fraction `numerator / denominator`; `rate` is null when `denominator` is 0. */
+        AdminRatio: {
+            numerator: number;
+            denominator: number;
+            rate: number | null;
+        };
+        AdminAnalyticsDay: {
+            /**
+             * Format: date
+             * @description Vietnam calendar day.
+             */
+            day: string;
+            /** @description Distinct players (guests included) who started or finished a game that day. */
+            activePlayers: number;
+            /** @description Active players of that day who had already played on an earlier day. */
+            returningPlayers: number;
+            /** @description Matches finished with status `FINISHED` that day. */
+            matches: number;
+        };
+        AdminAnalytics: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            /** @description Distinct active players today. */
+            dau: number;
+            /** @description Distinct active players over the last 7 days including today. */
+            wau: number;
+            /** @description Beta KPI, players returning on at least 2 different days; null before the beta window is set. */
+            returningRate: components["schemas"]["AdminRatio"] | null;
+            guestConversion: components["schemas"]["AdminRatio"];
+            daily: components["schemas"]["AdminAnalyticsDay"][];
             /** Format: date-time */
             serverTime: string;
         };
@@ -4075,6 +4137,32 @@ export interface operations {
                     "application/json": components["schemas"]["AdminDashboard"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getAdminAnalytics: {
+        parameters: {
+            query?: {
+                /** @description Number of days to include, ending today (Vietnam time). */
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Analytics over the requested period. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAnalytics"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
         };

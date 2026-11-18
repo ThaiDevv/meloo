@@ -1,0 +1,199 @@
+{
+  "from": "2026-10-30",
+  "to": "2026-11-28",
+  "dau": 33,
+  "wau": 61,
+  "returningRate": {
+    "numerator": 19,
+    "denominator": 52,
+    "rate": 0.365385
+  },
+  "guestConversion": {
+    "numerator": 41,
+    "denominator": 95,
+    "rate": 0.431579
+  },
+  "daily": [
+    {
+      "day": "2026-10-30",
+      "activePlayers": 3,
+      "returningPlayers": 0,
+      "matches": 9
+    },
+    {
+      "day": "2026-10-31",
+      "activePlayers": 5,
+      "returningPlayers": 2,
+      "matches": 16
+    },
+    {
+      "day": "2026-11-01",
+      "activePlayers": 4,
+      "returningPlayers": 1,
+      "matches": 14
+    },
+    {
+      "day": "2026-11-02",
+      "activePlayers": 6,
+      "returningPlayers": 2,
+      "matches": 21
+    },
+    {
+      "day": "2026-11-03",
+      "activePlayers": 8,
+      "returningPlayers": 3,
+      "matches": 28
+    },
+    {
+      "day": "2026-11-04",
+      "activePlayers": 7,
+      "returningPlayers": 2,
+      "matches": 26
+    },
+    {
+      "day": "2026-11-05",
+      "activePlayers": 9,
+      "returningPlayers": 3,
+      "matches": 33
+    },
+    {
+      "day": "2026-11-06",
+      "activePlayers": 11,
+      "returningPlayers": 4,
+      "matches": 40
+    },
+    {
+      "day": "2026-11-07",
+      "activePlayers": 10,
+      "returningPlayers": 4,
+      "matches": 38
+    },
+    {
+      "day": "2026-11-08",
+      "activePlayers": 12,
+      "returningPlayers": 4,
+      "matches": 45
+    },
+    {
+      "day": "2026-11-09",
+      "activePlayers": 14,
+      "returningPlayers": 5,
+      "matches": 52
+    },
+    {
+      "day": "2026-11-10",
+      "activePlayers": 13,
+      "returningPlayers": 5,
+      "matches": 50
+    },
+    {
+      "day": "2026-11-11",
+      "activePlayers": 15,
+      "returningPlayers": 5,
+      "matches": 57
+    },
+    {
+      "day": "2026-11-12",
+      "activePlayers": 17,
+      "returningPlayers": 6,
+      "matches": 64
+    },
+    {
+      "day": "2026-11-13",
+      "activePlayers": 16,
+      "returningPlayers": 6,
+      "matches": 62
+    },
+    {
+      "day": "2026-11-14",
+      "activePlayers": 18,
+      "returningPlayers": 6,
+      "matches": 69
+    },
+    {
+      "day": "2026-11-15",
+      "activePlayers": 20,
+      "returningPlayers": 7,
+      "matches": 76
+    },
+    {
+      "day": "2026-11-16",
+      "activePlayers": 19,
+      "returningPlayers": 7,
+      "matches": 74
+    },
+    {
+      "day": "2026-11-17",
+      "activePlayers": 22,
+      "returningPlayers": 8,
+      "matches": 84
+    },
+    {
+      "day": "2026-11-18",
+      "activePlayers": 21,
+      "returningPlayers": 7,
+      "matches": 82
+    },
+    {
+      "day": "2026-11-19",
+      "activePlayers": 24,
+      "returningPlayers": 8,
+      "matches": 92
+    },
+    {
+      "day": "2026-11-20",
+      "activePlayers": 23,
+      "returningPlayers": 8,
+      "matches": 90
+    },
+    {
+      "day": "2026-11-21",
+      "activePlayers": 26,
+      "returningPlayers": 9,
+      "matches": 100
+    },
+    {
+      "day": "2026-11-22",
+      "activePlayers": 25,
+      "returningPlayers": 9,
+      "matches": 98
+    },
+    {
+      "day": "2026-11-23",
+      "activePlayers": 27,
+      "returningPlayers": 9,
+      "matches": 105
+    },
+    {
+      "day": "2026-11-24",
+      "activePlayers": 28,
+      "returningPlayers": 10,
+      "matches": 109
+    },
+    {
+      "day": "2026-11-25",
+      "activePlayers": 30,
+      "returningPlayers": 10,
+      "matches": 116
+    },
+    {
+      "day": "2026-11-26",
+      "activePlayers": 29,
+      "returningPlayers": 10,
+      "matches": 114
+    },
+    {
+      "day": "2026-11-27",
+      "activePlayers": 31,
+      "returningPlayers": 11,
+      "matches": 121
+    },
+    {
+      "day": "2026-11-28",
+      "activePlayers": 33,
+      "returningPlayers": 12,
+      "matches": 128
+    }
+  ],
+  "serverTime": "2026-11-28T08:15:00Z"
+}

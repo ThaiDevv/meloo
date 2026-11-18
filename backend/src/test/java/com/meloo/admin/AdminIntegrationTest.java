@@ -3,6 +3,7 @@ package com.meloo.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -107,7 +108,7 @@ class AdminIntegrationTest extends IntegrationTest {
 
   @Test
   void everyAdminRouteRejectsAnonymousUserAndGuest() throws Exception {
-    String[] paths = {"/dashboard", "/tracks", "/playlists", "/audit-logs"};
+    String[] paths = {"/dashboard", "/analytics", "/tracks", "/playlists", "/audit-logs"};
     for (String path : paths) {
       mvc.perform(get("/api/v1/admin" + path)).andExpect(status().isUnauthorized());
       mvc.perform(get("/api/v1/admin" + path).header("Authorization", token(USER, "USER")))
@@ -234,6 +235,50 @@ class AdminIntegrationTest extends IntegrationTest {
     assertThat(result.matchesPerDay())
         .contains(new AnalyticsQueries.MatchesPerDay(LocalDate.parse("2026-11-27"), 2));
     assertThat(queries.matchesToday()).isEqualTo(5);
+  }
+
+  @Test
+  void analyticsEndpointReturnsZeroFilledDailySeriesWithReturningPlayers() throws Exception {
+    AnalyticsListener target = AopTestUtils.getUltimateTargetObject(listener);
+    UUID first = UUID.randomUUID();
+    UUID second = UUID.randomUUID();
+    target.on(match(first, at("2026-11-24"), null, MatchEndStatus.FINISHED, false));
+    target.on(match(first, at("2026-11-29"), null, MatchEndStatus.FINISHED, false));
+    target.on(match(second, at("2026-11-29"), null, MatchEndStatus.FINISHED, false));
+    target.on(match(ADMIN, at("2026-11-29"), null, MatchEndStatus.FINISHED, false));
+    clearInvocations(users);
+    mvc.perform(
+            get("/api/v1/admin/analytics")
+                .param("days", "7")
+                .header("Authorization", token(ADMIN, "ADMIN")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.from").value("2026-11-23"))
+        .andExpect(jsonPath("$.to").value("2026-11-29"))
+        .andExpect(jsonPath("$.daily.length()").value(7))
+        .andExpect(jsonPath("$.daily[0].day").value("2026-11-23"))
+        .andExpect(jsonPath("$.daily[0].activePlayers").value(0))
+        .andExpect(jsonPath("$.daily[1].activePlayers").value(1))
+        .andExpect(jsonPath("$.daily[1].returningPlayers").value(0))
+        .andExpect(jsonPath("$.daily[5].matches").value(0))
+        .andExpect(jsonPath("$.daily[6].activePlayers").value(2))
+        .andExpect(jsonPath("$.daily[6].returningPlayers").value(1))
+        .andExpect(jsonPath("$.daily[6].matches").value(3))
+        .andExpect(jsonPath("$.dau").value(2))
+        .andExpect(jsonPath("$.wau").value(2))
+        // Second player first played after the beta cutoff (27/11), so only the first is eligible.
+        .andExpect(jsonPath("$.returningRate.denominator").value(1))
+        .andExpect(jsonPath("$.returningRate.numerator").value(1))
+        .andExpect(jsonPath("$.guestConversion.rate").value(nullValue()));
+    // Both the snapshot and daily series share one exclusion scan within this request.
+    verify(users, times(1)).search("", 0, 100);
+    mvc.perform(
+            get("/api/v1/admin/analytics")
+                .param("days", "6")
+                .header("Authorization", token(ADMIN, "ADMIN")))
+        .andExpect(status().isBadRequest());
+    mvc.perform(get("/api/v1/admin/analytics").header("Authorization", token(ADMIN, "ADMIN")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.daily.length()").value(30));
   }
 
   @Test

@@ -1,3 +1,193 @@
 {
-  "title": "Quản trị"
+  "title": "Quản trị",
+  "loading": "Đang tải",
+  "cancel": "Hủy",
+  "close": "Đóng",
+  "shell": {
+    "menu": "Menu quản trị",
+    "nav": {
+      "dashboard": "Tổng quan",
+      "catalog": "Kho nhạc",
+      "playlists": "Bộ đề",
+      "users": "Người dùng",
+      "moderation": "Kiểm duyệt",
+      "audit": "Nhật ký"
+    }
+  },
+  "pager": {
+    "previous": "Trang trước",
+    "next": "Trang sau",
+    "status": "Trang {{page}}/{{total}}"
+  },
+  "errors": {
+    "generic": "Không thực hiện được. Hãy thử lại.",
+    "notEnoughTracks": "Bộ đề đang bật cần ít nhất 5 bài đang bật.",
+    "conflict": "Mã đã tồn tại hoặc thao tác bị chặn.",
+    "notFound": "Không tìm thấy dữ liệu, có thể đã bị xóa.",
+    "invalid": "Dữ liệu chưa hợp lệ.",
+    "forbidden": "Bạn không có quyền làm việc này."
+  },
+  "dashboard": {
+    "subtitle": "Số liệu từ máy chủ; người chơi trong biểu đồ không tính quản trị viên.",
+    "notAvailable": "Chưa có",
+    "ratioHint": "{{numerator}}/{{denominator}} người chơi",
+    "kpi": {
+      "title": "Hôm nay",
+      "totalRegisteredUsers": "Tài khoản đã đăng ký",
+      "totalGuestsToday": "Khách mới hôm nay",
+      "matchesToday": "Trận hôm nay",
+      "dailyPlayersToday": "Người chơi thử thách ngày",
+      "activeRooms": "Phòng đang mở",
+      "onlinePlayers": "Người đang chơi",
+      "openChatReports": "Báo cáo chat chờ xử lý",
+      "enabledTracks": "Bài đang bật",
+      "disabledHint": "{{count}} bài đang tắt",
+      "notCollected": "Chưa thu thập số liệu"
+    },
+    "analytics": {
+      "title": "Theo ngày",
+      "range": "Khoảng thời gian",
+      "days": "{{count}} ngày",
+      "dau": "Người chơi hôm nay",
+      "wau": "Người chơi 7 ngày",
+      "returningRate": "Quay lại ≥ 2 ngày (beta)",
+      "guestConversion": "Khách tạo tài khoản",
+      "betaNotSet": "Chưa đặt ngày mở beta",
+      "updating": "Đang tải khoảng mới; số liệu hiện tại thuộc khoảng trước."
+    },
+    "charts": {
+      "players": "Người chơi mỗi ngày",
+      "active": "Người chơi",
+      "returning": "Người chơi quay lại",
+      "playersSummary": "Người chơi mỗi ngày từ {{from}} đến {{to}}, cao nhất {{active}} người.",
+      "matches": "Trận mỗi ngày",
+      "matchesSummary": "Tổng {{total}} trận từ {{from}} đến {{to}}.",
+      "returningShare": "Đã chơi từ ngày trước (%)",
+      "returningShareSummary": "Tỉ lệ người chơi quay lại từ {{from}} đến {{to}}, ngày gần nhất {{latest}}.",
+      "returningShareDefinition": "Trong người chơi của ngày đó, tỉ lệ đã chơi ở một ngày trước trong dữ liệu còn lưu."
+    },
+    "table": {
+      "show": "Xem số liệu theo ngày",
+      "caption": "Số liệu: {{title}}",
+      "day": "Ngày"
+    }
+  },
+  "catalog": {
+    "subtitle": "Tìm, lọc và bật/tắt bài. Bài tắt không vào vòng mới và gợi ý.",
+    "filters": {
+      "label": "Lọc kho nhạc",
+      "q": "Tên bài hoặc ca sĩ",
+      "status": "Trạng thái",
+      "all": "Tất cả",
+      "genre": "Mã thể loại",
+      "country": "Quốc gia (VN, US…)",
+      "decade": "Thập niên",
+      "decadeValue": "{{decade}}s",
+      "apply": "Lọc",
+      "reset": "Xóa lọc"
+    },
+    "status": {
+      "enabled": "Đang bật",
+      "disabled": "Đang tắt"
+    },
+    "table": {
+      "caption": "Danh sách bài trong kho nhạc",
+      "track": "Bài hát",
+      "genre": "Thể loại",
+      "country": "Quốc gia",
+      "year": "Năm",
+      "status": "Trạng thái",
+      "actions": "Thao tác"
+    },
+    "action": {
+      "enable": "Bật bài {{title}}",
+      "disable": "Tắt bài {{title}}",
+      "enableShort": "Bật",
+      "disableShort": "Tắt"
+    },
+    "toast": {
+      "enabled": "Đã bật {{title}}",
+      "disabled": "Đã tắt {{title}}"
+    },
+    "disable": {
+      "title": "Tắt bài hát",
+      "description": "{{title}} sẽ không xuất hiện trong vòng mới.",
+      "reason": "Lý do (không bắt buộc)",
+      "confirm": "Tắt bài"
+    },
+    "empty": {
+      "title": "Không có bài nào",
+      "description": "Đổi bộ lọc hoặc nhập bài từ nhà cung cấp."
+    },
+    "import": {
+      "open": "Nhập bài",
+      "title": "Nhập bài từ nhà cung cấp",
+      "description": "Bài không có đoạn nghe thử sẽ bị bỏ qua.",
+      "mode": "Cách nhập",
+      "byQuery": "Theo từ khóa",
+      "byId": "Theo mã bài của nhà cung cấp",
+      "query": "Từ khóa",
+      "providerTrackId": "Mã bài",
+      "limit": "Tối đa",
+      "country": "Quốc gia mặc định",
+      "submit": "Nhập",
+      "running": "Đang nhập…",
+      "result": "Đã nhập {{imported}}/{{total}} bài",
+      "skipped": "Bỏ qua {{noPreview}} bài không có đoạn nghe thử, {{duplicate}} bài đã có."
+    }
+  },
+  "playlists": {
+    "subtitle": "Bộ đề cần ít nhất 5 bài đang bật mới chơi được.",
+    "create": "Tạo bộ đề",
+    "createTitle": "Tạo bộ đề mới",
+    "editTitle": "Sửa bộ đề {{code}}",
+    "edit": "Sửa",
+    "editNamed": "Sửa bộ đề {{name}}",
+    "back": "Về danh sách",
+    "enabled": "Đang bật",
+    "disabled": "Đang tắt",
+    "curated": "Tuyển chọn",
+    "standard": "Bộ chuẩn",
+    "trackCount": "{{enabled}}/{{total}} bài đang bật",
+    "save": "Lưu",
+    "saving": "Đang lưu…",
+    "saved": "Đã lưu bộ đề",
+    "empty": {
+      "title": "Chưa có bộ đề",
+      "description": "Tạo bộ đề đầu tiên từ kho nhạc."
+    },
+    "form": {
+      "code": "Mã",
+      "codeHint": "Chữ thường, số và dấu gạch, VD indie-viet-2020s.",
+      "nameVi": "Tên tiếng Việt",
+      "nameEn": "Tên tiếng Anh",
+      "enabled": "Bật bộ đề"
+    },
+    "tracks": {
+      "selected": "Bài đã chọn ({{count}})",
+      "min": "Cần ít nhất {{min}} bài.",
+      "none": "Chưa chọn bài nào.",
+      "remove": "Bỏ {{track}} khỏi bộ đề",
+      "removeShort": "Bỏ",
+      "missing": "Bài không còn trong kho (#{{id}})"
+    },
+    "picker": {
+      "title": "Thêm bài",
+      "search": "Tìm",
+      "placeholder": "Tên bài hoặc ca sĩ",
+      "hint": "Tìm bài đang bật trong kho nhạc để thêm.",
+      "none": "Không tìm thấy bài đang bật.",
+      "add": "Thêm {{title}}",
+      "addShort": "Thêm",
+      "added": "Đã thêm"
+    },
+    "readOnly": "Bộ chuẩn được quản lý tự động.",
+    "partialSave": "Một số thay đổi có thể đã được lưu. Kiểm tra danh sách trước khi thử lại.",
+    "discard": {
+      "title": "Bỏ thay đổi chưa lưu?",
+      "description": "Các thay đổi trong bộ đề này chưa được lưu.",
+      "keep": "Tiếp tục sửa",
+      "confirm": "Bỏ thay đổi"
+    }
+  }
 }

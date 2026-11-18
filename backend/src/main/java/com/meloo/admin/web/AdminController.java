@@ -17,13 +17,18 @@ import com.meloo.generated.model.*;
 import com.meloo.identity.api.UserAccounts;
 import com.meloo.progression.api.RankPointsQuery;
 import com.meloo.shared.api.ApiException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
+import java.net.URI;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -66,6 +71,11 @@ public class AdminController implements AdminApi {
   @Override
   public ResponseEntity<AdminDashboardDto> getAdminDashboard() {
     return ResponseEntity.ok(dashboard.get());
+  }
+
+  @Override
+  public ResponseEntity<AdminAnalyticsDto> getAdminAnalytics(Integer days) {
+    return ResponseEntity.ok(dashboard.analytics(days));
   }
 
   @Override
@@ -339,5 +349,17 @@ public class AdminController implements AdminApi {
         p.enabled(),
         p.trackIds(),
         p.enabledTrackCount());
+  }
+
+  // The generated interface uses AOP @Validated, so out-of-range query values (e.g. days) arrive as
+  // ConstraintViolationException instead of MVC validation errors.
+  @ExceptionHandler(ConstraintViolationException.class)
+  ResponseEntity<ProblemDetail> invalidParameters(HttpServletRequest request) {
+    var problem =
+        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Invalid request parameters");
+    problem.setTitle("Validation failed");
+    problem.setInstance(URI.create(request.getRequestURI()));
+    problem.setProperty("code", "VALIDATION_FAILED");
+    return ResponseEntity.badRequest().body(problem);
   }
 }

@@ -1940,6 +1940,45 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/admin/analytics:
+    get:
+      tags: [admin]
+      operationId: getAdminAnalytics
+      summary: Get daily player, match and returning-player analytics
+      description: |
+        Requires role `ADMIN` (403 `FORBIDDEN` otherwise). Returns usage analytics computed from retained analytics
+        events, excluding administrators and configured excluded accounts. `daily` has exactly one entry per Vietnam
+        calendar day (`Asia/Ho_Chi_Minh`) from `from` to `to` inclusive (`to` is today), with zero-filled days.
+        `returningPlayers` of a day counts active players of that day who had played on an earlier retained day.
+        `returningRate` is the beta KPI "players returning on at least 2 different days" (null until the beta
+        window is configured or when no player is eligible); `guestConversion` is the share of guests that
+        merged into an account. Responses never contain nicknames or track data.
+      parameters:
+        - name: days
+          in: query
+          required: false
+          description: Number of days to include, ending today (Vietnam time).
+          schema:
+            type: integer
+            minimum: 7
+            maximum: 90
+            default: 30
+      responses:
+        '200':
+          description: Analytics over the requested period.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAnalytics'
+              examples:
+                default:
+                  externalValue: ./examples/admin/get-admin-analytics.200.json
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/admin/tracks:
     get:
       tags: [admin]
@@ -4605,6 +4644,73 @@ components:
         totalGuestsToday:
           type: integer
           minimum: 0
+        serverTime:
+          type: string
+          format: date-time
+    AdminRatio:
+      type: object
+      description: A fraction `numerator / denominator`; `rate` is null when `denominator` is 0.
+      required: [numerator, denominator, rate]
+      properties:
+        numerator:
+          type: integer
+          minimum: 0
+        denominator:
+          type: integer
+          minimum: 0
+        rate:
+          type: [number, 'null']
+          minimum: 0
+          maximum: 1
+    AdminAnalyticsDay:
+      type: object
+      required: [day, activePlayers, returningPlayers, matches]
+      properties:
+        day:
+          type: string
+          format: date
+          description: Vietnam calendar day.
+        activePlayers:
+          type: integer
+          minimum: 0
+          description: Distinct players (guests included) who started or finished a game that day.
+        returningPlayers:
+          type: integer
+          minimum: 0
+          description: Active players of that day who had already played on an earlier day.
+        matches:
+          type: integer
+          minimum: 0
+          description: Matches finished with status `FINISHED` that day.
+    AdminAnalytics:
+      type: object
+      required: [from, to, dau, wau, returningRate, guestConversion, daily, serverTime]
+      properties:
+        from:
+          type: string
+          format: date
+        to:
+          type: string
+          format: date
+        dau:
+          type: integer
+          minimum: 0
+          description: Distinct active players today.
+        wau:
+          type: integer
+          minimum: 0
+          description: Distinct active players over the last 7 days including today.
+        returningRate:
+          description: Beta KPI, players returning on at least 2 different days; null before the beta window is set.
+          oneOf:
+            - $ref: '#/components/schemas/AdminRatio'
+            - type: 'null'
+        guestConversion:
+          $ref: '#/components/schemas/AdminRatio'
+        daily:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminAnalyticsDay'
         serverTime:
           type: string
           format: date-time

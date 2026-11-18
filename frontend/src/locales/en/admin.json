@@ -1,3 +1,179 @@
 {
-  "title": "Admin"
+  "title": "Admin",
+  "loading": "Loading",
+  "cancel": "Cancel",
+  "close": "Close",
+  "shell": {
+    "menu": "Admin menu",
+    "nav": {
+      "dashboard": "Overview",
+      "catalog": "Catalog",
+      "playlists": "Playlists",
+      "users": "Users",
+      "moderation": "Moderation",
+      "audit": "Audit log"
+    }
+  },
+  "pager": {
+    "previous": "Previous",
+    "next": "Next",
+    "status": "Page {{page}} of {{total}}"
+  },
+  "errors": {
+    "generic": "That did not work. Please try again.",
+    "notEnoughTracks": "An enabled playlist needs at least 5 enabled tracks.",
+    "conflict": "The code already exists or the action is blocked.",
+    "notFound": "Not found; it may have been deleted.",
+    "invalid": "Some values are not valid.",
+    "forbidden": "You are not allowed to do this."
+  },
+  "dashboard": {
+    "subtitle": "Server metrics; player charts exclude administrators.",
+    "notAvailable": "N/A",
+    "ratioHint": "{{numerator}}/{{denominator}} players",
+    "kpi": {
+      "title": "Today",
+      "totalRegisteredUsers": "Registered accounts",
+      "totalGuestsToday": "New guests today",
+      "matchesToday": "Matches today",
+      "dailyPlayersToday": "Daily challenge players",
+      "activeRooms": "Open rooms",
+      "onlinePlayers": "Players online",
+      "openChatReports": "Open chat reports",
+      "enabledTracks": "Enabled tracks",
+      "disabledHint": "{{count}} disabled"
+    },
+    "analytics": {
+      "title": "By day",
+      "range": "Period",
+      "days": "{{count}} days",
+      "dau": "Players today",
+      "wau": "Players, 7 days",
+      "returningRate": "Returned on 2+ days (beta)",
+      "guestConversion": "Guests who signed up",
+      "betaNotSet": "Beta start date not set"
+    },
+    "charts": {
+      "players": "Players per day",
+      "active": "Players",
+      "returning": "Returning players",
+      "playersSummary": "Players per day from {{from}} to {{to}}, peak {{active}}.",
+      "matches": "Matches per day",
+      "matchesSummary": "{{total}} matches from {{from}} to {{to}}.",
+      "returningShare": "Returning player share",
+      "returningShareSummary": "Returning player share from {{from}} to {{to}}, latest {{latest}}."
+    }
+  },
+  "catalog": {
+    "subtitle": "Search, filter and enable or disable tracks. Disabled tracks leave new rounds and suggestions.",
+    "filters": {
+      "label": "Filter catalog",
+      "q": "Title or artist",
+      "status": "Status",
+      "all": "All",
+      "genre": "Genre code",
+      "country": "Country (VN, US…)",
+      "decade": "Decade",
+      "decadeValue": "{{decade}}s",
+      "apply": "Filter",
+      "reset": "Clear"
+    },
+    "status": {
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    },
+    "table": {
+      "caption": "Tracks in the catalog",
+      "track": "Track",
+      "genre": "Genre",
+      "country": "Country",
+      "year": "Year",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "action": {
+      "enable": "Enable {{title}}",
+      "disable": "Disable {{title}}",
+      "enableShort": "Enable",
+      "disableShort": "Disable"
+    },
+    "toast": {
+      "enabled": "Enabled {{title}}",
+      "disabled": "Disabled {{title}}"
+    },
+    "disable": {
+      "title": "Disable track",
+      "description": "{{title}} will not appear in new rounds.",
+      "reason": "Reason (optional)",
+      "confirm": "Disable"
+    },
+    "empty": {
+      "title": "No tracks",
+      "description": "Change the filters or import from the provider."
+    },
+    "import": {
+      "open": "Import tracks",
+      "title": "Import from the provider",
+      "description": "Tracks without a preview clip are skipped.",
+      "mode": "Import by",
+      "byQuery": "Search text",
+      "byId": "Provider track id",
+      "query": "Search text",
+      "providerTrackId": "Track id",
+      "limit": "Limit",
+      "country": "Default country",
+      "submit": "Import",
+      "running": "Importing…",
+      "result": "Imported {{imported}} of {{total}} tracks",
+      "skipped": "Skipped {{noPreview}} without a preview, {{duplicate}} already in the catalog."
+    }
+  },
+  "playlists": {
+    "subtitle": "A playlist needs at least 5 enabled tracks to be playable.",
+    "create": "New playlist",
+    "createTitle": "New playlist",
+    "editTitle": "Edit playlist {{code}}",
+    "edit": "Edit",
+    "editNamed": "Edit playlist {{name}}",
+    "back": "Back to list",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "curated": "Curated",
+    "standard": "Standard set",
+    "trackCount": "{{enabled}}/{{total}} tracks enabled",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Playlist saved",
+    "empty": {
+      "title": "No playlists yet",
+      "description": "Create the first one from the catalog."
+    },
+    "form": {
+      "code": "Code",
+      "codeHint": "Lowercase letters, digits and hyphens, e.g. indie-viet-2020s.",
+      "nameVi": "Vietnamese name",
+      "nameEn": "English name",
+      "enabled": "Playlist enabled"
+    },
+    "tracks": {
+      "selected": "Selected tracks ({{count}})",
+      "min": "Pick at least {{min}} tracks.",
+      "none": "No tracks selected.",
+      "unknown": "Track #{{id}}",
+      "remove": "Remove {{track}} from the playlist",
+      "removeShort": "Remove"
+    },
+    "picker": {
+      "title": "Add tracks",
+      "search": "Search",
+      "placeholder": "Title or artist",
+      "hint": "Search enabled catalog tracks to add.",
+      "none": "No enabled tracks found.",
+      "add": "Add {{title}}",
+      "addShort": "Add",
+      "added": "Added"
+    },
+    "readOnly": "Standard sets are managed automatically.",
+    "partialSave": "Some changes may have been saved. Check the list before retrying."
+  }
 }

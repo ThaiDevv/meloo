@@ -1,6 +1,10 @@
 import { act, cleanup, render, screen } from '@testing-library/react'
 import { RouterProvider, createMemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { server } from '@/mocks/server'
+import { adminDashboardHandlers } from '@/features/admin/dashboard/mocks'
+import { adminCatalogHandlers } from '@/features/admin/catalog/mocks'
+import { adminPlaylistHandlers } from '@/features/admin/playlists/mocks'
 import { Providers } from './providers'
 import { appRoutes } from './routes'
 import { useSessionStore } from '@/shared/session/store'
@@ -17,9 +21,6 @@ function renderAt(path: string) {
 
 // Every route in .claude/skills/meloo-frontend/references/routes.md → ticket that replaces it.
 const routes: [path: string, ticket: string][] = [
-  ['/admin', 'FE-ADM-01'],
-  ['/admin/catalog', 'FE-ADM-01'],
-  ['/admin/playlists', 'FE-ADM-01'],
   ['/admin/users', 'FE-ADM-02'],
   ['/admin/moderation', 'FE-ADM-02'],
   ['/admin/audit', 'FE-ADM-02'],
@@ -28,6 +29,18 @@ const routes: [path: string, ticket: string][] = [
 describe('app routes', () => {
   beforeEach(() => {
     useSessionStore.getState().setRole('ADMIN')
+  })
+
+  it.each([
+    ['/admin', 'Hôm nay'],
+    ['/admin/catalog', 'Nơi Này Có Anh'],
+    ['/admin/playlists', 'Bộ chuẩn V-Pop'],
+  ])('%s renders the admin page', async (path, content) => {
+    server.use(...adminDashboardHandlers, ...adminCatalogHandlers, ...adminPlaylistHandlers)
+    renderAt(path)
+    expect(await screen.findByText(content)).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Menu quản trị' })).toBeInTheDocument()
+    expect(screen.queryByTestId('placeholder')).not.toBeInTheDocument()
   })
 
   it.each(routes)('%s renders the placeholder of %s', async (path, ticket) => {

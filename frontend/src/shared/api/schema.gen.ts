@@ -966,11 +966,11 @@ export interface paths {
         /**
          * Get daily player, match and returning-player analytics
          * @description Requires role `ADMIN` (403 `FORBIDDEN` otherwise). Returns usage analytics computed from retained analytics
-         *     events, excluding administrators and configured excluded accounts. `daily` has exactly one entry per Vietnam
+         *     events. Player counts exclude administrators and configured excluded accounts. `daily` has exactly one entry per Vietnam
          *     calendar day (`Asia/Ho_Chi_Minh`) from `from` to `to` inclusive (`to` is today), with zero-filled days.
          *     `returningPlayers` of a day counts active players of that day who had played on an earlier retained day.
          *     `returningRate` is the beta KPI "players returning on at least 2 different days" (null until the beta
-         *     window is configured or when no player is eligible); `guestConversion` is the share of guests that
+         *     window is configured, with a null `rate` when no player is eligible); `guestConversion` is the share of guests that
          *     merged into an account. Responses never contain nicknames or track data.
          */
         get: operations["getAdminAnalytics"];

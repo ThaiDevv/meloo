@@ -4,6 +4,11 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { Providers } from './providers'
 import { appRoutes } from './routes'
 import { useSessionStore } from '@/shared/session/store'
+import { http, HttpResponse } from 'msw'
+import { server } from '@/mocks/server'
+import users from '../../../contracts/examples/admin/list-admin-users.200.json'
+import reports from '../../../contracts/examples/admin/list-admin-reports.200.json'
+import audit from '../../../contracts/examples/admin/list-admin-audit-logs.200.json'
 
 function renderAt(path: string) {
   const router = createMemoryRouter(appRoutes, { initialEntries: [path] })
@@ -15,33 +20,28 @@ function renderAt(path: string) {
   return router
 }
 
-// Every route in .claude/skills/meloo-frontend/references/routes.md → ticket that replaces it.
-const routes: [path: string, ticket: string][] = [
-  ['/admin/users', 'FE-ADM-02'],
-  ['/admin/moderation', 'FE-ADM-02'],
-  ['/admin/audit', 'FE-ADM-02'],
-]
-
 describe('app routes', () => {
   beforeEach(() => {
     useSessionStore.getState().setRole('ADMIN')
+    server.use(
+      http.get('*/api/v1/admin/users', () => HttpResponse.json(users)),
+      http.get('*/api/v1/admin/reports', () => HttpResponse.json(reports)),
+      http.get('*/api/v1/admin/audit-logs', () => HttpResponse.json(audit)),
+    )
   })
 
   it.each([
     ['/admin', 'Hôm nay'],
     ['/admin/catalog', 'Nơi Này Có Anh'],
     ['/admin/playlists', 'Bộ chuẩn V-Pop'],
+    ['/admin/users', 'MinhNhac'],
+    ['/admin/moderation', 'Ngữ cảnh (2 tin nhắn)'],
+    ['/admin/audit', 'USER_LOCK'],
   ])('%s renders the admin page', async (path, content) => {
     renderAt(path)
     expect(await screen.findByText(content)).toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: 'Menu quản trị' })).toBeInTheDocument()
     expect(screen.queryByTestId('placeholder')).not.toBeInTheDocument()
-  })
-
-  it.each(routes)('%s renders the placeholder of %s', async (path, ticket) => {
-    renderAt(path)
-    const placeholder = await screen.findByTestId('placeholder')
-    expect(placeholder).toHaveTextContent(ticket)
   })
 
   it.each([

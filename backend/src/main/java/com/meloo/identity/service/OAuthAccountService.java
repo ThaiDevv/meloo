@@ -66,21 +66,28 @@ public class OAuthAccountService {
     this.nicknames = nicknames;
   }
 
-  /** Returns a live initiating session without rotating its refresh token. */
+  /** Binds only live sessions; stale cookies must not prevent a fresh login. */
   @Transactional(readOnly = true)
   public Optional<UUID> initiatingUser(@Nullable String rawToken, boolean link) {
     if (rawToken == null || rawToken.isBlank()) {
       return Optional.empty();
     }
-    var token = tokens.findByTokenHash(RefreshTokenService.hashToken(rawToken));
-    if (token.isEmpty()) {
-      throw failure("OAUTH_STATE_INVALID");
+    var user =
+        tokens
+            .findByTokenHash(RefreshTokenService.hashToken(rawToken))
+            .filter(t -> t.getRevokedAt() == null && t.getExpiresAt().isAfter(clock.instant()))
+            .flatMap(t -> users.findById(t.getUserId()))
+            .filter(u -> u.getMergedIntoId() == null);
+    if (user.isEmpty()) {
+      if (link) {
+        throw failure("OAUTH_STATE_INVALID");
+      }
+      return Optional.empty();
     }
-    validToken(token.get());
-    AppUser user =
-        users.findById(token.get().getUserId()).orElseThrow(() -> failure("OAUTH_STATE_INVALID"));
-    active(user);
-    return link || user.getKind() == UserKind.GUEST ? Optional.of(user.getId()) : Optional.empty();
+    active(user.get());
+    return link || user.get().getKind() == UserKind.GUEST
+        ? Optional.of(user.get().getId())
+        : Optional.empty();
   }
 
   @Transactional

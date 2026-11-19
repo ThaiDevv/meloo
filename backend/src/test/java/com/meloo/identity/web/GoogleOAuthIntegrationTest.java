@@ -136,6 +136,59 @@ class GoogleOAuthIntegrationTest extends IntegrationTest {
         .isEqualTo(1);
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"unknown", "expired", "revoked", "rotated", "merged"})
+  void staleRefreshCookieAllowsLoginWithoutBindingOrMergingGuest(String state) throws Exception {
+    var guest = guest();
+    Cookie stale = staleRefreshCookie(guest, state);
+    String email = uniqueEmail();
+    profile(email, true);
+
+    Cookie refresh =
+        callback(start(stale, "login"))
+            .andExpect(redirectedUrl("http://localhost:5173/auth/callback"))
+            .andReturn()
+            .getResponse()
+            .getCookie("meloo_refresh");
+
+    mvc.perform(post("/api/v1/auth/refresh").cookie(refresh))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.user.email").value(email))
+        .andExpect(jsonPath("$.user.kind").value("REGISTERED"));
+    assertThat(events.stream(GuestMerged.class)).isEmpty();
+    assertThat(users.findById(guest.session().getUser().getId()).orElseThrow().getKind())
+        .isEqualTo(UserKind.GUEST);
+    mvc.perform(post("/api/v1/auth/refresh").cookie(stale)).andExpect(status().is4xxClientError());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"unknown", "expired", "revoked", "rotated", "merged"})
+  void staleRefreshCookieCannotStartProviderLink(String state) throws Exception {
+    Cookie stale = staleRefreshCookie(guest(), state);
+
+    mvc.perform(get(BASE).param("mode", "link").cookie(stale))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("OAUTH_STATE_INVALID"))
+        .andExpect(cookie().doesNotExist(OAuthStateRepository.COOKIE));
+    GOOGLE.verify(0, postRequestedFor(urlEqualTo("/token")));
+  }
+
+  @Test
+  void liveSessionOfLockedUserCannotStartLogin() throws Exception {
+    var guest = guest();
+    AppUser user = users.findById(guest.session().getUser().getId()).orElseThrow();
+    user.setStatus(UserStatus.LOCKED);
+    user.setLockReason("Test moderation");
+    user.setLockedAt(Instant.now());
+    users.saveAndFlush(user);
+
+    mvc.perform(get(BASE).param("mode", "login").cookie(refreshCookie(guest)))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("ACCOUNT_LOCKED"))
+        .andExpect(cookie().doesNotExist(OAuthStateRepository.COOKIE));
+    GOOGLE.verify(0, postRequestedFor(urlEqualTo("/token")));
+  }
+
   @Test
   void profileSetupSurvivesReloadRefreshLogoutAndGoogleLoginWithoutOverwrites() throws Exception {
     String email = uniqueEmail();
@@ -586,6 +639,34 @@ class GoogleOAuthIntegrationTest extends IntegrationTest {
 
   private Cookie refreshCookie(GuestAuthService.AuthResult guest) {
     return new Cookie("meloo_refresh", guest.rawRefreshToken());
+  }
+
+  private Cookie staleRefreshCookie(GuestAuthService.AuthResult guest, String state)
+      throws Exception {
+    RefreshToken token =
+        tokens
+            .findByTokenHash(RefreshTokenService.hashToken(guest.rawRefreshToken()))
+            .orElseThrow();
+    switch (state) {
+      case "unknown" -> {
+        return new Cookie("meloo_refresh", UUID.randomUUID().toString());
+      }
+      case "expired" -> {
+        token.setExpiresAt(Instant.now().minusSeconds(60));
+        tokens.saveAndFlush(token);
+      }
+      case "revoked" -> guests.logout(guest.rawRefreshToken());
+      case "rotated" ->
+          mvc.perform(post("/api/v1/auth/refresh").cookie(refreshCookie(guest)))
+              .andExpect(status().isOk());
+      case "merged" -> {
+        AppUser user = users.findById(guest.session().getUser().getId()).orElseThrow();
+        user.setMergedIntoId(registered(uniqueEmail()).getId());
+        users.saveAndFlush(user);
+      }
+      default -> throw new IllegalArgumentException("Unknown stale session state: " + state);
+    }
+    return refreshCookie(guest);
   }
 
   private AppUser registered(String email) {

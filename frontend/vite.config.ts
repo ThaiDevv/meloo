@@ -9,7 +9,8 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    VitePWA(pwaOptions),
+    // Mock previews already use MSW at scope /; keep that worker in control.
+    VitePWA({ ...pwaOptions, disable: process.env.VITE_API_MOCK === 'true' }),
     {
       name: 'meloo-pwa-icons',
       transformIndexHtml: () => [

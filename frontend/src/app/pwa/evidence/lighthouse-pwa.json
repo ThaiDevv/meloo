@@ -1,0 +1,15 @@
+{
+  "lighthouseVersion": "11.7.1",
+  "fetchTime": "2026-11-20T06:27:30.278Z",
+  "requestedUrl": "http://localhost:4178/",
+  "pwaScore": 1,
+  "automatedAudits": {
+    "installable-manifest": 1,
+    "splash-screen": 1,
+    "themed-omnibox": 1,
+    "content-width": 1,
+    "viewport": 1,
+    "maskable-icon": 1
+  },
+  "manualChecks": "Real Android/desktop installation and cross-browser behavior remain for UAT."
+}

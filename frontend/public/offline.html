@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0d0d0e" />
+    <title>Meloo · Mất kết nối</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: system-ui, sans-serif;
+        background: #0d0d0e;
+        color: #f5f5f4;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100svh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+      main {
+        width: min(100%, 420px);
+      }
+      .logo {
+        font-size: 24px;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+      }
+      .logo span {
+        color: #b9f24b;
+      }
+      h1 {
+        margin: 48px 0 16px;
+        font-size: clamp(26px, 6vw, 32px);
+        line-height: 1.2;
+        text-wrap: balance;
+      }
+      p {
+        margin: 0 0 32px;
+        color: #b4b4b6;
+        line-height: 1.6;
+      }
+      button {
+        min-height: 48px;
+        padding: 12px 24px;
+        border: 0;
+        border-radius: 8px;
+        background: #b9f24b;
+        color: #0d1405;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #cbf77c;
+      }
+      button:focus-visible {
+        outline: 2px solid #b9f24b;
+        outline-offset: 4px;
+      }
+      ::selection {
+        background: #b9f24b;
+        color: #0d1405;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="logo">Mel<span>oo</span></div>
+      <h1 data-i18n="heading">Nhạc đang tạm dừng</h1>
+      <p data-i18n="message">Bạn đang ngoại tuyến. Kết nối lại Internet để tiếp tục chơi Meloo.</p>
+      <button type="button" data-i18n="retry">Thử kết nối lại</button>
+    </main>
+    <script>
+      // Keep this document self-contained: no app bundles, API, or audio downloads.
+      const messages = {
+        vi: {
+          title: 'Meloo · Mất kết nối',
+          heading: 'Nhạc đang tạm dừng',
+          message: 'Bạn đang ngoại tuyến. Kết nối lại Internet để tiếp tục chơi Meloo.',
+          retry: 'Thử kết nối lại',
+        },
+        en: {
+          title: 'Meloo · Offline',
+          heading: 'The music is on pause',
+          message: 'You are offline. Reconnect to the Internet to keep playing Meloo.',
+          retry: 'Try reconnecting',
+        },
+      }
+      let preferred
+      try {
+        preferred = localStorage.getItem('i18nextLng')
+      } catch {
+        /* Storage may be blocked. */
+      }
+      const language =
+        [preferred, ...navigator.languages]
+          .map((value) => value?.split('-')[0])
+          .find((value) => value === 'vi' || value === 'en') || 'vi'
+      const t = (key) => messages[language][key]
+      document.documentElement.lang = language
+      document.title = t('title')
+      document.querySelectorAll('[data-i18n]').forEach((element) => {
+        element.textContent = t(element.dataset.i18n)
+      })
+      document.querySelector('button').addEventListener('click', () => location.reload())
+    </script>
+  </body>
+</html>

@@ -1,11 +1,13 @@
 package com.meloo.shared.observability;
 
+import io.sentry.ScopesAdapter;
 import io.sentry.Sentry;
 import io.sentry.SentryEvent;
 import io.sentry.SentryOptions;
 import io.sentry.protocol.SentryException;
 import io.sentry.protocol.SentryStackFrame;
 import io.sentry.protocol.SentryStackTrace;
+import io.sentry.spring7.tracing.SpringMvcTransactionNameProvider;
 import java.util.Arrays;
 import java.util.List;
 import org.slf4j.MDC;
@@ -20,6 +22,18 @@ class MonitoringConfiguration {
       @Value("${sentry.release}") String release) {
     // Container image paths are useful versions but Sentry forbids slashes in release names.
     return options -> options.setRelease(release.replace('/', '_'));
+  }
+
+  /** Backs off Sentry's own MVC resolver, which reports 4xx client errors as FATAL. */
+  @Bean
+  ServerErrorReporter serverErrorReporter() {
+    return new ServerErrorReporter(
+        ScopesAdapter.getInstance(), new SpringMvcTransactionNameProvider());
+  }
+
+  @Bean
+  ServerErrorReportingFilter serverErrorReportingFilter(ServerErrorReporter reporter) {
+    return new ServerErrorReportingFilter(reporter);
   }
 
   @Bean

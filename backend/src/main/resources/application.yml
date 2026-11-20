@@ -58,8 +58,7 @@ sentry:
   dsn: ${SENTRY_DSN:}
   release: ${SENTRY_RELEASE:local}
   environment: ${SENTRY_ENVIRONMENT:development}
-  # Run before MVC advice so handled unexpected 500s are captured too.
-  exception-resolver-order: -2147483647
+  # MVC failures are reported by shared/observability only when the final status is 5xx.
   ignored-exceptions-for-type:
     - com.meloo.shared.api.ApiException
   send-default-pii: false

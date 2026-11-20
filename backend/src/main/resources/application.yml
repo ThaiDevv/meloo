@@ -48,3 +48,30 @@ server:
   error:
     include-message: never
     include-stacktrace: never
+
+logging:
+  structured:
+    format:
+      console: com.meloo.shared.observability.SafeJsonLogFormatter
+
+sentry:
+  dsn: ${SENTRY_DSN:}
+  release: ${SENTRY_RELEASE:local}
+  environment: ${SENTRY_ENVIRONMENT:development}
+  # Run before MVC advice so handled unexpected 500s are captured too.
+  exception-resolver-order: -2147483647
+  ignored-exceptions-for-type:
+    - com.meloo.shared.api.ApiException
+  send-default-pii: false
+  max-request-body-size: none
+  max-breadcrumbs: 0
+  print-uncaught-stack-trace: false
+  attach-threads: false
+  attach-server-name: false
+  enable-auto-session-tracking: false
+  traces-sample-rate: 0.0
+  profile-session-sample-rate: 0.0
+  logging:
+    enabled: false
+  logs:
+    enabled: false
